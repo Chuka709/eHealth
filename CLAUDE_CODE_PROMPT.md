@@ -51,8 +51,10 @@ AGPL/SSPL сан (PyMuPDF гэх мэт) хэрэглэхгүй. Стек өөр
 
 ## Auth (энгийн, гэхдээ аюулгүй)
 Өөрөө бүртгүүлэх БАЙХГҮЙ. Супер админ (web самбар, TOTP) хэрэглэгчийг бүртгэж
-түр нууц үг өгнө → анх нэвтрэхэд заавал солино. Нууц үг мартвал админ хүнийг
-таньж шинэчилнэ (бүх сесс цуцлах, шалтгаан, аудит, хэрэглэгчид мэдэгдэх).
+нэг удаагийн идэвхжүүлэх QR (биечлэн) эсвэл бүртгэлтэй утас руу SMS линк өгнө →
+хэрэглэгч нууц үгээ ӨӨРӨӨ тохируулна (түр нууц үг байхгүй, админ нууц үг мэдэхгүй).
+Нууц үг мартвал админ хүнийг таньж (эргэж залгах + РД шалгалт) сэргээх токен
+олгоно (бүх сесс цуцлах, шалтгаан, аудит, хохирогчид мэдэгдэх). docs/04 §1, §6 (v7.2).
 Админ эрүүл мэндийн өгөгдлийг харахгүй. Биометр түгжээ, refresh rotation +
 reuse detection, brute-force түгжээ, argon2id. Дэлгэрэнгүй: docs/04.
 
@@ -95,17 +97,17 @@ reuse detection, brute-force түгжээ, argon2id. Дэлгэрэнгүй: doc
   audit_logs, test_catalog, test_synonyms, unit_aliases, unit_conversions,
   medication_catalog + RLS; `just seed` (lab_tests + medications),
   `just create-admin` (TOTP).
-- /auth: login, refresh, logout, change-password (must_change_password),
-  sessions, delete-account request. /admin/users: бүртгэх (түр нууц үг),
-  CSV бөөн бүртгэл, хайх, идэвхгүй болгох, түгжээ тайлах, нууц үг шинэчлэх.
+- /auth: activate, login, refresh, logout, change-password,
+  sessions, delete-account request. /admin/users: бүртгэх + идэвхжүүлэх токен,
+  CSV бөөн бүртгэл, хайх, идэвхгүй болгох, түгжээ тайлах, таних шалгалт, сэргээх токен.
 - Зөвшөөрлүүд тус бүр тусдаа (terms, privacy, sensitive_data, ai_processing,
   cross_border) — Монголын хувийн мэдээллийн хуулийн дагуу.
 - Web админ самбар: хэрэглэгч бүртгэх, нэвтрэх карт (QR) хэвлэх, удирдах.
-- Апп: welcome, login, анх нэвтрэхэд нууц үг солих, зөвшөөрлүүд, биометр,
+- Апп: welcome, идэвхжүүлэх (QR/линк → нууц үг тохируулах), login, зөвшөөрлүүд, биометр,
   "нууц үгээ мартсан" (админтай холбогдох), профайл, тохиргоо,
   админы үйлдлийн түүх.
 - Тест: RLS (2+ хэрэглэгч, хугацаа дууссан/цуцлагдсан хандалт, worker context),
-  админ PHI endpoint 403, auth (reuse detection, түгжээ, must_change_password),
+  админ PHI endpoint 403, auth (reuse detection, device-cookie түгжээ, токен цуцлалт),
   Maestro анх нэвтрэх урсгал.
 
 Баталсан шийдвэрүүд: өгөгдлийн хариуцагч — миний компани; CV% эмч болон

@@ -38,8 +38,8 @@ just eval            # задлалтын eval
 ```
 
 ## Хатуу дүрэм
-1. **RLS:** PHI хүснэгт бүрт `ENABLE` + `FORCE` + policy + харь хэрэглэгчийн тест. Апп `labtrack_app` role, хүсэлт/task бүрт `SET LOCAL app.user_id`.
-2. **Auth:** өөрөө бүртгүүлэх endpoint БАЙХГҮЙ — хэрэглэгчийг зөвхөн `super_admin` үүсгэнэ. Нууц үг — argon2id; түр нууц үг 72 цаг, `must_change_password`; refresh/share token — зөвхөн hash; refresh rotation + reuse detection; админ нууц үг шинэчлэхэд бүх сесс цуцлах + шалтгаан + аудит + хэрэглэгчид мэдэгдэх; алдааны мессеж нэр илчлэхгүй.
+1. **RLS:** PHI хүснэгт бүрт `ENABLE` + `FORCE` + policy + харь хэрэглэгчийн тест. Апп `labtrack_app` role, хүсэлт/task бүрт `set_config('app.user_id', :uid, true)` (bind параметр). DB role, хүснэгт бүрийн policy, definer функцийн `search_path` — `03_DATA_MODEL.md`.
+2. **Auth:** өөрөө бүртгүүлэх endpoint БАЙХГҮЙ — хэрэглэгчийг зөвхөн `super_admin` үүсгэнэ. Нууц үг — argon2id, **хэрэглэгч өөрөө тохируулна** (түр нууц үг байхгүй — нэг удаагийн идэвхжүүлэх QR/SMS токен; админ нууц үг хэзээ ч мэдэхгүй); JWT-д `sid` + `token_version` (цуцлалт шууд); refresh/share token — зөвхөн hash; refresh rotation + reuse detection; админ нууц үг шинэчлэхэд бүх сесс цуцлах + шалтгаан + аудит + хэрэглэгчид мэдэгдэх; алдааны мессеж нэр илчлэхгүй.
 2a. **Админ PHI харахгүй:** `super_admin`/`support` токеноор шинжилгээ, эм, шилжүүлэн суулгалт, үйл явдлын endpoint 403, RLS-ээр ч хаалттай (тест заавал). Break-glass — 2 админ батлах, аудит.
 3. **PHI логлохгүй:** лог, Sentry, Celery аргумент, push payload, алдааны мессежинд нэр/утга/огноо байхгүй. Зөвхөн ID.
 4. **AI гаралт = draft.** `confirmed` болоогүй утга дашбоардад орохгүй (критик баннер үл хамаарна).
@@ -77,11 +77,13 @@ just eval            # задлалтын eval
 - Хянагч agent-уудыг зөвхөн `git diff`-ээр ажиллуул — бүх репог бүү уншуул.
 
 ## Мэдэгдэж буй урхи
-- Хөгжүүлэлтийн машин **Windows**: hook-ууд `node`-оор (jq, bash-д найдахгүй); `justfile`-д `set windows-shell := ["pwsh", "-c"]` эсвэл WSL2; мөрийн төгсгөл `.gitattributes`-аар LF.
+- Хөгжүүлэлтийн машин **Windows**: hook-ууд `node`-оор; `justfile`-д `set windows-shell := ["powershell.exe", "-NoLogo", "-NoProfile", "-Command"]`; backend тест/worker **контейнер дотор** (WeasyPrint, libmagic); iOS — EAS cloud build + бодит iPhone (симулятор байхгүй); мөрийн төгсгөл LF.
+- Android: `USE_EXACT_ALARM` зарлахгүй (Play татгалзана) — `SCHEDULE_EXACT_ALARM` + тайлбар + inexact fallback (`08_MOBILE.md`).
+- Шийдэгдсэн асуултууд, шалтгаан: `docs/OPEN_QUESTIONS.md` — дахин бүү маргалд.
 - `seed/extraction.schema.json`-ийн `value_numeric` нь float — хадгалах утгыг `core` нь `raw_value`-аас `Decimal`-аар дахин задлана.
 - Кирилл/латин ижил хэлбэрийн үсэг; аравтын таслал `12,4`; `03.05.2025` огноо.
 - Лавлах хязгаарын олон хэлбэр: "3.5–5.1", "< 5", "Эр: 62–115 / Эм: 44–97".
-- HEIC, EXIF эргэлт; SQLAlchemy async-д `SET LOCAL` transaction дотор.
+- HEIC, EXIF эргэлт; SQLAlchemy async-д `set_config(..., true)` transaction дотор, pool-д буцаахад `DISCARD ALL`.
 - Шилжүүлэн суулгалтын огноо зөвхөн он/сартай байж болно (`date_precision`) — тооцоолол, харуулалтад анхаар.
 - Android 12+ exact alarm зөвшөөрөл, iOS 64 локал мэдэгдлийн хязгаар — сануулгын хуваарийг ойрын хугацаагаар (жишээ нь 7 хоног) эргэлдүүлэн дахин хуваарьлах.
 - Expo: native модуль нэмбэл dev build дахин хийх; OTA зөвхөн JS өөрчлөлтөд (`runtimeVersion: fingerprint`).

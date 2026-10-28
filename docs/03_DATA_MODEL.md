@@ -46,19 +46,36 @@ create type user_role as enum ('user','doctor','support','super_admin');
 create table users (
   id uuid primary key default gen_random_uuid(),
   username citext unique not null check (username ~ '^[a-z0-9._]{3,32}$'),
-  password_hash text not null,                 -- argon2id
-  must_change_password boolean not null default true,  -- админы өгсөн түр нууц үг
-  contact_phone text,                          -- нууц үг сэргээхэд хүнийг таних (админд л харагдана)
+  password_hash text,                          -- argon2id; хэрэглэгч ӨӨРӨӨ тохируулна (админ хэзээ ч мэдэхгүй — түр нууц үг байхгүй)
+  account_status text not null default 'pending_activation'
+    check (account_status in ('pending_activation','active','locked','disabled')),   -- нэвтрэх шалгалтын ЦОРЫН ГАНЦ эх сурвалж
+  check (account_status <> 'pending_activation' or password_hash is null),
+  token_version int not null default 0,        -- нэмэгдэхэд бүх access JWT шууд хүчингүй (идэвхгүй болгох, reset)
+  contact_phone_enc bytea,                     -- envelope шифрлэлт (формат: 04 §6.4); админд зөвхөн last4, бүтнээр нээх = аудит
+  contact_phone_last4 text,
+  identity_check_hash text,                    -- argon2id(РД нормчилсон, мөрийн salt) + pepper (OpenBao) — зөвхөн "тохирч байна/үгүй"; null бол зөвхөн биечлэн таних
   created_by uuid references users,            -- бүртгэсэн админ
-  is_active boolean not null default true,     -- админ идэвхгүй болгох
   display_name text not null, locale text not null default 'mn',
   role user_role not null default 'user',
   totp_secret_enc bytea,                       -- зөвхөн admin/support
-  failed_logins int not null default 0, locked_until timestamptz,
   emergency_card_unlocked boolean not null default false,   -- яаралтай картыг түгжээгүй нээх (анхдагч OFF)
-  password_changed_at timestamptz not null default now(),
+  password_changed_at timestamptz,
   created_at timestamptz not null default now(), deleted_at timestamptz
 );
+
+create table activation_tokens (               -- нэг удаагийн идэвхжүүлэх/сэргээх токен (түр нууц үгийн оронд)
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references users on delete cascade,
+  token_hash text not null unique,             -- sha256(≥128 бит); токен өөрөө зөвхөн QR/SMS-д
+  purpose text not null check (purpose in ('activation','admin_reset')),
+  channel text not null check (channel in ('in_person_qr','sms')),
+  issued_by uuid not null references users,
+  identity_check_id bigint,                    -- admin_reset: ≤ 10 мин дотор амжилттай таних шалгалт заавал
+  expires_at timestamptz not null,             -- QR: 15 мин, SMS: 24 цаг
+  used_at timestamptz, revoked_at timestamptz,
+  created_at timestamptz not null default now()
+);
+create unique index on activation_tokens (user_id) where used_at is null and revoked_at is null;   -- нэг л идэвхтэй
 
 create table sessions (                        -- refresh token (hash), төхөөрөмж бүрт
   id uuid primary key default gen_random_uuid(),
@@ -68,14 +85,21 @@ create table sessions (                        -- refresh token (hash), төхө
   device_name text, platform text check (platform in ('ios','android','web')),
   push_token text,                             -- Expo push token
   created_at timestamptz not null default now(), last_used_at timestamptz,
-  expires_at timestamptz not null, revoked_at timestamptz, replaced_by uuid
+  expires_at timestamptz not null, revoked_at timestamptz, replaced_by uuid,
+  revoked_reason text check (revoked_reason in ('logout','user_revoke','admin_reset','disabled','reuse_detected','expired')),
+  device_trusted boolean not null default false   -- амжилттай нэвтэрсэн төхөөрөмж (OWASP device cookie) — 04 §6.2
 );
 
 create table auth_attempts (                   -- rate limit + аудит
   id bigserial primary key, at timestamptz not null default now(),
-  username citext, ip inet, kind text check (kind in ('login','admin_reset','change_password')),
+  username citext, ip inet,                    -- IPv6-г /64-ээр нэгтгэж хадгална
+  share_link_id uuid,                          -- kind='share_pin' үед (username биш)
+  kind text check (kind in ('login','activation','change_password','identity_check','share_pin')),
   success boolean not null
 );
+create index on auth_attempts (username, at desc);
+create index on auth_attempts (ip, at desc);
+-- 90 хоногоос хуучныг Celery beat `labtrack_maint` role-оор устгана (`labtrack_app`-д DELETE эрхгүй)
 
 -- organizations, memberships — MVP-ийн дараа (клиник/эмнэлэг)
 
@@ -249,6 +273,7 @@ create table medication_catalog (            -- seed/medications.json
 create table medications (                   -- өвчтөний эм (одоо ба өмнө нь уусан)
   id uuid primary key default gen_random_uuid(),
   patient_id uuid not null references patients on delete cascade,
+  unique (id, patient_id),                     -- хүүхэд хүснэгтүүдийн composite FK-д (өөр өвчтөний эмтэй холбохоос сэргийлнэ)
   catalog_code text references medication_catalog,  -- null = каталогт байхгүй, гараар
   name text not null,                      -- хэрэглэгчийн харах нэр (худалдааны нэрээр байж болно)
   brand text, form text, strength text,    -- '1 мг', '500 мг' — хэрэглэгчийн бичсэнээр
@@ -278,11 +303,16 @@ create table medication_regimens (           -- тун, хуваарийн тү�
 
 create table medication_intakes (            -- уусан/алгассан тэмдэглэл (сонголттой)
   id bigserial primary key,
-  medication_id uuid not null references medications on delete cascade,
+  medication_id uuid not null,
   patient_id uuid not null references patients on delete cascade,
+  foreign key (medication_id, patient_id) references medications (id, patient_id) on delete cascade,   -- IDOR хамгаалалт
   scheduled_at timestamptz, taken_at timestamptz,
   status text not null check (status in ('taken','skipped','late')),
-  note text
+  note text,
+  client_id uuid not null,                     -- төхөөрөмж үүсгэнэ; давтан илгээвэл хадгалсан мөрийг буцаана (idempotent)
+  recorded_by uuid references users,           -- өвчтөн эсвэл асран хамгаалагч
+  unique (patient_id, client_id),
+  unique (medication_id, scheduled_at)         -- нэгтгэх дүрэм: `taken` давамгайлна (хамгийн эрт taken_at), `skipped` нь `taken`-ийг хэзээ ч дарахгүй — core/intakes.py + тест
 );
 create index on medication_intakes (patient_id, scheduled_at desc);
 
@@ -325,6 +355,8 @@ create table vitals (
   measured_at timestamptz not null,
   group_id uuid,                               -- даралтын systolic+diastolic+pulse нэг хэмжилт
   source text not null default 'manual' check (source in ('manual','apple_health','health_connect')),
+  client_id uuid not null,                     -- offline idempotency
+  unique (patient_id, client_id),
   note text, created_at timestamptz not null default now()
 );
 create index on vitals (patient_id, kind, measured_at desc);
@@ -400,7 +432,8 @@ create table share_links (
   scopes text[] not null,                       -- 'summary','labs','meds','transplant','events','vitals'
   date_from date, date_to date,
   expires_at timestamptz not null, max_views int, view_count int not null default 0,
-  pin_hash text,                                -- сонголттой 4–6 оронтой PIN
+  pin_hash text,                                -- сонголттой 6 оронтой PIN (argon2id)
+  pin_failed_count int not null default 0,      -- 5 буруу → линк автоматаар цуцлагдана + эзэнд мэдэгдэл; тоолуурыг verify-ээс ӨМНӨ атомаар нэмнэ (04 §6.7)
   created_by uuid not null references users, revoked_at timestamptz,
   created_at timestamptz not null default now()
 );
@@ -426,24 +459,50 @@ create table product_events (                   -- идэвх, апп орхих
 create table audit_logs (
   id bigserial primary key, at timestamptz not null default now(),
   actor_id uuid, actor_role text, org_id uuid, action text not null,
+  target_user_id uuid,                          -- админы үйлдэл аль хэрэглэгчид хамаарах (хэрэглэгч өөрөө харна)
   patient_id uuid, entity text, entity_id text, ip inet, user_agent text,
-  request_id text, diff jsonb
+  request_id text, diff jsonb                   -- diff-д талбарын нэр + ID; PHI утга бол шифрлэлттэй
 );  -- UPDATE/DELETE-г trigger хориглоно
+create index on audit_logs (target_user_id, at desc);
+create index on audit_logs (patient_id, at desc);
 ```
 
 ## RLS (SQLAlchemy + Postgres)
 - Апп DB-д **`labtrack_app`** role-оор холбогдоно (superuser биш, `BYPASSRLS` байхгүй).
-- Хүсэлт бүрийн transaction эхэнд: `SET LOCAL app.user_id = '<uuid>'` (FastAPI dependency).
+- Хүсэлт бүрийн transaction эхэнд: `select set_config('app.user_id', :uid, true)` — **bind параметрээр** (`SET LOCAL`-д f-string хориотой); pool-д буцаахад `DISCARD ALL`. RLS нь SQL injection-оос хамгаалахгүй (халдагч `set_config` дуудаж чадна) — `text()` дотор string format-ийг Ruff/semgrep дүрмээр хориглоно.
 - **Worker** нь файл оруулсан хэрэглэгчийн нэрийн өмнөөс ажиллана: task-д `actor_user_id` дамжуулж мөн `SET LOCAL` хийнэ → worker ч RLS-ээс гадуур гарахгүй.
 - Migration-ийг тусдаа `labtrack_owner` role хийнэ.
+- **DB role-ууд** (бүгд `BYPASSRLS`-гүй, superuser биш):
+  | Role | Хэн | Эрх |
+  |---|---|---|
+  | `labtrack_owner` | Alembic | Схем, функцийн эзэн |
+  | `labtrack_app` | API (хэрэглэгчийн хүсэлт), worker | PHI хүснэгт — RLS-ээр; нууц багана (`password_hash`, `totp_secret_enc`, `contact_phone_enc`, `identity_check_hash`)-д **эрхгүй** |
+  | `labtrack_admin` | `/admin/*` API | `users`-ийн нууц бус багана, `activation_tokens`, admin аудит; PHI хүснэгтэд **эрхгүй** |
+  | `labtrack_maint` | Celery beat (цэвэрлэгээ) | Зөвхөн хуучин `auth_attempts`, устгах хугацаа болсон аккаунт |
+  Нууц баганыг **шууд хэн ч уншихгүй** — зөвхөн `security definer` функцээр: `auth_verify_login(username, pw_hash_check…)`, `auth_set_password(user_id, hash)`, `auth_identity_check(user_id, candidate)` (boolean), `auth_reveal_phone(user_id)` (аудиттай). "Би" профайл — `create_self_profile(user_id)`.
+- **Хүснэгт бүрийн RLS (SELECT/INSERT/UPDATE/DELETE тусдаа):**
+  - `users`: SELECT/UPDATE `id = app_user_id()`; `GRANT UPDATE (display_name, locale, emergency_card_unlocked)` л (role, status эрх нэмэгдүүлэх боломжгүй). Нэрээр хуваалцахдаа `lookup_user_for_share(username)` → зөвхөн id (яг таарсан нэр, rate limit).
+  - `sessions`: SELECT (`token_hash`-гүй баганууд), `UPDATE (revoked_at, revoked_reason)` `user_id = app_user_id()`; INSERT/DELETE — зөвхөн auth функц.
+  - `consents`: **append-only** (UPDATE/DELETE хориотой — хуулийн нотолгоо). INSERT `WITH CHECK (user_id = app_user_id() and (patient_id is null or (is_owner(patient_id) and is_minor(patient_id))))` — caregiver насанд хүрэгчийн өмнөөс зөвшөөрөл өгөхгүй.
+  - `notifications`: SELECT, `UPDATE (read_at)` `user_id = app_user_id()`; INSERT — зөвхөн `notify(user_id, kind, …)` definer функц (worker бусдад илгээх).
+  - `data_exports`: SELECT/INSERT өөрийнх; `status/storage_key/expires_at`-ийг зөвхөн worker функц.
+  - `patients`: SELECT `can_read_patient(id)`, UPDATE/DELETE `is_owner(id)`; INSERT — `create_patient()` функц (үүсгэгчийг owner болгоно).
+  - `patient_access`: SELECT өөрийн мөр эсвэл `is_owner(patient_id)`; INSERT/UPDATE/DELETE зөвхөн owner, **өөрийгөө owner болгох хориотой**; recursion-оос сэргийлж `is_owner()` definer функц.
+  - `test_synonyms`: SELECT `user_id is null or user_id = app_user_id()` (бусдын сурсан синоним задрахгүй). Бусад каталог: бүгд SELECT.
+  - `audit_logs`: шууд INSERT/SELECT **хориотой** — `audit_write(action, entity, entity_id, patient_id, diff)` (`actor_id := app_user_id()` хүчээр; `admin_*` үйлдлийг зөвхөн `labtrack_admin`), `my_admin_actions()`, `patient_access_log(p)` (зөвхөн owner, бусдын ip/user_agent-гүй). `REVOKE TRUNCATE`.
+  - `extraction_runs` (raw_output = PHI), `pending_uploads`, `share_links`: `can_read_patient`/`can_write_patient`-аар; аккаунтгүй үзэгч — `share_view(token_hash, pin)` definer функц.
+  - `product_events`: зөвхөн INSERT.
 
 ```sql
 create function app_user_id() returns uuid language sql stable as
 $$ select nullif(current_setting('app.user_id', true), '')::uuid $$;
 
+-- Бүх security definer функц: search_path = pg_catalog, public, pg_temp; хүснэгтийг public.* бүрэн нэрээр;
+-- owner = labtrack_owner; REVOKE EXECUTE ... FROM PUBLIC, зөвхөн хэрэгтэй role-д GRANT.
+-- REVOKE TEMPORARY ON DATABASE labtrack FROM PUBLIC; REVOKE CREATE ON SCHEMA public FROM PUBLIC;  (pg_temp shadowing-оос)
 create function can_read_patient(p uuid) returns boolean
-language sql stable security definer set search_path = public as $$
-  select exists (select 1 from patient_access a
+language sql stable security definer set search_path = pg_catalog, public, pg_temp as $$
+  select exists (select 1 from public.patient_access a
     where a.patient_id = p and a.user_id = app_user_id()
       and a.revoked_at is null and (a.expires_at is null or a.expires_at > now()));
 $$;
@@ -454,8 +513,8 @@ create policy lr_select on lab_results for select using (can_read_patient(patien
 
 -- Бичих эрх: owner, caregiver (doctor/viewer — үгүй; doctor-ийн тэмдэглэл/patient_targets тусдаа policy)
 create function can_write_patient(p uuid) returns boolean
-language sql stable security definer set search_path = public as $$
-  select exists (select 1 from patient_access a
+language sql stable security definer set search_path = pg_catalog, public, pg_temp as $$
+  select exists (select 1 from public.patient_access a
     where a.patient_id = p and a.user_id = app_user_id() and a.level in ('owner','caregiver')
       and a.revoked_at is null and (a.expires_at is null or a.expires_at > now()));
 $$;
@@ -463,6 +522,7 @@ $$;
 
 ## Тэмдэглэл
 - Батлагдсан утгыг засвал хуучин утга `audit_logs.diff`-д.
+- `lab_results.collected_at` нь `lab_reports.collected_at`-ийн хуулбар (trend индекс) — тайлангийн огноо өөрчлөгдөхөд trigger-ээр синк, тесттэй.
 - `latest_results` materialized view — батлах үед refresh (дашбоардын хурд).
 - Seed: `seed/lab_tests.json` → test_catalog, test_synonyms, unit_aliases, unit_conversions.
 

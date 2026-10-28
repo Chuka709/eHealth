@@ -26,20 +26,21 @@
 
 ### Phase 0 — Суурь
 Monorepo (`backend/` uv, `mobile/` Expo, `web/` Next.js, `packages/shared/`, `infra/`, `justfile`) · Docker Compose · FastAPI/Expo skeleton · `just gen-client` · CI.
-**DoD:** `just up` ажиллана; dev build утсан дээр API-г дуудна; CI ногоон.
+**DoD:** `just up` ажиллана; dev build **Android эмулятор** болон **бодит iPhone** (EAS cloud build, ad hoc) дээр API-г дуудна; CI ногоон.
+> Хөгжүүлэлтийн машин Windows: iOS симулятор/Maestro iOS локалаар боломжгүй → iOS-ийг EAS cloud build + бүртгэлтэй iPhone-оор (`eas device:create`), iOS E2E-г GitHub Actions macOS runner дээр (release-ийн өмнө, шөнө бүр биш — зардал).
 
 ### Phase 1 — Auth, супер админ, профайл
-1. Alembic: users, sessions, auth_attempts, patients, patient_access, consents, audit_logs, каталогийн хүснэгтүүд + RLS; `just seed` (lab_tests, medications)
-2. `/auth`: login, refresh (rotation + reuse detection), logout, change-password (must_change_password урсгал), sessions, delete-account request; brute-force хамгаалалт
-3. `/admin/users`: бүртгэх (түр нууц үг), **CSV бөөн бүртгэл** (шилжүүлэн суулгалтын төвийн жагсаалт; урьдчилан харах, алдааг мөрөөр), хайх, идэвхгүй болгох, түгжээ тайлах, нууц үг шинэчлэх (шалтгаан заавал, бүх сесс цуцлах); `just create-admin` + TOTP
+1. Alembic: users, sessions, auth_attempts, patients, patient_access, consents, notifications, audit_logs, каталогийн хүснэгтүүд (test_catalog, test_synonyms, unit_aliases, unit_conversions, **medication_catalog**) + RLS + `labtrack_owner/app/admin/maint` role, column-level эрх, definer функцууд (`03`); `just seed` (lab_tests, medications)
+2. `/auth`: activate (нэг удаагийн токен → нууц үг тохируулах), login, refresh (rotation + reuse detection + grace), logout, change-password, sessions, delete-account request; device-cookie brute-force хамгаалалт (`04 §1`)
+3. `/admin/users`: бүртгэх + идэвхжүүлэх QR/SMS, **CSV бөөн бүртгэл** (санах ойд; урьдчилан харах, алдааг мөрөөр), хайх, идэвхгүй болгох, түгжээ тайлах, таних шалгалт → сэргээх токен (шалтгаан заавал, бүх сесс цуцлах, хохирогчид мэдэгдэх); `just create-admin` + TOTP
 4. Web админ самбар (бүртгэх, нэвтрэх карт хэвлэх, хэрэглэгч удирдах)
-5. Апп: welcome, login, анх нэвтрэхэд нууц үг солих, зөвшөөрлүүд, биометр, "нууц үгээ мартсан" (админтай холбогдох), профайл, тохиргоо, админы үйлдлийн түүх
-6. Тест: RLS, auth (reuse detection, түгжээ, must_change_password хязгаарлалт), админ PHI харж чадахгүйг батлах, Maestro анх нэвтрэх урсгал
+5. Апп: welcome, идэвхжүүлэх (QR уншуулах/SMS линк → нууц үг тохируулах), login, зөвшөөрлүүд, биометр, "нууц үгээ мартсан" (админтай холбогдох), профайл, тохиргоо, админы үйлдлийн түүх
+6. Тест: RLS (`04 §6`-ийн жагсаалт), auth (reuse detection, grace, device-cookie түгжээ, `token_version` цуцлалт), админ PHI харж чадахгүйг батлах, Maestro идэвхжүүлэх урсгал
 
-**DoD:** Админ бүртгэсэн хэрэглэгч ≤ 2 мин-д апп-д нэвтэрч нууц үгээ солино; админ нууц үг шинэчлэхэд хуучин бүх сесс цуцлагдана; админ токеноор PHI endpoint 403.
+**DoD:** Админ бүртгэсэн хэрэглэгч ≤ 2 мин-д QR-аар идэвхжүүлж өөрийн нууц үгээр нэвтэрнэ; админ сэргээх токен олгоход хуучин бүх сесс шууд цуцлагдаж хуучин төхөөрөмж "admin_reset" мэдэгдэл харуулна; админ токеноор PHI endpoint 403.
 
 ### Phase 2 — Шилжүүлэн суулгалт, эм, амин үзүүлэлт, товлол
-1. Alembic: transplants, medication_catalog, medications, medication_regimens, medication_intakes, clinical_events, vitals, allergies, appointments, doctor_questions, emergency_contacts, caregiver_alert_settings + RLS + тест
+1. Alembic: transplants, medications, medication_regimens, medication_intakes, clinical_events, vitals, allergies, appointments, doctor_questions, emergency_contacts, caregiver_alert_settings + RLS + тест
 2. API CRUD; тун өөрчлөхөд шинэ regimen (хуучныг засахгүй); `core/timeline.py` ("шилжүүлэн суулгаснаас хойш" тооцоо)
 3. Апп: шилжүүлэн суулгалтын wizard + засах; эмийн жагсаалт, нэмэх (каталог хайлт), тун өөрчлөх, түүх; **локал сануулга** (түгжээтэй дэлгэцийн нууцлал, **цагийн бүсийн горим**, мэдэгдлээс нэг товшилтоор "уусан"); уусан/алгассан; үйл явдал нэмэх
 4. Амин үзүүлэлт (даралт+судас нэг дэлгэцэнд, жин, температур, сахар, SpO2, шээсний хэмжээ), харшил, яаралтай холбоо барих хүмүүс

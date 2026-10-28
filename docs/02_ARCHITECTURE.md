@@ -18,7 +18,7 @@
 | API | **FastAPI** |
 | Схем | **Pydantic v2**, pydantic-settings |
 | ORM / migration | **SQLAlchemy 2.0 async + asyncpg**, **Alembic** |
-| Auth | **pwdlib[argon2]** (нууц үг, түр нууц үг), **PyJWT[crypto]** (ES256 access token), `secrets` (refresh token), **pyotp** (зөвхөн платформын админд) |
+| Auth | **pwdlib[argon2]** (нууц үг, РД таних hash), **zxcvbn**, **PyJWT[crypto]** (ES256 access token), `secrets` (refresh token), **pyotp** (зөвхөн платформын админд) |
 | Background job | **Celery 5 + Redis** (+ Flower) |
 | PDF | **pdfplumber** (текст), **pypdfium2** (хуудас → зураг). *PyMuPDF (AGPL) хэрэглэхгүй* |
 | Зураг | **Pillow + pillow-heif**, **opencv-python-headless** |
@@ -29,6 +29,7 @@
 | Push мэдэгдэл | **exponent-server-sdk** (Expo Push) — payload-д PHI оруулахгүй |
 | PDF хураангуй | **WeasyPrint** |
 | Rate limit | **slowapi** + Redis |
+| Шифрлэлт | **cryptography** (AES-256-GCM envelope, HMAC); production KEK — **OpenBao** transit (MPL-2.0) |
 | Лог / ажиглалт | **structlog** (PHI redact), **Sentry**, OpenTelemetry |
 | Тест | pytest, pytest-asyncio, **hypothesis**, **testcontainers**, **schemathesis** |
 | Чанар | **Ruff**, **mypy --strict** |
@@ -63,7 +64,9 @@ Auth: **BFF загвар** — Next.js route handler токенийг httpOnly c
 OpenAPI-аас үүсгэсэн type + client, zod схем, `messages/{mn,en}.json`, design token (өнгө, фонт, зай), ECharts-ийн нийтлэг тохиргоо.
 
 ## Дэд бүтэц
-PostgreSQL 17 (pg_trgm, pgcrypto, RLS) · Redis 7 · S3 нийцтэй storage (dev: SeaweedFS) · Caddy · Docker Compose · pgBackRest · GitHub Actions + EAS.
+PostgreSQL 17 (pg_trgm, pgcrypto, RLS) · Redis 7 · S3 нийцтэй storage (dev: SeaweedFS) · Caddy · Docker Compose · pgBackRest · OpenBao (production) · GitHub Actions + EAS.
+
+**Хөгжүүлэлтийн орчин (Windows):** `justfile` PowerShell-ээр native ажиллана. Backend-ийн тест, worker нь **Linux контейнер дотор** (`docker compose run --rm api pytest`) — WeasyPrint (Pango), python-magic (libmagic) Windows-д native суулгахад хэцүү, production-тэй ижил орчин. Локал `uv sync` зөвхөн LSP, Ruff, mypy-д. Mobile: Android эмулятор локал; iOS — EAS cloud build + бодит iPhone; iOS E2E — GitHub Actions macOS runner.
 
 ## Бүдүүвч
 ```

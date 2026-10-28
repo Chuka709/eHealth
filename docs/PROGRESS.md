@@ -4,7 +4,7 @@
 > Phase бүрийн төгсгөлд DoD-г **нотолгоотой** (команд, тестийн тоо, дэлгэцийн зураг) энд бичнэ. Нээлттэй асуулт → `OPEN_QUESTIONS.md`.
 
 ## Одоогийн байдал
-**Phase 0 — төлөвлөгөө батлуулахыг хүлээж байна** (2026.10.28)
+**Phase 0 — эхлэхэд бэлэн** (2026.10.28). Зөрчил/эрсдэл шийдэгдсэн, security-reviewer-ийн 6 High + 12 Medium олдвор дизайнд тусгагдсан (v7.2, `OPEN_QUESTIONS.md`). Q10–Q13 Phase 0-г саатуулахгүй.
 
 ---
 
@@ -17,22 +17,22 @@
 - [x] Хэрэгсэл: Node 22, pnpm, Docker 29, Python 3.13, git, pyright, typescript-language-server
 - [~] `just`, `uv`, `jq` — winget-ээр суусан, **терминалыг дахин нээх** шаардлагатай (PATH)
 - [ ] `eas-cli` (`npm i -g eas-cli`) + Expo аккаунт (`eas login`)
-- [ ] Android Studio + эмулятор (Windows дээр бэлэн эсэхийг шалгах)
-- [!] iOS: Apple Developer аккаунт ($99/жил) + бодит iPhone (Windows дээр симулятор байхгүй — `OPEN_QUESTIONS.md` Q1)
-- [ ] Maestro (Android эмуляторт; WSL2 эсвэл Windows build)
+- [ ] Android Studio + эмулятор (Android SDK олдсон — AVD үүсгэх)
+- [ ] iOS: Apple Developer Program ($99/жил) + бодит iPhone-ийг `eas device:create`-ээр бүртгэх (Q1 — шийдэгдсэн)
+- [ ] Maestro (Android эмулятор; iOS E2E — GitHub Actions macOS)
 - [ ] Anthropic API key (Phase 4-өөс заавал; `.env`-д — Claude уншихгүй)
-- [!] GitHub репо (CI-д) — Q3
+- [ ] GitHub private репо үүсгэж push хийх (Q3 — та хийнэ)
 - [ ] Phase 4-д зориулж нэрээ нууцалсан 30+ бөөр/элэгний хариу цуглуулж эхлэх (удаан ажил)
-- [ ] Админы хүн таних журам (бичгээр) — Phase 1-ийн нууц үг шинэчлэлтэд
+- [ ] Админы хүн таних журам (бичгээр): эргэж залгах + РД HMAC — `04 §1`
 
 ---
 
 ## Phase 0 — Суурь
 - [ ] 0.1 Monorepo: `pnpm-workspace.yaml`, root `package.json`, `biome.json`, `justfile` (Windows shell), `.editorconfig`, `.env.example`
 - [ ] 0.2 `infra/docker-compose.yml`: postgres 17 (+`labtrack_owner`/`labtrack_app` role init), redis 7, seaweedfs (S3), api, worker, web, caddy — бүгд healthcheck-тэй
-- [ ] 0.3 `backend/`: uv, FastAPI app factory, `/healthz`, pydantic-settings, structlog (PHI redact), DB session + `SET LOCAL app.user_id` dependency, Alembic (owner role), Celery + ping task, ruff + mypy --strict, pytest + testcontainers
+- [ ] 0.3 `backend/` (тест/worker контейнер дотор): uv, FastAPI app factory, `/healthz`, pydantic-settings, structlog (PHI redact), DB session + `SET LOCAL app.user_id` dependency, Alembic (owner role), Celery + ping task, ruff + mypy --strict, pytest + testcontainers
 - [ ] 0.4 `packages/shared/`: OpenAPI → TS client (`just gen-client`), `messages/{mn,en}.json`, design token (flag өнгө AA, light/dark)
-- [ ] 0.5 `mobile/`: Expo (сүүлийн SDK) + Expo Router + NativeWind + TanStack Query, `app.config.ts`, `eas.json` (development/preview/production), `/healthz` дууддаг дэлгэц, Jest + RNTL
+- [ ] 0.5 `mobile/`: Expo (SDK 57 — шалгаж бэхлэх) + Expo Router + NativeWind + TanStack Query, `app.config.ts`, `eas.json` (development/preview/production), `/healthz` дууддаг дэлгэц, Jest + RNTL
 - [ ] 0.6 `web/`: Next.js App Router + shadcn/ui + next-intl, BFF stub, Vitest
 - [ ] 0.7 CI (`.github/workflows/ci.yml`): ruff, mypy, pytest, alembic up/down, biome, tsc, jest, vitest, хуучирсан OpenAPI client шалгах
 - [ ] 0.8 `backend/CLAUDE.md`, `mobile/CLAUDE.md`, `web/CLAUDE.md` (токен хэмнэлт)
@@ -40,27 +40,27 @@
 **DoD**
 - [ ] `just up` — бүх сервис healthy
 - [ ] Dev build Android эмулятор дээр API дуудна
-- [ ] Dev build iPhone дээр API дуудна (Q1-ийн шийдвэрээр)
+- [ ] Dev build бодит iPhone дээр (EAS cloud build, ad hoc) API дуудна
 - [ ] CI ногоон
 
 ## Phase 1 — Auth, супер админ, профайл
-- [ ] 1.1 Migration: extensions, enum, users, sessions, auth_attempts (+индекс), patients, patient_access, consents, audit_logs (UPDATE/DELETE хориглох trigger), notifications; `app_user_id`/`can_read_patient`/`can_write_patient`; ENABLE+FORCE RLS
+- [ ] 1.1 Migration: extensions, enum, `labtrack_owner/app/admin/maint` role, `REVOKE TEMPORARY/CREATE`; users (`account_status`, `token_version`, шифрлэлттэй утас, РД argon2 hash) + column-level эрх, activation_tokens, sessions (`revoked_reason`, `device_trusted`), auth_attempts (+индекс), patients, patient_access, consents (append-only), notifications, audit_logs (`target_user_id`, trigger, `REVOKE TRUNCATE`); definer функцууд (`search_path` хатуу): `can_read/can_write_patient`, `is_owner`, `create_self_profile`, `auth_*`, `audit_write`, `my_admin_actions`, `notify`, `lookup_user_for_share`; хүснэгт бүрт 4 үйлдлийн policy; ENABLE+FORCE RLS
 - [ ] 1.2 Migration: test_catalog, test_synonyms, unit_aliases, unit_conversions, medication_catalog; `just seed`
-- [ ] 1.3 `core/security`: argon2id, түр нууц үг (12, андуурагдахгүй тэмдэгт, 72 цаг), JWT ES256 (kid, iss/aud/exp, `pwd_change_only` scope), refresh rotation + reuse detection, түгжээ (5 → 15 мин ×2, ≤ 24 цаг), dummy hash — hypothesis тест
+- [ ] 1.3 `core/security`: envelope шифрлэлт (`KeyProvider`, AES-256-GCM, толгойтой формат, AAD), argon2id (+pepper РД-д), нууц үгийн бодлого (≥ 10, zxcvbn, задарсан жагсаалт), идэвхжүүлэх токен (≥ 128 бит, hash), JWT ES256 (kid, `sid`, `tv`), refresh rotation + reuse detection + 20 сек grace, device-cookie түгжээ, dummy hash — hypothesis тест
 - [ ] 1.4 Repository + service: auth, admin, consents, audit
-- [ ] 1.5 `/auth`: login, refresh, logout, change-password, sessions, delete-account request; slowapi; нэг төрлийн алдааны мессеж
-- [ ] 1.6 `/admin/users`: бүртгэх, CSV (урьдчилан харах, мөрийн алдаа), хайх, идэвхгүй, түгжээ тайлах, нууц үг шинэчлэх (шалтгаан, сесс цуцлах, аудит, push), хүн таних шалгалт (зөвхөн тийм/үгүй); TOTP; `just create-admin`; `/admin` IP allowlist
-- [ ] 1.7 `/me`: профайл, 5 зөвшөөрөл (хувилбартай), админы үйлдлийн түүх
+- [ ] 1.5 `/auth`: activate, login, refresh (`401 admin_reset` код), logout, change-password, sessions, delete-account request; slowapi; нэг төрлийн алдааны мессеж/хугацаа
+- [ ] 1.6 `/admin/users` (`labtrack_admin` role): бүртгэх + идэвхжүүлэх QR, CSV (санах ойд) → `pending_activation`, хайх, идэвхгүй (`token_version`+1), түгжээ тайлах, таних шалгалт (тийм/үгүй, 5/өдөр, 10 мин state) → сэргээх токен (QR/SMS, шалтгаан, сесс цуцлах, хохирогчид SMS), утас нээх (аудит); `SmsSender` (dev: console); TOTP; `just create-admin`; `/admin` IP allowlist, сесс 8ц/15 мин
+- [ ] 1.7 `/me`: профайл, 5 зөвшөөрөл (хувилбартай; хүүхдийн профайлд асран хамгаалагчийн зөвшөөрөл API-д шалгах), админы үйлдлийн түүх
 - [ ] 1.8 Аккаунт устгах: soft delete + 30 хоногийн дараа Celery beat-ээр бүрэн устгах
 - [ ] 1.9 `just gen-client`
-- [ ] 1.10 Web админ: нэвтрэх + TOTP, хэрэглэгчид, бүртгэх, CSV, нэвтрэх карт (QR — нууц үггүй) хэвлэх, шинэчлэх, тайлах, идэвхгүй болгох
-- [ ] 1.11 Апп: welcome, login, заавал нууц үг солих, зөвшөөрлүүд, биометр, "нууц үгээ мартсан", профайл, тохиргоо (сесс, нууц үг, админы түүх, аккаунт устгах), lock, secure-store, privacy overlay
-- [ ] 1.12 Тест: RLS (2+ хэрэглэгч, хугацаа дууссан/цуцлагдсан, worker context, `app.user_id`-гүй), админ токен PHI → 403, auth (reuse, түгжээ, must_change, timing), schemathesis, Maestro анх нэвтрэх
+- [ ] 1.10 Web админ: нэвтрэх + TOTP, хэрэглэгчид, бүртгэх, CSV, идэвхжүүлэх QR харуулах, нэвтрэх карт (нууц үггүй) хэвлэх, таних шалгалт → сэргээх, тайлах, идэвхгүй болгох
+- [ ] 1.11 Апп: welcome, идэвхжүүлэх (QR/линк → нууц үг + хүчтэй байдлын заагч), login, `admin_reset` мэдэгдлийн дэлгэц, зөвшөөрлүүд, биометр, "нууц үгээ мартсан", профайл, тохиргоо (сесс, нууц үг, админы түүх + "Би хүсээгүй", аккаунт устгах), lock, secure-store (`WHEN_UNLOCKED_THIS_DEVICE_ONLY`), refresh single-flight, privacy overlay
+- [ ] 1.12 Тест: RLS (2+ хэрэглэгч, хугацаа дууссан/цуцлагдсан, worker context, `app.user_id`-гүй, pg_temp shadowing, `users` жагсаалт задрахгүй, role өөрчлөх боломжгүй, нууц багана SELECT хориотой, хуурамч аудит, caregiver насанд хүрэгчийн өмнөөс зөвшөөрөхгүй), админ токен PHI → 403, админ өөрийн олгосон токеноор нэвтрэх → татгалзах, auth (reuse, grace, device-cookie түгжээ, идэвхгүй хэрэглэгчийн JWT шууд 401, pending/disabled ялгагдахгүй, AAD), schemathesis, Maestro идэвхжүүлэх урсгал
 - [ ] 1.13 `security-reviewer`, `ui-reviewer` хяналт; PROGRESS/OPEN_QUESTIONS шинэчлэх
 
 **DoD**
-- [ ] Админ бүртгэсэн хэрэглэгч ≤ 2 мин-д нэвтэрч нууц үгээ солино
-- [ ] Админ нууц үг шинэчлэхэд хуучин бүх сесс цуцлагдана
+- [ ] Админ бүртгэсэн хэрэглэгч ≤ 2 мин-д QR-аар идэвхжүүлж өөрийн нууц үгээр нэвтэрнэ (админ нууц үг мэдэхгүй)
+- [ ] Сэргээх токен олгоход хуучин бүх сесс шууд цуцлагдаж, хуучин төхөөрөмж `admin_reset` мэдэгдэл харуулна
 - [ ] Админ токеноор PHI endpoint → 403 (RLS-ээр ч 0 мөр)
 
 ## Phase 2 — Шилжүүлэн суулгалт, эм, амин үзүүлэлт, товлол
