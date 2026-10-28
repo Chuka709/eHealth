@@ -110,6 +110,18 @@ def _patched(sql: str, changes: list[tuple[str, str]]) -> str:
 def upgrade() -> None:
     op.execute("alter table users add column reset_required boolean not null default false")
     op.execute("grant select (reset_required) on users to labtrack_admin")
+    # Accounts already locked/disabled for suspected compromise before this revision.
+    op.execute(
+        """update users u set reset_required = true
+           where u.account_status in ('locked','disabled')
+             and (select case when l.action = 'security.user_report'
+                              then 'suspected_compromise' else l.diff ->> 'reason' end
+                  from audit_logs l
+                  where l.target_user_id = u.id
+                    and l.action in ('admin.status_locked','admin.status_disabled',
+                                     'security.user_report')
+                  order by l.at desc, l.id desc limit 1) = 'suspected_compromise'"""
+    )
     op.execute(_REPORT)
     op.execute(
         _patched(
