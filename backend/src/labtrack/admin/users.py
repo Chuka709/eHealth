@@ -457,9 +457,11 @@ async def import_users(db: AsyncSession, parsed: csv_import.Parsed) -> list[csv_
     return []
 
 
-async def cancel_deletion(db: AsyncSession, user_id: UUID) -> None:
+async def cancel_deletion(db: AsyncSession, user_id: UUID, reason: str) -> None:
     """Restores a deleted account within 30 days as locked + reset_required (0008)."""
     try:
-        await db.execute(bound_text("select admin_cancel_deletion(:u)"), {"u": user_id})
+        await db.execute(
+            bound_text("select admin_cancel_deletion(:u, :r)"), {"u": user_id, "r": reason}
+        )
     except DBAPIError as exc:
         raise _db_error(exc) from exc

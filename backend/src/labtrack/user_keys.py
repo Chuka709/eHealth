@@ -25,7 +25,19 @@ _PREFIX = "u:"
 class UserKeyStore(Protocol):
     async def get(self, user_id: UUID) -> bytes | None: ...
 
-    async def get_or_create(self, user_id: UUID) -> bytes: ...
+    async def create(self, user_id: UUID) -> bytes: ...
+
+
+def _key_aad(user_id: UUID) -> bytes:
+    return field_aad("user_keys", "wrapped_key", user_id)
+
+
+async def wrap_user_key(provider: KeyProvider, user_id: UUID, key: bytes) -> bytes:
+    return await encrypt_field(provider, base64.b64encode(key).decode(), _key_aad(user_id))
+
+
+async def unwrap_user_key(provider: KeyProvider, user_id: UUID, blob: bytes) -> bytes:
+    return base64.b64decode(await decrypt_field(provider, blob, _key_aad(user_id)))
 
 
 class DbUserKeyStore:
@@ -35,28 +47,21 @@ class DbUserKeyStore:
         self._db = db
         self._provider = provider
 
-    @staticmethod
-    def _aad(user_id: UUID) -> bytes:
-        return field_aad("user_keys", "wrapped_key", user_id)
-
-    async def _open(self, user_id: UUID, blob: bytes) -> bytes:
-        return base64.b64decode(await decrypt_field(self._provider, blob, self._aad(user_id)))
-
     async def get(self, user_id: UUID) -> bytes | None:
         blob = (
             await self._db.execute(bound_text("select user_key_get(:u)"), {"u": user_id})
         ).scalar_one()
-        return await self._open(user_id, blob) if blob is not None else None
+        return await unwrap_user_key(self._provider, user_id, blob) if blob is not None else None
 
-    async def get_or_create(self, user_id: UUID) -> bytes:
-        fresh = base64.b64encode(new_dek()).decode()
-        wrapped = await encrypt_field(self._provider, fresh, self._aad(user_id))
-        stored = (
-            await self._db.execute(
-                bound_text("select user_key_put(:u, :w)"), {"u": user_id, "w": wrapped}
-            )
-        ).scalar_one()
-        return await self._open(user_id, stored)
+    async def create(self, user_id: UUID) -> bytes:
+        """A key for an account being created in this transaction (user_key_put refuses any
+        other)."""
+        key = new_dek()
+        await self._db.execute(
+            bound_text("select user_key_put(:u, :w)"),
+            {"u": user_id, "w": await wrap_user_key(self._provider, user_id, key)},
+        )
+        return key
 
 
 def _provider_for(user_id: UUID, key: bytes) -> LocalKeyProvider:
@@ -64,25 +69,29 @@ def _provider_for(user_id: UUID, key: bytes) -> LocalKeyProvider:
     return LocalKeyProvider({kek_id: key}, kek_id)
 
 
+async def seal_for_user(user_id: UUID, key: bytes, plaintext: str, aad: bytes) -> bytes:
+    return await encrypt_field(_provider_for(user_id, key), plaintext, aad)
+
+
 async def encrypt_user_field(
     store: UserKeyStore, user_id: UUID, plaintext: str, aad: bytes
 ) -> bytes:
-    return await encrypt_field(
-        _provider_for(user_id, await store.get_or_create(user_id)), plaintext, aad
-    )
+    return await encrypt_field(_provider_for(user_id, await store.create(user_id)), plaintext, aad)
 
 
 async def decrypt_user_field(
     store: UserKeyStore, provider: KeyProvider, owner: UUID, blob: bytes, aad: bytes
 ) -> str:
-    """Decrypts `owner`'s field: a user-key envelope, or an older one under the service KEK.
+    """Decrypts `owner`'s field sealed under the owner's key.
 
-    Raises EnvelopeError when the owner's key is gone (the account was purged) or the value
-    was sealed under somebody else's key (it would then survive the owner's purge).
+    Raises EnvelopeError when the owner's key is gone (the account was purged), or the value
+    was sealed under somebody else's key or the service KEK (either would survive the owner's
+    purge; `just rewrap-user-keys` moves older values under user keys).
     """
+    del provider  # user keys only; kept in the signature for the OpenBao store
     kek_id = parse(blob).kek_id
     if not kek_id.startswith(_PREFIX):
-        return await decrypt_field(provider, blob, aad)
+        raise EnvelopeError
     try:
         user_id = UUID(hex=kek_id[len(_PREFIX) :])
     except ValueError as exc:

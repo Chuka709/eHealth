@@ -7,6 +7,8 @@
 - admin_cancel_deletion(): within the 30 days a super admin may restore the account, but only
   as `locked` + reset_required - the person is identified and sets a new password through the
   normal reset path, so a cancellation never hands an account to whoever asked for it.
+- While a deletion is pending, nobody else (caregivers, doctors) reads or writes the profiles
+  the user owns.
 - user_keys: one key per user wraps the data keys of that user's encrypted fields. Erasing it
   makes every copy of those fields unreadable (crypto-shredding). In dev/test the key rows live
   in this database, so they are in its backups too; production keeps them in OpenBao (named
@@ -17,7 +19,11 @@ Revises: 0007
 Create Date: 2026-10-29
 """
 
+import importlib.util
+import os
 from collections.abc import Sequence
+from pathlib import Path
+from types import ModuleType
 
 from alembic import op
 
@@ -47,8 +53,18 @@ _UP = [
     f"""
     create function user_key_get(p_user_id uuid) returns bytea
     language plpgsql stable {_DEFINER} as $$
+    declare
+      actor uuid := public.admin_actor(array['super_admin','support']::public.user_role[]);
     begin
-      perform public.admin_actor(array['super_admin','support']::public.user_role[]);
+      perform public.admin_target(p_user_id);
+      -- Only for a value this admin was just given in this transaction (audited, rationed):
+      -- admin_reveal_phone / admin_sms_target write their audit row at now() = tx start.
+      if not exists (select 1 from public.audit_logs l
+                     where l.actor_id = actor and l.target_user_id = p_user_id
+                       and l.action in ('admin.phone_reveal','admin.sms_target')
+                       and l.at = now()) then
+        raise exception 'admin not allowed' using errcode = '42501';
+      end if;
       return (select wrapped_key from public.user_keys where user_id = p_user_id);
     end $$
     """,
@@ -57,13 +73,16 @@ _UP = [
     language plpgsql volatile {_DEFINER} as $$
     begin
       perform public.admin_actor(array['super_admin']::public.user_role[]);
-      if exists (select 1 from public.users where id = p_user_id
-                 and role not in ('user','doctor')) then
+      -- Only for an account being created in this transaction: never a getter for existing
+      -- keys, never a key for an existing (or purged) account.
+      if exists (select 1 from public.users where id = p_user_id)
+         or exists (select 1 from public.user_keys where user_id = p_user_id)
+         or exists (select 1 from public.audit_logs where target_user_id = p_user_id
+                    and action = 'account.purged') then
         raise exception 'target not allowed' using errcode = '42501';
       end if;
-      insert into public.user_keys (user_id, wrapped_key) values (p_user_id, p_wrapped)
-        on conflict (user_id) do nothing;
-      return (select wrapped_key from public.user_keys where user_id = p_user_id);
+      insert into public.user_keys (user_id, wrapped_key) values (p_user_id, p_wrapped);
+      return p_wrapped;
     end $$
     """,
     # --- deletion ---------------------------------------------------------------------------
@@ -90,11 +109,14 @@ _UP = [
     end $$
     """,
     f"""
-    create function admin_cancel_deletion(p_user_id uuid) returns void
+    create function admin_cancel_deletion(p_user_id uuid, p_reason text) returns void
     language plpgsql volatile {_DEFINER} as $$
     declare
       actor uuid := public.admin_actor(array['super_admin']::public.user_role[]);
     begin
+      if p_reason is null or p_reason not in ('user_request','suspected_compromise','other') then
+        raise exception 'reason required' using errcode = '22023';
+      end if;
       update public.users
         set deleted_at = null, account_status = 'locked', reset_required = true
         where id = p_user_id and role in ('user','doctor') and deleted_at is not null
@@ -102,7 +124,8 @@ _UP = [
       if not found then
         raise exception 'no pending deletion' using errcode = '42501';
       end if;
-      perform public.admin_audit(actor, 'admin.deletion_cancel', p_user_id, null);
+      perform public.admin_audit(actor, 'admin.deletion_cancel', p_user_id,
+                                 jsonb_build_object('reason', p_reason));
     end $$
     """,
     # Run daily by the maintenance worker (labtrack_maint). Returns the purged ids so the
@@ -120,6 +143,7 @@ _UP = [
         order by deleted_at limit least(greatest(p_limit, 1), 500)
         for update skip locked
       loop
+        begin  -- a subtransaction per account: one failure is reported, the rest go on
         -- the profiles this user owns, with everything recorded on them (cascades)
         delete from public.patients p
           where exists (select 1 from public.patient_access a
@@ -127,31 +151,105 @@ _UP = [
         update public.patients set created_by = null where created_by = uid;
         update public.patient_access set granted_by = null where granted_by = uid;
         delete from public.user_keys where user_id = uid;
+        -- a freed username must not inherit this account's failed-login history
+        delete from public.auth_attempts
+          where username = (select username from public.users where id = uid);
         -- sessions, tokens, consents, notifications, access, devices cascade with the row
         delete from public.users where id = uid;
         insert into public.audit_logs (actor_role, action, target_user_id, entity, entity_id)
           values ('maint', 'account.purged', uid, 'user', uid::text);
         return next uid;
+        exception when others then
+          insert into public.audit_logs (actor_role, action, target_user_id, entity, entity_id)
+            values ('maint', 'security.purge_failed', uid, 'user', uid::text);
+        end;
       end loop;
     end $$
     """,
     "revoke execute on all functions in schema public from public",
     """grant execute on function user_key_get(uuid), user_key_put(uuid, bytea),
-       admin_cancel_deletion(uuid) to labtrack_admin""",
+       admin_cancel_deletion(uuid, text) to labtrack_admin""",
     "grant execute on function request_account_deletion() to labtrack_app",
     "grant execute on function maint_purge_deleted_users(int) to labtrack_maint",
 ]
 
 
+_OWNER_NOT_LEAVING = """
+          and not exists (select 1 from public.patient_access o
+                          join public.users u on u.id = o.user_id
+                          where o.patient_id = p and o.level = 'owner'
+                            and u.deleted_at is not null)
+    $$"""
+_CONSUME_WHERE = (
+    "where id = tok.user_id and account_status in ('pending_activation','active','locked');"
+)
+
+
+def _revision(filename: str) -> ModuleType:
+    path = Path(__file__).with_name(filename)
+    spec = importlib.util.spec_from_file_location(path.stem, path)
+    if spec is None or spec.loader is None:
+        raise RuntimeError(filename)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def _access_functions(*, pending_deletion_blocks: bool) -> list[str]:
+    """can_read_patient / can_write_patient from 0002, optionally refusing access to the
+    profiles of an owner whose deletion is pending."""
+    statements: list[str] = _revision("0002_auth_and_profiles.py")._FUNCTIONS
+    out = []
+    for name in ("can_read_patient", "can_write_patient"):
+        (sql,) = [x for x in statements if f"create function {name}(" in x]
+        sql = sql.replace("create function", "create or replace function", 1)
+        if pending_deletion_blocks:
+            if sql.rstrip().count("$$") != 2:  # noqa: PLR2004
+                raise RuntimeError("0002 definition changed")
+            sql = sql.rstrip()[: sql.rstrip().rfind("$$")].rstrip() + _OWNER_NOT_LEAVING
+        out.append(sql)
+    return out
+
+
+def _activation_consume(*, refuse_deleted: bool) -> str:
+    m7 = _revision("0007_me.py")
+    sql: str = m7._patched(m7._from_0006("activation_consume"), [(m7._CONSUME, m7._CONSUME_NEW)])
+    if refuse_deleted:
+        if sql.count(_CONSUME_WHERE) != 1:
+            raise RuntimeError("0007 activation_consume changed")
+        sql = sql.replace(_CONSUME_WHERE, _CONSUME_WHERE[:-1] + " and deleted_at is null;")
+    return sql
+
+
 def upgrade() -> None:
-    for sql in _UP:
+    grants = _UP.index("revoke execute on all functions in schema public from public")
+    extra = [
+        *_access_functions(pending_deletion_blocks=True),
+        _activation_consume(refuse_deleted=True),
+    ]
+    for sql in _UP[:grants] + extra + _UP[grants:]:
         op.execute(sql)
 
 
 def downgrade() -> None:
+    # Values sealed under user keys would become unreadable: outside dev/test, refuse rather
+    # than lose them (dev/test data is disposable; the test run migrates up, down and up).
+    if os.environ.get("ENVIRONMENT") not in {"dev", "test"}:
+        op.execute(
+            """do $$ begin
+                 if exists (select 1 from user_keys) then
+                   raise exception 'user_keys is not empty: re-seal under the KEK first';
+                 end if;
+               end $$"""
+        )
+    for sql in [
+        *_access_functions(pending_deletion_blocks=False),
+        _activation_consume(refuse_deleted=False),
+    ]:
+        op.execute(sql)
     for fn in (
         "maint_purge_deleted_users(int)",
-        "admin_cancel_deletion(uuid)",
+        "admin_cancel_deletion(uuid, text)",
         "request_account_deletion()",
         "user_key_put(uuid, bytea)",
         "user_key_get(uuid)",

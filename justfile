@@ -40,6 +40,10 @@ seed:
 create-admin username role="super_admin":
     {{compose}} run --rm migrate python -m labtrack.cli create-admin {{username}} --role {{role}}
 
+# One-off after migration 0008: phone numbers sealed under the KEK move to user keys.
+rewrap-user-keys:
+    {{compose}} run --rm migrate python -m labtrack.cli rewrap-user-keys
+
 unlock-admin username:
     {{compose}} run --rm migrate python -m labtrack.cli unlock-admin {{username}}
 

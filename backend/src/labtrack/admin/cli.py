@@ -14,11 +14,12 @@ from uuid import UUID, uuid4
 
 from sqlalchemy.ext.asyncio import create_async_engine
 
-from labtrack.core.envelope import field_aad
+from labtrack.core.envelope import field_aad, new_dek, parse
 from labtrack.core.security import hash_password, password_problems
 from labtrack.core.totp import matching_step, new_secret, provisioning_uri
 from labtrack.db.sql import bound_text
-from labtrack.keys import KeyProvider, encrypt_field, get_key_provider
+from labtrack.keys import KeyProvider, decrypt_field, encrypt_field, get_key_provider
+from labtrack.user_keys import seal_for_user, unwrap_user_key, wrap_user_key
 
 ADMIN_ROLES = ("super_admin", "support")
 
@@ -165,3 +166,47 @@ async def unlock_admin(url: str, username: str) -> bool:
     finally:
         await engine.dispose()
     return True
+
+
+async def rewrap_user_fields(url: str, provider: KeyProvider) -> int:
+    """Moves phone numbers sealed under the service KEK (before migration 0008) under their
+    user's own key, so purging an account shreds them too. Idempotent; returns how many."""
+    engine = create_async_engine(url, hide_parameters=True)
+    moved = 0
+    try:
+        async with engine.connect() as conn, conn.begin():
+            rows = (
+                await conn.execute(
+                    bound_text(
+                        "select id, contact_phone_enc from users"
+                        " where contact_phone_enc is not null for update"
+                    )
+                )
+            ).all()
+            for row in rows:
+                if parse(bytes(row.contact_phone_enc)).kek_id.startswith("u:"):
+                    continue
+                aad = field_aad("users", "contact_phone_enc", row.id)
+                phone = await decrypt_field(provider, bytes(row.contact_phone_enc), aad)
+                stored = (
+                    await conn.execute(
+                        bound_text("select wrapped_key from user_keys where user_id = :u"),
+                        {"u": row.id},
+                    )
+                ).scalar_one_or_none()
+                if stored is None:
+                    key = new_dek()
+                    await conn.execute(
+                        bound_text("insert into user_keys (user_id, wrapped_key) values (:u, :w)"),
+                        {"u": row.id, "w": await wrap_user_key(provider, row.id, key)},
+                    )
+                else:
+                    key = await unwrap_user_key(provider, row.id, bytes(stored))
+                await conn.execute(
+                    bound_text("update users set contact_phone_enc = :b where id = :u"),
+                    {"u": row.id, "b": await seal_for_user(row.id, key, phone, aad)},
+                )
+                moved += 1
+    finally:
+        await engine.dispose()
+    return moved

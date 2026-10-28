@@ -52,6 +52,19 @@ def _create_admin(username: str, role: str) -> int:
     return run(url, username, role)
 
 
+def _rewrap() -> int:
+    from labtrack.admin.cli import rewrap_user_fields  # noqa: PLC0415
+    from labtrack.keys import get_key_provider  # noqa: PLC0415
+
+    url = os.environ.get("MIGRATION_DATABASE_URL")
+    if not url:
+        sys.stderr.write("MIGRATION_DATABASE_URL is not set (run in the migrate container)\n")
+        return 2
+    moved = asyncio.run(rewrap_user_fields(url, get_key_provider()))
+    sys.stdout.write(f"re-sealed {moved} values under user keys\n")
+    return 0
+
+
 def _unlock_admin(username: str) -> int:
     from labtrack.admin.cli import unlock_admin  # noqa: PLC0415
 
@@ -76,6 +89,7 @@ def main(argv: list[str] | None = None) -> int:
     p_admin = sub.add_parser("create-admin", help="create an admin account with TOTP")
     p_admin.add_argument("username")
     p_admin.add_argument("--role", choices=("super_admin", "support"), default="super_admin")
+    sub.add_parser("rewrap-user-keys", help="move KEK-sealed phone numbers under user keys")
     p_unlock = sub.add_parser("unlock-admin", help="clear an admin's sign-in lockout")
     p_unlock.add_argument("username")
 
@@ -85,6 +99,8 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if args.command == "seed":
         return _seed(args.dir)
+    if args.command == "rewrap-user-keys":
+        return _rewrap()
     if args.command == "unlock-admin":
         return _unlock_admin(args.username)
     return _create_admin(args.username, args.role)

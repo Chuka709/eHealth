@@ -181,6 +181,10 @@ class TokenRequest(Strict):
     reason: ResetReason | None = None
 
 
+class CancelDeletionRequest(Strict):
+    reason: Literal["user_request", "suspected_compromise", "other"]
+
+
 class TokenOut(BaseModel):
     expires_at: datetime
     # in-person QR only: shown once on the admin's screen as a QR code
@@ -318,10 +322,10 @@ async def issue_token(
 
 
 @router.post("/users/{user_id}/cancel-deletion", status_code=204, responses=ERRORS)
-async def cancel_deletion(user_id: UUID, ctx: SuperAdmin) -> Response:
+async def cancel_deletion(user_id: UUID, body: CancelDeletionRequest, ctx: SuperAdmin) -> Response:
     """Within 30 days of the user's request. The account comes back locked and needs a reset
     (identity check + new password): cancelling never hands it to whoever asked."""
-    await users.cancel_deletion(ctx.db, user_id)
+    await users.cancel_deletion(ctx.db, user_id, body.reason)
     return Response(status_code=204)
 
 

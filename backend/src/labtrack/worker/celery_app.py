@@ -22,6 +22,9 @@ app.conf.update(
     timezone="UTC",
     worker_hijack_root_logger=False,
     # 03:00 Asia/Ulaanbaatar (UTC+8): account purge and auth_attempts retention.
+    # Maintenance runs only on the maint worker, the only process with the maint credentials
+    # (the default worker parses untrusted uploads).
+    task_routes={"labtrack.maintenance.*": {"queue": "maintenance"}},
     beat_schedule={
         "maintenance-daily": {
             "task": "labtrack.maintenance.daily",

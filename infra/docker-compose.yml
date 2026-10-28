@@ -108,10 +108,8 @@ services:
 
   worker:
     <<: *backend
-    environment:
-      <<: *backend-env
-      MAINT_DATABASE_URL: postgresql+asyncpg://labtrack_maint:${LABTRACK_MAINT_PASSWORD:?run just init}@postgres:5432/labtrack
-    command: ["celery", "-A", "labtrack.worker.celery_app", "worker", "--loglevel=INFO", "--concurrency=2"]
+    command: ["celery", "-A", "labtrack.worker.celery_app", "worker", "--loglevel=INFO", "--concurrency=2",
+              "--queues=default"]
     networks: [backend, egress]
     healthcheck:
       test: ["CMD-SHELL", "celery -A labtrack.worker.celery_app inspect ping -d celery@$$HOSTNAME --timeout 5 | grep -q pong"]
@@ -123,7 +121,21 @@ services:
       migrate: { condition: service_completed_successfully }
       valkey: { condition: service_healthy }
 
-  # Schedules the daily maintenance task (runs in the worker). One instance only.
+  # Daily maintenance only (queue "maintenance"): the one process with labtrack_maint
+  # credentials; no uploads, no internet.
+  maint-worker:
+    <<: *backend
+    environment:
+      <<: *backend-env
+      MAINT_DATABASE_URL: postgresql+asyncpg://labtrack_maint:${LABTRACK_MAINT_PASSWORD:?run just init}@postgres:5432/labtrack
+    command: ["celery", "-A", "labtrack.worker.celery_app", "worker", "--loglevel=INFO", "--concurrency=1",
+              "--queues=maintenance", "--hostname=maint@%h"]
+    networks: [backend]
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+      valkey: { condition: service_healthy }
+
+  # Schedules the daily maintenance task (runs on maint-worker). One instance only.
   beat:
     <<: *backend
     command: ["celery", "-A", "labtrack.worker.celery_app", "beat", "--loglevel=INFO",
@@ -131,7 +143,7 @@ services:
     networks: [backend]
     depends_on:
       valkey: { condition: service_healthy }
-      worker: { condition: service_started }
+      maint-worker: { condition: service_started }
 
   web:
     build:

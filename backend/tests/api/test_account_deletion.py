@@ -77,7 +77,11 @@ async def test_cancellation_goes_through_a_reset(client_from: ClientFactory) -> 
     async with client_from(OFFICE) as c:
         admin = await _admin(c)  # not the admin who enrolled the national id
         assert (
-            await c.post(f"/api/v1/admin/users/{uid}/cancel-deletion", headers=admin)
+            await c.post(
+                f"/api/v1/admin/users/{uid}/cancel-deletion",
+                json={"reason": "user_request"},
+                headers=admin,
+            )
         ).status_code == 204
         detail = (await c.get(f"/api/v1/admin/users/{uid}", headers=admin)).json()
         assert (detail["account_status"], detail["deletion_scheduled_for"]) == ("locked", None)
@@ -100,7 +104,11 @@ async def test_cancellation_goes_through_a_reset(client_from: ClientFactory) -> 
             },
             headers=admin,
         )
-        again = await c.post(f"/api/v1/admin/users/{uid}/cancel-deletion", headers=admin)
+        again = await c.post(
+            f"/api/v1/admin/users/{uid}/cancel-deletion",
+            json={"reason": "user_request"},
+            headers=admin,
+        )
         assert (again.status_code, again.json()["code"]) == (409, "admin.no_pending_deletion")
     assert await _activate(client_from, r.json()["link"]) == 204
     async with client_from(HOME) as phone:
@@ -127,5 +135,9 @@ async def test_purged_accounts_are_gone(
         admin = await _admin(c)
         r = await c.get(f"/api/v1/admin/users/{uid}", headers=admin)
         assert r.status_code == 404
-        r = await c.post(f"/api/v1/admin/users/{uid}/cancel-deletion", headers=admin)
+        r = await c.post(
+            f"/api/v1/admin/users/{uid}/cancel-deletion",
+            json={"reason": "user_request"},
+            headers=admin,
+        )
         assert r.status_code == 409
