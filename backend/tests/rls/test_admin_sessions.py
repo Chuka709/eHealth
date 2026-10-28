@@ -660,3 +660,62 @@ async def test_locking_revokes_tokens_issued_before_the_lock(
             conn, bound_text("select account_status from users where id = :u"), {"u": user}
         )
     assert status == "locked"
+
+
+async def test_compromise_flag_survives_other_status_changes_until_a_new_password(
+    owner_engine: AsyncEngine, admin_engine: AsyncEngine, app_engine: AsyncEngine
+) -> None:
+    admin, second = await _new_admin(owner_engine), await _new_admin(owner_engine)
+    user = await _pending_user(admin_engine, admin, nid=NID)
+    h = _hash()
+    async with as_user(admin_engine, admin) as conn:
+        await conn.execute(
+            bound_text(
+                "select admin_issue_token(:u, 'activation', 'in_person_qr', :h, null, null, null)"
+            ),
+            {"u": user, "h": h},
+        )
+    assert await _consume(app_engine, h, None, False) == "ok"
+
+    async def status(new: str, reason: str) -> None:
+        async with as_user(admin_engine, admin) as conn:
+            await conn.execute(
+                bound_text("select admin_set_status(:u, :s, :r)"),
+                {"u": user, "s": new, "r": reason},
+            )
+
+    await status("locked", "suspected_compromise")
+    # the paths around a "latest audit row" check: disable, or re-lock for another reason
+    await status("disabled", "other")
+    with pytest.raises(DBAPIError, match="password reset required"):
+        await status("active", "identity_verified")
+    await status("locked", "user_request")
+    with pytest.raises(DBAPIError, match="password reset required"):
+        await status("active", "identity_verified")
+    # recovery: identity check + reset by another admin, the user sets a new password
+    async with as_user(admin_engine, second) as conn:
+        check = (
+            await conn.execute(
+                bound_text("select check_id from admin_identity_check(:u, :n, :p)"),
+                {"u": user, "n": NID, "p": PEPPER},
+            )
+        ).scalar_one()
+        reset = _hash()
+        await conn.execute(
+            bound_text(
+                "select admin_issue_token(:u, 'admin_reset', 'in_person_qr', :h, :c,"
+                " 'suspected_compromise', null)"
+            ),
+            {"u": user, "h": reset, "c": check},
+        )
+    assert await _consume(app_engine, reset, None, False) == "ok"
+    async with owner_engine.connect() as conn:
+        row = (
+            await conn.execute(
+                bound_text("select account_status, reset_required from users where id = :u"),
+                {"u": user},
+            )
+        ).one()
+    assert (row.account_status, row.reset_required) == ("active", False)
+    await status("locked", "user_request")
+    await status("active", "identity_verified")  # an ordinary lock lifts normally again

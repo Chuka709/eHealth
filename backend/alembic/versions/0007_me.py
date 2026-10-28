@@ -3,9 +3,10 @@
 - report_unwanted_admin_action(): the "Би хүсээгүй" button. A user who sees an admin action
   they did not ask for (within 30 days of it) locks their own account: every session and live
   token ends, and a security event reaches the admins.
-- Such a self-lock, like any lock for suspected compromise, is not lifted by a status
-  change at all (the password may be known to someone else): recovery is an identity check
-  and a reset token, so the user sets a new password.
+- A lock for suspected compromise (an admin's lock/disable with that reason, or the user's
+  own report) sets users.reset_required. While it is set no status change makes the account
+  active again, from any state: someone else may know the password. Only setting a new
+  password with a reset token (activation_consume) clears it.
 
 Revision ID: 0007
 Revises: 0006
@@ -37,7 +38,7 @@ _REPORT = f"""
              and at > now() - interval '30 days') then
         raise exception 'no recent admin action' using errcode = '42501';
       end if;
-      update public.users set account_status = 'locked'
+      update public.users set account_status = 'locked', reset_required = true
         where id = uid and account_status = 'active' and role in ('user','doctor')
           and deleted_at is null;
       if not found then
@@ -61,21 +62,32 @@ _SUPPORT_CHECK_OLD = """\
                 order by l.at desc limit 1) = 'suspected_compromise' then
           raise exception 'admin not allowed' using errcode = '42501';
         end if;"""
-_SUPPORT_CHECK_NEW = """\
-        -- A lock for suspected compromise (an admin's, or the user's own report) is never
-        -- lifted by a status change: someone else may know the password. Recovery is a reset
-        -- token, which makes the user set a new password (activation_consume activates).
-        if (select case when l.action = 'security.user_report'
-                        then 'suspected_compromise' else l.diff ->> 'reason' end
-            from public.audit_logs l
-            where l.action in ('admin.status_locked','security.user_report')
-              and l.target_user_id = p_user_id
-            order by l.at desc, l.id desc limit 1) = 'suspected_compromise' then
-          raise exception 'password reset required' using errcode = '42501';
-        end if;"""
+_STATUS_READ = """\
+      select account_status into current_status from public.users where id = p_user_id;"""
+_STATUS_READ_NEW = """\
+      select account_status into current_status from public.users where id = p_user_id;
+      -- Suspected compromise: never active again by a status change, from any state.
+      if p_status = 'active' and (select reset_required from public.users where id = p_user_id)
+      then
+        raise exception 'password reset required' using errcode = '42501';
+      end if;"""
+_STATUS_WRITE = """\
+      update public.users set account_status = p_status where id = p_user_id;"""
+_STATUS_WRITE_NEW = """\
+      update public.users set account_status = p_status,
+             reset_required = reset_required
+               or (p_status in ('locked','disabled') and p_reason = 'suspected_compromise')
+        where id = p_user_id;"""
+_CONSUME = """\
+        set password_hash = p_password_hash, password_changed_at = now(),
+            account_status = 'active'"""
+_CONSUME_NEW = """\
+        set password_hash = p_password_hash, password_changed_at = now(),
+            account_status = 'active', reset_required = false"""
 
 
-def _set_status_0006() -> str:
+def _from_0006(name: str) -> str:
+    """A function's definition from 0006, as `create or replace`."""
     path = Path(__file__).with_name("0006_admin_auth.py")
     spec = importlib.util.spec_from_file_location("rev0006", path)
     if spec is None or spec.loader is None:
@@ -83,21 +95,40 @@ def _set_status_0006() -> str:
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     statements: list[str] = module._UP
-    (sql,) = [s for s in statements if "create function admin_set_status(" in s]
-    if sql.count(_SUPPORT_CHECK_OLD) != 1:
-        raise RuntimeError("0006 admin_set_status changed")
+    (sql,) = [s for s in statements if f"create function {name}(" in s]
     return sql.replace("create function", "create or replace function", 1)
 
 
+def _patched(sql: str, changes: list[tuple[str, str]]) -> str:
+    for old, new in changes:
+        if sql.count(old) != 1:
+            raise RuntimeError("0006 definition changed")
+        sql = sql.replace(old, new)
+    return sql
+
+
 def upgrade() -> None:
+    op.execute("alter table users add column reset_required boolean not null default false")
+    op.execute("grant select (reset_required) on users to labtrack_admin")
     op.execute(_REPORT)
-    op.execute(_set_status_0006().replace(_SUPPORT_CHECK_OLD, _SUPPORT_CHECK_NEW))
+    op.execute(
+        _patched(
+            _from_0006("admin_set_status"),
+            [
+                (_SUPPORT_CHECK_OLD, ""),
+                (_STATUS_READ, _STATUS_READ_NEW),
+                (_STATUS_WRITE, _STATUS_WRITE_NEW),
+            ],
+        )
+    )
+    op.execute(_patched(_from_0006("activation_consume"), [(_CONSUME, _CONSUME_NEW)]))
     op.execute("revoke execute on all functions in schema public from public")
     op.execute("grant execute on function report_unwanted_admin_action() to labtrack_app")
 
 
 def downgrade() -> None:
-    # Dev only: security.user_report rows stay in the (append-only) audit log, and 0006's
-    # admin_set_status does not look at them.
+    # Dev only: security.user_report rows stay in the (append-only) audit log.
     op.execute("drop function if exists report_unwanted_admin_action()")
-    op.execute(_set_status_0006())
+    op.execute(_from_0006("admin_set_status"))
+    op.execute(_from_0006("activation_consume"))
+    op.execute("alter table users drop column if exists reset_required")
