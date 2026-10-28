@@ -63,6 +63,14 @@ create table users (
   created_at timestamptz not null default now(), deleted_at timestamptz
 );
 
+create table identity_checks (                 -- админы хүн таних шалгалт (зөвхөн тийм/үгүй); activation_tokens-д холбогдоно
+  id bigserial primary key,
+  user_id uuid not null references users on delete cascade,
+  admin_id uuid not null references users,
+  success boolean not null,
+  at timestamptz not null default now()
+);
+
 create table activation_tokens (               -- нэг удаагийн идэвхжүүлэх/сэргээх токен (түр нууц үгийн оронд)
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references users on delete cascade,

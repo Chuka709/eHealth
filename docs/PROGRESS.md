@@ -4,7 +4,7 @@
 > Phase бүрийн төгсгөлд DoD-г **нотолгоотой** (команд, тестийн тоо, дэлгэцийн зураг) энд бичнэ. Нээлттэй асуулт → `OPEN_QUESTIONS.md`.
 
 ## Одоогийн байдал
-**Phase 0 — код бүрэн, DoD-ийн 1/4 нотлогдсон** (2026.10.28). Үлдсэн 3 DoD нь таны аккаунт/төхөөрөмж шаардана (доор). Q14 (mobile styling) шийдэгдсэн.
+**Phase 1 — хийгдэж байна** (2026.10.28). Phase 0 код бүрэн; төхөөрөмж/CI-ийн 3 DoD-г **хэрэглэгчийн шийдвэрээр түр хойшлуулсан** (таны аккаунт/төхөөрөмж шаардана) — Phase 2-ын бета-гаас өмнө заавал хаагдана.
 
 ---
 
@@ -45,7 +45,7 @@
 - [x] M4 stdlib логгер (uvicorn, sqlalchemy, asyncpg, celery) redaction chain-ээр; driver-ийн `DETAIL`/`Key (...)=(...)`, query string scrub; `_token/_secret/_key/_email` · M5 Sentry exception/breadcrumb/logentry scrub — тесттэй
 - [x] M7 CI action-ууд commit SHA-аар, `persist-credentials: false`, expo-doctor devDependency · M8 preview/production build `https://` биш бол унана
 - [x] Low: prod-д OpenAPI хаалттай, Redis client дахин ашиглана, compose `${VAR:?}`, SeaweedFS 4.50 pin, web файлууд root эзэмшилтэй, downgrade CREATE өгөхгүй, `.dockerignore` `.env.*`
-- [ ] L8 `tests/rls/` — Phase 1-ийн эхний PHI хүснэгттэй хамт
+- [x] L8 `tests/rls/` — 39 тест (1.1, 1.2)
 
 **DoD — нотолгоо**
 - [x] `just up` — 7 сервис healthy; `curl :8080/api/v1/readyz` → `{"status":"ok","database":true,"queue":true}`; вэб хуудас Caddy-аар "Сервер хэвийн ажиллаж байна"
@@ -55,8 +55,8 @@
 - [ ] CI ногоон — GitHub репо үүсгэж push хийсний дараа (**та**)
 
 ## Phase 1 — Auth, супер админ, профайл
-- [ ] 1.1 Migration: extensions, enum, `labtrack_owner/app/admin/maint` role, `REVOKE TEMPORARY/CREATE`; users (`account_status`, `token_version`, шифрлэлттэй утас, РД argon2 hash) + column-level эрх, activation_tokens, sessions (`revoked_reason`, `device_trusted`), auth_attempts (+индекс), patients, patient_access, consents (append-only), notifications, audit_logs (`target_user_id`, trigger, `REVOKE TRUNCATE`); definer функцууд (`search_path` хатуу): `can_read/can_write_patient`, `is_owner`, `create_self_profile`, `auth_*`, `audit_write`, `my_admin_actions`, `notify`, `lookup_user_for_share`; хүснэгт бүрт 4 үйлдлийн policy; ENABLE+FORCE RLS
-- [ ] 1.2 Migration: test_catalog, test_synonyms, unit_aliases, unit_conversions, medication_catalog; `just seed`
+- [x] 1.1 Migration (`0002`, 35 RLS тест): extensions, enum, `labtrack_owner/app/admin/maint` role, `REVOKE TEMPORARY/CREATE`; users (`account_status`, `token_version`, шифрлэлттэй утас, РД argon2 hash) + column-level эрх, activation_tokens, sessions (`revoked_reason`, `device_trusted`), auth_attempts (+индекс), patients, patient_access, consents (append-only), notifications, audit_logs (`target_user_id`, trigger, `REVOKE TRUNCATE`); definer функцууд (`search_path` хатуу): `can_read/can_write_patient`, `is_owner`, `create_self_profile`, `auth_*`, `audit_write`, `my_admin_actions`, `notify`, `lookup_user_for_share`; хүснэгт бүрт 4 үйлдлийн policy; ENABLE+FORCE RLS
+- [x] 1.2 Migration `0003`: test_catalog, test_synonyms (сурсан синоним хувийн), unit_aliases, unit_conversions, medication_catalog; `just seed` (idempotent, Decimal, хязгаар/тун агуулбал татгалзана; 61 тест, 271 синоним, 30 эм); `core/text.normalize_name` (кирилл/латин ижил хэлбэрийн үсэг, hypothesis)
 - [ ] 1.3 `core/security`: envelope шифрлэлт (`KeyProvider`, AES-256-GCM, толгойтой формат, AAD), argon2id (+pepper РД-д), нууц үгийн бодлого (≥ 10, zxcvbn, задарсан жагсаалт), идэвхжүүлэх токен (≥ 128 бит, hash), JWT ES256 (kid, `sid`, `tv`), refresh rotation + reuse detection + 20 сек grace, device-cookie түгжээ, dummy hash — hypothesis тест
 - [ ] 1.4 Repository + service: auth, admin, consents, audit
 - [ ] 1.5 `/auth`: activate, login, refresh (`401 admin_reset` код), logout, change-password, sessions, delete-account request; slowapi; нэг төрлийн алдааны мессеж/хугацаа

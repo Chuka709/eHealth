@@ -158,6 +158,8 @@ services:
       PYTEST_ADDOPTS: "-p no:cacheprovider"
       MIGRATION_DATABASE_URL: postgresql+asyncpg://labtrack_owner:${LABTRACK_OWNER_PASSWORD:?run just init}@postgres:5432/labtrack_test
       TEST_DATABASE_URL: postgresql+asyncpg://labtrack_app:${LABTRACK_APP_PASSWORD:?run just init}@postgres:5432/labtrack_test
+      TEST_ADMIN_DATABASE_URL: postgresql+asyncpg://labtrack_admin:${LABTRACK_ADMIN_PASSWORD:?run just init}@postgres:5432/labtrack_test
+      TEST_MAINT_DATABASE_URL: postgresql+asyncpg://labtrack_maint:${LABTRACK_MAINT_PASSWORD:?run just init}@postgres:5432/labtrack_test
       DATABASE_URL: postgresql+asyncpg://labtrack_app:${LABTRACK_APP_PASSWORD:?run just init}@postgres:5432/labtrack_test
     entrypoint: ["sh", "-c", "alembic upgrade head && alembic downgrade base && alembic upgrade head && exec \"$$@\"", "--"]
     command: ["pytest", "-q", "--no-header"]
