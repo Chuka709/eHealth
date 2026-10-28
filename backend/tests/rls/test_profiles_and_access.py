@@ -276,6 +276,26 @@ async def test_birth_date_cannot_be_rewritten_to_unlock_proxy_consent(
             await conn.execute(set_born, {"d": date(2015, 5, 1), "p": adult})
 
 
+async def test_an_empty_birth_date_cannot_be_filled_with_a_minor_date(
+    app_engine: AsyncEngine, owner_engine: AsyncEngine
+) -> None:
+    owner = await make_user(owner_engine)
+    adult = await make_patient(app_engine, owner)  # created without a birth date
+    insert_consent = bound_text(
+        "insert into consents (user_id, patient_id, kind, version, granted)"
+        " values (:u, :p, 'cross_border', '1', true)"
+    )
+    with pytest.raises(DBAPIError, match="birth date cannot be changed"):
+        async with as_user(app_engine, owner) as conn:
+            await conn.execute(
+                bound_text("update patients set birth_date = :d where id = :p"),
+                {"d": date(2015, 5, 1), "p": adult},
+            )
+    with pytest.raises(DBAPIError, match="row-level security"):
+        async with as_user(app_engine, owner) as conn:
+            await conn.execute(insert_consent, {"u": owner, "p": adult})
+
+
 async def test_minor_status_ends_at_eighteen(
     app_engine: AsyncEngine, owner_engine: AsyncEngine
 ) -> None:

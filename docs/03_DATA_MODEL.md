@@ -116,7 +116,7 @@ create table patients (
   org_id uuid,                                 -- MVP-д null; клиник нэмэхэд FK
   full_name text not null, relation text,      -- 'self','child','parent','spouse','other'
   -- насанд хүрээгүй эсэхийг хадгалахгүй: is_minor_patient() шалгах мөчид birth_date-ээс тооцно (18 нас хүрмэгц автоматаар дуусна);
-  -- birth_date-г хэрэглэгч нэг л удаа оруулна, өөрчлөхийг trigger хориглоно (support засна)
+  -- хүүхдийн birth_date зөвхөн үүсгэхэд; дараа нь хоосныг зөвхөн 18+ огноогоор бөглөнө, өөрчлөхийг trigger хориглоно (support засна)
   archived_at timestamptz,                     -- нас барсан / идэвхгүй (админ эсвэл гэр бүл)
   birth_date date, sex sex not null default 'unknown',
   national_id_enc bytea, national_id_hmac text,

@@ -359,14 +359,17 @@ _FUNCTIONS = [
                      and role in ('user','doctor') and deleted_at is null)
     $$
     """,
-    # Minor status (proxy consent) derives from birth_date, so users may set it once but never
-    # change it afterwards (a correction goes through support) - otherwise a parent could
-    # backdate an adult's profile to consent on their behalf.
+    # Minor status (proxy consent) derives from birth_date. A minor's birth date can only be
+    # given when the profile is created; afterwards users may only fill an empty date with an
+    # adult one, and never change a set date (corrections go through support). Otherwise an
+    # adult's profile could be turned into a "child" to consent on their behalf.
     """
     create function patients_birth_date_once() returns trigger language plpgsql as $$
     begin
-      if current_user = 'labtrack_app' and old.birth_date is not null
-         and new.birth_date is distinct from old.birth_date then
+      if current_user = 'labtrack_app' and new.birth_date is distinct from old.birth_date
+         and (old.birth_date is not null
+              or new.birth_date is null
+              or new.birth_date > current_date - interval '18 years') then
         raise exception 'birth date cannot be changed' using errcode = '42501';
       end if;
       return new;
