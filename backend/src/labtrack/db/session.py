@@ -29,6 +29,8 @@ def get_engine() -> AsyncEngine:
         str(get_settings().database_url),
         pool_pre_ping=True,
         pool_reset_on_return="rollback",
+        # Bound values (ids, hashes, national ids) never appear in exception text or logs.
+        hide_parameters=True,
     )
 
 

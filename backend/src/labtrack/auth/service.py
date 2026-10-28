@@ -1,11 +1,15 @@
 """Authentication use cases (docs/04 §1, §6). Database work goes through the 0005 functions."""
 
+import functools
 import ipaddress
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from typing import Literal
 from uuid import UUID
 
+import anyio
+import anyio.to_thread
 from sqlalchemy.exc import DBAPIError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -22,6 +26,15 @@ from labtrack.core.security import (
     verify_password,
 )
 from labtrack.db.sql import bound_text
+
+# argon2 is CPU-bound (~50-100 ms): run it off the event loop, at most 4 at a time per
+# process, so a burst of logins cannot stall every other request.
+_hashing = anyio.CapacityLimiter(4)
+
+
+async def run_hashing[**P, T](fn: Callable[P, T], *args: P.args, **kwargs: P.kwargs) -> T:
+    return await anyio.to_thread.run_sync(functools.partial(fn, *args, **kwargs), limiter=_hashing)
+
 
 Platform = Literal["ios", "android", "web"]
 
@@ -86,12 +99,14 @@ async def login(
     )
     counts = (
         await db.execute(
-            bound_text("select * from auth_failure_counts('login', :u, cast(:ip as inet), :w)"),
-            {"u": username, "ip": net, "w": UNTRUSTED_WINDOW},
+            bound_text("select * from auth_failure_counts('login', :u, cast(:ip as inet), :d, :w)"),
+            {"u": username, "ip": net, "d": device_hash, "w": UNTRUSTED_WINDOW},
         )
     ).one()
     decision = lockout_decision(
-        failures_username_ip=counts.by_username_ip,
+        # A trusted device is counted on its own, so others behind the same address
+        # (CGNAT) cannot lock the owner's phone.
+        failures_username_ip=counts.by_username_device if trusted else counts.by_username_ip,
         failures_username_untrusted=counts.by_username_untrusted,
         last_failure=counts.last_failure,
         device_trusted=trusted,
@@ -105,40 +120,36 @@ async def login(
         await db.execute(bound_text("select * from auth_login_lookup(:u)"), {"u": username})
     ).one_or_none()
     # Always run one argon2 verification so timing does not reveal whether the user exists.
-    ok = verify_password(password, row.password_hash if row else None)
+    ok = await run_hashing(verify_password, password, row.password_hash if row else None)
     ok = ok and row is not None and row.account_status == "active"
     await db.execute(
-        bound_text("select auth_record_attempt('login', :u, cast(:ip as inet), :t, :ok)"),
-        {"u": username, "ip": net, "t": trusted, "ok": ok},
+        bound_text("select auth_record_attempt('login', :u, cast(:ip as inet), :d, :t, :ok)"),
+        {"u": username, "ip": net, "d": device_hash if trusted else None, "t": trusted, "ok": ok},
     )
     if not ok or row is None:
         await db.commit()  # keep the failed attempt even though we raise
         raise AppError(401, INVALID_CREDENTIALS)
 
     refresh_raw, refresh_hash = new_opaque_token()
+    # After a successful login this device becomes (or stays) trusted.
+    new_device: str | None = None
+    if trusted and device_hash:
+        trust_hash = device_hash
+    else:
+        new_device, trust_hash = new_opaque_token()
     session = (
         await db.execute(
-            bound_text("select * from session_create(:u, :h, :n, :p, :t, :ttl)"),
+            bound_text("select * from session_create(:u, :h, :n, :p, :d, :ttl)"),
             {
                 "u": row.user_id,
                 "h": refresh_hash,
                 "n": device_name,
                 "p": platform,
-                "t": trusted,
+                "d": trust_hash,
                 "ttl": _refresh_ttl(),
             },
         )
     ).one()
-    new_device: str | None = None
-    if not trusted:
-        new_device, new_device_hash = new_opaque_token()
-        await db.execute(
-            bound_text("select device_trust(:u, :d)"), {"u": row.user_id, "d": new_device_hash}
-        )
-    elif device_hash:
-        await db.execute(
-            bound_text("select device_trust(:u, :d)"), {"u": row.user_id, "d": device_hash}
-        )
     access, expires_in = _access(row.user_id, session.session_id, session.token_version, row.role)
     return TokenPair(access, expires_in, refresh_raw, new_device)
 
@@ -171,13 +182,20 @@ async def logout(db: AsyncSession, *, refresh_token: str) -> None:
 
 
 async def activate(db: AsyncSession, *, token: str, new_password: str) -> None:
-    problems = password_problems(new_password, username="")
+    token_hash = sha256_hex(token)
+    owner = (
+        await db.execute(bound_text("select * from activation_token_user(:h)"), {"h": token_hash})
+    ).one_or_none()
+    if owner is None:
+        raise AppError(400, "auth.activation_invalid")
+    problems = password_problems(new_password, owner.username, owner.display_name)
     if problems:
         raise AppError(422, problems[0])
+    password_hash = await run_hashing(hash_password, new_password)
     try:
         await db.execute(
             bound_text("select activation_consume(:h, :pw)"),
-            {"h": sha256_hex(token), "pw": hash_password(new_password)},
+            {"h": token_hash, "pw": password_hash},
         )
     except DBAPIError as exc:  # invalid/expired/used token or inactive account: one answer
         raise AppError(400, "auth.activation_invalid") from exc
@@ -199,7 +217,7 @@ async def change_password(
     )
     counts = (
         await db.execute(
-            bound_text("select * from auth_failure_counts('change_password', :u, null, :w)"),
+            bound_text("select * from auth_failure_counts('change_password', :u, null, null, :w)"),
             {"u": username, "w": UNTRUSTED_WINDOW},
         )
     ).one()
@@ -213,9 +231,9 @@ async def change_password(
     if not decision.allowed:
         raise AppError(429, "auth.locked", retry_after=decision.retry_after)
     stored = (await db.execute(bound_text("select auth_own_password_hash()"))).scalar_one()
-    ok = verify_password(current_password, stored)
+    ok = await run_hashing(verify_password, current_password, stored)
     await db.execute(
-        bound_text("select auth_record_attempt('change_password', :u, null, false, :ok)"),
+        bound_text("select auth_record_attempt('change_password', :u, null, null, false, :ok)"),
         {"u": username, "ok": ok},
     )
     if not ok:
@@ -227,7 +245,7 @@ async def change_password(
     await db.execute(
         bound_text("select auth_change_password(:pw, :keep, :others)"),
         {
-            "pw": hash_password(new_password),
+            "pw": await run_hashing(hash_password, new_password),
             "keep": current_session,
             "others": sign_out_other_devices,
         },

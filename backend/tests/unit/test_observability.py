@@ -7,7 +7,9 @@ _DB = "postgresql+asyncpg://u@h/d"
 
 
 def test_empty_dsn_disables_sentry() -> None:
-    settings = Settings.model_validate({"database_url": _DB, "sentry_dsn": ""})
+    settings = Settings.model_validate(
+        {"environment": "test", "database_url": _DB, "sentry_dsn": ""}
+    )
     assert settings.sentry_dsn is None
     assert init_sentry(settings) is False
 

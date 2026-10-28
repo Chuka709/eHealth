@@ -11,6 +11,7 @@ from pathlib import Path
 def _openapi(out: Path) -> None:
     # Schema generation needs no database; a placeholder URL satisfies settings validation.
     os.environ.setdefault("DATABASE_URL", "postgresql+asyncpg://openapi@localhost/openapi")
+    os.environ.setdefault("ENVIRONMENT", "dev")
     from labtrack.main import create_app  # noqa: PLC0415 - after env is set
 
     schema = create_app().openapi()

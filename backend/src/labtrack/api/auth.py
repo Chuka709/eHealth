@@ -5,12 +5,14 @@ from datetime import datetime
 from typing import Annotated, Literal
 from uuid import UUID
 
-from fastapi import APIRouter, Request, Response, status
+from fastapi import APIRouter, Depends, Request, Response, status
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 
 from labtrack.api.deps import AnonymousDb, Claims, UserDb, client_ip
 from labtrack.api.errors import AppError, ErrorBody
+from labtrack.api.ratelimit import per_ip
 from labtrack.auth import service
+from labtrack.config import get_settings
 from labtrack.db.sql import bound_text
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -90,7 +92,12 @@ def _tokens(pair: service.TokenPair) -> TokenResponse:
     )
 
 
-@router.post("/login", response_model=TokenResponse, responses=_ERRORS)
+@router.post(
+    "/login",
+    response_model=TokenResponse,
+    responses=_ERRORS,
+    dependencies=[Depends(per_ip("login", lambda: get_settings().rate_login_per_minute))],
+)
 async def login(body: LoginRequest, request: Request, db: AnonymousDb) -> TokenResponse:
     pair = await service.login(
         db,
@@ -104,7 +111,12 @@ async def login(body: LoginRequest, request: Request, db: AnonymousDb) -> TokenR
     return _tokens(pair)
 
 
-@router.post("/refresh", response_model=TokenResponse, responses=_ERRORS)
+@router.post(
+    "/refresh",
+    response_model=TokenResponse,
+    responses=_ERRORS,
+    dependencies=[Depends(per_ip("refresh", lambda: get_settings().rate_refresh_per_minute))],
+)
 async def refresh(body: RefreshRequest, db: AnonymousDb) -> TokenResponse:
     return _tokens(await service.refresh(db, refresh_token=body.refresh_token))
 
@@ -115,7 +127,12 @@ async def logout(body: RefreshRequest, db: AnonymousDb) -> Response:
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
-@router.post("/activate", status_code=status.HTTP_204_NO_CONTENT, responses=_ERRORS)
+@router.post(
+    "/activate",
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses=_ERRORS,
+    dependencies=[Depends(per_ip("activate", lambda: get_settings().rate_activate_per_minute))],
+)
 async def activate(body: ActivateRequest, db: AnonymousDb) -> Response:
     """Set the account's password with a one-time activation/reset token, then log in."""
     await service.activate(db, token=body.token, new_password=body.new_password)

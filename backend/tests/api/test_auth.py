@@ -248,18 +248,51 @@ async def test_admin_reset_is_reported_to_the_old_device(
 # --- activation and password change --------------------------------------------------------
 
 
-async def test_activation_enforces_the_password_policy(client_from: ClientFactory) -> None:
+async def test_activation_checks_the_token_first_then_the_password_policy(
+    owner_engine: AsyncEngine, admin_engine: AsyncEngine, client_from: ClientFactory
+) -> None:
+    admin, _ = await make_active_user(owner_engine, role="super_admin")
+    raw = secrets.token_urlsafe(32)
+    username = f"a{secrets.token_hex(5)}"
+    async with admin_engine.connect() as conn, conn.begin():
+        await conn.execute(
+            bound_text("select set_config('app.user_id', :a, true)"), {"a": str(admin)}
+        )
+        uid = (
+            await conn.execute(
+                bound_text("select admin_create_user(:n, 'Сараа', 'user', null, null, null, null)"),
+                {"n": username},
+            )
+        ).scalar_one()
+        await conn.execute(
+            bound_text("select admin_issue_token(:u, 'activation', 'in_person_qr', :h, null)"),
+            {"u": uid, "h": hashlib.sha256(raw.encode()).hexdigest()},
+        )
     async with client_from() as c:
-        weak = await c.post(
+        bogus = await c.post(
             "/api/v1/auth/activate", json={"token": "x" * 43, "new_password": "password123"}
         )
-        bogus = await c.post(
-            "/api/v1/auth/activate", json={"token": "x" * 43, "new_password": NEW_PASSWORD}
+        weak = await c.post(
+            "/api/v1/auth/activate", json={"token": raw, "new_password": "password123"}
         )
-    assert weak.status_code == 422
-    assert weak.json()["code"].startswith("password.")
-    assert bogus.status_code == 400
+        named = await c.post(
+            "/api/v1/auth/activate", json={"token": raw, "new_password": f"{username} 2026 сайхан"}
+        )
+        good = await c.post(
+            "/api/v1/auth/activate", json={"token": raw, "new_password": NEW_PASSWORD}
+        )
+        reused = await c.post(
+            "/api/v1/auth/activate", json={"token": raw, "new_password": NEW_PASSWORD}
+        )
+        logged_in = await _login(c, username, password=NEW_PASSWORD)
+    assert bogus.status_code == 400  # an invalid token reveals nothing about the policy
     assert bogus.json()["code"] == "auth.activation_invalid"
+    assert weak.status_code == 422
+    assert weak.json()["code"] == "password.too_weak"
+    assert named.json()["code"] == "password.contains_username"
+    assert good.status_code == 204
+    assert reused.status_code == 400
+    assert logged_in.status_code == 200
 
 
 async def test_password_change_signs_out_other_devices(
@@ -383,3 +416,114 @@ async def test_current_password_check_is_rate_limited(
             codes.append(r.status_code)
     assert codes[:5] == [401] * 5
     assert codes[5] == 429
+
+
+# --- second review (a4b2caf) ------------------------------------------------------------
+
+
+async def _rotate_once(c: AsyncClient, username: str) -> str:
+    """Log in and rotate once; return the now-rotated (old) refresh token."""
+    old: str = (await _login(c, username)).json()["refresh_token"]
+    assert (await c.post("/api/v1/auth/refresh", json={"refresh_token": old})).status_code == 200
+    return old
+
+
+async def test_grace_cannot_revive_a_session_after_admin_reset(
+    owner_engine: AsyncEngine, client_from: ClientFactory
+) -> None:
+    uid, username = await make_active_user(owner_engine)
+    async with client_from() as c:
+        old = await _rotate_once(c, username)
+        async with owner_engine.connect() as conn, conn.begin():
+            await conn.execute(
+                bound_text("select revoke_user_sessions(:u, 'admin_reset')"), {"u": uid}
+            )
+        assert (
+            await c.post("/api/v1/auth/refresh", json={"refresh_token": old})
+        ).status_code == 401
+
+
+async def test_grace_cannot_fork_after_a_password_change_that_kept_the_session(
+    owner_engine: AsyncEngine, client_from: ClientFactory
+) -> None:
+    _, username = await make_active_user(owner_engine)
+    async with client_from() as c:
+        old = (await _login(c, username)).json()["refresh_token"]
+        current = (await c.post("/api/v1/auth/refresh", json={"refresh_token": old})).json()
+        changed = await c.post(
+            "/api/v1/auth/password",
+            headers=_auth(current["access_token"]),
+            json={"current_password": PASSWORD, "new_password": NEW_PASSWORD},
+        )
+        assert changed.status_code == 204
+        assert (
+            await c.post("/api/v1/auth/refresh", json={"refresh_token": old})
+        ).status_code == 401
+
+
+async def test_session_create_needs_a_verified_login_in_the_same_transaction(
+    owner_engine: AsyncEngine,
+) -> None:
+    import os  # noqa: PLC0415
+
+    from sqlalchemy.exc import DBAPIError  # noqa: PLC0415
+    from sqlalchemy.ext.asyncio import create_async_engine  # noqa: PLC0415
+
+    victim, _ = await make_active_user(owner_engine)
+    app = create_async_engine(os.environ["TEST_DATABASE_URL"])
+    try:
+        with pytest.raises(DBAPIError, match="no verified login"):
+            async with app.connect() as conn, conn.begin():
+                await conn.execute(
+                    bound_text(
+                        "select * from session_create(:u, :h, 'x', 'web', null, interval '1 day')"
+                    ),
+                    {"u": victim, "h": "a" * 64},
+                )
+    finally:
+        await app.dispose()
+
+
+async def test_trusted_device_is_not_locked_by_failures_from_its_address(
+    owner_engine: AsyncEngine, client_from: ClientFactory
+) -> None:
+    _, username = await make_active_user(owner_engine)
+    async with client_from("100.64.0.1") as c:  # CGNAT: owner and attacker share an address
+        device = (await _login(c, username)).json()["device_token"]
+        for _ in range(5):
+            await _login(c, username, password="attacker-guess")
+        assert (await _login(c, username)).status_code == 429  # unknown device: locked
+        assert (await _login(c, username, device_token=device)).status_code == 200
+
+
+async def test_reset_forgets_trusted_devices(
+    owner_engine: AsyncEngine, client_from: ClientFactory
+) -> None:
+    uid, username = await make_active_user(owner_engine)
+    async with client_from() as c:
+        device = (await _login(c, username)).json()["device_token"]
+        async with owner_engine.connect() as conn, conn.begin():
+            await conn.execute(
+                bound_text("select revoke_user_sessions(:u, 'admin_reset')"), {"u": uid}
+            )
+        again = (await _login(c, username, device_token=device)).json()
+    assert again["device_token"]  # treated as a new, untrusted device
+
+
+async def test_a_login_cannot_be_extended_beyond_its_absolute_lifetime(
+    owner_engine: AsyncEngine, client_from: ClientFactory
+) -> None:
+    _, username = await make_active_user(owner_engine)
+    async with client_from() as c:
+        token = (await _login(c, username)).json()["refresh_token"]
+        async with owner_engine.connect() as conn, conn.begin():
+            await conn.execute(
+                bound_text(
+                    "update sessions set family_expires_at = now() - interval '1 second'"
+                    " where token_hash = :h"
+                ),
+                {"h": hashlib.sha256(token.encode()).hexdigest()},
+            )
+        assert (
+            await c.post("/api/v1/auth/refresh", json={"refresh_token": token})
+        ).status_code == 401

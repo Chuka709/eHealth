@@ -10,7 +10,8 @@ class Settings(BaseSettings):
 
     model_config = SettingsConfigDict(env_file=None, extra="ignore", frozen=True)
 
-    environment: Literal["dev", "test", "staging", "production"] = "dev"
+    # Required: a missing ENVIRONMENT must not silently mean "dev" (ephemeral JWT key, docs).
+    environment: Literal["dev", "test", "staging", "production"]
     # Runtime role: labtrack_app (RLS enforced, no access to secret columns).
     database_url: PostgresDsn
     redis_url: RedisDsn = RedisDsn("redis://valkey:6379/0")
@@ -24,6 +25,10 @@ class Settings(BaseSettings):
     jwt_audience: str = "labtrack-api"
     access_token_ttl_seconds: int = 15 * 60
     refresh_token_ttl_days: int = 60
+    # Requests per minute per client address (api/ratelimit.py).
+    rate_login_per_minute: int = 20
+    rate_refresh_per_minute: int = 60
+    rate_activate_per_minute: int = 10
 
     @field_validator("sentry_dsn", "jwt_private_key", mode="before")
     @classmethod

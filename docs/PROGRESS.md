@@ -52,7 +52,9 @@
 - [x] H1 dev DB-д definer функц PUBLIC-д нээлттэй байсан → migration бүрт тодорхой `revoke … from public` + `pg_proc` тест · H2 админ аудитын actor = `app.user_id` · H3 админ бусад админд хүрэхгүй, support зөвхөн тайлна · H4 сесс сэргээх боломжгүй (`revoke_my_session`) · H5 `notify` төрөл + хүлээн авагчийн хандалт шалгана
 - [x] M1 `is_minor` төрсөн огнооноос, засах боломжгүй · M2 зөвшөөрлийн огноо DB-ийнх · M3 `audit_write` харь өвчтөнд татгалзана · M4 хуваалцах lookup 30/цаг, зөвхөн идэвхтэй user/doctor-д · M5 self profile зөвхөн `admin_create_user`-д
 - [x] L1 устгасан профайл уншигдахгүй · L2 `granted_by` DB тогтооно
-- Нийт backend тест: **144** (RLS 76, API 15, unit 50+)
+- Нийт backend тест: **157** (RLS 76, API 27, unit 50+)
+
+**Auth security review (1 Critical, 2 High, 4 Medium, 5 Low) — засагдсан**: grace-ээр reset тойрох (C1), argon2 event loop + IP хязгааргүй (H1), зэрэгцээ түгжээ тойрох (H2), итгэмжлэгдсэн төхөөрөмж цуцлагддаггүй (M1), CGNAT-аар утас түгжих (M2), нууц үг солих oracle (M3), `session_create` нууц үг шалгалтгүй (M4), SQL параметр лог, идэвхжүүлэхэд нэрийн шалгалт, `ENVIRONMENT` анхдагч dev, сессийн туйлын хугацаа. Нээлттэй: `04 §6.12`.
 
 **DoD — нотолгоо**
 - [x] `just up` — 7 сервис healthy; `curl :8080/api/v1/readyz` → `{"status":"ok","database":true,"queue":true}`; вэб хуудас Caddy-аар "Сервер хэвийн ажиллаж байна"
