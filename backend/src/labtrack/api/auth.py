@@ -8,7 +8,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Request, Response, status
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 
-from labtrack.api.deps import AnonymousDb, Claims, UserDb, client_ip
+from labtrack.api.deps import AnonymousDb, Claims, UserDb, client_ip, presented_credentials
 from labtrack.api.errors import AppError, ErrorBody
 from labtrack.api.ratelimit import per_ip
 from labtrack.auth import service
@@ -133,9 +133,17 @@ async def logout(body: RefreshRequest, db: AnonymousDb) -> Response:
     responses=_ERRORS,
     dependencies=[Depends(per_ip("activate", lambda: get_settings().rate_activate_per_minute))],
 )
-async def activate(body: ActivateRequest, db: AnonymousDb) -> Response:
+async def activate(body: ActivateRequest, request: Request, db: AnonymousDb) -> Response:
     """Set the account's password with a one-time activation/reset token, then log in."""
-    await service.activate(db, token=body.token, new_password=body.new_password)
+    await service.activate(
+        db,
+        token=body.token,
+        new_password=body.new_password,
+        ip=client_ip(request),
+        # The app sends no credentials here; a live admin session among them means the
+        # issuing admin is using the token (docs/04 §6.1) and it is refused.
+        presented=presented_credentials(request),
+    )
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 

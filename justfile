@@ -36,8 +36,12 @@ migrate:
 seed:
     {{compose}} run --rm migrate python -m labtrack.cli seed
 
-create-admin username:
-    {{compose}} run --rm api python -m labtrack.cli create-admin {{username}}
+# Admins are created by the owner role in the migrate container (never through the API).
+create-admin username role="super_admin":
+    {{compose}} run --rm migrate python -m labtrack.cli create-admin {{username}} --role {{role}}
+
+unlock-admin username:
+    {{compose}} run --rm migrate python -m labtrack.cli unlock-admin {{username}}
 
 test-api *args:
     {{compose}} run --rm test pytest -q --no-header {{args}}

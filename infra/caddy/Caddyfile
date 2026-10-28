@@ -3,7 +3,7 @@
 	auto_https off
 }
 
-# Dev entry point. Production adds TLS, HSTS, CSP and the /admin IP allowlist (docs/04 §4).
+# Dev entry point. Production adds TLS, HSTS and CSP (docs/04 §4).
 :8080 {
 	header {
 		-Server
@@ -26,6 +26,17 @@
 	# (`handle` blocks are exclusive and run before a bare `respond`, so it must be a handle too.)
 	@internal path /api/v1/readyz
 	handle @internal {
+		respond 404
+	}
+	# docs/04 §1: the admin API only from allowlisted networks (the API checks again).
+	# ADMIN_ALLOWLIST: space-separated CIDRs; dev default = loopback/private ranges.
+	# Production: set it explicitly (no default), and behind a load balancer match on the
+	# real client address (trusted_proxies), not the balancer's private IP.
+	@admin_outside {
+		path /api/v1/admin /api/v1/admin/*
+		not remote_ip {$ADMIN_ALLOWLIST:private_ranges}
+	}
+	handle @admin_outside {
 		respond 404
 	}
 	handle /api/* {

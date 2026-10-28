@@ -1,7 +1,7 @@
 from functools import lru_cache
 from typing import Literal
 
-from pydantic import Field, PostgresDsn, RedisDsn, SecretStr, field_validator
+from pydantic import Field, IPvAnyNetwork, PostgresDsn, RedisDsn, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -37,6 +37,14 @@ class Settings(BaseSettings):
 
     # Admin API (docs/04 §1 "Супер админ"): role labtrack_admin, never the app or owner role.
     admin_database_url: PostgresDsn | None = None
+    # Admin sign-in only (labtrack_admin_login): the admin API role cannot mint sessions.
+    admin_login_database_url: PostgresDsn | None = None
+    # Client networks allowed to reach /admin (also enforced by Caddy). Unset: private and
+    # loopback ranges in dev/test, nobody elsewhere - production must list them explicitly.
+    admin_allowed_networks: list[IPvAnyNetwork] | None = None
+    rate_admin_login_per_minute: int = 10
+    # Activation/reset link in the QR and SMS; the token goes in the fragment (never logged).
+    activation_link_base: str = "labtrack://activate"
 
     @field_validator(
         "sentry_dsn",
@@ -44,6 +52,8 @@ class Settings(BaseSettings):
         "dev_kek",
         "identity_pepper",
         "admin_database_url",
+        "admin_login_database_url",
+        "admin_allowed_networks",
         mode="before",
     )
     @classmethod

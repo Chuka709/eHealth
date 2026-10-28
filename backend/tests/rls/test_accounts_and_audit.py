@@ -156,7 +156,9 @@ async def test_admin_actions_are_visible_to_their_target_only(
         await make_user(owner_engine),
     )
     async with as_user(admin_engine, admin) as conn:
-        await conn.execute(bound_text("select admin_set_status(:u, 'locked')"), {"u": user})
+        await conn.execute(
+            bound_text("select admin_set_status(:u, 'locked', 'other')"), {"u": user}
+        )
     async with as_user(app_engine, user) as conn:
         assert await scalar(conn, bound_text("select count(*) from my_admin_actions()")) == 1
     async with as_user(app_engine, other) as conn:

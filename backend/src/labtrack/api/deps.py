@@ -50,6 +50,10 @@ async def current_claims(
         ).scalar_one()
     if not alive:
         raise AppError(401, "auth.session_invalid")
+    # Admins never get a user session (0006); should one appear, it must not reach user or
+    # patient routes (CLAUDE.md 2a).
+    if claims.role not in {"user", "doctor"}:
+        raise AppError(403, "auth.forbidden")
     return claims
 
 
@@ -77,6 +81,22 @@ async def user_db(
 def client_ip(request: Request) -> str | None:
     # uvicorn rewrites request.client from X-Forwarded-For only for FORWARDED_ALLOW_IPS (Caddy).
     return request.client.host if request.client else None
+
+
+# The admin web (BFF) keeps the admin session in this httpOnly cookie and sends it to the
+# admin API as a bearer token.
+ADMIN_SESSION_COOKIE = "__Host-labtrack_admin"
+
+
+def presented_credentials(request: Request) -> list[str]:
+    """Bearer token and admin cookie values on a request (checked against admin sessions)."""
+    values = []
+    auth = request.headers.get("authorization", "")
+    if auth[:7].lower() == "bearer ":
+        values.append(auth[7:].strip())
+    if cookie := request.cookies.get(ADMIN_SESSION_COOKIE):
+        values.append(cookie)
+    return [v for v in values if 0 < len(v) <= 512]  # noqa: PLR2004
 
 
 Claims = Annotated[AccessClaims, Depends(current_claims)]

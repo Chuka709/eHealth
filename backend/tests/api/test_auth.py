@@ -9,6 +9,7 @@ from httpx import AsyncClient, Response
 from sqlalchemy.ext.asyncio import AsyncEngine
 
 from labtrack.db.sql import bound_text
+from tests.admin_support import open_admin_session, set_admin_context
 
 from .conftest import PASSWORD, ClientFactory, login_body, make_active_user
 
@@ -220,10 +221,9 @@ async def test_admin_reset_is_reported_to_the_old_device(
         )
     async with client_from() as c:
         old = (await _login(c, username)).json()
+        session = await open_admin_session(owner_engine, admin)
         async with admin_engine.connect() as conn, conn.begin():
-            await conn.execute(
-                bound_text("select set_config('app.user_id', :a, true)"), {"a": str(admin)}
-            )
+            await set_admin_context(conn, session)
             check = (
                 await conn.execute(
                     bound_text("select * from admin_identity_check(:u, 'УБ90010101', :p)"),
@@ -232,7 +232,10 @@ async def test_admin_reset_is_reported_to_the_old_device(
             ).one()
             raw = secrets.token_urlsafe(32)
             await conn.execute(
-                bound_text("select admin_issue_token(:u, 'admin_reset', 'sms', :h, :c)"),
+                bound_text(
+                    "select admin_issue_token(:u, 'admin_reset', 'sms', :h, :c, 'forgot_password',"
+                    " '198.51.100.1')"
+                ),
                 {"u": uid, "h": hashlib.sha256(raw.encode()).hexdigest(), "c": check.check_id},
             )
         r = await c.post("/api/v1/auth/refresh", json={"refresh_token": old["refresh_token"]})
@@ -254,18 +257,22 @@ async def test_activation_checks_the_token_first_then_the_password_policy(
     admin, _ = await make_active_user(owner_engine, role="super_admin")
     raw = secrets.token_urlsafe(32)
     username = f"a{secrets.token_hex(5)}"
+    session = await open_admin_session(owner_engine, admin)
     async with admin_engine.connect() as conn, conn.begin():
-        await conn.execute(
-            bound_text("select set_config('app.user_id', :a, true)"), {"a": str(admin)}
-        )
+        await set_admin_context(conn, session)
         uid = (
             await conn.execute(
-                bound_text("select admin_create_user(:n, 'Сараа', 'user', null, null, null, null)"),
+                bound_text(
+                    "select admin_create_user(gen_random_uuid(), :n, 'Сараа', 'user',"
+                    " null, null, null, null)"
+                ),
                 {"n": username},
             )
         ).scalar_one()
         await conn.execute(
-            bound_text("select admin_issue_token(:u, 'activation', 'in_person_qr', :h, null)"),
+            bound_text(
+                "select admin_issue_token(:u, 'activation', 'in_person_qr', :h, null, null, null)"
+            ),
             {"u": uid, "h": hashlib.sha256(raw.encode()).hexdigest()},
         )
     async with client_from() as c:

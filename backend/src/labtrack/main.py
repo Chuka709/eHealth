@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 
 from labtrack import __version__
-from labtrack.api import auth, health
+from labtrack.api import admin, auth, health
 from labtrack.api.errors import install_error_handlers
 from labtrack.config import get_settings
 from labtrack.logging import configure_logging
@@ -25,4 +25,5 @@ def create_app() -> FastAPI:
     install_error_handlers(app)
     app.include_router(health.router, prefix=settings.api_prefix)
     app.include_router(auth.router, prefix=settings.api_prefix)
+    app.include_router(admin.router, prefix=settings.api_prefix)
     return app

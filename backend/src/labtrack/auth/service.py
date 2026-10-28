@@ -185,24 +185,50 @@ async def logout(db: AsyncSession, *, refresh_token: str) -> None:
     )
 
 
-async def activate(db: AsyncSession, *, token: str, new_password: str) -> None:
+async def activate(
+    db: AsyncSession, *, token: str, new_password: str, ip: str | None, presented: list[str]
+) -> None:
     token_hash = sha256_hex(token)
     owner = (
         await db.execute(bound_text("select * from activation_token_user(:h)"), {"h": token_hash})
     ).one_or_none()
     if owner is None:
+        # Counted per address so token guessing shows up (the rate limit is the barrier).
+        await db.execute(
+            bound_text(
+                "select auth_record_failure('activation', null, cast(:ip as inet), null, false)"
+            ),
+            {"ip": client_network(ip)},
+        )
+        await db.commit()
         raise AppError(400, "auth.activation_invalid")
     problems = password_problems(new_password, owner.username, owner.display_name)
     if problems:
         raise AppError(422, problems[0])
     password_hash = await run_hashing(hash_password, new_password)
-    try:
-        await db.execute(
-            bound_text("select activation_consume(:h, :pw)"),
-            {"h": token_hash, "pw": password_hash},
+    admin_present = False
+    for credential in presented:
+        admin_present = admin_present or bool(
+            (
+                await db.execute(
+                    bound_text("select admin_token_is_live(:h)"), {"h": sha256_hex(credential)}
+                )
+            ).scalar_one()
         )
-    except DBAPIError as exc:  # invalid/expired/used token or inactive account: one answer
+    try:
+        result = (
+            await db.execute(
+                bound_text("select * from activation_consume(:h, :pw, cast(:ip as inet), :adm)"),
+                {"h": token_hash, "pw": password_hash, "ip": ip, "adm": admin_present},
+            )
+        ).one()
+    except DBAPIError as exc:
         raise AppError(400, "auth.activation_invalid") from exc
+    if result.status != "ok":
+        # invalid/expired/used token, inactive account, or the issuing admin using it
+        # (docs/04 §6.1: the token is revoked and reported - keep that before raising).
+        await db.commit()
+        raise AppError(400, "auth.activation_invalid")
 
 
 async def change_password(

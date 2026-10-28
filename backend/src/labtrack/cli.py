@@ -4,6 +4,7 @@ import argparse
 import asyncio
 import json
 import os
+import re
 import sys
 from pathlib import Path
 
@@ -38,6 +39,33 @@ def _seed(seed_dir: Path) -> int:
     return 0
 
 
+def _create_admin(username: str, role: str) -> int:
+    from labtrack.admin.cli import run  # noqa: PLC0415
+
+    url = os.environ.get("MIGRATION_DATABASE_URL")
+    if not url:
+        sys.stderr.write("MIGRATION_DATABASE_URL is not set (run in the migrate container)\n")
+        return 2
+    if not re.fullmatch(r"[a-z0-9._]{3,32}", username):
+        sys.stderr.write("username: a-z 0-9 . _ (3-32)\n")
+        return 2
+    return run(url, username, role)
+
+
+def _unlock_admin(username: str) -> int:
+    from labtrack.admin.cli import unlock_admin  # noqa: PLC0415
+
+    url = os.environ.get("MIGRATION_DATABASE_URL")
+    if not url:
+        sys.stderr.write("MIGRATION_DATABASE_URL is not set (run in the migrate container)\n")
+        return 2
+    if not asyncio.run(unlock_admin(url, username)):
+        sys.stderr.write("no such admin\n")
+        return 1
+    sys.stdout.write("unlocked\n")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="labtrack")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -45,8 +73,11 @@ def main(argv: list[str] | None = None) -> int:
     p_openapi.add_argument("out", type=Path)
     p_seed = sub.add_parser("seed", help="load seed/ catalogs as labtrack_owner (idempotent)")
     p_seed.add_argument("--dir", type=Path, default=Path(os.environ.get("SEED_DIR", "/seed")))
-    p_admin = sub.add_parser("create-admin", help="create a super admin with TOTP (Phase 1)")
+    p_admin = sub.add_parser("create-admin", help="create an admin account with TOTP")
     p_admin.add_argument("username")
+    p_admin.add_argument("--role", choices=("super_admin", "support"), default="super_admin")
+    p_unlock = sub.add_parser("unlock-admin", help="clear an admin's sign-in lockout")
+    p_unlock.add_argument("username")
 
     args = parser.parse_args(argv)
     if args.command == "openapi":
@@ -54,8 +85,9 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if args.command == "seed":
         return _seed(args.dir)
-    sys.stderr.write(f"'{args.command}' is implemented in Phase 1\n")
-    return 2
+    if args.command == "unlock-admin":
+        return _unlock_admin(args.username)
+    return _create_admin(args.username, args.role)
 
 
 if __name__ == "__main__":

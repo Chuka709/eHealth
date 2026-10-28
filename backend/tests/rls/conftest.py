@@ -15,10 +15,16 @@ import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine, create_async_engine
 
 from labtrack.db.sql import bound_text
+from tests.admin_support import open_admin_session, set_admin_context
 
 pytestmark = pytest.mark.db
 
-_REQUIRED = ("TEST_DATABASE_URL", "TEST_ADMIN_DATABASE_URL", "TEST_MAINT_DATABASE_URL")
+_REQUIRED = (
+    "TEST_DATABASE_URL",
+    "TEST_ADMIN_DATABASE_URL",
+    "TEST_ADMIN_LOGIN_DATABASE_URL",
+    "TEST_MAINT_DATABASE_URL",
+)
 
 
 def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
@@ -53,17 +59,31 @@ async def admin_engine() -> AsyncIterator[AsyncEngine]:
 
 
 @pytest.fixture(scope="session")
+async def admin_login_engine() -> AsyncIterator[AsyncEngine]:
+    engine = create_async_engine(os.environ["TEST_ADMIN_LOGIN_DATABASE_URL"])
+    yield engine
+    await engine.dispose()
+
+
+@pytest.fixture(scope="session")
 async def maint_engine() -> AsyncIterator[AsyncEngine]:
     engine = create_async_engine(os.environ["TEST_MAINT_DATABASE_URL"])
     yield engine
     await engine.dispose()
 
 
+# Admins made by make_user() get a live admin session (0006); as_user() on the labtrack_admin
+# engine begins it, so admin_* functions see the acting admin's session.
+_ADMIN_SESSIONS: dict[UUID, str] = {}
+
+
 @asynccontextmanager
 async def as_user(engine: AsyncEngine, user_id: UUID | None) -> AsyncIterator[AsyncConnection]:
     """One committed transaction as `user_id` (None = no user context)."""
     async with engine.connect() as conn, conn.begin():
-        if user_id is not None:
+        if user_id in _ADMIN_SESSIONS and engine.url.username == "labtrack_admin":
+            await set_admin_context(conn, _ADMIN_SESSIONS[user_id])
+        elif user_id is not None:
             await conn.execute(
                 bound_text("select set_config('app.user_id', :uid, true)"), {"uid": str(user_id)}
             )
@@ -89,6 +109,8 @@ async def make_user(owner_engine: AsyncEngine, role: str = "user") -> UUID:
             ),
             {"u": f"t{uuid4().hex[:12]}", "r": role},
         )
+    if role in {"super_admin", "support"}:
+        _ADMIN_SESSIONS[uid] = await open_admin_session(owner_engine, uid)
     return uid
 
 

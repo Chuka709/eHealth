@@ -30,7 +30,10 @@ async def _create(admin_engine: AsyncEngine, admin: UUID, *, nid: str | None = N
     async with as_user(admin_engine, admin) as conn:
         uid: UUID = await scalar(
             conn,
-            bound_text("select admin_create_user(:u, 'Бат', 'user', null, '1234', :nid, :pep)"),
+            bound_text(
+                "select admin_create_user(gen_random_uuid(), :u, 'Бат', 'user', null, '1234',"
+                " :nid, :pep)"
+            ),
             {"u": f"n{uuid4().hex[:10]}", "nid": nid, "pep": PEPPER},
         )
     return uid
@@ -61,8 +64,16 @@ async def _issue(
     async with as_user(admin_engine, admin) as conn:
         expires: datetime = await scalar(
             conn,
-            bound_text("select admin_issue_token(:u, :p, :c, :h, :ic)"),
-            {"u": user, "p": purpose, "c": channel, "h": token_hash, "ic": check_id},
+            bound_text("select admin_issue_token(:u, :p, :c, :h, :ic, :r, cast(:ip as inet))"),
+            {
+                "u": user,
+                "p": purpose,
+                "c": channel,
+                "h": token_hash,
+                "ic": check_id,
+                "r": "forgot_password" if purpose == "admin_reset" else None,
+                "ip": "198.51.100.1",
+            },
         )
     return expires
 
@@ -124,7 +135,9 @@ async def test_new_account_is_activated_by_the_user_not_the_admin(
     assert expires - datetime.now(UTC) <= timedelta(minutes=15)
     async with app_engine.connect() as conn, conn.begin():
         uid = await scalar(
-            conn, bound_text("select activation_consume(:h, :pw)"), {"h": h, "pw": ARGON}
+            conn,
+            bound_text("select user_id from activation_consume(:h, :pw, null, false)"),
+            {"h": h, "pw": ARGON},
         )
     assert uid == user
     async with as_user(app_engine, user) as conn:
@@ -132,11 +145,13 @@ async def test_new_account_is_activated_by_the_user_not_the_admin(
         profiles = await scalar(conn, bound_text("select count(*) from patients"))
     assert (status, profiles) == ("active", 1)
     # single use
-    with pytest.raises(DBAPIError, match="invalid or expired token"):
-        async with app_engine.connect() as conn, conn.begin():
-            await conn.execute(
-                bound_text("select activation_consume(:h, :pw)"), {"h": h, "pw": ARGON}
-            )
+    async with app_engine.connect() as conn, conn.begin():
+        again = await scalar(
+            conn,
+            bound_text("select status from activation_consume(:h, :pw, null, false)"),
+            {"h": h, "pw": ARGON},
+        )
+    assert again == "invalid"
     assert raw  # the raw token only ever lives in the QR / SMS
 
 
@@ -164,7 +179,10 @@ async def test_activation_requires_an_argon2id_hash(
     await _issue(admin_engine, admin, user, "activation", h)
     with pytest.raises(DBAPIError, match="argon2id"):
         async with app_engine.connect() as conn, conn.begin():
-            await conn.execute(bound_text("select activation_consume(:h, 'plaintext')"), {"h": h})
+            await conn.execute(
+                bound_text("select * from activation_consume(:h, 'plaintext', null, false)"),
+                {"h": h},
+            )
 
 
 # --- identity check and reset -------------------------------------------------------------------
@@ -217,7 +235,10 @@ async def test_reset_kills_the_old_password_and_every_session(
     h1 = _token()[1]
     await _issue(admin_engine, admin, user, "activation", h1)
     async with app_engine.connect() as conn, conn.begin():
-        await conn.execute(bound_text("select activation_consume(:h, :pw)"), {"h": h1, "pw": ARGON})
+        await conn.execute(
+            bound_text("select user_id from activation_consume(:h, :pw, null, false)"),
+            {"h": h1, "pw": ARGON},
+        )
     async with owner_engine.connect() as conn, conn.begin():
         await conn.execute(
             bound_text(
@@ -226,9 +247,11 @@ async def test_reset_kills_the_old_password_and_every_session(
             ),
             {"u": user, "h": uuid4().hex},
         )
-    check_id, ok = await _check(admin_engine, admin, user, NID)
+    # a different admin than the one who enrolled the national id at creation (0006)
+    second = await make_user(owner_engine, "super_admin")
+    check_id, ok = await _check(admin_engine, second, user, NID)
     assert ok
-    expires = await _issue(admin_engine, admin, user, "admin_reset", _token()[1], check_id, "sms")
+    expires = await _issue(admin_engine, second, user, "admin_reset", _token()[1], check_id, "sms")
     assert expires - datetime.now(UTC) <= timedelta(hours=24)
     async with owner_engine.connect() as conn:
         row = (
@@ -259,13 +282,13 @@ async def test_admins_cannot_target_other_admins_or_create_them(
     with pytest.raises(DBAPIError, match="target not allowed"):
         async with as_user(admin_engine, admin) as conn:
             await conn.execute(
-                bound_text("select admin_set_status(:u, 'disabled')"), {"u": other_admin}
+                bound_text("select admin_set_status(:u, 'disabled', 'other')"), {"u": other_admin}
             )
     with pytest.raises(DBAPIError, match="CLI only"):
         async with as_user(admin_engine, admin) as conn:
             await conn.execute(
                 bound_text(
-                    "select admin_create_user('newboss', 'B', 'super_admin',"
+                    "select admin_create_user(gen_random_uuid(), 'newboss', 'B', 'super_admin',"
                     " null, null, null, null)"
                 )
             )
@@ -280,12 +303,15 @@ async def test_support_can_only_unlock(
         with pytest.raises(DBAPIError, match="admin not allowed"):
             async with as_user(admin_engine, support) as conn:
                 await conn.execute(
-                    bound_text("select admin_set_status(:u, :s)"), {"u": user, "s": status}
+                    bound_text("select admin_set_status(:u, :s, 'other')"), {"u": user, "s": status}
                 )
     with pytest.raises(DBAPIError, match="admin not allowed"):
         async with as_user(admin_engine, support) as conn:
             await conn.execute(
-                bound_text("select admin_create_user('x1x', 'X', 'user', null, null, null, null)")
+                bound_text(
+                    "select admin_create_user(gen_random_uuid(), 'x1x', 'X', 'user',"
+                    " null, null, null, null)"
+                )
             )
 
 
@@ -298,7 +324,8 @@ async def test_admin_functions_need_an_active_admin_in_context(
             async with as_user(admin_engine, actor) as conn:
                 await conn.execute(
                     bound_text(
-                        "select admin_create_user('x2x', 'X', 'user', null, null, null, null)"
+                        "select admin_create_user(gen_random_uuid(), 'x2x', 'X', 'user',"
+                        " null, null, null, null)"
                     )
                 )
 
@@ -332,7 +359,7 @@ async def test_no_security_definer_function_is_executable_by_public(
 @pytest.mark.parametrize(
     "sql",
     [
-        bound_text("select admin_set_status(gen_random_uuid(), 'locked')"),
+        bound_text("select admin_set_status(gen_random_uuid(), 'locked', 'other')"),
         bound_text("select admin_reveal_phone(gen_random_uuid())"),
         bound_text("select revoke_user_sessions(gen_random_uuid(), 'disabled')"),
         bound_text("select admin_audit(gen_random_uuid(), 'admin.x', null, null)"),
