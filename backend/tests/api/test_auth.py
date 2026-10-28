@@ -318,3 +318,68 @@ async def test_sessions_list_and_revoke_own_only(
         assert (
             await c.get("/api/v1/auth/me", headers=_auth(a2["access_token"]))
         ).status_code == 401
+
+
+# --- hardening from the commit review ----------------------------------------------------
+
+
+async def test_grace_allows_one_sibling_only_and_dies_with_the_session(
+    owner_engine: AsyncEngine, client_from: ClientFactory
+) -> None:
+    _, username = await make_active_user(owner_engine)
+    async with client_from() as c:
+        old = (await _login(c, username)).json()["refresh_token"]
+        rotated = await c.post("/api/v1/auth/refresh", json={"refresh_token": old})
+        assert rotated.status_code == 200
+        sibling = await c.post("/api/v1/auth/refresh", json={"refresh_token": old})
+        assert sibling.status_code == 200  # the concurrent retry
+        third = await c.post("/api/v1/auth/refresh", json={"refresh_token": old})
+        assert third.status_code == 401  # a second reuse is theft: family revoked
+        for r in (rotated, sibling):
+            dead = await c.post(
+                "/api/v1/auth/refresh", json={"refresh_token": r.json()["refresh_token"]}
+            )
+            assert dead.status_code == 401
+
+
+async def test_grace_does_not_survive_a_logout(
+    owner_engine: AsyncEngine, client_from: ClientFactory
+) -> None:
+    _, username = await make_active_user(owner_engine)
+    async with client_from() as c:
+        stolen = (await _login(c, username)).json()["refresh_token"]
+        fresh = (await c.post("/api/v1/auth/refresh", json={"refresh_token": stolen})).json()
+        await c.post("/api/v1/auth/logout", json={"refresh_token": fresh["refresh_token"]})
+        late = await c.post("/api/v1/auth/refresh", json={"refresh_token": stolen})
+    assert late.status_code == 401
+
+
+async def test_parallel_guesses_cannot_exceed_the_lockout(
+    owner_engine: AsyncEngine, client_from: ClientFactory
+) -> None:
+    _, username = await make_active_user(owner_engine)
+    async with client_from("198.51.100.200") as c:
+        results = await asyncio.gather(
+            *(_login(c, username, password=f"guess-{i:04d}") for i in range(15))
+        )
+    verified = sum(r.status_code == 401 for r in results)
+    assert verified <= 5, verified  # the rest were refused before any password check
+    assert all(r.status_code in {401, 429} for r in results)
+
+
+async def test_current_password_check_is_rate_limited(
+    owner_engine: AsyncEngine, client_from: ClientFactory
+) -> None:
+    _, username = await make_active_user(owner_engine)
+    async with client_from() as c:
+        access = (await _login(c, username)).json()["access_token"]
+        codes = []
+        for i in range(6):
+            r = await c.post(
+                "/api/v1/auth/password",
+                headers=_auth(access),
+                json={"current_password": f"wrong-{i}-pass", "new_password": NEW_PASSWORD},
+            )
+            codes.append(r.status_code)
+    assert codes[:5] == [401] * 5
+    assert codes[5] == 429

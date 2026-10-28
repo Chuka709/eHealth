@@ -70,6 +70,11 @@ async def login(
     ip: str | None,
 ) -> TokenPair:
     net = client_network(ip)
+    # Serialise attempts per username so parallel requests cannot all pass the lockout check
+    # before any failure is recorded (released at commit/rollback).
+    await db.execute(
+        bound_text("select pg_advisory_xact_lock(hashtext(lower(:u)))"), {"u": username}
+    )
     device_hash = sha256_hex(device_token) if device_token else None
     trusted = bool(
         device_hash
@@ -81,7 +86,7 @@ async def login(
     )
     counts = (
         await db.execute(
-            bound_text("select * from auth_failure_counts(:u, cast(:ip as inet), :w)"),
+            bound_text("select * from auth_failure_counts('login', :u, cast(:ip as inet), :w)"),
             {"u": username, "ip": net, "w": UNTRUSTED_WINDOW},
         )
     ).one()
@@ -188,8 +193,33 @@ async def change_password(
     current_session: UUID,
     sign_out_other_devices: bool,
 ) -> None:
+    # Re-verifying the current password is a password oracle too: same lockout as login.
+    await db.execute(
+        bound_text("select pg_advisory_xact_lock(hashtext(lower(:u)))"), {"u": username}
+    )
+    counts = (
+        await db.execute(
+            bound_text("select * from auth_failure_counts('change_password', :u, null, :w)"),
+            {"u": username, "w": UNTRUSTED_WINDOW},
+        )
+    ).one()
+    decision = lockout_decision(
+        failures_username_ip=counts.by_username_untrusted,  # per account, any address
+        failures_username_untrusted=0,
+        last_failure=counts.last_failure,
+        device_trusted=True,
+        now=datetime.now(UTC),
+    )
+    if not decision.allowed:
+        raise AppError(429, "auth.locked", retry_after=decision.retry_after)
     stored = (await db.execute(bound_text("select auth_own_password_hash()"))).scalar_one()
-    if not verify_password(current_password, stored):
+    ok = verify_password(current_password, stored)
+    await db.execute(
+        bound_text("select auth_record_attempt('change_password', :u, null, false, :ok)"),
+        {"u": username, "ok": ok},
+    )
+    if not ok:
+        await db.commit()  # keep the failure even though we raise
         raise AppError(401, INVALID_CREDENTIALS)
     problems = password_problems(new_password, username, display_name)
     if problems:

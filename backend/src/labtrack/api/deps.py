@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from labtrack.api.errors import AppError
 from labtrack.auth.tokens import AccessClaims, InvalidTokenError, decode_access_token
-from labtrack.db.session import anonymous_transaction, get_sessionmaker, user_transaction
+from labtrack.db.session import anonymous_transaction, get_sessionmaker
 from labtrack.db.sql import bound_text
 
 _bearer = HTTPBearer(auto_error=False)
@@ -56,9 +56,22 @@ async def current_claims(
 async def user_db(
     claims: Annotated[AccessClaims, Depends(current_claims)],
 ) -> AsyncGenerator[AsyncSession]:
-    """A transaction as the authenticated user (RLS applies)."""
-    async with user_transaction(claims.user_id) as session:
-        yield session
+    """A transaction as the authenticated user (RLS applies).
+
+    Same commit/rollback contract as anonymous_db; a service that commits early (to keep a
+    failed attempt) ends the user context with that transaction, so it must raise right after.
+    """
+    async with get_sessionmaker()() as session:
+        try:
+            await session.execute(
+                bound_text("select set_config('app.user_id', :uid, true)"),
+                {"uid": str(claims.user_id)},
+            )
+            yield session
+            await session.commit()
+        except BaseException:
+            await session.rollback()
+            raise
 
 
 def client_ip(request: Request) -> str | None:

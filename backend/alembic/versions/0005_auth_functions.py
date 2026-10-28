@@ -43,6 +43,8 @@ _UP = [
     """create policy trusted_devices_owner on trusted_devices for all to labtrack_owner
        using (true) with check (true)""",
     "alter table auth_attempts add column device_trusted boolean not null default false",
+    # A rotated token may be used once more within the grace window (concurrent refresh).
+    "alter table sessions add column grace_used boolean not null default false",
     # --- login -------------------------------------------------------------------------------
     f"""
     create function auth_login_lookup(p_username text)
@@ -63,14 +65,15 @@ _UP = [
     """,
     # Failure counts since the last success, for the Python lockout policy (core/security).
     f"""
-    create function auth_failure_counts(p_username text, p_ip inet, p_window interval)
+    create function auth_failure_counts(p_kind text, p_username text, p_ip inet,
+                                        p_window interval)
     returns table (by_username_ip int, by_username_untrusted int, last_failure timestamptz)
     language sql stable {_DEFINER} as $$
       with recent as (
         select * from public.auth_attempts
-        where kind = 'login' and username = p_username::citext and at > now() - p_window
+        where kind = p_kind and username = p_username::citext and at > now() - p_window
           and at > coalesce((select max(at) from public.auth_attempts
-                             where kind = 'login' and username = p_username::citext
+                             where kind = p_kind and username = p_username::citext
                                and success), '-infinity')
       )
       select
@@ -137,8 +140,13 @@ _UP = [
       end if;
       select * into u from public.users where id = s.user_id;
       if s.revoked_at is not null then
-        if s.revoked_reason = 'rotated' and s.revoked_at > now() - interval '20 seconds' then
-          null;  -- concurrent refresh of the same token: issue a sibling below
+        if s.revoked_reason = 'rotated' and s.revoked_at > now() - interval '20 seconds'
+           and not s.grace_used
+           and exists (select 1 from public.sessions r
+                       where r.id = s.replaced_by and r.revoked_at is null) then
+          -- A concurrent refresh of the same token: one sibling, and only while the session
+          -- it was rotated into is still alive (logout/reset/reuse end the grace at once).
+          update public.sessions set grace_used = true where id = s.id;
         elsif s.revoked_reason = 'rotated' then
           -- an old token came back: assume theft, end the whole family
           update public.sessions set revoked_at = now(), revoked_reason = 'reuse_detected'
@@ -220,7 +228,7 @@ _UP = [
     """grant execute on function
        auth_login_lookup(text),
        auth_record_attempt(text, text, inet, boolean, boolean),
-       auth_failure_counts(text, inet, interval),
+       auth_failure_counts(text, text, inet, interval),
        device_is_trusted(text, text),
        device_trust(uuid, text),
        session_create(uuid, text, text, text, boolean, interval),
@@ -248,10 +256,11 @@ def downgrade() -> None:
         "session_create(uuid, text, text, text, boolean, interval)",
         "device_trust(uuid, text)",
         "device_is_trusted(text, text)",
-        "auth_failure_counts(text, inet, interval)",
+        "auth_failure_counts(text, text, inet, interval)",
         "auth_record_attempt(text, text, inet, boolean, boolean)",
         "auth_login_lookup(text)",
     ):
         op.execute(f"drop function if exists {fn}")
+    op.execute("alter table sessions drop column if exists grace_used")
     op.execute("alter table auth_attempts drop column if exists device_trusted")
     op.execute("drop table if exists trusted_devices")
