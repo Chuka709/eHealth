@@ -13,7 +13,8 @@ def _openapi(out: Path) -> None:
     from labtrack.main import create_app  # noqa: PLC0415 - after env is set
 
     schema = create_app().openapi()
-    out.write_text(json.dumps(schema, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    text = json.dumps(schema, ensure_ascii=False, indent=2) + "\n"
+    out.write_text(text, encoding="utf-8", newline="\n")  # LF on Windows too
 
 
 def main(argv: list[str] | None = None) -> int:

@@ -17,7 +17,7 @@ COPY src ./src
 RUN --mount=type=cache,target=/root/.cache/uv uv sync --frozen --no-dev
 USER app
 EXPOSE 8000
-CMD ["uvicorn", "labtrack.main:create_app", "--factory", "--host", "0.0.0.0", "--port", "8000", "--proxy-headers", "--forwarded-allow-ips", "*"]
+CMD ["uvicorn", "labtrack.main:create_app", "--factory", "--host", "0.0.0.0", "--port", "8000", "--proxy-headers", "--forwarded-allow-ips", "*", "--no-access-log"]
 
 # Dev/test image: + dev deps; src and tests are bind-mounted by compose
 FROM base AS dev
@@ -30,4 +30,4 @@ COPY tests ./tests
 RUN --mount=type=cache,target=/root/.cache/uv uv sync --frozen
 USER app
 EXPOSE 8000
-CMD ["uvicorn", "labtrack.main:create_app", "--factory", "--host", "0.0.0.0", "--port", "8000", "--reload", "--reload-dir", "/app/src"]
+CMD ["uvicorn", "labtrack.main:create_app", "--factory", "--host", "0.0.0.0", "--port", "8000", "--reload", "--reload-dir", "/app/src", "--no-access-log"]

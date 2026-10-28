@@ -1,6 +1,9 @@
 set dotenv-load := true
 set windows-shell := ["powershell.exe", "-NoLogo", "-NoProfile", "-Command"]
 
+# PowerShell blocks the pnpm .ps1 shim under the default execution policy; the .cmd shim needs no policy change.
+pnpm := if os() == "windows" { "pnpm.cmd" } else { "pnpm" }
+
 compose := "docker compose -f infra/docker-compose.yml --env-file .env"
 api := compose + " run --rm --no-deps api"
 
@@ -10,7 +13,7 @@ default:
 # One-time: random dev secrets + JS deps + local Python env (LSP/ruff/mypy only)
 init:
     python scripts/init_env.py
-    pnpm install
+    {{pnpm}} install
     cd backend; uv sync
 
 # --- Infra ---
@@ -49,22 +52,22 @@ lint-api:
 
 # --- JS ---
 lint-js:
-    pnpm exec biome check .
-    pnpm -r --parallel typecheck
+    {{pnpm}} exec biome check .
+    {{pnpm}} -r --parallel typecheck
 
 test-js:
-    pnpm -r --parallel test
+    {{pnpm}} -r --parallel test
 
 mobile:
-    pnpm --filter mobile start
+    {{pnpm}} --filter mobile start
 
 web:
-    pnpm --filter web dev
+    {{pnpm}} --filter web dev
 
 # Regenerate the TypeScript API client from the backend's OpenAPI schema (no DB needed)
 gen-client:
     cd backend; uv run python -m labtrack.cli openapi ../packages/shared/openapi.json
-    pnpm --filter @labtrack/shared gen
+    {{pnpm}} --filter @labtrack/shared gen
 
 # CI: fail if the committed client is stale
 check-client: gen-client

@@ -30,7 +30,10 @@ for (const scheme of ["light", "dark"] as Scheme[]) {
   });
 
   test(`${scheme}: every flag badge meets AA`, () => {
-    for (const [flag, { fg, bg }] of Object.entries(p.flag) as [Flag, { fg: string; bg: string }][]) {
+    for (const [flag, { fg, bg }] of Object.entries(p.flag) as [
+      Flag,
+      { fg: string; bg: string },
+    ][]) {
       assert.ok(contrast(fg, bg) >= AA_TEXT, `${scheme}/${flag}: ${contrast(fg, bg).toFixed(2)}`);
     }
   });

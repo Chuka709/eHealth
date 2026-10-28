@@ -14,7 +14,9 @@ beforeEach(() => {
 });
 
 function wrap(children: ReactNode) {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: Number.POSITIVE_INFINITY } } });
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false, gcTime: Number.POSITIVE_INFINITY } },
+  });
   return (
     <I18nProvider>
       <QueryClientProvider client={client}>{children}</QueryClientProvider>

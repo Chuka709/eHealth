@@ -18,3 +18,8 @@ minimumReleaseAgeExclude:
   - expo@58.0.20
 # React Native / Metro / Jest resolve most reliably from a hoisted node_modules.
 nodeLinker: hoisted
+# Install scripts are opt-in (supply-chain hardening). Native binaries we rely on ship prebuilt.
+allowBuilds:
+  sharp: false
+  unrs-resolver: false
+  '@parcel/watcher': false

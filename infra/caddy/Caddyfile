@@ -15,9 +15,7 @@
 		format filter {
 			# Share-link tokens and query strings never reach logs (docs/04 §6.7).
 			fields {
-				request>uri query {
-					delete *
-				}
+				request>uri regexp "\?.*$" "?[redacted]"
 				request>headers>Authorization delete
 				request>headers>Cookie delete
 			}

@@ -21,7 +21,9 @@ test("no message is empty", () => {
   for (const lang of ["mn", "en"]) {
     const tree = load(lang);
     for (const key of keys(tree)) {
-      const value = key.split(".").reduce<string | Tree>((node, part) => (node as Tree)[part] as string | Tree, tree);
+      const value = key
+        .split(".")
+        .reduce<string | Tree>((node, part) => (node as Tree)[part] as string | Tree, tree);
       assert.ok(typeof value === "string" && value.trim().length > 0, `${lang}:${key}`);
     }
   }
