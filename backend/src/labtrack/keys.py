@@ -30,6 +30,9 @@ _WRAP_CONTEXT: Final = b"labtrack-dek:"
 
 
 class KeyProvider(Protocol):
+    """Contract: unwrap must not cache data keys. Admin sign-in decrypts a fixed dummy secret
+    when the password is wrong; a cache would make that path faster than the real one."""
+
     @property
     def current_kek_id(self) -> str: ...
 

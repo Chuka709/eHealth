@@ -404,11 +404,35 @@ _UP = [
       actor uuid := public.admin_actor(array['super_admin','support']::public.user_role[]);
     begin
       perform public.admin_target(p_user_id);
+      if (select count(*) from public.audit_logs
+          where action = 'admin.lockout_clear' and target_user_id = p_user_id
+            and at > now() - interval '1 day') >= 3 then
+        raise exception 'lockout clear limit reached' using errcode = '54000';
+      end if;
       insert into public.auth_attempts (kind, username, success)
         select 'login', username, true from public.users where id = p_user_id;
       insert into public.auth_attempts (kind, username, success)
         select 'admin_unlock', username, true from public.users where id = p_user_id;
       perform public.admin_audit(actor, 'admin.lockout_clear', p_user_id, null);
+    end $$
+    """,
+    # 0004's reveal with a daily quota per admin (bulk harvesting of numbers is refused).
+    f"""
+    create or replace function admin_reveal_phone(p_user_id uuid) returns bytea
+    language plpgsql volatile {_DEFINER} as $$
+    declare
+      actor uuid := public.admin_actor(array['super_admin','support']::public.user_role[]);
+      phone bytea;
+    begin
+      perform public.admin_target(p_user_id);
+      if (select count(*) from public.audit_logs
+          where action = 'admin.phone_reveal' and actor_id = actor
+            and at > now() - interval '1 day') >= 20 then
+        raise exception 'phone reveal limit reached' using errcode = '54000';
+      end if;
+      select contact_phone_enc into phone from public.users where id = p_user_id;
+      perform public.admin_audit(actor, 'admin.phone_reveal', p_user_id, null);
+      return phone;
     end $$
     """,
     # CSV import: only the file hash and the row count are recorded (the file itself is PHI).
@@ -667,6 +691,7 @@ def downgrade() -> None:
         "admin_log_import(text, int)",
         "admin_clear_lockout(uuid)",
         "admin_set_status(uuid, text, text)",
+        "admin_reveal_phone(uuid)",
         "admin_issue_token(uuid, text, text, text, bigint, text, inet)",
         "admin_set_identity(uuid, text, text)",
         "admin_create_user(uuid, text, text, user_role, bytea, text, text, text)",
@@ -692,6 +717,7 @@ def downgrade() -> None:
             "admin_create_user",
             "admin_issue_token",
             "admin_set_status",
+            "admin_reveal_phone",
             "activation_consume",
         ),
     ) + _definitions(
@@ -705,7 +731,8 @@ def downgrade() -> None:
         """grant execute on function
            admin_create_user(text, text, user_role, bytea, text, text, text),
            admin_issue_token(uuid, text, text, text, bigint),
-           admin_set_status(uuid, text)
+           admin_set_status(uuid, text),
+           admin_reveal_phone(uuid)
            to labtrack_admin"""
     )
     op.execute(

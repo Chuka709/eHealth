@@ -7,7 +7,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query, Request, Response, status
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, ConfigDict, StringConstraints
+from pydantic import AfterValidator, BaseModel, ConfigDict, StringConstraints
 
 from labtrack.admin import auth as admin_auth
 from labtrack.admin import csv_import, users
@@ -87,7 +87,18 @@ async def me(ctx: Admin) -> AdminMeOut:
 
 # --- users (docs/04 §1) -----------------------------------------------------------------------
 
-DisplayName = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=100)]
+
+def _display_name(value: str) -> str:
+    if not csv_import.valid_display_name(value):
+        raise ValueError("display_name")
+    return value
+
+
+DisplayName = Annotated[
+    str,
+    StringConstraints(strip_whitespace=True, min_length=1, max_length=100),
+    AfterValidator(_display_name),
+]
 # Mongolian national id (РД): two Cyrillic letters + 8 digits; compared case-insensitively.
 NationalId = Annotated[
     str,
@@ -172,6 +183,8 @@ class TokenOut(BaseModel):
     expires_at: datetime
     # in-person QR only: shown once on the admin's screen as a QR code
     link: str | None
+    # False: the user got no SMS (link or reset notice) - tell them another way
+    notice_sent: bool
 
 
 class PhoneOut(BaseModel):
@@ -289,7 +302,7 @@ async def issue_token(
         reason=body.reason,
         admin_ip=client_ip(request),
     )
-    return TokenOut(expires_at=issued.expires_at, link=issued.link)
+    return TokenOut(expires_at=issued.expires_at, link=issued.link, notice_sent=issued.notice_sent)
 
 
 @router.post("/users/{user_id}/phone", response_model=PhoneOut, responses=ERRORS)
@@ -347,12 +360,20 @@ _CSV_BODY = {
 
 
 async def _csv_body(request: Request) -> bytes:
+    """Read before the admin transaction opens (declared first), so a slow upload holds no
+    database connection or session lock."""
+    declared = request.headers.get("content-length", "")
+    if declared.isdigit() and int(declared) > csv_import.MAX_BYTES:
+        raise AppError(413, "admin.import_too_large")
     data = bytearray()
     async for chunk in request.stream():
         data.extend(chunk)
         if len(data) > csv_import.MAX_BYTES:
             raise AppError(413, "admin.import_too_large")
     return bytes(data)
+
+
+CsvBody = Annotated[bytes, Depends(_csv_body)]
 
 
 def _problems(problems: list[csv_import.Problem]) -> list[ImportProblemOut]:
@@ -365,10 +386,10 @@ def _problems(problems: list[csv_import.Problem]) -> list[ImportProblemOut]:
     responses=ERRORS,
     openapi_extra=_CSV_BODY,
 )
-async def import_preview(request: Request, ctx: SuperAdmin) -> ImportPreviewOut:
+async def import_preview(body: CsvBody, ctx: SuperAdmin) -> ImportPreviewOut:
     """Validate a CSV without creating anything. Errors name the row and field, not the value."""
     del ctx  # authorisation only
-    parsed = csv_import.parse(await _csv_body(request))
+    parsed = csv_import.parse(body)
     return ImportPreviewOut(
         sha256=parsed.sha256,
         rows=[
@@ -392,7 +413,7 @@ async def import_preview(request: Request, ctx: SuperAdmin) -> ImportPreviewOut:
     openapi_extra=_CSV_BODY,
 )
 async def import_commit(
-    request: Request,
+    body: CsvBody,
     ctx: SuperAdmin,
     sha256: Annotated[str, Query(pattern=r"^[0-9a-f]{64}$")],
 ) -> ImportResultOut | JSONResponse:
@@ -400,7 +421,7 @@ async def import_commit(
 
     `sha256` from the preview makes sure the admin commits exactly the file they reviewed.
     """
-    parsed = csv_import.parse(await _csv_body(request))
+    parsed = csv_import.parse(body)
     if parsed.sha256 != sha256:
         raise AppError(409, "admin.import_changed")
     problems = await users.import_users(ctx.db, parsed)

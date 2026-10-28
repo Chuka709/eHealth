@@ -1,4 +1,6 @@
-from fastapi import FastAPI
+from collections.abc import Awaitable, Callable
+
+from fastapi import FastAPI, Request, Response
 
 from labtrack import __version__
 from labtrack.api import admin, auth, health
@@ -23,6 +25,18 @@ def create_app() -> FastAPI:
         redoc_url=None,
     )
     install_error_handlers(app)
+
+    @app.middleware("http")
+    async def _no_store(
+        request: Request, call_next: Callable[[Request], Awaitable[Response]]
+    ) -> Response:
+        # Tokens, phone numbers and account lists must not sit in browser or proxy caches.
+        response = await call_next(request)
+        if request.url.path.startswith(f"{settings.api_prefix}/"):
+            response.headers["Cache-Control"] = "no-store"
+            response.headers["Pragma"] = "no-cache"
+        return response
+
     app.include_router(health.router, prefix=settings.api_prefix)
     app.include_router(auth.router, prefix=settings.api_prefix)
     app.include_router(admin.router, prefix=settings.api_prefix)

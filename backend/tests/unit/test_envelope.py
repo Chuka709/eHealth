@@ -1,7 +1,7 @@
 import os
 
 import pytest
-from hypothesis import given
+from hypothesis import given, settings
 from hypothesis import strategies as st
 
 from labtrack.core.envelope import EnvelopeError, field_aad, parse
@@ -12,6 +12,7 @@ PROVIDER = LocalKeyProvider({"k1": KEK}, "k1")
 AAD = field_aad("users", "contact_phone_enc", "0b7f3c9a-1111-4a4a-8888-000000000001")
 
 
+@settings(deadline=None)  # AES-GCM + key wrap; slow first call on Windows
 @given(st.text(max_size=500))
 async def test_round_trip(plaintext: str) -> None:
     blob = await encrypt_field(PROVIDER, plaintext, AAD)
@@ -56,6 +57,7 @@ async def test_rotation_keeps_old_values_readable() -> None:
     assert await decrypt_field(rotated, new, AAD) == "after"
 
 
+@settings(deadline=None)
 @given(st.binary(max_size=300), st.integers(min_value=0))
 async def test_any_tampering_is_rejected(noise: bytes, position: int) -> None:
     blob = bytearray(await encrypt_field(PROVIDER, "secret", AAD))

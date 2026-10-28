@@ -9,6 +9,7 @@ from datetime import datetime
 from typing import Final, Literal
 from uuid import UUID, uuid4
 
+import structlog
 from sqlalchemy.exc import DBAPIError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -20,6 +21,8 @@ from labtrack.core.security import new_opaque_token
 from labtrack.db.sql import bound_text
 from labtrack.keys import decrypt_field, encrypt_field, get_key_provider
 from labtrack.sms import SmsSender, SmsTemplate, SmsUnavailableError
+
+log = structlog.get_logger(__name__)
 
 Purpose = Literal["activation", "admin_reset"]
 Channel = Literal["in_person_qr", "sms"]
@@ -34,21 +37,36 @@ _DB_ERRORS: Final = (
     ("another admin must reset", 409, "admin.reset_needs_other_admin"),
     ("identity already set", 409, "admin.identity_already_set"),
     ("no identity data", 409, "admin.identity_in_person"),
-    ("limit reached", 429, "admin.identity_check_limit"),
+    ("identity check limit reached", 429, "admin.identity_check_limit"),
+    ("phone reveal limit reached", 429, "admin.phone_reveal_limit"),
+    ("lockout clear limit reached", 429, "admin.lockout_clear_limit"),
     ("status change not allowed", 409, "admin.status_change_not_allowed"),
     ("reason required", 422, "admin.reason_required"),
     ("admin address required", 400, "admin.address_required"),
-    ("users_username_key", 409, "admin.username_taken"),
-    ("users_username_check", 422, "validation"),
 )
+# Constraint violations by constraint name (never by message: driver text carries row values).
+_CONSTRAINTS: Final = {
+    "users_username_key": (409, "admin.username_taken"),
+    "users_username_check": (422, "validation"),
+}
 
 
 def _db_error(exc: DBAPIError) -> AppError:
-    text = str(exc.orig)
-    for needle, status, code in _DB_ERRORS:
-        if needle in text:
-            return AppError(status, code)
-    raise exc
+    # asyncpg's own exception (sqlstate, constraint_name) sits behind SQLAlchemy's adapter
+    pg = getattr(exc.orig, "__cause__", None) or exc.orig
+    constraint = getattr(pg, "constraint_name", None)
+    if constraint in _CONSTRAINTS:
+        return AppError(*_CONSTRAINTS[constraint])
+    sqlstate = getattr(pg, "sqlstate", None)
+    if sqlstate in {"42501", "22023", "54000", "28000"}:
+        # raised by our own definer functions: their messages hold no user data
+        text = str(getattr(pg, "message", "") or "")
+        for needle, status, code in _DB_ERRORS:
+            if needle in text:
+                return AppError(status, code)
+    # Anything else: no driver text anywhere (it may contain "Failing row contains (...)").
+    log.error("admin_db_error", sqlstate=sqlstate, constraint=constraint)
+    return AppError(500, "internal")
 
 
 def normalise_phone(raw: str) -> str:
@@ -257,6 +275,10 @@ class IssuedToken:
     expires_at: datetime
     # Only for an in-person QR shown on the admin's screen; an SMS token never comes back.
     link: str | None
+    # SMS link delivered, or for an in-person reset the notice to the registered phone. False
+    # means the user was not told by SMS (no gateway yet - Q13 - or it failed): the admin
+    # tells them another way.
+    notice_sent: bool = False
 
 
 def activation_link(token: str) -> str:
@@ -288,7 +310,7 @@ async def issue_token(
             await db.execute(
                 bound_text(
                     "select contact_phone_last4 is not null from users"
-                    " where id = :u and role in ('user','doctor')"
+                    " where id = :u and role in ('user','doctor') and deleted_at is null"
                 ),
                 {"u": user_id},
             )
@@ -316,30 +338,43 @@ async def issue_token(
     phone: str | None = None
     if sms.available and (channel == "sms" or purpose == "admin_reset"):
         # Only now, for the token just issued (admin_sms_target checks that, and audits).
-        blob = (
-            await db.execute(bound_text("select admin_sms_target(:u)"), {"u": user_id})
-        ).scalar_one()
+        try:
+            blob = (
+                await db.execute(bound_text("select admin_sms_target(:u)"), {"u": user_id})
+            ).scalar_one()
+        except DBAPIError as exc:
+            raise _db_error(exc) from exc
         phone = await _phone_dec(user_id, blob) if blob is not None else None
+    if channel == "sms" and phone is None:
+        raise AppError(409, "admin.no_phone")  # rolls the token back
     await db.commit()
 
-    try:
-        if channel == "sms" and phone is not None:
-            template = (
-                SmsTemplate.RESET_LINK if purpose == "admin_reset" else SmsTemplate.ACTIVATION_LINK
-            )
+    if channel == "sms" and phone is not None:
+        template = (
+            SmsTemplate.RESET_LINK if purpose == "admin_reset" else SmsTemplate.ACTIVATION_LINK
+        )
+        try:
             await sms.send(
                 user_id=user_id, phone=phone, template=template, link=activation_link(raw)
             )
-        elif purpose == "admin_reset" and phone is not None:
-            # In-person reset: the registered phone still learns about it (docs/04 §1 step 5b).
+        except SmsUnavailableError as exc:
+            raise AppError(503, "admin.sms_unavailable") from exc
+        except Exception as exc:  # gateway errors: the token stands, the admin may issue again
+            raise AppError(502, "admin.sms_failed") from exc
+        return IssuedToken(expires, None, notice_sent=True)
+
+    notice_sent = False
+    if purpose == "admin_reset" and phone is not None:
+        # In-person reset: the registered phone still learns about it (docs/04 §1 step 5b).
+        # A failed notice must not lose the QR the user is standing in front of.
+        try:
             await sms.send(
                 user_id=user_id, phone=phone, template=SmsTemplate.RESET_NOTICE, link=None
             )
-    except SmsUnavailableError as exc:
-        raise AppError(503, "admin.sms_unavailable") from exc
-    except Exception as exc:  # gateway errors: the token stands, the admin may issue again
-        raise AppError(502, "admin.sms_failed") from exc
-    return IssuedToken(expires, activation_link(raw) if channel == "in_person_qr" else None)
+            notice_sent = True
+        except Exception:
+            log.warning("reset_notice_failed", user_id=str(user_id))
+    return IssuedToken(expires, activation_link(raw), notice_sent=notice_sent)
 
 
 async def reveal_phone(db: AsyncSession, user_id: UUID) -> str | None:

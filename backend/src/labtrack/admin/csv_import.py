@@ -13,6 +13,7 @@ import csv
 import hashlib
 import io
 import re
+import unicodedata
 from collections.abc import Iterator
 from dataclasses import dataclass
 from typing import Final, Literal
@@ -22,7 +23,7 @@ MAX_ROWS: Final = 1000
 REQUIRED: Final = ("username", "display_name")
 KNOWN: Final = frozenset({"username", "display_name", "phone", "role"})
 _USERNAME = re.compile(r"^[a-z0-9._]{3,32}$")
-_NON_DIGITS = re.compile(r"\D")
+_NON_DIGITS = re.compile(r"[^0-9]")  # ASCII: "\D" keeps Arabic or full-width digits
 
 
 @dataclass(frozen=True)
@@ -47,9 +48,18 @@ class Parsed:
     problems: list[Problem]
 
 
+def valid_display_name(name: str) -> bool:
+    """1-100 characters, no control or format characters (bidi overrides, zero-width)."""
+    return 1 <= len(name) <= 100 and not any(  # noqa: PLR2004
+        unicodedata.category(ch) in {"Cc", "Cf"} for ch in name
+    )
+
+
 def normalise_phone(raw: str) -> str | None:
     """Mongolian mobile: 8 digits starting 6-9; +976 and separators are dropped."""
     digits = _NON_DIGITS.sub("", raw)
+    if not digits.isascii():
+        return None
     if len(digits) == 11 and digits.startswith("976"):  # noqa: PLR2004
         digits = digits[3:]
     if len(digits) != 8 or digits[0] not in "6789":  # noqa: PLR2004
@@ -66,7 +76,7 @@ def _row(line: int, record: dict[str, str], seen: set[str]) -> Row | list[str]:
     elif username in seen:
         problems.append("username_duplicate")
     display_name = record["display_name"]
-    if not 1 <= len(display_name) <= 100:  # noqa: PLR2004
+    if not valid_display_name(display_name):
         problems.append("display_name")
     phone_raw = record.get("phone", "")
     phone = normalise_phone(phone_raw) if phone_raw else None
@@ -112,7 +122,8 @@ def parse(data: bytes) -> Parsed:
     seen: set[str] = set()
     counted = 0
     try:
-        for line, values in enumerate(reader, start=2):
+        for values in reader:
+            line = reader.line_num  # physical line, also for quoted multi-line fields
             if not any(v.strip() for v in values):
                 continue  # blank lines
             counted += 1

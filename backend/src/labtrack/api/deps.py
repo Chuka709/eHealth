@@ -1,5 +1,6 @@
 """Request dependencies: database transactions and the authenticated user."""
 
+import ipaddress
 from collections.abc import AsyncGenerator
 from typing import Annotated
 
@@ -79,8 +80,13 @@ async def user_db(
 
 
 def client_ip(request: Request) -> str | None:
+    """The client address, or None if it is not an IP (it is cast to inet in SQL)."""
     # uvicorn rewrites request.client from X-Forwarded-For only for FORWARDED_ALLOW_IPS (Caddy).
-    return request.client.host if request.client else None
+    host = request.client.host if request.client else None
+    try:
+        return str(ipaddress.ip_address(host)) if host else None
+    except ValueError:
+        return None
 
 
 # The admin web (BFF) keeps the admin session in this httpOnly cookie and sends it to the

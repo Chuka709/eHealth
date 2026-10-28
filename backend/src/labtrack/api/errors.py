@@ -5,10 +5,14 @@ Responses never contain exception text, values or names; clients translate `mess
 
 from datetime import timedelta
 
+import structlog
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
+from sqlalchemy.exc import DBAPIError
+
+log = structlog.get_logger(__name__)
 
 
 class ErrorBody(BaseModel):
@@ -34,6 +38,16 @@ def install_error_handlers(app: FastAPI) -> None:
             status_code=exc.status,
             content=ErrorBody(code=exc.code, message_key=f"error.{exc.code}").model_dump(),
             headers=headers,
+        )
+
+    @app.exception_handler(DBAPIError)
+    async def _database(_: Request, exc: DBAPIError) -> JSONResponse:
+        # Driver text can hold row values ("Failing row contains (...)"): only the SQLSTATE
+        # is logged and nothing is returned.
+        pg = getattr(exc.orig, "__cause__", None) or exc.orig
+        log.error("db_error", sqlstate=getattr(pg, "sqlstate", None))
+        return JSONResponse(
+            status_code=500, content={"code": "internal", "message_key": "error.internal"}
         )
 
     @app.exception_handler(RequestValidationError)
