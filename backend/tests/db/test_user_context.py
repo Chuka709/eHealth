@@ -42,3 +42,29 @@ async def test_runtime_role_cannot_create_temp_tables() -> None:
                 await conn.execute(bound_text("create temp table t_shadow (x int)"))
     finally:
         await engine.dispose()
+
+
+async def test_new_functions_are_not_executable_by_runtime_roles() -> None:
+    """Security definer functions must be granted explicitly, never via PUBLIC."""
+    engine = create_async_engine(os.environ["MIGRATION_DATABASE_URL"])
+    try:
+        async with engine.connect() as conn:
+            tx = await conn.begin()
+            await conn.execute(
+                bound_text(
+                    "create function public.t_probe() returns int language sql as 'select 1'"
+                )
+            )
+            for role in ("labtrack_app", "labtrack_admin", "labtrack_maint"):
+                allowed = (
+                    await conn.execute(
+                        bound_text(
+                            "select has_function_privilege(:r, 'public.t_probe()', 'execute')"
+                        ),
+                        {"r": role},
+                    )
+                ).scalar_one()
+                assert allowed is False, role
+            await tx.rollback()
+    finally:
+        await engine.dispose()

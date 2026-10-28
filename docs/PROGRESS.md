@@ -37,9 +37,19 @@
 - [~] 0.7 CI `.github/workflows/ci.yml` (ruff, mypy, контейнер pytest + alembic up/down/up, biome, tsc, jest, vitest, expo-doctor, stale client) — **GitHub дээр ажиллуулаагүй** (репо байхгүй)
 - [x] 0.8 `backend/CLAUDE.md`, `mobile/CLAUDE.md`, `web/CLAUDE.md`
 
+**Security review (security-reviewer, 2 High + 8 Medium + 8 Low) — засагдсан, ажиллаж буй stack дээр батлагдсан**
+- [x] H1 функцийн default EXECUTE: `IN SCHEMA` хэлбэр PostgreSQL-д юу ч хийдэггүй байсан → `for role labtrack_owner` + регресс тест
+- [x] H2/M1 сүлжээ: `edge` / `backend` (internal) / `egress`; web → postgres/valkey/seaweedfs **хаалттай**, seaweedfs интернэтгүй (probe-оор шалгасан). SeaweedFS JWT signing — Phase 3 (баримт хадгалахаас өмнө)
+- [x] M1 Valkey `requirepass` · M2 Caddy `127.0.0.1` (утсаар турших: `CADDY_BIND=0.0.0.0`) · M6 proxy header зөвхөн Caddy-ийн IP-ээс
+- [x] M3 Caddy лог: query, request/response header бүгд хасагдсан (token/cookie/referer 0 олдсон) · `/readyz` гаднаас 404
+- [x] M4 stdlib логгер (uvicorn, sqlalchemy, asyncpg, celery) redaction chain-ээр; driver-ийн `DETAIL`/`Key (...)=(...)`, query string scrub; `_token/_secret/_key/_email` · M5 Sentry exception/breadcrumb/logentry scrub — тесттэй
+- [x] M7 CI action-ууд commit SHA-аар, `persist-credentials: false`, expo-doctor devDependency · M8 preview/production build `https://` биш бол унана
+- [x] Low: prod-д OpenAPI хаалттай, Redis client дахин ашиглана, compose `${VAR:?}`, SeaweedFS 4.50 pin, web файлууд root эзэмшилтэй, downgrade CREATE өгөхгүй, `.dockerignore` `.env.*`
+- [ ] L8 `tests/rls/` — Phase 1-ийн эхний PHI хүснэгттэй хамт
+
 **DoD — нотолгоо**
 - [x] `just up` — 7 сервис healthy; `curl :8080/api/v1/readyz` → `{"status":"ok","database":true,"queue":true}`; вэб хуудас Caddy-аар "Сервер хэвийн ажиллаж байна"
-- [x] Шалгалтууд: `just lint` 0 алдаа; `just test` — backend 19 (DB, migration up/down орсон), shared 6, web 3, mobile 2 — бүгд ногоон; `just check-client` цэвэр; `expo-doctor` 20/20; Android JS bundle (`expo export`) амжилттай; `next build` амжилттай
+- [x] Шалгалтууд: `just lint` 0 алдаа; `just test` — backend 23 (DB, migration up/down, эрхийн регресс орсон), shared 6, web 3, mobile 2 — бүгд ногоон; `just check-client` цэвэр; `expo-doctor` 20/20; Android JS bundle (`expo export`) амжилттай; `next build` амжилттай
 - [ ] Dev build **Android эмулятор** дээр API дуудна — AVD + `npx expo run:android` (эсвэл `eas build --profile development --platform android`) **таны машин дээр**
 - [ ] Dev build **бодит iPhone** — Apple Developer + Expo аккаунт, `eas device:create`, `eas build --profile development --platform ios` (**та**)
 - [ ] CI ногоон — GitHub репо үүсгэж push хийсний дараа (**та**)

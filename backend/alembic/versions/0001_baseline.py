@@ -30,15 +30,21 @@ def upgrade() -> None:
         "current_database()); end $$"
     )
     # Functions are not executable by default; each one is granted explicitly.
-    op.execute("alter default privileges in schema public revoke execute on functions from public")
+    # Must be the global form (no IN SCHEMA): schema-level defaults can only add privileges,
+    # never remove the built-in PUBLIC EXECUTE grant.
+    op.execute(
+        "alter default privileges for role labtrack_owner revoke execute on functions from public"
+    )
 
 
 def downgrade() -> None:
-    op.execute("alter default privileges in schema public grant execute on functions to public")
+    op.execute(
+        "alter default privileges for role labtrack_owner grant execute on functions to public"
+    )
     op.execute(
         "do $$ begin execute format('grant temporary on database %I to public', "
         "current_database()); end $$"
     )
     op.execute("revoke usage on schema public from labtrack_app, labtrack_admin, labtrack_maint")
-    op.execute("grant create on schema public to public")
+    # CREATE on public stays revoked: PostgreSQL 15+ ships that way, re-granting would be weaker.
     # Extensions are left installed: dropping them would break any later data.

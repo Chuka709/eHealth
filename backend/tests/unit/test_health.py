@@ -3,6 +3,7 @@ from collections.abc import Iterator
 import pytest
 from httpx import ASGITransport, AsyncClient
 
+from labtrack.api import health
 from labtrack.config import get_settings
 from labtrack.db.session import get_engine, get_sessionmaker
 from labtrack.main import create_app
@@ -10,6 +11,7 @@ from labtrack.main import create_app
 
 def _clear_caches() -> None:
     get_settings.cache_clear()
+    health._redis.cache_clear()
     get_engine.cache_clear()
     get_sessionmaker.cache_clear()
 

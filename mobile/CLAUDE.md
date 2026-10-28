@@ -11,4 +11,4 @@
 
 ## Commands
 - `pnpm --filter mobile test` (jest-expo + RNTL v14: `await render(...)`, `await fireEvent...`), `pnpm --filter mobile typecheck`, `npx expo-doctor` (in mobile/).
-- `just mobile` starts Metro. Physical phone: `EXPO_PUBLIC_API_URL=http://<PC LAN IP>:8080`.
+- `just mobile` starts Metro. Physical phone: set `CADDY_BIND=0.0.0.0` in `.env` (Caddy is localhost-only by default) and `EXPO_PUBLIC_API_URL=http://<PC LAN IP>:8080`. Preview/production builds require an `https://` URL (build fails otherwise).

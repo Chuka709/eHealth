@@ -19,9 +19,12 @@ FROM node:22-alpine AS runtime
 ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 HOSTNAME=0.0.0.0 PORT=3000
 WORKDIR /app
 RUN addgroup -S app && adduser -S app -G app
-COPY --from=build --chown=app:app /repo/web/.next/standalone ./
-COPY --from=build --chown=app:app /repo/web/.next/static ./web/.next/static
-COPY --from=build --chown=app:app /repo/web/public ./web/public
+# Owned by root, read-only for the app user: a compromised process cannot rewrite its own code.
+COPY --from=build /repo/web/.next/standalone ./
+COPY --from=build /repo/web/.next/static ./web/.next/static
+COPY --from=build /repo/web/public ./web/public
+# The only writable path: Next.js runtime cache.
+RUN mkdir -p web/.next/cache && chown app:app web/.next/cache
 USER app
 EXPOSE 3000
 CMD ["node", "web/server.js"]

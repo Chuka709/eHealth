@@ -6,6 +6,11 @@ const bundleId = process.env.APP_BUNDLE_ID ?? "mn.labtrack.app";
 const variant = process.env.APP_VARIANT ?? "development";
 const isProd = variant === "production";
 
+// Release builds must never talk to the API over cleartext HTTP.
+if (variant !== "development" && !process.env.EXPO_PUBLIC_API_URL?.startsWith("https://")) {
+  throw new Error(`EXPO_PUBLIC_API_URL must be an https:// URL for the ${variant} build`);
+}
+
 export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
   name: isProd ? "LabTrack MN" : `LabTrack MN (${variant})`,

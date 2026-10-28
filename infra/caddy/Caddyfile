@@ -13,13 +13,20 @@
 	}
 	log {
 		format filter {
-			# Share-link tokens and query strings never reach logs (docs/04 §6.7).
+			# No tokens, cookies or referrers in access logs (docs/04 §6.7):
+			# query strings are cut, request and response headers are dropped entirely.
 			fields {
 				request>uri regexp "\?.*$" "?[redacted]"
-				request>headers>Authorization delete
-				request>headers>Cookie delete
+				request>headers delete
+				resp_headers delete
 			}
 		}
+	}
+	# Readiness exposes dependency state - for container healthchecks only, never public.
+	# (`handle` blocks are exclusive and run before a bare `respond`, so it must be a handle too.)
+	@internal path /api/v1/readyz
+	handle @internal {
+		respond 404
 	}
 	handle /api/* {
 		reverse_proxy api:8000

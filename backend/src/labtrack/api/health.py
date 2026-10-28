@@ -1,3 +1,5 @@
+import contextlib
+from functools import lru_cache
 from typing import Literal
 
 from fastapi import APIRouter, Response, status
@@ -9,6 +11,13 @@ from labtrack.db.session import anonymous_transaction
 from labtrack.db.sql import bound_text
 
 router = APIRouter(tags=["health"])
+
+
+@lru_cache
+def _redis() -> Redis:
+    # One pooled client per process; readiness probes must not open a connection per call.
+    client: Redis = Redis.from_url(str(get_settings().redis_url), socket_connect_timeout=2)
+    return client
 
 
 class Health(BaseModel):
@@ -31,18 +40,13 @@ async def healthz() -> Health:
 async def readyz(response: Response) -> Readiness:
     """Readiness: database and queue reachable. Error details are never returned."""
     database = queue = False
-    try:
+    # Readiness reports booleans only; the failure reason is never returned.
+    with contextlib.suppress(Exception):
         async with anonymous_transaction() as session:
             await session.execute(bound_text("select 1"))
         database = True
-    except Exception:  # noqa: S110 - readiness reports a boolean only
-        pass
-    try:
-        redis = Redis.from_url(str(get_settings().redis_url), socket_connect_timeout=2)
-        async with redis:
-            queue = bool(await redis.ping())
-    except Exception:  # noqa: S110
-        pass
+    with contextlib.suppress(Exception):
+        queue = bool(await _redis().ping())
     ok = database and queue
     if not ok:
         response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE

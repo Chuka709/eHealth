@@ -1,5 +1,11 @@
 name: labtrack
 
+# Networks (least reachability):
+#   edge    - caddy, web, api            (the only network with published entry points)
+#   backend - api, worker, migrate, test, postgres, valkey, seaweedfs   (internal: no egress)
+#   egress  - api, worker                (outbound: Claude API, Sentry, Expo push)
+# web cannot reach postgres, valkey or seaweedfs; the data stores cannot reach the internet.
+
 x-backend: &backend
   build:
     context: ../backend
@@ -7,28 +13,29 @@ x-backend: &backend
   image: labtrack-backend:dev
   environment: &backend-env
     ENVIRONMENT: ${ENVIRONMENT:-dev}
-    DATABASE_URL: postgresql+asyncpg://labtrack_app:${LABTRACK_APP_PASSWORD}@postgres:5432/labtrack
-    REDIS_URL: redis://valkey:6379/0
+    DATABASE_URL: postgresql+asyncpg://labtrack_app:${LABTRACK_APP_PASSWORD:?run just init}@postgres:5432/labtrack
+    REDIS_URL: redis://:${VALKEY_PASSWORD:?run just init}@valkey:6379/0
     SENTRY_DSN: ${SENTRY_DSN:-}
   volumes:
     - ../backend/src:/app/src:ro
     - ../backend/tests:/app/tests:ro
     - ../backend/alembic:/app/alembic:ro
     - ../seed:/seed:ro
+  networks: [backend]
 
 services:
   postgres:
     image: postgres:17-alpine
     environment:
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      LABTRACK_OWNER_PASSWORD: ${LABTRACK_OWNER_PASSWORD}
-      LABTRACK_APP_PASSWORD: ${LABTRACK_APP_PASSWORD}
-      LABTRACK_ADMIN_PASSWORD: ${LABTRACK_ADMIN_PASSWORD}
-      LABTRACK_MAINT_PASSWORD: ${LABTRACK_MAINT_PASSWORD}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?run just init}
+      LABTRACK_OWNER_PASSWORD: ${LABTRACK_OWNER_PASSWORD:?run just init}
+      LABTRACK_APP_PASSWORD: ${LABTRACK_APP_PASSWORD:?run just init}
+      LABTRACK_ADMIN_PASSWORD: ${LABTRACK_ADMIN_PASSWORD:?run just init}
+      LABTRACK_MAINT_PASSWORD: ${LABTRACK_MAINT_PASSWORD:?run just init}
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./postgres/init:/docker-entrypoint-initdb.d:ro
-    ports: ["127.0.0.1:5432:5432"]
+    networks: [backend]
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d labtrack"]
       interval: 5s
@@ -38,23 +45,28 @@ services:
   # Valkey (BSD-3) instead of Redis 7.4+/8 (RSAL/SSPL/AGPL) - project licence policy.
   valkey:
     image: valkey/valkey:8-alpine
-    command: ["valkey-server", "--save", "", "--appendonly", "no"]
+    command: ["sh", "-c", "exec valkey-server --save '' --appendonly no --requirepass \"$$VALKEY_PASSWORD\""]
+    environment:
+      VALKEY_PASSWORD: ${VALKEY_PASSWORD:?run just init}
+    networks: [backend]
     healthcheck:
-      test: ["CMD", "valkey-cli", "ping"]
+      test: ["CMD-SHELL", "REDISCLI_AUTH=\"$$VALKEY_PASSWORD\" valkey-cli ping | grep -q PONG"]
       interval: 5s
       timeout: 3s
       retries: 20
 
+  # Dev-only object storage. Reachable only on the internal backend network; master/volume/filer
+  # have no auth of their own (Phase 3 adds security.toml JWT signing before any document is stored).
   seaweedfs:
-    image: chrislusf/seaweedfs:latest
+    image: chrislusf/seaweedfs:4.50
     entrypoint: ["/bin/sh", "/entrypoint.sh"]
     environment:
-      S3_ACCESS_KEY: ${S3_ACCESS_KEY}
-      S3_SECRET_KEY: ${S3_SECRET_KEY}
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY:?run just init}
+      S3_SECRET_KEY: ${S3_SECRET_KEY:?run just init}
     volumes:
       - s3data:/data
       - ./seaweedfs/entrypoint.sh:/entrypoint.sh:ro
-    ports: ["127.0.0.1:8333:8333"]
+    networks: [backend]
     healthcheck:
       test: ["CMD-SHELL", "wget -q -O- http://127.0.0.1:9333/cluster/status >/dev/null"]
       interval: 5s
@@ -65,7 +77,7 @@ services:
     <<: *backend
     environment:
       <<: *backend-env
-      MIGRATION_DATABASE_URL: postgresql+asyncpg://labtrack_owner:${LABTRACK_OWNER_PASSWORD}@postgres:5432/labtrack
+      MIGRATION_DATABASE_URL: postgresql+asyncpg://labtrack_owner:${LABTRACK_OWNER_PASSWORD:?run just init}@postgres:5432/labtrack
     command: ["alembic", "upgrade", "head"]
     restart: "no"
     depends_on:
@@ -73,7 +85,12 @@ services:
 
   api:
     <<: *backend
+    environment:
+      <<: *backend-env
+      # Trust X-Forwarded-For only from Caddy (fixed address below), never from clients.
+      FORWARDED_ALLOW_IPS: 172.30.0.10
     ports: ["127.0.0.1:8000:8000"]
+    networks: [backend, edge, egress]
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(urllib.request.urlopen('http://127.0.0.1:8000/api/v1/readyz', timeout=3).status != 200)"]
       interval: 5s
@@ -86,6 +103,7 @@ services:
   worker:
     <<: *backend
     command: ["celery", "-A", "labtrack.worker.celery_app", "worker", "--loglevel=INFO", "--concurrency=2"]
+    networks: [backend, egress]
     healthcheck:
       test: ["CMD-SHELL", "celery -A labtrack.worker.celery_app inspect ping -d celery@$$HOSTNAME --timeout 5 | grep -q pong"]
       interval: 15s
@@ -103,6 +121,7 @@ services:
     image: labtrack-web:dev
     environment:
       API_INTERNAL_URL: http://api:8000
+    networks: [edge]
     healthcheck:
       test: ["CMD-SHELL", "wget -q -O- http://127.0.0.1:3000/healthz >/dev/null"]
       interval: 5s
@@ -115,7 +134,11 @@ services:
     image: caddy:2-alpine
     volumes:
       - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
-    ports: ["8080:8080"]
+    # Localhost only by default; set CADDY_BIND=0.0.0.0 in .env to test from a phone on the LAN.
+    ports: ["${CADDY_BIND:-127.0.0.1}:8080:8080"]
+    networks:
+      edge:
+        ipv4_address: 172.30.0.10
     healthcheck:
       test: ["CMD-SHELL", "wget -q -O- http://127.0.0.1:8080/api/v1/healthz >/dev/null"]
       interval: 5s
@@ -125,7 +148,7 @@ services:
       api: { condition: service_healthy }
       web: { condition: service_healthy }
 
-  # `just test-api`: migrates the separate test DB, then runs pytest. Not started by `up`.
+  # `just test-api`: migrates the separate test DB (up/down/up), then runs pytest. Not started by `up`.
   test:
     <<: *backend
     profiles: ["test"]
@@ -133,14 +156,23 @@ services:
       <<: *backend-env
       ENVIRONMENT: test
       PYTEST_ADDOPTS: "-p no:cacheprovider"
-      MIGRATION_DATABASE_URL: postgresql+asyncpg://labtrack_owner:${LABTRACK_OWNER_PASSWORD}@postgres:5432/labtrack_test
-      TEST_DATABASE_URL: postgresql+asyncpg://labtrack_app:${LABTRACK_APP_PASSWORD}@postgres:5432/labtrack_test
-      DATABASE_URL: postgresql+asyncpg://labtrack_app:${LABTRACK_APP_PASSWORD}@postgres:5432/labtrack_test
+      MIGRATION_DATABASE_URL: postgresql+asyncpg://labtrack_owner:${LABTRACK_OWNER_PASSWORD:?run just init}@postgres:5432/labtrack_test
+      TEST_DATABASE_URL: postgresql+asyncpg://labtrack_app:${LABTRACK_APP_PASSWORD:?run just init}@postgres:5432/labtrack_test
+      DATABASE_URL: postgresql+asyncpg://labtrack_app:${LABTRACK_APP_PASSWORD:?run just init}@postgres:5432/labtrack_test
     entrypoint: ["sh", "-c", "alembic upgrade head && alembic downgrade base && alembic upgrade head && exec \"$$@\"", "--"]
     command: ["pytest", "-q", "--no-header"]
     depends_on:
       postgres: { condition: service_healthy }
       valkey: { condition: service_healthy }
+
+networks:
+  edge:
+    ipam:
+      config:
+        - subnet: 172.30.0.0/24
+  backend:
+    internal: true
+  egress: {}
 
 volumes:
   pgdata:

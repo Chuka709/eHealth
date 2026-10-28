@@ -7,5 +7,9 @@ const devDefault = Platform.OS === "android" ? "http://10.0.2.2:8080" : "http://
 
 export const apiBaseUrl = process.env.EXPO_PUBLIC_API_URL ?? devDefault;
 
+if (!__DEV__ && !apiBaseUrl.startsWith("https://")) {
+  throw new Error("API URL must use https:// outside development");
+}
+
 // Late-bound so tests (and any fetch polyfill installed later) are picked up.
 export const api = createApiClient(apiBaseUrl, (input, init) => globalThis.fetch(input, init));

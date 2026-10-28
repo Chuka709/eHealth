@@ -6,4 +6,6 @@ backend
 _archive
 .git
 .env
+.env.*
+!.env.example
 *.log
