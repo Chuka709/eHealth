@@ -4,7 +4,6 @@ phone. Every change is one admin_* database function; the database decides who m
 what only Python can do: field encryption, token generation and sending SMS.
 """
 
-import re
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Final, Literal
@@ -13,6 +12,7 @@ from uuid import UUID, uuid4
 from sqlalchemy.exc import DBAPIError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from labtrack.admin import csv_import
 from labtrack.api.errors import AppError
 from labtrack.config import get_settings
 from labtrack.core.envelope import field_aad
@@ -51,17 +51,11 @@ def _db_error(exc: DBAPIError) -> AppError:
     raise exc
 
 
-_DIGITS = re.compile(r"\D")
-
-
 def normalise_phone(raw: str) -> str:
-    """Mongolian mobile: 8 digits, an optional +976 prefix and separators are dropped."""
-    digits = _DIGITS.sub("", raw)
-    if len(digits) == 11 and digits.startswith("976"):  # noqa: PLR2004
-        digits = digits[3:]
-    if len(digits) != 8 or digits[0] not in "6789":  # noqa: PLR2004
+    phone = csv_import.normalise_phone(raw)
+    if phone is None:
         raise ValueError("phone")
-    return digits
+    return phone
 
 
 async def _phone_enc(user_id: UUID, phone: str) -> bytes:
@@ -378,3 +372,32 @@ async def security_events(db: AsyncSession, limit: int) -> list[SecurityEvent]:
         SecurityEvent(r.id, r.at, r.action, r.actor_id, r.target_user_id, dict(r.diff or {}))
         for r in rows
     ]
+
+
+async def import_users(db: AsyncSession, parsed: csv_import.Parsed) -> list[csv_import.Problem]:
+    """Create every row in this transaction, or none: returns the problems that stop it."""
+    if parsed.problems:
+        return parsed.problems
+    taken = set(
+        (
+            await db.execute(
+                bound_text("select username::text from users where username = any(:names)"),
+                {"names": [r.username for r in parsed.rows]},
+            )
+        ).scalars()
+    )
+    if taken:
+        return [
+            csv_import.Problem(r.line, "username_taken") for r in parsed.rows if r.username in taken
+        ]
+    for row in parsed.rows:
+        await create_user(
+            db,
+            username=row.username,
+            display_name=row.display_name,
+            role=row.role,
+            phone=row.phone,
+            national_id=None,
+        )
+    await log_import(db, parsed.sha256, len(parsed.rows))
+    return []

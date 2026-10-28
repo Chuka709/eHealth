@@ -387,6 +387,10 @@ _UP = [
       update public.users set account_status = p_status where id = p_user_id;
       if p_status in ('locked','disabled') then
         perform public.revoke_user_sessions(p_user_id, 'disabled');
+        -- A token issued before the lock must not unlock the account (activation_consume
+        -- activates locked accounts: that is how a fresh reset recovers one).
+        update public.activation_tokens set revoked_at = now()
+          where user_id = p_user_id and used_at is null and revoked_at is null;
       end if;
       perform public.admin_audit(actor, 'admin.status_' || p_status, p_user_id,
                                  jsonb_build_object('reason', p_reason));

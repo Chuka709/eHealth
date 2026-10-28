@@ -6,10 +6,11 @@ from typing import Annotated, Literal
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query, Request, Response, status
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, StringConstraints
 
 from labtrack.admin import auth as admin_auth
-from labtrack.admin import users
+from labtrack.admin import csv_import, users
 from labtrack.api.admin_deps import Admin, AdminLoginDb, SuperAdmin, require_admin_network
 from labtrack.api.deps import client_ip
 from labtrack.api.errors import AppError, ErrorBody
@@ -312,3 +313,104 @@ async def security_events(
         )
         for e in await users.security_events(ctx.db, limit)
     ]
+
+
+# --- CSV import (docs/04 §1): in memory only; preview, then commit the same file --------------
+
+
+class ImportProblemOut(BaseModel):
+    row: int  # 0 = the whole file
+    field: str
+
+
+class ImportPreviewRowOut(BaseModel):
+    row: int
+    username: str
+    display_name: str
+    role: str
+    phone_last4: str | None
+
+
+class ImportPreviewOut(BaseModel):
+    sha256: str
+    rows: list[ImportPreviewRowOut]
+    problems: list[ImportProblemOut]
+
+
+class ImportResultOut(BaseModel):
+    created: int
+
+
+_CSV_BODY = {
+    "requestBody": {"required": True, "content": {"text/csv": {"schema": {"type": "string"}}}}
+}
+
+
+async def _csv_body(request: Request) -> bytes:
+    data = bytearray()
+    async for chunk in request.stream():
+        data.extend(chunk)
+        if len(data) > csv_import.MAX_BYTES:
+            raise AppError(413, "admin.import_too_large")
+    return bytes(data)
+
+
+def _problems(problems: list[csv_import.Problem]) -> list[ImportProblemOut]:
+    return [ImportProblemOut(row=p.line, field=p.field) for p in problems]
+
+
+@router.post(
+    "/users/import/preview",
+    response_model=ImportPreviewOut,
+    responses=ERRORS,
+    openapi_extra=_CSV_BODY,
+)
+async def import_preview(request: Request, ctx: SuperAdmin) -> ImportPreviewOut:
+    """Validate a CSV without creating anything. Errors name the row and field, not the value."""
+    del ctx  # authorisation only
+    parsed = csv_import.parse(await _csv_body(request))
+    return ImportPreviewOut(
+        sha256=parsed.sha256,
+        rows=[
+            ImportPreviewRowOut(
+                row=r.line,
+                username=r.username,
+                display_name=r.display_name,
+                role=r.role,
+                phone_last4=r.phone[-4:] if r.phone else None,
+            )
+            for r in parsed.rows
+        ],
+        problems=_problems(parsed.problems),
+    )
+
+
+@router.post(
+    "/users/import",
+    response_model=ImportResultOut,
+    responses={**ERRORS, 413: {"model": ErrorBody}},
+    openapi_extra=_CSV_BODY,
+)
+async def import_commit(
+    request: Request,
+    ctx: SuperAdmin,
+    sha256: Annotated[str, Query(pattern=r"^[0-9a-f]{64}$")],
+) -> ImportResultOut | JSONResponse:
+    """Create every row as `pending_activation` (no password), all or none.
+
+    `sha256` from the preview makes sure the admin commits exactly the file they reviewed.
+    """
+    parsed = csv_import.parse(await _csv_body(request))
+    if parsed.sha256 != sha256:
+        raise AppError(409, "admin.import_changed")
+    problems = await users.import_users(ctx.db, parsed)
+    if problems:
+        return JSONResponse(
+            status_code=422,
+            content={
+                "code": "admin.import_invalid",
+                "message_key": "error.admin.import_invalid",
+                "problems": [p.model_dump() for p in _problems(problems)],
+            },
+        )
+    return ImportResultOut(created=len(parsed.rows))

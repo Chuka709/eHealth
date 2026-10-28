@@ -617,3 +617,45 @@ async def test_failed_activations_are_counted(
             {"ip": ip},
         )
     assert n >= 1
+
+
+async def test_locking_revokes_tokens_issued_before_the_lock(
+    owner_engine: AsyncEngine, admin_engine: AsyncEngine, app_engine: AsyncEngine
+) -> None:
+    admin, second = await _new_admin(owner_engine), await _new_admin(owner_engine)
+    user = await _pending_user(admin_engine, admin, nid=NID)
+    h = _hash()
+    async with as_user(admin_engine, admin) as conn:
+        await conn.execute(
+            bound_text(
+                "select admin_issue_token(:u, 'activation', 'in_person_qr', :h, null, null, null)"
+            ),
+            {"u": user, "h": h},
+        )
+    assert await _consume(app_engine, h, None, False) == "ok"
+    async with as_user(admin_engine, second) as conn:
+        check = (
+            await conn.execute(
+                bound_text("select check_id from admin_identity_check(:u, :n, :p)"),
+                {"u": user, "n": NID, "p": PEPPER},
+            )
+        ).scalar_one()
+        reset = _hash()
+        await conn.execute(
+            bound_text(
+                "select admin_issue_token(:u, 'admin_reset', 'in_person_qr', :h, :c,"
+                " 'lost_device', null)"
+            ),
+            {"u": user, "h": reset, "c": check},
+        )
+    async with as_user(admin_engine, admin) as conn:
+        await conn.execute(
+            bound_text("select admin_set_status(:u, 'locked', 'suspected_compromise')"),
+            {"u": user},
+        )
+    assert await _consume(app_engine, reset, None, False) == "invalid"
+    async with owner_engine.connect() as conn:
+        status = await scalar(
+            conn, bound_text("select account_status from users where id = :u"), {"u": user}
+        )
+    assert status == "locked"
