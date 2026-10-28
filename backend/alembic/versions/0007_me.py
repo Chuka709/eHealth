@@ -110,17 +110,23 @@ def _patched(sql: str, changes: list[tuple[str, str]]) -> str:
 def upgrade() -> None:
     op.execute("alter table users add column reset_required boolean not null default false")
     op.execute("grant select (reset_required) on users to labtrack_admin")
-    # Accounts already locked/disabled for suspected compromise before this revision.
+    # Accounts already locked/disabled for suspected compromise before this revision: any such
+    # event since the account was last made active or got a new password counts (not only the
+    # latest lock event, which a later lock for another reason would hide).
     op.execute(
         """update users u set reset_required = true
            where u.account_status in ('locked','disabled')
-             and (select case when l.action = 'security.user_report'
-                              then 'suspected_compromise' else l.diff ->> 'reason' end
-                  from audit_logs l
-                  where l.target_user_id = u.id
-                    and l.action in ('admin.status_locked','admin.status_disabled',
-                                     'security.user_report')
-                  order by l.at desc, l.id desc limit 1) = 'suspected_compromise'"""
+             and exists (
+               select 1 from audit_logs l
+               where l.target_user_id = u.id
+                 and (l.action = 'security.user_report'
+                      or (l.action in ('admin.status_locked','admin.status_disabled')
+                          and l.diff ->> 'reason' = 'suspected_compromise'))
+                 and l.at > coalesce(u.password_changed_at, '-infinity')
+                 and l.at > coalesce((select max(a.at) from audit_logs a
+                                      where a.target_user_id = u.id
+                                        and a.action = 'admin.status_active'),
+                                     '-infinity'))"""
     )
     op.execute(_REPORT)
     op.execute(
