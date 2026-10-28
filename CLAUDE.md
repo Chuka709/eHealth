@@ -14,11 +14,11 @@
 `07_CRITIQUE.md`, `10_RESEARCH.md` — зөвхөн шийдвэрийн шалтгаан хэрэгтэй үед. `11_TOOLING.md` — Claude Code тохиргоо. `_archive/` — хэзээ ч бүү унш (хуучин хувилбар).
 
 ## Стек
-- **backend/** — Python 3.12+, uv, FastAPI, Pydantic v2, SQLAlchemy 2 async + Alembic, Celery + Redis, pwdlib[argon2], PyJWT (ES256), pdfplumber, pypdfium2, Pillow + pillow-heif, OpenCV, anthropic, rapidfuzz, structlog, exponent-server-sdk, WeasyPrint; pytest + hypothesis + testcontainers + schemathesis; Ruff, mypy --strict
-- **mobile/** (үндсэн) — Expo + Expo Router, NativeWind + react-native-reusables, TanStack Query, react-hook-form + zod, document-scanner, expo-share-intent, secure-store, local-authentication, notifications, MMKV, @wuba/react-native-echarts, react-native-pdf, use-intl; Jest + RNTL, Maestro
+- **backend/** — Python 3.13, uv, FastAPI, Pydantic v2, SQLAlchemy 2 async + Alembic, Celery + Valkey, pwdlib[argon2], PyJWT (ES256), pdfplumber, pypdfium2, Pillow + pillow-heif, OpenCV, anthropic, rapidfuzz, structlog, exponent-server-sdk, WeasyPrint; pytest + hypothesis + schemathesis (DB тест — compose-ийн `labtrack_test`); Ruff, mypy --strict
+- **mobile/** (үндсэн) — Expo SDK 58 + Expo Router, styling: shared token (сан — Q14), TanStack Query, react-hook-form + zod, document-scanner, expo-share-intent, secure-store, local-authentication, notifications, MMKV, @wuba/react-native-echarts, react-native-pdf, use-intl; Jest + RNTL, Maestro
 - **web/** (хоёрдогч) — Next.js App Router (BFF auth), shadcn/ui, ECharts, next-intl; Vitest, Playwright
 - **packages/shared/** — OpenAPI client, zod, `messages/{mn,en}.json`, design token
-- **infra/** — PostgreSQL 17, Redis, S3 нийцтэй storage (SeaweedFS dev), Caddy, Docker Compose
+- **infra/** — PostgreSQL 17, Valkey (Redis-ийн BSD fork — Redis 7.4+/8 нь RSAL/SSPL/AGPL), S3 нийцтэй storage (SeaweedFS dev), Caddy, Docker Compose
 
 ## Харилцах хэл
 Хэрэглэгчтэй **монгол хэлээр**. Код, identifier, commit — англиар. UI текст — `packages/shared/messages/mn.json` (үндсэн), `en.json`.

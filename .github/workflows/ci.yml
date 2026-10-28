@@ -1,0 +1,83 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.13.6"
+      - name: Lint and type-check (ruff, mypy --strict)
+        working-directory: backend
+        env:
+          UV_PYTHON_DOWNLOADS: automatic
+        run: |
+          uv sync --frozen
+          uv run ruff format --check .
+          uv run ruff check .
+          uv run mypy src tests alembic
+      - name: Dev secrets for the CI stack
+        run: python3 scripts/init_env.py
+      - name: Tests in the Linux container (alembic up/down/up, RLS context, unit)
+        run: docker compose -f infra/docker-compose.yml --env-file .env run --rm test
+      - name: Tear down
+        if: always()
+        run: docker compose -f infra/docker-compose.yml --env-file .env down -v
+
+  js:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Biome
+        run: pnpm exec biome ci .
+      - name: Typecheck (shared, mobile, web)
+        run: pnpm -r typecheck
+      - name: Tests (node:test, jest, vitest)
+        run: pnpm -r test
+      - name: Expo doctor
+        working-directory: mobile
+        run: npx --yes expo-doctor
+
+  api-client:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.13.6"
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Regenerate the OpenAPI client
+        env:
+          UV_PYTHON_DOWNLOADS: automatic
+        run: |
+          (cd backend && uv run python -m labtrack.cli openapi ../packages/shared/openapi.json)
+          pnpm --filter @labtrack/shared gen
+      - name: Fail if the committed client is stale
+        run: git diff --exit-code -- packages/shared/openapi.json packages/shared/src/api/schema.d.ts

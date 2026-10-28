@@ -4,7 +4,7 @@
 > Phase бүрийн төгсгөлд DoD-г **нотолгоотой** (команд, тестийн тоо, дэлгэцийн зураг) энд бичнэ. Нээлттэй асуулт → `OPEN_QUESTIONS.md`.
 
 ## Одоогийн байдал
-**Phase 0 — эхлэхэд бэлэн** (2026.10.28). Зөрчил/эрсдэл шийдэгдсэн, security-reviewer-ийн 6 High + 12 Medium олдвор дизайнд тусгагдсан (v7.2, `OPEN_QUESTIONS.md`). Q10–Q13 Phase 0-г саатуулахгүй.
+**Phase 0 — код бүрэн, DoD-ийн 1/4 нотлогдсон** (2026.10.28). Үлдсэн 3 DoD нь таны аккаунт/төхөөрөмж шаардана (доор). Шинэ шийдвэр: Q14 (mobile styling сан).
 
 ---
 
@@ -15,7 +15,7 @@
 - [x] `ui-reviewer` agent, `phi-table` skill, cross-platform format hook, allowlist нарийсгах
 - [x] `git init`, `.gitignore`, `.gitattributes`, эхний commit
 - [x] Хэрэгсэл: Node 22, pnpm, Docker 29, Python 3.13, git, pyright, typescript-language-server
-- [~] `just`, `uv`, `jq` — winget-ээр суусан, **терминалыг дахин нээх** шаардлагатай (PATH)
+- [x] `just` 1.59, `uv` 0.13.6, `jq` — winget (шинэ терминал нээхэд PATH-д орно)
 - [ ] `eas-cli` (`npm i -g eas-cli`) + Expo аккаунт (`eas login`)
 - [ ] Android Studio + эмулятор (Android SDK олдсон — AVD үүсгэх)
 - [ ] iOS: Apple Developer Program ($99/жил) + бодит iPhone-ийг `eas device:create`-ээр бүртгэх (Q1 — шийдэгдсэн)
@@ -28,20 +28,21 @@
 ---
 
 ## Phase 0 — Суурь
-- [ ] 0.1 Monorepo: `pnpm-workspace.yaml`, root `package.json`, `biome.json`, `justfile` (Windows shell), `.editorconfig`, `.env.example`
-- [ ] 0.2 `infra/docker-compose.yml`: postgres 17 (+`labtrack_owner`/`labtrack_app` role init), redis 7, seaweedfs (S3), api, worker, web, caddy — бүгд healthcheck-тэй
-- [ ] 0.3 `backend/` (тест/worker контейнер дотор): uv, FastAPI app factory, `/healthz`, pydantic-settings, structlog (PHI redact), DB session + `SET LOCAL app.user_id` dependency, Alembic (owner role), Celery + ping task, ruff + mypy --strict, pytest + testcontainers
-- [ ] 0.4 `packages/shared/`: OpenAPI → TS client (`just gen-client`), `messages/{mn,en}.json`, design token (flag өнгө AA, light/dark)
-- [ ] 0.5 `mobile/`: Expo (SDK 57 — шалгаж бэхлэх) + Expo Router + NativeWind + TanStack Query, `app.config.ts`, `eas.json` (development/preview/production), `/healthz` дууддаг дэлгэц, Jest + RNTL
-- [ ] 0.6 `web/`: Next.js App Router + shadcn/ui + next-intl, BFF stub, Vitest
-- [ ] 0.7 CI (`.github/workflows/ci.yml`): ruff, mypy, pytest, alembic up/down, biome, tsc, jest, vitest, хуучирсан OpenAPI client шалгах
-- [ ] 0.8 `backend/CLAUDE.md`, `mobile/CLAUDE.md`, `web/CLAUDE.md` (токен хэмнэлт)
+- [x] 0.1 Monorepo: pnpm workspace (hoisted, install script opt-in), Biome 2.6 (код файлд), `justfile` (Windows: `pnpm.cmd`), `.editorconfig`, `.env.example` + `just init` (санамсаргүй dev нууц)
+- [x] 0.2 Compose: postgres 17 (`labtrack_owner/app/admin/maint` + `labtrack_test` DB), **Valkey 8** (Redis-ийн оронд — лиценз), SeaweedFS S3, migrate, api, worker, web, caddy — бүгд healthcheck; Caddy лог query string нууцална, аюулгүй header
+- [x] 0.3 Backend (Python 3.13): FastAPI factory, `/healthz` `/readyz` (алдааны дэлгэрэнгүй гаргахгүй), pydantic-settings, structlog PHI redact, `user_transaction` (`set_config(..., true)`), `bound_text` (`sqlalchemy.text` хориотой), Sentry (бүх data collection off + URL query хасна), Celery ping, Alembic baseline (`REVOKE CREATE/TEMPORARY`), ruff + mypy --strict
+- [x] 0.4 `packages/shared`: openapi-fetch client (`just gen-client`, `just check-client`), mn/en (түлхүүр тэнцүү тест), design token (бүх өнгөний хос WCAG AA — тест)
+- [x] 0.5 Mobile: **Expo SDK 58** (RN 0.88), Expo Router, TanStack Query, use-intl (mn), `app.config.ts` (fingerprint runtime, env bundle ID, `allowBackup=false`), `eas.json` (development/preview/production), API төлөвийн дэлгэц (өнгө+дүрс+текст, 44pt/48dp), Jest + RNTL v14. Styling сан — Q14
+- [x] 0.6 Web: **Next.js 16.4** (cache components, standalone), `lang=mn`, Noto Sans кирилл, security header, `/healthz`, төлөвийн хуудас, Vitest, Docker image. next-intl/shadcn/BFF — Phase 1 (админ самбартай хамт)
+- [~] 0.7 CI `.github/workflows/ci.yml` (ruff, mypy, контейнер pytest + alembic up/down/up, biome, tsc, jest, vitest, expo-doctor, stale client) — **GitHub дээр ажиллуулаагүй** (репо байхгүй)
+- [x] 0.8 `backend/CLAUDE.md`, `mobile/CLAUDE.md`, `web/CLAUDE.md`
 
-**DoD**
-- [ ] `just up` — бүх сервис healthy
-- [ ] Dev build Android эмулятор дээр API дуудна
-- [ ] Dev build бодит iPhone дээр (EAS cloud build, ad hoc) API дуудна
-- [ ] CI ногоон
+**DoD — нотолгоо**
+- [x] `just up` — 7 сервис healthy; `curl :8080/api/v1/readyz` → `{"status":"ok","database":true,"queue":true}`; вэб хуудас Caddy-аар "Сервер хэвийн ажиллаж байна"
+- [x] Шалгалтууд: `just lint` 0 алдаа; `just test` — backend 19 (DB, migration up/down орсон), shared 6, web 3, mobile 2 — бүгд ногоон; `just check-client` цэвэр; `expo-doctor` 20/20; Android JS bundle (`expo export`) амжилттай; `next build` амжилттай
+- [ ] Dev build **Android эмулятор** дээр API дуудна — AVD + `npx expo run:android` (эсвэл `eas build --profile development --platform android`) **таны машин дээр**
+- [ ] Dev build **бодит iPhone** — Apple Developer + Expo аккаунт, `eas device:create`, `eas build --profile development --platform ios` (**та**)
+- [ ] CI ногоон — GitHub репо үүсгэж push хийсний дараа (**та**)
 
 ## Phase 1 — Auth, супер админ, профайл
 - [ ] 1.1 Migration: extensions, enum, `labtrack_owner/app/admin/maint` role, `REVOKE TEMPORARY/CREATE`; users (`account_status`, `token_version`, шифрлэлттэй утас, РД argon2 hash) + column-level эрх, activation_tokens, sessions (`revoked_reason`, `device_trusted`), auth_attempts (+индекс), patients, patient_access, consents (append-only), notifications, audit_logs (`target_user_id`, trigger, `REVOKE TRUNCATE`); definer функцууд (`search_path` хатуу): `can_read/can_write_patient`, `is_owner`, `create_self_profile`, `auth_*`, `audit_write`, `my_admin_actions`, `notify`, `lookup_user_for_share`; хүснэгт бүрт 4 үйлдлийн policy; ENABLE+FORCE RLS

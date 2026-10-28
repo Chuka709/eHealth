@@ -19,7 +19,7 @@
 | Схем | **Pydantic v2**, pydantic-settings |
 | ORM / migration | **SQLAlchemy 2.0 async + asyncpg**, **Alembic** |
 | Auth | **pwdlib[argon2]** (нууц үг, РД таних hash), **zxcvbn**, **PyJWT[crypto]** (ES256 access token), `secrets` (refresh token), **pyotp** (зөвхөн платформын админд) |
-| Background job | **Celery 5 + Redis** (+ Flower) |
+| Background job | **Celery 5 + Valkey** (Redis протокол, BSD-3; Redis 7.4+/8 нь RSAL/SSPL/AGPL тул сонгоогүй) |
 | PDF | **pdfplumber** (текст), **pypdfium2** (хуудас → зураг). *PyMuPDF (AGPL) хэрэглэхгүй* |
 | Зураг | **Pillow + pillow-heif**, **opencv-python-headless** |
 | Файлын төрөл | **python-magic** |
@@ -28,7 +28,7 @@
 | Storage | **boto3** (S3 API) |
 | Push мэдэгдэл | **exponent-server-sdk** (Expo Push) — payload-д PHI оруулахгүй |
 | PDF хураангуй | **WeasyPrint** |
-| Rate limit | **slowapi** + Redis |
+| Rate limit | **slowapi** + Valkey |
 | Шифрлэлт | **cryptography** (AES-256-GCM envelope, HMAC); production KEK — **OpenBao** transit (MPL-2.0) |
 | Лог / ажиглалт | **structlog** (PHI redact), **Sentry**, OpenTelemetry |
 | Тест | pytest, pytest-asyncio, **hypothesis**, **testcontainers**, **schemathesis** |
@@ -39,7 +39,7 @@
 | Хэрэгцээ | Сан |
 |---|---|
 | Framework | **Expo** (сүүлийн SDK) + **Expo Router**, EAS Build / Submit / **Update (OTA)** |
-| UI | **NativeWind** (Tailwind) + **react-native-reusables** (shadcn загвар) |
+| UI | Shared design token (`@labtrack/shared`) + `@expo/ui`; Tailwind сан — **Q14 шийдвэр хүлээж байна** (NativeWind v4 нь SDK 58/Reanimated 4-тэй эргэлзээтэй, v5 RC) |
 | API | openapi-fetch (shared) + **TanStack Query** |
 | Форм | react-hook-form + zod |
 | Баримт скан | **react-native-document-scanner-plugin** (ирмэг олох, хазайлт засах, олон хуудас) |
@@ -64,7 +64,7 @@ Auth: **BFF загвар** — Next.js route handler токенийг httpOnly c
 OpenAPI-аас үүсгэсэн type + client, zod схем, `messages/{mn,en}.json`, design token (өнгө, фонт, зай), ECharts-ийн нийтлэг тохиргоо.
 
 ## Дэд бүтэц
-PostgreSQL 17 (pg_trgm, pgcrypto, RLS) · Redis 7 · S3 нийцтэй storage (dev: SeaweedFS) · Caddy · Docker Compose · pgBackRest · OpenBao (production) · GitHub Actions + EAS.
+PostgreSQL 17 (pg_trgm, pgcrypto, RLS) · Valkey 8 · S3 нийцтэй storage (dev: SeaweedFS) · Caddy · Docker Compose · pgBackRest · OpenBao (production) · GitHub Actions + EAS.
 
 **Хөгжүүлэлтийн орчин (Windows):** `justfile` PowerShell-ээр native ажиллана. Backend-ийн тест, worker нь **Linux контейнер дотор** (`docker compose run --rm api pytest`) — WeasyPrint (Pango), python-magic (libmagic) Windows-д native суулгахад хэцүү, production-тэй ижил орчин. Локал `uv sync` зөвхөн LSP, Ruff, mypy-д. Mobile: Android эмулятор локал; iOS — EAS cloud build + бодит iPhone; iOS E2E — GitHub Actions macOS runner.
 
