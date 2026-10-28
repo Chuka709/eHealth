@@ -122,11 +122,11 @@ async def login(
     # Always run one argon2 verification so timing does not reveal whether the user exists.
     ok = await run_hashing(verify_password, password, row.password_hash if row else None)
     ok = ok and row is not None and row.account_status == "active"
-    await db.execute(
-        bound_text("select auth_record_attempt('login', :u, cast(:ip as inet), :d, :t, :ok)"),
-        {"u": username, "ip": net, "d": device_hash if trusted else None, "t": trusted, "ok": ok},
-    )
     if not ok or row is None:
+        await db.execute(
+            bound_text("select auth_record_failure('login', :u, cast(:ip as inet), :d, :t)"),
+            {"u": username, "ip": net, "d": device_hash if trusted else None, "t": trusted},
+        )
         await db.commit()  # keep the failed attempt even though we raise
         raise AppError(401, INVALID_CREDENTIALS)
 
@@ -139,13 +139,17 @@ async def login(
         new_device, trust_hash = new_opaque_token()
     session = (
         await db.execute(
-            bound_text("select * from session_create(:u, :h, :n, :p, :d, :ttl)"),
+            bound_text(
+                "select * from session_create(:u, :h, :n, :p, :d, :t, cast(:ip as inet), :ttl)"
+            ),
             {
                 "u": row.user_id,
                 "h": refresh_hash,
                 "n": device_name,
                 "p": platform,
                 "d": trust_hash,
+                "t": trusted,
+                "ip": net,
                 "ttl": _refresh_ttl(),
             },
         )
@@ -232,11 +236,11 @@ async def change_password(
         raise AppError(429, "auth.locked", retry_after=decision.retry_after)
     stored = (await db.execute(bound_text("select auth_own_password_hash()"))).scalar_one()
     ok = await run_hashing(verify_password, current_password, stored)
-    await db.execute(
-        bound_text("select auth_record_attempt('change_password', :u, null, null, false, :ok)"),
-        {"u": username, "ok": ok},
-    )
     if not ok:
+        await db.execute(
+            bound_text("select auth_record_failure('change_password', :u, null, null, false)"),
+            {"u": username},
+        )
         await db.commit()  # keep the failure even though we raise
         raise AppError(401, INVALID_CREDENTIALS)
     problems = password_problems(new_password, username, display_name)

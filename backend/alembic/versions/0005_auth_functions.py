@@ -8,7 +8,9 @@ docs/04 §1, §6. Password verification (argon2id) and the lockout policy live i
   token's token_version matches (so disable/reset take effect immediately);
 - trusted devices (OWASP device cookie) are stored as hashes, expire after 180 days of
   disuse and are forgotten on reset, disable and password change (sign out others);
-- session_create only works right after a successful login recorded in the same transaction;
+- success is never recorded from outside: the API can only record failures, and a success
+  row is written by session_create / auth_change_password themselves (so an injected call cannot
+  reset another account's lockout counters by "recording" a success);
 - a login lives at most 180 days regardless of rotation.
 
 Trust boundary: the API is the authentication authority - session_create can only be reached
@@ -49,8 +51,6 @@ _UP = [
     # so a neighbour behind the same CGNAT address cannot lock the owner's phone.
     "alter table auth_attempts add column device_trusted boolean not null default false",
     "alter table auth_attempts add column device_hash text",
-    # session_create only follows a successful password check in the same transaction.
-    "alter table auth_attempts add column txid bigint not null default txid_current()",
     # A rotated token may be used once more within the grace window (concurrent refresh), and
     # only while nothing has happened to the account since it was issued.
     "alter table sessions add column grace_used boolean not null default false",
@@ -68,12 +68,11 @@ _UP = [
     $$
     """,
     f"""
-    create function auth_record_attempt(p_kind text, p_username text, p_ip inet,
-                                        p_device_hash text, p_device_trusted boolean,
-                                        p_success boolean)
+    create function auth_record_failure(p_kind text, p_username text, p_ip inet,
+                                        p_device_hash text, p_device_trusted boolean)
     returns void language sql volatile {_DEFINER} as $$
       insert into public.auth_attempts (kind, username, ip, device_hash, device_trusted, success)
-      values (p_kind, p_username, p_ip, p_device_hash, p_device_trusted, p_success)
+      values (p_kind, p_username, p_ip, p_device_hash, p_device_trusted, false)
     $$
     """,
     # Failure counts since the last success, for the Python lockout policy (core/security).
@@ -121,7 +120,8 @@ _UP = [
     # --- sessions ----------------------------------------------------------------------------
     f"""
     create function session_create(p_user_id uuid, p_token_hash text, p_device_name text,
-                                   p_platform text, p_device_hash text, p_ttl interval)
+                                   p_platform text, p_device_hash text,
+                                   p_device_was_trusted boolean, p_ip inet, p_ttl interval)
     returns table (session_id uuid, token_version int)
     language plpgsql volatile {_DEFINER} as $$
     declare
@@ -135,13 +135,12 @@ _UP = [
       if u.account_status is distinct from 'active' or u.deleted_at is not null then
         raise exception 'account not active' using errcode = '28000';
       end if;
-      -- Only right after the API recorded a successful password check for this account in
-      -- this very transaction: an injected call cannot mint a session for someone else.
-      if not exists (select 1 from public.auth_attempts
-                     where kind = 'login' and success and username = u.username
-                       and txid = txid_current()) then
-        raise exception 'no verified login in this transaction' using errcode = '42501';
-      end if;
+      -- The API calls this only after verifying the password (argon2 runs in Python, so the
+      -- database cannot check it itself - see the module docstring). The success that resets
+      -- the lockout counters is recorded here, never by a separately callable function.
+      insert into public.auth_attempts (kind, username, ip, device_hash, device_trusted, success)
+        values ('login', u.username, p_ip,
+                case when p_device_was_trusted then p_device_hash end, p_device_was_trusted, true);
       if p_device_hash is not null then
         insert into public.trusted_devices (user_id, device_hash)
           values (p_user_id, p_device_hash)
@@ -287,6 +286,8 @@ _UP = [
       update public.sessions set issued_token_version = (select token_version from public.users
                                                          where id = uid)
         where id = p_keep_session and user_id = uid;
+      insert into public.auth_attempts (kind, username, success)
+        select 'change_password', username, true from public.users where id = uid;
       insert into public.audit_logs (actor_id, actor_role, action, target_user_id)
         select uid, role::text, 'account.password_change', uid from public.users where id = uid;
     end $$
@@ -294,11 +295,11 @@ _UP = [
     "revoke execute on all functions in schema public from public",
     """grant execute on function
        auth_login_lookup(text),
-       auth_record_attempt(text, text, inet, text, boolean, boolean),
+       auth_record_failure(text, text, inet, text, boolean),
        auth_failure_counts(text, text, inet, text, interval),
        device_is_trusted(text, text),
        activation_token_user(text),
-       session_create(uuid, text, text, text, text, interval),
+       session_create(uuid, text, text, text, text, boolean, inet, interval),
        session_rotate(text, text, interval),
        session_check(uuid, uuid, int),
        session_revoke_by_token(text),
@@ -320,11 +321,11 @@ def downgrade() -> None:
         "session_revoke_by_token(text)",
         "session_check(uuid, uuid, int)",
         "session_rotate(text, text, interval)",
-        "session_create(uuid, text, text, text, text, interval)",
+        "session_create(uuid, text, text, text, text, boolean, inet, interval)",
         "activation_token_user(text)",
         "device_is_trusted(text, text)",
         "auth_failure_counts(text, text, inet, text, interval)",
-        "auth_record_attempt(text, text, inet, text, boolean, boolean)",
+        "auth_record_failure(text, text, inet, text, boolean)",
         "auth_login_lookup(text)",
     ):
         op.execute(f"drop function if exists {fn}")
@@ -342,6 +343,6 @@ def downgrade() -> None:
     op.execute("revoke execute on function revoke_user_sessions(uuid, text) from public")
     for col in ("family_expires_at", "issued_token_version", "grace_used"):
         op.execute(f"alter table sessions drop column if exists {col}")
-    for col in ("txid", "device_hash", "device_trusted"):
+    for col in ("device_hash", "device_trusted"):
         op.execute(f"alter table auth_attempts drop column if exists {col}")
     op.execute("drop table if exists trusted_devices")

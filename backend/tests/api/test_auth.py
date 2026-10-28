@@ -461,27 +461,35 @@ async def test_grace_cannot_fork_after_a_password_change_that_kept_the_session(
         ).status_code == 401
 
 
-async def test_session_create_needs_a_verified_login_in_the_same_transaction(
-    owner_engine: AsyncEngine,
+async def test_app_role_cannot_record_a_successful_attempt(
+    owner_engine: AsyncEngine, client_from: ClientFactory
 ) -> None:
+    """Only session_create records successes, so lockout counters cannot be reset by a forged
+    'success' (the app role can record failures only)."""
     import os  # noqa: PLC0415
 
     from sqlalchemy.exc import DBAPIError  # noqa: PLC0415
     from sqlalchemy.ext.asyncio import create_async_engine  # noqa: PLC0415
 
-    victim, _ = await make_active_user(owner_engine)
+    _, username = await make_active_user(owner_engine)
+    async with client_from("198.51.100.150") as c:
+        for _ in range(5):
+            await _login(c, username, password="wrong-wrong")
     app = create_async_engine(os.environ["TEST_DATABASE_URL"])
     try:
-        with pytest.raises(DBAPIError, match="no verified login"):
+        with pytest.raises(DBAPIError, match=r"does not exist|permission denied"):
             async with app.connect() as conn, conn.begin():
                 await conn.execute(
                     bound_text(
-                        "select * from session_create(:u, :h, 'x', 'web', null, interval '1 day')"
+                        "select auth_record_attempt('login', :u, '198.51.100.150', null, false,"
+                        " true)"
                     ),
-                    {"u": victim, "h": "a" * 64},
+                    {"u": username},
                 )
     finally:
         await app.dispose()
+    async with client_from("198.51.100.150") as c:
+        assert (await _login(c, username)).status_code == 429  # still locked
 
 
 async def test_trusted_device_is_not_locked_by_failures_from_its_address(
