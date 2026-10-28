@@ -1,0 +1,1547 @@
+{
+ "_meta": {
+  "version": "0.2.0",
+  "purpose": "Тест таних (синоним), нэгж хөрвүүлэх, уншилтын алдааг барих (physio_min/max, delta_check_pct). ЛАВЛАХ БОЛОН КРИТИК ХЯЗГААР АГУУЛАХГҮЙ — тэдгээрийг зөвхөн оруулсан баримтаас авна.",
+  "warning": "physio_min/max нь клиникийн хязгаар биш, 'физиологийн хувьд боломжгүй' утгыг илрүүлэх өргөн хүрээ. Коэффициент, LOINC-ийг (null = тодруулах) нэвтрүүлэхээс өмнө лабораторийн эмчээр хянуулна.",
+  "conversion_rule": "value_canonical = value_raw * factor; ref_* ба critical_* хязгаарт ижил коэффициент.",
+  "qualitative_values": {
+   "positive": [
+    "эерэг",
+    "positive",
+    "pos",
+    "+",
+    "реактив",
+    "reactive",
+    "обнаружено",
+    "илэрсэн"
+   ],
+   "negative": [
+    "сөрөг",
+    "negative",
+    "neg",
+    "-",
+    "нереактив",
+    "non-reactive",
+    "не обнаружено",
+    "илрээгүй"
+   ]
+  }
+ },
+ "tests": [
+  {
+   "code": "WBC",
+   "loinc": "6690-2",
+   "name_mn": "Цагаан эс (лейкоцит)",
+   "name_en": "White blood cells",
+   "name_ru": "Лейкоциты",
+   "category": "cbc",
+   "kind": "numeric",
+   "canonical_unit": "10^9/L",
+   "decimals": 1,
+   "physio_min": 0,
+   "physio_max": 500,
+   "unit_conversions": [
+    {
+     "from_unit": "10^3/µL",
+     "to_unit": "10^9/L",
+     "factor": 1
+    }
+   ],
+   "synonyms": [
+    "WBC",
+    "лейкоцит",
+    "цагаан эс",
+    "лейк",
+    "Лейкоциты"
+   ],
+   "delta_check_pct": 80
+  },
+  {
+   "code": "RBC",
+   "loinc": "789-8",
+   "name_mn": "Улаан эс (эритроцит)",
+   "name_en": "Red blood cells",
+   "name_ru": "Эритроциты",
+   "category": "cbc",
+   "kind": "numeric",
+   "canonical_unit": "10^12/L",
+   "decimals": 2,
+   "physio_min": 0.5,
+   "physio_max": 10,
+   "unit_conversions": [
+    {
+     "from_unit": "10^6/µL",
+     "to_unit": "10^12/L",
+     "factor": 1
+    }
+   ],
+   "synonyms": [
+    "RBC",
+    "эритроцит",
+    "улаан эс",
+    "Эритроциты"
+   ],
+   "delta_check_pct": null
+  },
+  {
+   "code": "HGB",
+   "loinc": "718-7",
+   "name_mn": "Гемоглобин",
+   "name_en": "Hemoglobin",
+   "name_ru": "Гемоглобин",
+   "category": "cbc",
+   "kind": "numeric",
+   "canonical_unit": "g/L",
+   "decimals": 0,
+   "physio_min": 10,
+   "physio_max": 260,
+   "unit_conversions": [
+    {
+     "from_unit": "g/dL",
+     "to_unit": "g/L",
+     "factor": 10
+    },
+    {
+     "from_unit": "mmol/L",
+     "to_unit": "g/L",
+     "factor": 16.11
+    }
+   ],
+   "synonyms": [
+    "HGB",
+    "Hb",
+    "гемоглобин",
+    "Гемоглобин"
+   ],
+   "delta_check_pct": 25
+  },
+  {
+   "code": "HCT",
+   "loinc": "4544-3",
+   "name_mn": "Гематокрит",
+   "name_en": "Hematocrit",
+   "name_ru": "Гематокрит",
+   "category": "cbc",
+   "kind": "numeric",
+   "canonical_unit": "%",
+   "decimals": 1,
+   "physio_min": 5,
+   "physio_max": 80,
+   "unit_conversions": [
+    {
+     "from_unit": "L/L",
+     "to_unit": "%",
+     "factor": 100
+    }
+   ],
+   "synonyms": [
+    "HCT",
+    "Ht",
+    "гематокрит"
+   ],
+   "delta_check_pct": null
+  },
+  {
+   "code": "MCV",
+   "loinc": "787-2",
+   "name_mn": "Улаан эсийн дундаж эзэлхүүн",
+   "name_en": "MCV",
+   "name_ru": "Средний объём эритроцита",
+   "category": "cbc",
+   "kind": "numeric",
+   "canonical_unit": "fL",
+   "decimals": 1,
+   "physio_min": 40,
+   "physio_max": 150,
+   "unit_conversions": [],
+   "synonyms": [
+    "MCV"
+   ],
+   "delta_check_pct": null
+  },
+  {
+   "code": "MCH",
+   "loinc": "785-6",
+   "name_mn": "Улаан эс дэх гемоглобины дундаж хэмжээ",
+   "name_en": "MCH",
+   "name_ru": "MCH",
+   "category": "cbc",
+   "kind": "numeric",
+   "canonical_unit": "pg",
+   "decimals": 1,
+   "physio_min": 10,
+   "physio_max": 50,
+   "unit_conversions": [],
+   "synonyms": [
+    "MCH"
+   ],
+   "delta_check_pct": null
+  },
+  {
+   "code": "MCHC",
+   "loinc": "786-4",
+   "name_mn": "Улаан эс дэх гемоглобины дундаж концентраци",
+   "name_en": "MCHC",
+   "name_ru": "MCHC",
+   "category": "cbc",
+   "kind": "numeric",
+   "canonical_unit": "g/L",
+   "decimals": 0,
+   "physio_min": 200,
+   "physio_max": 450,
+   "unit_conversions": [
+    {
+     "from_unit": "g/dL",
+     "to_unit": "g/L",
+     "factor": 10
+    }
+   ],
+   "synonyms": [
+    "MCHC"
+   ],
+   "delta_check_pct": null
+  },
+  {
+   "code": "RDW",
+   "loinc": "788-0",
+   "name_mn": "Улаан эсийн хэмжээний тархалт",
+   "name_en": "RDW",
+   "name_ru": "RDW",
+   "category": "cbc",
+   "kind": "numeric",
+   "canonical_unit": "%",
+   "decimals": 1,
+   "physio_min": 5,
+   "physio_max": 40,
+   "unit_conversions": [],
+   "synonyms": [
+    "RDW",
+    "RDW-CV"
+   ],
+   "delta_check_pct": null
+  },
+  {
+   "code": "PLT",
+   "loinc": "777-3",
+   "name_mn": "Ялтас эс (тромбоцит)",
+   "name_en": "Platelets",
+   "name_ru": "Тромбоциты",
+   "category": "cbc",
+   "kind": "numeric",
+   "canonical_unit": "10^9/L",
+   "decimals": 0,
+   "physio_min": 1,
+   "physio_max": 2000,
+   "unit_conversions": [
+    {
+     "from_unit": "10^3/µL",
+     "to_unit": "10^9/L",
+     "factor": 1
+    }
+   ],
+   "synonyms": [
+    "PLT",
+    "тромбоцит",
+    "ялтас",
+    "Тромбоциты"
+   ],
+   "delta_check_pct": 50
+  },
+  {
+   "code": "NEUT_ABS",
+   "loinc": "751-8",
+   "name_mn": "Нейтрофил (абсолют)",
+   "name_en": "Neutrophils, absolute",
+   "name_ru": "Нейтрофилы абс.",
+   "category": "cbc",
+   "kind": "numeric",
+   "canonical_unit": "10^9/L",
+   "decimals": 2,
+   "physio_min": 0,
+   "physio_max": 200,
+   "unit_conversions": [
+    {
+     "from_unit": "10^3/µL",
+     "to_unit": "10^9/L",
+     "factor": 1
+    }
+   ],
+   "synonyms": [
+    "NEUT#",
+    "нейтрофил абс",
+    "GRA#"
+   ],
+   "delta_check_pct": null
+  },
+  {
+   "code": "LYMPH_ABS",
+   "loinc": "731-0",
+   "name_mn": "Лимфоцит (абсолют)",
+   "name_en": "Lymphocytes, absolute",
+   "name_ru": "Лимфоциты абс.",
+   "category": "cbc",
+   "kind": "numeric",
+   "canonical_unit": "10^9/L",
+   "decimals": 2,
+   "physio_min": 0,
+   "physio_max": 200,
+   "unit_conversions": [
+    {
+     "from_unit": "10^3/µL",
+     "to_unit": "10^9/L",
+     "factor": 1
+    }
+   ],
+   "synonyms": [
+    "LYM#",
+    "лимфоцит абс"
+   ],
+   "delta_check_pct": null
+  },
+  {
+   "code": "ESR",
+   "loinc": "4537-7",
+   "name_mn": "Улаан эсийн тунах хурд",
+   "name_en": "ESR",
+   "name_ru": "СОЭ",
+   "category": "cbc",
+   "kind": "numeric",
+   "canonical_unit": "mm/h",
+   "decimals": 0,
+   "physio_min": 0,
+   "physio_max": 200,
+   "unit_conversions": [],
+   "synonyms": [
+    "ESR",
+    "СОЭ",
+    "ЭТХ",
+    "ЭТУ"
+   ],
+   "delta_check_pct": null
+  },
+  {
+   "code": "CREA",
+   "loinc": "2160-0",
+   "name_mn": "Креатинин",
+   "name_en": "Creatinine",
+   "name_ru": "Креатинин",
+   "category": "renal",
+   "kind": "numeric",
+   "canonical_unit": "µmol/L",
+   "decimals": 0,
+   "physio_min": 5,
+   "physio_max": 3000,
+   "unit_conversions": [
+    {
+     "from_unit": "mg/dL",
+     "to_unit": "µmol/L",
+     "factor": 88.4
+    }
+   ],
+   "synonyms": [
+    "креатинин",
+    "creatinine",
+    "CREA",
+    "Cr",
+    "Креатинин"
+   ],
+   "delta_check_pct": 50
+  },
+  {
+   "code": "UREA",
+   "loinc": "22664-7",
+   "name_mn": "Мочевин",
+   "name_en": "Urea",
+   "name_ru": "Мочевина",
+   "category": "renal",
+   "kind": "numeric",
+   "canonical_unit": "mmol/L",
+   "decimals": 1,
+   "physio_min": 0.5,
+   "physio_max": 100,
+   "unit_conversions": [
+    {
+     "from_unit": "mg/dL (urea)",
+     "to_unit": "mmol/L",
+     "factor": 0.1665
+    }
+   ],
+   "synonyms": [
+    "мочевин",
+    "мочевина",
+    "urea",
+    "мочевины"
+   ],
+   "delta_check_pct": null
+  },
+  {
+   "code": "BUN",
+   "loinc": "3094-0",
+   "name_mn": "Мочевины азот (BUN)",
+   "name_en": "Blood urea nitrogen",
+   "name_ru": "Азот мочевины",
+   "category": "renal",
+   "kind": "numeric",
+   "canonical_unit": "mg/dL",
+   "decimals": 1,
+   "physio_min": 1,
+   "physio_max": 300,
+   "unit_conversions": [],
+   "synonyms": [
+    "BUN"
+   ],
+   "delta_check_pct": null
+  },
+  {
+   "code": "UA",
+   "loinc": "3084-1",
+   "name_mn": "Шээсний хүчил",
+   "name_en": "Uric acid",
+   "name_ru": "Мочевая кислота",
+   "category": "renal",
+   "kind": "numeric",
+   "canonical_unit": "µmol/L",
+   "decimals": 0,
+   "physio_min": 20,
+   "physio_max": 1500,
+   "unit_conversions": [
+    {
+     "from_unit": "mg/dL",
+     "to_unit": "µmol/L",
+     "factor": 59.48
+    }
+   ],
+   "synonyms": [
+    "шээсний хүчил",
+    "мочевая кислота",
+    "uric acid",
+    "UA"
+   ],
+   "delta_check_pct": null
+  },
+  {
+   "code": "EGFR",
+   "loinc": null,
+   "name_mn": "eGFR (тооцоолсон)",
+   "name_en": "eGFR (CKD-EPI 2021)",
+   "name_ru": "СКФ",
+   "category": "renal",
+   "kind": "numeric",
+   "canonical_unit": "mL/min/1.73m²",
+   "decimals": 0,
+   "physio_min": 1,
+   "physio_max": 200,
+   "unit_conversions": [],
+   "synonyms": [
+    "eGFR",
+    "СКФ",
+    "GFR"
+   ],
+   "delta_check_pct": null
+  },
+  {
+   "code": "UPCR",
+   "loinc": null,
+   "name_mn": "Шээсний уураг/креатинины харьцаа",
+   "name_en": "Urine protein/creatinine ratio",
+   "name_ru": "Белок/креатинин мочи",
+   "category": "renal",
+   "kind": "numeric",
+   "canonical_unit": "mg/mmol",
+   "decimals": 1,
+   "physio_min": 0,
+   "physio_max": 2000,
+   "unit_conversions": [
+    {
+     "from_unit": "mg/g",
+     "to_unit": "mg/mmol",
+     "factor": 0.1131
+    },
+    {
+     "from_unit": "g/g",
+     "to_unit": "mg/mmol",
+     "factor": 113.1
+    }
+   ],
+   "synonyms": [
+    "UPCR",
+    "PCR"
+   ],
+   "delta_check_pct": null
+  },
+  {
+   "code": "UACR",
+   "loinc": "14959-1",
+   "name_mn": "Шээсний альбумин/креатинины харьцаа",
+   "name_en": "Urine albumin/creatinine ratio",
+   "name_ru": "Альбумин/креатинин мочи",
+   "category": "renal",
+   "kind": "numeric",
+   "canonical_unit": "mg/mmol",
+   "decimals": 1,
+   "physio_min": 0,
+   "physio_max": 2000,
+   "unit_conversions": [
+    {
+     "from_unit": "mg/g",
+     "to_unit": "mg/mmol",
+     "factor": 0.1131
+    }
+   ],
+   "synonyms": [
+    "UACR",
+    "ACR",
+    "микроальбумин"
+   ],
+   "delta_check_pct": null
+  },
+  {
+   "code": "NA",
+   "loinc": "2951-2",
+   "name_mn": "Натри",
+   "name_en": "Sodium",
+   "name_ru": "Натрий",
+   "category": "electrolyte",
+   "kind": "numeric",
+   "canonical_unit": "mmol/L",
+   "decimals": 0,
+   "physio_min": 90,
+   "physio_max": 200,
+   "unit_conversions": [],
+   "synonyms": [
+    "натри",
+    "натрий",
+    "Na",
+    "sodium"
+   ],
+   "delta_check_pct": 8
+  },
+  {
+   "code": "K",
+   "loinc": "2823-3",
+   "name_mn": "Кали",
+   "name_en": "Potassium",
+   "name_ru": "Калий",
+   "category": "electrolyte",
+   "kind": "numeric",
+   "canonical_unit": "mmol/L",
+   "decimals": 1,
+   "physio_min": 1,
+   "physio_max": 12,
+   "unit_conversions": [],
+   "synonyms": [
+    "кали",
+    "калий",
+    "K",
+    "potassium"
+   ],
+   "delta_check_pct": 30
+  },
+  {
+   "code": "CL",
+   "loinc": "2075-0",
+   "name_mn": "Хлор",
+   "name_en": "Chloride",
+   "name_ru": "Хлор",
+   "category": "electrolyte",
+   "kind": "numeric",
+   "canonical_unit": "mmol/L",
+   "decimals": 0,
+   "physio_min": 60,
+   "physio_max": 150,
+   "unit_conversions": [],
+   "synonyms": [
+    "хлор",
+    "Cl",
+    "chloride"
+   ],
+   "delta_check_pct": null
+  },
+  {
+   "code": "CA",
+   "loinc": "17861-6",
+   "name_mn": "Кальци (нийт)",
+   "name_en": "Calcium, total",
+   "name_ru": "Кальций общий",
+   "category": "electrolyte",
+   "kind": "numeric",
+   "canonical_unit": "mmol/L",
+   "decimals": 2,
+   "physio_min": 0.5,
+   "physio_max": 5,
+   "unit_conversions": [
+    {
+     "from_unit": "mg/dL",
+     "to_unit": "mmol/L",
+     "factor": 0.2495
+    }
+   ],
+   "synonyms": [
+    "кальци",
+    "кальций",
+    "Ca",
+    "calcium"
+   ],
+   "delta_check_pct": null
+  },
+  {
+   "code": "MG",
+   "loinc": "19123-9",
+   "name_mn": "Магни",
+   "name_en": "Magnesium",
+   "name_ru": "Магний",
+   "category": "electrolyte",
+   "kind": "numeric",
+   "canonical_unit": "mmol/L",
+   "decimals": 2,
+   "physio_min": 0.1,
+   "physio_max": 5,
+   "unit_conversions": [
+    {
+     "from_unit": "mg/dL",
+     "to_unit": "mmol/L",
+     "factor": 0.4114
+    }
+   ],
+   "synonyms": [
+    "магни",
+    "магний",
+    "Mg"
+   ],
+   "delta_check_pct": null
+  },
+  {
+   "code": "PHOS",
+   "loinc": "2777-1",
+   "name_mn": "Фосфор",
+   "name_en": "Phosphate",
+   "name_ru": "Фосфор",
+   "category": "electrolyte",
+   "kind": "numeric",
+   "canonical_unit": "mmol/L",
+   "decimals": 2,
+   "physio_min": 0.1,
+   "physio_max": 6,
+   "unit_conversions": [
+    {
+     "from_unit": "mg/dL",
+     "to_unit": "mmol/L",
+     "factor": 0.3229
+    }
+   ],
+   "synonyms": [
+    "фосфор",
+    "P",
+    "phosphorus",
+    "phosphate"
+   ],
+   "delta_check_pct": null
+  },
+  {
+   "code": "ALT",
+   "loinc": "1742-6",
+   "name_mn": "АЛТ (АлАТ)",
+   "name_en": "ALT",
+   "name_ru": "АЛТ",
+   "category": "liver",
+   "kind": "numeric",
+   "canonical_unit": "U/L",
+   "decimals": 0,
+   "physio_min": 0,
+   "physio_max": 20000,
+   "unit_conversions": [],
+   "synonyms": [
+    "АЛТ",
+    "АлАТ",
+    "ALT",
+    "ALAT",
+    "GPT"
+   ],
+   "delta_check_pct": 200
+  },
+  {
+   "code": "AST",
+   "loinc": "1920-8",
+   "name_mn": "АСТ (АсАТ)",
+   "name_en": "AST",
+   "name_ru": "АСТ",
+   "category": "liver",
+   "kind": "numeric",
+   "canonical_unit": "U/L",
+   "decimals": 0,
+   "physio_min": 0,
+   "physio_max": 20000,
+   "unit_conversions": [],
+   "synonyms": [
+    "АСТ",
+    "АсАТ",
+    "AST",
+    "ASAT",
+    "GOT"
+   ],
+   "delta_check_pct": 200
+  },
+  {
+   "code": "GGT",
+   "loinc": "2324-2",
+   "name_mn": "ГГТ",
+   "name_en": "GGT",
+   "name_ru": "ГГТ",
+   "category": "liver",
+   "kind": "numeric",
+   "canonical_unit": "U/L",
+   "decimals": 0,
+   "physio_min": 0,
+   "physio_max": 5000,
+   "unit_conversions": [],
+   "synonyms": [
+    "ГГТ",
+    "GGT",
+    "гамма-ГТ"
+   ],
+   "delta_check_pct": null
+  },
+  {
+   "code": "ALP",
+   "loinc": "6768-6",
+   "name_mn": "Шүлтлэг фосфатаз",
+   "name_en": "Alkaline phosphatase",
+   "name_ru": "Щелочная фосфатаза",
+   "category": "liver",
+   "kind": "numeric",
+   "canonical_unit": "U/L",
+   "decimals": 0,
+   "physio_min": 0,
+   "physio_max": 5000,
+   "unit_conversions": [],
+   "synonyms": [
+    "ШФ",
+    "ЩФ",
+    "ALP",
+    "шүлтлэг фосфатаз"
+   ],
+   "delta_check_pct": null
+  },
+  {
+   "code": "TBIL",
+   "loinc": "1975-2",
+   "name_mn": "Нийт билирубин",
+   "name_en": "Total bilirubin",
+   "name_ru": "Билирубин общий",
+   "category": "liver",
+   "kind": "numeric",
+   "canonical_unit": "µmol/L",
+   "decimals": 1,
+   "physio_min": 0,
+   "physio_max": 1000,
+   "unit_conversions": [
+    {
+     "from_unit": "mg/dL",
+     "to_unit": "µmol/L",
+     "factor": 17.1
+    }
+   ],
+   "synonyms": [
+    "нийт билирубин",
+    "билирубин общий",
+    "TBIL",
+    "T-Bil"
+   ],
+   "delta_check_pct": 100
+  },
+  {
+   "code": "DBIL",
+   "loinc": "1968-7",
+   "name_mn": "Шууд билирубин",
+   "name_en": "Direct bilirubin",
+   "name_ru": "Билирубин прямой",
+   "category": "liver",
+   "kind": "numeric",
+   "canonical_unit": "µmol/L",
+   "decimals": 1,
+   "physio_min": 0,
+   "physio_max": 800,
+   "unit_conversions": [
+    {
+     "from_unit": "mg/dL",
+     "to_unit": "µmol/L",
+     "factor": 17.1
+    }
+   ],
+   "synonyms": [
+    "шууд билирубин",
+    "билирубин прямой",
+    "DBIL",
+    "D-Bil"
+   ],
+   "delta_check_pct": null
+  },
+  {
+   "code": "ALB",
+   "loinc": "1751-7",
+   "name_mn": "Альбумин",
+   "name_en": "Albumin",
+   "name_ru": "Альбумин",
+   "category": "liver",
+   "kind": "numeric",
+   "canonical_unit": "g/L",
+   "decimals": 1,
+   "physio_min": 5,
+   "physio_max": 70,
+   "unit_conversions": [
+    {
+     "from_unit": "g/dL",
+     "to_unit": "g/L",
+     "factor": 10
+    }
+   ],
+   "synonyms": [
+    "альбумин",
+    "ALB",
+    "albumin"
+   ],
+   "delta_check_pct": null
+  },
+  {
+   "code": "TP",
+   "loinc": "2885-2",
+   "name_mn": "Нийт уураг",
+   "name_en": "Total protein",
+   "name_ru": "Общий белок",
+   "category": "liver",
+   "kind": "numeric",
+   "canonical_unit": "g/L",
+   "decimals": 1,
+   "physio_min": 20,
+   "physio_max": 130,
+   "unit_conversions": [
+    {
+     "from_unit": "g/dL",
+     "to_unit": "g/L",
+     "factor": 10
+    }
+   ],
+   "synonyms": [
+    "нийт уураг",
+    "общий белок",
+    "TP"
+   ],
+   "delta_check_pct": null
+  },
+  {
+   "code": "GLU",
+   "loinc": "2345-7",
+   "name_mn": "Глюкоз (сахар)",
+   "name_en": "Glucose",
+   "name_ru": "Глюкоза",
+   "category": "metabolic",
+   "kind": "numeric",
+   "canonical_unit": "mmol/L",
+   "decimals": 1,
+   "physio_min": 0.5,
+   "physio_max": 60,
+   "unit_conversions": [
+    {
+     "from_unit": "mg/dL",
+     "to_unit": "mmol/L",
+     "factor": 0.0555
+    }
+   ],
+   "synonyms": [
+    "глюкоз",
+    "глюкоза",
+    "сахар",
+    "GLU",
+    "glucose"
+   ],
+   "delta_check_pct": 60
+  },
+  {
+   "code": "HBA1C",
+   "loinc": "4548-4",
+   "name_mn": "Гликозилжсон гемоглобин (HbA1c)",
+   "name_en": "HbA1c",
+   "name_ru": "Гликированный гемоглобин",
+   "category": "metabolic",
+   "kind": "numeric",
+   "canonical_unit": "%",
+   "decimals": 1,
+   "physio_min": 2,
+   "physio_max": 20,
+   "unit_conversions": [],
+   "synonyms": [
+    "HbA1c",
+    "A1c",
+    "гликозилжсон гемоглобин"
+   ],
+   "delta_check_pct": null
+  },
+  {
+   "code": "CHOL",
+   "loinc": "2093-3",
+   "name_mn": "Нийт холестерин",
+   "name_en": "Total cholesterol",
+   "name_ru": "Холестерин общий",
+   "category": "lipid",
+   "kind": "numeric",
+   "canonical_unit": "mmol/L",
+   "decimals": 2,
+   "physio_min": 0.5,
+   "physio_max": 30,
+   "unit_conversions": [
+    {
+     "from_unit": "mg/dL",
+     "to_unit": "mmol/L",
+     "factor": 0.02586
+    }
+   ],
+   "synonyms": [
+    "холестерин",
+    "нийт холестерин",
+    "CHOL",
+    "TC"
+   ],
+   "delta_check_pct": null
+  },
+  {
+   "code": "HDL",
+   "loinc": "2085-9",
+   "name_mn": "HDL холестерин",
+   "name_en": "HDL cholesterol",
+   "name_ru": "ЛПВП",
+   "category": "lipid",
+   "kind": "numeric",
+   "canonical_unit": "mmol/L",
+   "decimals": 2,
+   "physio_min": 0.1,
+   "physio_max": 6,
+   "unit_conversions": [
+    {
+     "from_unit": "mg/dL",
+     "to_unit": "mmol/L",
+     "factor": 0.02586
+    }
+   ],
+   "synonyms": [
+    "HDL",
+    "ЛПВП",
+    "өндөр нягтралтай"
+   ],
+   "delta_check_pct": null
+  },
+  {
+   "code": "LDL",
+   "loinc": "13457-7",
+   "name_mn": "LDL холестерин",
+   "name_en": "LDL cholesterol",
+   "name_ru": "ЛПНП",
+   "category": "lipid",
+   "kind": "numeric",
+   "canonical_unit": "mmol/L",
+   "decimals": 2,
+   "physio_min": 0.1,
+   "physio_max": 20,
+   "unit_conversions": [
+    {
+     "from_unit": "mg/dL",
+     "to_unit": "mmol/L",
+     "factor": 0.02586
+    }
+   ],
+   "synonyms": [
+    "LDL",
+    "ЛПНП",
+    "бага нягтралтай"
+   ],
+   "delta_check_pct": null
+  },
+  {
+   "code": "TG",
+   "loinc": "2571-8",
+   "name_mn": "Триглицерид",
+   "name_en": "Triglycerides",
+   "name_ru": "Триглицериды",
+   "category": "lipid",
+   "kind": "numeric",
+   "canonical_unit": "mmol/L",
+   "decimals": 2,
+   "physio_min": 0.1,
+   "physio_max": 60,
+   "unit_conversions": [
+    {
+     "from_unit": "mg/dL",
+     "to_unit": "mmol/L",
+     "factor": 0.01129
+    }
+   ],
+   "synonyms": [
+    "триглицерид",
+    "TG",
+    "триглицериды"
+   ],
+   "delta_check_pct": null
+  },
+  {
+   "code": "CRP",
+   "loinc": "1988-5",
+   "name_mn": "С-урвалжит уураг (CRP)",
+   "name_en": "C-reactive protein",
+   "name_ru": "С-реактивный белок",
+   "category": "inflammation",
+   "kind": "numeric",
+   "canonical_unit": "mg/L",
+   "decimals": 1,
+   "physio_min": 0,
+   "physio_max": 600,
+   "unit_conversions": [
+    {
+     "from_unit": "mg/dL",
+     "to_unit": "mg/L",
+     "factor": 10
+    }
+   ],
+   "synonyms": [
+    "CRP",
+    "СРБ",
+    "С-урвалжит уураг"
+   ],
+   "delta_check_pct": null
+  },
+  {
+   "code": "TSH",
+   "loinc": "3016-3",
+   "name_mn": "Бамбай булчирхай сэдээх даавар (TSH)",
+   "name_en": "TSH",
+   "name_ru": "ТТГ",
+   "category": "thyroid",
+   "kind": "numeric",
+   "canonical_unit": "mIU/L",
+   "decimals": 2,
+   "physio_min": 0,
+   "physio_max": 200,
+   "unit_conversions": [
+    {
+     "from_unit": "µIU/mL",
+     "to_unit": "mIU/L",
+     "factor": 1
+    }
+   ],
+   "synonyms": [
+    "TSH",
+    "ТТГ"
+   ],
+   "delta_check_pct": null
+  },
+  {
+   "code": "FT4",
+   "loinc": "3024-7",
+   "name_mn": "Чөлөөт T4",
+   "name_en": "Free T4",
+   "name_ru": "Свободный Т4",
+   "category": "thyroid",
+   "kind": "numeric",
+   "canonical_unit": "pmol/L",
+   "decimals": 1,
+   "physio_min": 0,
+   "physio_max": 200,
+   "unit_conversions": [
+    {
+     "from_unit": "ng/dL",
+     "to_unit": "pmol/L",
+     "factor": 12.87
+    }
+   ],
+   "synonyms": [
+    "FT4",
+    "чөлөөт Т4",
+    "св. Т4"
+   ],
+   "delta_check_pct": null
+  },
+  {
+   "code": "FERR",
+   "loinc": "2276-4",
+   "name_mn": "Ферритин",
+   "name_en": "Ferritin",
+   "name_ru": "Ферритин",
+   "category": "iron",
+   "kind": "numeric",
+   "canonical_unit": "µg/L",
+   "decimals": 0,
+   "physio_min": 0,
+   "physio_max": 100000,
+   "unit_conversions": [
+    {
+     "from_unit": "ng/mL",
+     "to_unit": "µg/L",
+     "factor": 1
+    }
+   ],
+   "synonyms": [
+    "ферритин",
+    "ferritin"
+   ],
+   "delta_check_pct": null
+  },
+  {
+   "code": "VITD",
+   "loinc": null,
+   "name_mn": "Витамин D (25-OH)",
+   "name_en": "25-OH Vitamin D",
+   "name_ru": "Витамин D",
+   "category": "vitamin",
+   "kind": "numeric",
+   "canonical_unit": "ng/mL",
+   "decimals": 1,
+   "physio_min": 0,
+   "physio_max": 300,
+   "unit_conversions": [
+    {
+     "from_unit": "nmol/L",
+     "to_unit": "ng/mL",
+     "factor": 0.4006
+    }
+   ],
+   "synonyms": [
+    "витамин D",
+    "25-OH D",
+    "VitD"
+   ],
+   "delta_check_pct": null
+  },
+  {
+   "code": "INR",
+   "loinc": "6301-6",
+   "name_mn": "INR",
+   "name_en": "INR",
+   "name_ru": "МНО",
+   "category": "coagulation",
+   "kind": "numeric",
+   "canonical_unit": "",
+   "decimals": 2,
+   "physio_min": 0.5,
+   "physio_max": 20,
+   "unit_conversions": [],
+   "synonyms": [
+    "INR",
+    "МНО"
+   ],
+   "delta_check_pct": 50
+  },
+  {
+   "code": "APTT",
+   "loinc": "3173-2",
+   "name_mn": "aPTT",
+   "name_en": "aPTT",
+   "name_ru": "АЧТВ",
+   "category": "coagulation",
+   "kind": "numeric",
+   "canonical_unit": "s",
+   "decimals": 1,
+   "physio_min": 10,
+   "physio_max": 200,
+   "unit_conversions": [],
+   "synonyms": [
+    "aPTT",
+    "АЧТВ",
+    "АЧТХ"
+   ],
+   "delta_check_pct": null
+  },
+  {
+   "code": "FIB",
+   "loinc": "3255-7",
+   "name_mn": "Фибриноген",
+   "name_en": "Fibrinogen",
+   "name_ru": "Фибриноген",
+   "category": "coagulation",
+   "kind": "numeric",
+   "canonical_unit": "g/L",
+   "decimals": 2,
+   "physio_min": 0.1,
+   "physio_max": 15,
+   "unit_conversions": [
+    {
+     "from_unit": "mg/dL",
+     "to_unit": "g/L",
+     "factor": 0.01
+    }
+   ],
+   "synonyms": [
+    "фибриноген"
+   ],
+   "delta_check_pct": null
+  },
+  {
+   "code": "TAC",
+   "loinc": null,
+   "name_mn": "Такролимус (trough)",
+   "name_en": "Tacrolimus trough",
+   "name_ru": "Такролимус",
+   "category": "immunosuppressant",
+   "kind": "numeric",
+   "canonical_unit": "ng/mL",
+   "decimals": 1,
+   "physio_min": 0,
+   "physio_max": 100,
+   "unit_conversions": [
+    {
+     "from_unit": "µg/L",
+     "to_unit": "ng/mL",
+     "factor": 1
+    }
+   ],
+   "synonyms": [
+    "такролимус",
+    "tacrolimus",
+    "FK506",
+    "Prograf"
+   ],
+   "delta_check_pct": 60
+  },
+  {
+   "code": "CSA",
+   "loinc": null,
+   "name_mn": "Циклоспорин",
+   "name_en": "Cyclosporine",
+   "name_ru": "Циклоспорин",
+   "category": "immunosuppressant",
+   "kind": "numeric",
+   "canonical_unit": "ng/mL",
+   "decimals": 0,
+   "physio_min": 0,
+   "physio_max": 3000,
+   "unit_conversions": [
+    {
+     "from_unit": "µg/L",
+     "to_unit": "ng/mL",
+     "factor": 1
+    }
+   ],
+   "synonyms": [
+    "циклоспорин",
+    "cyclosporine",
+    "CsA"
+   ],
+   "delta_check_pct": null
+  },
+  {
+   "code": "SIR",
+   "loinc": null,
+   "name_mn": "Сиролимус",
+   "name_en": "Sirolimus",
+   "name_ru": "Сиролимус",
+   "category": "immunosuppressant",
+   "kind": "numeric",
+   "canonical_unit": "ng/mL",
+   "decimals": 1,
+   "physio_min": 0,
+   "physio_max": 100,
+   "unit_conversions": [
+    {
+     "from_unit": "µg/L",
+     "to_unit": "ng/mL",
+     "factor": 1
+    }
+   ],
+   "synonyms": [
+    "сиролимус",
+    "sirolimus",
+    "rapamycin"
+   ],
+   "delta_check_pct": null
+  },
+  {
+   "code": "EVR",
+   "loinc": null,
+   "name_mn": "Эверолимус",
+   "name_en": "Everolimus",
+   "name_ru": "Эверолимус",
+   "category": "immunosuppressant",
+   "kind": "numeric",
+   "canonical_unit": "ng/mL",
+   "decimals": 1,
+   "physio_min": 0,
+   "physio_max": 100,
+   "unit_conversions": [
+    {
+     "from_unit": "µg/L",
+     "to_unit": "ng/mL",
+     "factor": 1
+    }
+   ],
+   "synonyms": [
+    "эверолимус",
+    "everolimus"
+   ],
+   "delta_check_pct": null
+  },
+  {
+   "code": "MPA",
+   "loinc": null,
+   "name_mn": "Микофенолын хүчил",
+   "name_en": "Mycophenolic acid",
+   "name_ru": "Микофеноловая кислота",
+   "category": "immunosuppressant",
+   "kind": "numeric",
+   "canonical_unit": "mg/L",
+   "decimals": 2,
+   "physio_min": 0,
+   "physio_max": 50,
+   "unit_conversions": [
+    {
+     "from_unit": "µg/mL",
+     "to_unit": "mg/L",
+     "factor": 1
+    }
+   ],
+   "synonyms": [
+    "MPA",
+    "микофенол"
+   ],
+   "delta_check_pct": null
+  },
+  {
+   "code": "HBSAG",
+   "loinc": null,
+   "name_mn": "HBsAg (B вирус)",
+   "name_en": "HBsAg",
+   "name_ru": "HBsAg",
+   "category": "virology",
+   "kind": "qualitative",
+   "canonical_unit": null,
+   "decimals": 0,
+   "physio_min": null,
+   "physio_max": null,
+   "unit_conversions": [],
+   "synonyms": [
+    "HBsAg",
+    "В вирусын гадаргуугийн эсрэгтөрөгч"
+   ],
+   "delta_check_pct": null
+  },
+  {
+   "code": "ANTI_HCV",
+   "loinc": null,
+   "name_mn": "Anti-HCV (C вирус)",
+   "name_en": "Anti-HCV",
+   "name_ru": "Анти-HCV",
+   "category": "virology",
+   "kind": "qualitative",
+   "canonical_unit": null,
+   "decimals": 0,
+   "physio_min": null,
+   "physio_max": null,
+   "unit_conversions": [],
+   "synonyms": [
+    "anti-HCV",
+    "C вирусын эсрэгбие"
+   ],
+   "delta_check_pct": null
+  },
+  {
+   "code": "ANTI_HDV",
+   "loinc": null,
+   "name_mn": "Anti-HDV (D вирус)",
+   "name_en": "Anti-HDV",
+   "name_ru": "Анти-HDV",
+   "category": "virology",
+   "kind": "qualitative",
+   "canonical_unit": null,
+   "decimals": 0,
+   "physio_min": null,
+   "physio_max": null,
+   "unit_conversions": [],
+   "synonyms": [
+    "anti-HDV",
+    "D вирусын эсрэгбие"
+   ],
+   "delta_check_pct": null
+  },
+  {
+   "code": "HBV_DNA",
+   "loinc": null,
+   "name_mn": "HBV ДНХ (вирусын ачаалал)",
+   "name_en": "HBV DNA",
+   "name_ru": "ДНК HBV",
+   "category": "virology",
+   "kind": "numeric",
+   "canonical_unit": "IU/mL",
+   "decimals": 0,
+   "physio_min": 0,
+   "physio_max": 10000000000.0,
+   "unit_conversions": [],
+   "synonyms": [
+    "HBV DNA",
+    "HBV ДНХ",
+    "B вирусын ачаалал"
+   ],
+   "delta_check_pct": null
+  },
+  {
+   "code": "HCV_RNA",
+   "loinc": null,
+   "name_mn": "HCV РНХ",
+   "name_en": "HCV RNA",
+   "name_ru": "РНК HCV",
+   "category": "virology",
+   "kind": "numeric",
+   "canonical_unit": "IU/mL",
+   "decimals": 0,
+   "physio_min": 0,
+   "physio_max": 10000000000.0,
+   "unit_conversions": [],
+   "synonyms": [
+    "HCV RNA",
+    "HCV РНХ"
+   ],
+   "delta_check_pct": null
+  },
+  {
+   "code": "HDV_RNA",
+   "loinc": null,
+   "name_mn": "HDV РНХ",
+   "name_en": "HDV RNA",
+   "name_ru": "РНК HDV",
+   "category": "virology",
+   "kind": "numeric",
+   "canonical_unit": "IU/mL",
+   "decimals": 0,
+   "physio_min": 0,
+   "physio_max": 1000000000000.0,
+   "unit_conversions": [],
+   "synonyms": [
+    "HDV RNA",
+    "HDV РНХ",
+    "D вирусын ачаалал"
+   ],
+   "delta_check_pct": null
+  },
+  {
+   "code": "CMV_DNA",
+   "loinc": null,
+   "name_mn": "CMV ДНХ",
+   "name_en": "CMV DNA",
+   "name_ru": "ДНК ЦМВ",
+   "category": "virology",
+   "kind": "numeric",
+   "canonical_unit": "IU/mL",
+   "decimals": 0,
+   "physio_min": 0,
+   "physio_max": 10000000000.0,
+   "unit_conversions": [],
+   "synonyms": [
+    "CMV DNA",
+    "ЦМВ",
+    "CMV ПГУ"
+   ],
+   "delta_check_pct": null
+  },
+  {
+   "code": "BKV_DNA",
+   "loinc": null,
+   "name_mn": "BK вирус ДНХ",
+   "name_en": "BK virus DNA",
+   "name_ru": "ДНК BK вируса",
+   "category": "virology",
+   "kind": "numeric",
+   "canonical_unit": "copies/mL",
+   "decimals": 0,
+   "physio_min": 0,
+   "physio_max": 1000000000000.0,
+   "unit_conversions": [],
+   "synonyms": [
+    "BK virus",
+    "BKV",
+    "BK вирус"
+   ],
+   "delta_check_pct": null
+  },
+  {
+   "code": "AFP",
+   "loinc": "1834-1",
+   "name_mn": "Альфа-фетопротейн",
+   "name_en": "AFP",
+   "name_ru": "АФП",
+   "category": "tumor_marker",
+   "kind": "numeric",
+   "canonical_unit": "ng/mL",
+   "decimals": 1,
+   "physio_min": 0,
+   "physio_max": 1000000.0,
+   "unit_conversions": [
+    {
+     "from_unit": "IU/mL",
+     "to_unit": "ng/mL",
+     "factor": 1.21
+    }
+   ],
+   "synonyms": [
+    "AFP",
+    "АФП",
+    "альфа-фетопротейн"
+   ],
+   "delta_check_pct": null
+  }
+ ],
+ "unit_aliases": {
+  "ммоль/л": "mmol/L",
+  "mmol/l": "mmol/L",
+  "мкмоль/л": "µmol/L",
+  "umol/l": "µmol/L",
+  "μmol/l": "µmol/L",
+  "µmol/l": "µmol/L",
+  "мг/дл": "mg/dL",
+  "mg/dl": "mg/dL",
+  "г/л": "g/L",
+  "g/l": "g/L",
+  "г/дл": "g/dL",
+  "g/dl": "g/dL",
+  "мг/л": "mg/L",
+  "mg/l": "mg/L",
+  "ед/л": "U/L",
+  "нэгж/л": "U/L",
+  "u/l": "U/L",
+  "iu/l": "U/L",
+  "ме/л": "U/L",
+  "10^9/л": "10^9/L",
+  "10*9/л": "10^9/L",
+  "x10^9/l": "10^9/L",
+  "10^9/l": "10^9/L",
+  "г/л (10^9)": "10^9/L",
+  "10^12/л": "10^12/L",
+  "10*12/л": "10^12/L",
+  "10^12/l": "10^12/L",
+  "10^3/мкл": "10^3/µL",
+  "10^3/ul": "10^3/µL",
+  "k/ul": "10^3/µL",
+  "10^6/ul": "10^6/µL",
+  "фл": "fL",
+  "fl": "fL",
+  "пг": "pg",
+  "pg": "pg",
+  "%": "%",
+  "мм/ц": "mm/h",
+  "мм/час": "mm/h",
+  "mm/hr": "mm/h",
+  "нг/мл": "ng/mL",
+  "ng/ml": "ng/mL",
+  "мкг/л": "µg/L",
+  "ug/l": "µg/L",
+  "пмоль/л": "pmol/L",
+  "pmol/l": "pmol/L",
+  "мкме/мл": "µIU/mL",
+  "uiu/ml": "µIU/mL",
+  "мме/л": "mIU/L",
+  "miu/l": "mIU/L",
+  "ме/мл": "IU/mL",
+  "iu/ml": "IU/mL",
+  "сек": "s",
+  "с": "s",
+  "sec": "s",
+  "копи/мл": "copies/mL",
+  "copies/ml": "copies/mL",
+  "мг/ммоль": "mg/mmol",
+  "mg/g": "mg/g"
+ }
+}

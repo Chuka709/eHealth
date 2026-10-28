@@ -1,0 +1,408 @@
+{
+ "_meta": {
+  "version": "0.1.0",
+  "purpose": "Эмийн нэрийг хурдан сонгох, ангилах, эмийн түвшний шинжилгээтэй холбох. ТУН, ХУВААРЬ, ЗААЛТ АГУУЛАХГҮЙ — хэрэглэгч эмчийнхээ зааврыг өөрөө оруулна.",
+  "warning": "Худалдааны нэр Монголд бүртгэлтэй эсэхийг Эмийн бүртгэлээс шалгаж, эм зүйчээр хянуулна. Хэрэглэгч каталогт байхгүй эмийг гараар нэмж болно."
+ },
+ "medications": [
+  {
+   "code": "TACROLIMUS",
+   "generic_mn": "Такролимус",
+   "generic_en": "Tacrolimus",
+   "brands": [
+    "Prograf",
+    "Advagraf",
+    "Envarsus"
+   ],
+   "category": "immunosuppressant",
+   "forms": [
+    "capsule",
+    "extended_release",
+    "granules"
+   ],
+   "related_test_code": "TAC"
+  },
+  {
+   "code": "CYCLOSPORINE",
+   "generic_mn": "Циклоспорин",
+   "generic_en": "Cyclosporine",
+   "brands": [
+    "Sandimmun Neoral"
+   ],
+   "category": "immunosuppressant",
+   "forms": [
+    "capsule",
+    "solution"
+   ],
+   "related_test_code": "CSA"
+  },
+  {
+   "code": "MMF",
+   "generic_mn": "Микофенолат мофетил",
+   "generic_en": "Mycophenolate mofetil",
+   "brands": [
+    "CellCept"
+   ],
+   "category": "immunosuppressant",
+   "forms": [
+    "capsule",
+    "tablet",
+    "suspension"
+   ],
+   "related_test_code": "MPA"
+  },
+  {
+   "code": "MPS",
+   "generic_mn": "Микофенолын хүчлийн натрийн давс",
+   "generic_en": "Mycophenolate sodium",
+   "brands": [
+    "Myfortic"
+   ],
+   "category": "immunosuppressant",
+   "forms": [
+    "delayed_release_tablet"
+   ],
+   "related_test_code": "MPA"
+  },
+  {
+   "code": "EVEROLIMUS",
+   "generic_mn": "Эверолимус",
+   "generic_en": "Everolimus",
+   "brands": [
+    "Certican",
+    "Zortress"
+   ],
+   "category": "immunosuppressant",
+   "forms": [
+    "tablet"
+   ],
+   "related_test_code": "EVR"
+  },
+  {
+   "code": "SIROLIMUS",
+   "generic_mn": "Сиролимус",
+   "generic_en": "Sirolimus",
+   "brands": [
+    "Rapamune"
+   ],
+   "category": "immunosuppressant",
+   "forms": [
+    "tablet",
+    "solution"
+   ],
+   "related_test_code": "SIR"
+  },
+  {
+   "code": "AZATHIOPRINE",
+   "generic_mn": "Азатиоприн",
+   "generic_en": "Azathioprine",
+   "brands": [
+    "Imuran"
+   ],
+   "category": "immunosuppressant",
+   "forms": [
+    "tablet"
+   ],
+   "related_test_code": null
+  },
+  {
+   "code": "BELATACEPT",
+   "generic_mn": "Белатацепт",
+   "generic_en": "Belatacept",
+   "brands": [
+    "Nulojix"
+   ],
+   "category": "immunosuppressant",
+   "forms": [
+    "injection"
+   ],
+   "related_test_code": null
+  },
+  {
+   "code": "PREDNISOLONE",
+   "generic_mn": "Преднизолон",
+   "generic_en": "Prednisolone",
+   "brands": [],
+   "category": "corticosteroid",
+   "forms": [
+    "tablet"
+   ],
+   "related_test_code": null
+  },
+  {
+   "code": "METHYLPRED",
+   "generic_mn": "Метилпреднизолон",
+   "generic_en": "Methylprednisolone",
+   "brands": [
+    "Medrol",
+    "Solu-Medrol"
+   ],
+   "category": "corticosteroid",
+   "forms": [
+    "tablet",
+    "injection"
+   ],
+   "related_test_code": null
+  },
+  {
+   "code": "BASILIXIMAB",
+   "generic_mn": "Басиликсимаб",
+   "generic_en": "Basiliximab",
+   "brands": [
+    "Simulect"
+   ],
+   "category": "induction",
+   "forms": [
+    "injection"
+   ],
+   "related_test_code": null
+  },
+  {
+   "code": "ATG",
+   "generic_mn": "Антитимоцитын глобулин",
+   "generic_en": "Anti-thymocyte globulin",
+   "brands": [
+    "Thymoglobulin"
+   ],
+   "category": "induction",
+   "forms": [
+    "injection"
+   ],
+   "related_test_code": null
+  },
+  {
+   "code": "VALGANCICLOVIR",
+   "generic_mn": "Валганцикловир",
+   "generic_en": "Valganciclovir",
+   "brands": [
+    "Valcyte"
+   ],
+   "category": "antiviral",
+   "forms": [
+    "tablet"
+   ],
+   "related_test_code": null
+  },
+  {
+   "code": "GANCICLOVIR",
+   "generic_mn": "Ганцикловир",
+   "generic_en": "Ganciclovir",
+   "brands": [
+    "Cymevene"
+   ],
+   "category": "antiviral",
+   "forms": [
+    "injection"
+   ],
+   "related_test_code": null
+  },
+  {
+   "code": "COTRIMOXAZOLE",
+   "generic_mn": "Ко-тримоксазол",
+   "generic_en": "Sulfamethoxazole/Trimethoprim",
+   "brands": [
+    "Biseptol",
+    "Bactrim"
+   ],
+   "category": "antibiotic_prophylaxis",
+   "forms": [
+    "tablet"
+   ],
+   "related_test_code": null
+  },
+  {
+   "code": "FLUCONAZOLE",
+   "generic_mn": "Флуконазол",
+   "generic_en": "Fluconazole",
+   "brands": [
+    "Diflucan"
+   ],
+   "category": "antifungal",
+   "forms": [
+    "capsule",
+    "tablet"
+   ],
+   "related_test_code": null
+  },
+  {
+   "code": "NYSTATIN",
+   "generic_mn": "Нистатин",
+   "generic_en": "Nystatin",
+   "brands": [],
+   "category": "antifungal",
+   "forms": [
+    "suspension",
+    "tablet"
+   ],
+   "related_test_code": null
+  },
+  {
+   "code": "ENTECAVIR",
+   "generic_mn": "Энтекавир",
+   "generic_en": "Entecavir",
+   "brands": [
+    "Baraclude"
+   ],
+   "category": "hepatitis",
+   "forms": [
+    "tablet"
+   ],
+   "related_test_code": "HBV_DNA"
+  },
+  {
+   "code": "TDF",
+   "generic_mn": "Тенофовир дизопроксил",
+   "generic_en": "Tenofovir disoproxil",
+   "brands": [
+    "Viread"
+   ],
+   "category": "hepatitis",
+   "forms": [
+    "tablet"
+   ],
+   "related_test_code": "HBV_DNA"
+  },
+  {
+   "code": "TAF",
+   "generic_mn": "Тенофовир алафенамид",
+   "generic_en": "Tenofovir alafenamide",
+   "brands": [
+    "Vemlidy"
+   ],
+   "category": "hepatitis",
+   "forms": [
+    "tablet"
+   ],
+   "related_test_code": "HBV_DNA"
+  },
+  {
+   "code": "BULEVIRTIDE",
+   "generic_mn": "Булевиртид",
+   "generic_en": "Bulevirtide",
+   "brands": [
+    "Hepcludex"
+   ],
+   "category": "hepatitis",
+   "forms": [
+    "injection"
+   ],
+   "related_test_code": "HDV_RNA"
+  },
+  {
+   "code": "UDCA",
+   "generic_mn": "Урсодезоксихолын хүчил",
+   "generic_en": "Ursodeoxycholic acid",
+   "brands": [
+    "Ursofalk",
+    "Ursosan"
+   ],
+   "category": "liver",
+   "forms": [
+    "capsule",
+    "tablet"
+   ],
+   "related_test_code": null
+  },
+  {
+   "code": "AMLODIPINE",
+   "generic_mn": "Амлодипин",
+   "generic_en": "Amlodipine",
+   "brands": [
+    "Norvasc"
+   ],
+   "category": "antihypertensive",
+   "forms": [
+    "tablet"
+   ],
+   "related_test_code": null
+  },
+  {
+   "code": "METOPROLOL",
+   "generic_mn": "Метопролол",
+   "generic_en": "Metoprolol",
+   "brands": [
+    "Betaloc"
+   ],
+   "category": "antihypertensive",
+   "forms": [
+    "tablet"
+   ],
+   "related_test_code": null
+  },
+  {
+   "code": "ATORVASTATIN",
+   "generic_mn": "Аторвастатин",
+   "generic_en": "Atorvastatin",
+   "brands": [
+    "Lipitor"
+   ],
+   "category": "lipid",
+   "forms": [
+    "tablet"
+   ],
+   "related_test_code": "CHOL"
+  },
+  {
+   "code": "INSULIN",
+   "generic_mn": "Инсулин",
+   "generic_en": "Insulin",
+   "brands": [],
+   "category": "diabetes",
+   "forms": [
+    "injection"
+   ],
+   "related_test_code": "GLU"
+  },
+  {
+   "code": "METFORMIN",
+   "generic_mn": "Метформин",
+   "generic_en": "Metformin",
+   "brands": [
+    "Glucophage"
+   ],
+   "category": "diabetes",
+   "forms": [
+    "tablet"
+   ],
+   "related_test_code": "HBA1C"
+  },
+  {
+   "code": "OMEPRAZOLE",
+   "generic_mn": "Омепразол",
+   "generic_en": "Omeprazole",
+   "brands": [
+    "Losec"
+   ],
+   "category": "gi",
+   "forms": [
+    "capsule"
+   ],
+   "related_test_code": null
+  },
+  {
+   "code": "CALCIUM_VITD",
+   "generic_mn": "Кальци + Витамин D",
+   "generic_en": "Calcium + Vitamin D",
+   "brands": [],
+   "category": "bone",
+   "forms": [
+    "tablet"
+   ],
+   "related_test_code": "CA"
+  },
+  {
+   "code": "EPO",
+   "generic_mn": "Эритропоэтин",
+   "generic_en": "Epoetin",
+   "brands": [
+    "Eprex",
+    "Recormon"
+   ],
+   "category": "anemia",
+   "forms": [
+    "injection"
+   ],
+   "related_test_code": "HGB"
+  }
+ ]
+}

@@ -1,0 +1,65 @@
+# Secrets — never commit
+.env
+.env.*
+!.env.example
+*.pem
+*.p8
+*.p12
+*.jks
+*.keystore
+*.mobileprovision
+google-services.json
+GoogleService-Info.plist
+
+# PHI — raw (non-anonymized) eval inputs stay local
+eval/cases/**/raw/
+
+# Old planning versions (kept locally only)
+_archive/
+
+# Claude Code local-only files
+.claude/settings.local.json
+CLAUDE.local.md
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.hypothesis/
+.coverage
+htmlcov/
+
+# Node / TS
+node_modules/
+.pnpm-store/
+*.tsbuildinfo
+.next/
+out/
+dist/
+build/
+coverage/
+.turbo/
+
+# Expo / React Native
+.expo/
+.expo-shared/
+web-build/
+mobile/ios/
+mobile/android/
+
+# Test artifacts
+playwright-report/
+test-results/
+.maestro/screenshots/
+
+# OS / editors
+.DS_Store
+Thumbs.db
+desktop.ini
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.log
