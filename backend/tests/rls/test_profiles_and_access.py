@@ -1,6 +1,6 @@
 """RLS for patients, patient_access, consents, notifications (docs/03, docs/04 §6)."""
 
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from uuid import UUID
 
 import pytest
@@ -263,16 +263,36 @@ async def test_result_notification_reaches_a_caregiver_with_access(
         assert await scalar(conn, bound_text("select count(*) from notifications")) == 1
 
 
-async def test_minor_flag_cannot_be_flipped_to_unlock_proxy_consent(
-    app_engine: AsyncEngine, owner_engine: AsyncEngine, admin_engine: AsyncEngine
+async def test_birth_date_cannot_be_rewritten_to_unlock_proxy_consent(
+    app_engine: AsyncEngine, owner_engine: AsyncEngine
 ) -> None:
     owner = await make_user(owner_engine)
     adult = await make_patient(app_engine, owner)
-    with pytest.raises(DBAPIError, match="permission denied"):
+    set_born = bound_text("update patients set birth_date = :d where id = :p")
+    async with as_user(app_engine, owner) as conn:  # first time: allowed
+        await conn.execute(set_born, {"d": date(1960, 5, 1), "p": adult})
+    with pytest.raises(DBAPIError, match="birth date cannot be changed"):
         async with as_user(app_engine, owner) as conn:
-            await conn.execute(
-                bound_text("update patients set is_minor = true where id = :p"), {"p": adult}
-            )
+            await conn.execute(set_born, {"d": date(2015, 5, 1), "p": adult})
+
+
+async def test_minor_status_ends_at_eighteen(
+    app_engine: AsyncEngine, owner_engine: AsyncEngine
+) -> None:
+    owner = await make_user(owner_engine)
+    child = await make_patient(app_engine, owner, minor=True)
+    async with as_user(app_engine, owner) as conn:
+        assert await scalar(conn, bound_text("select is_minor_patient(:p)"), {"p": child})
+    async with owner_engine.connect() as conn, conn.begin():  # time passes (support correction)
+        await conn.execute(
+            bound_text(
+                "update patients set birth_date = current_date - interval '18 years 1 day'"
+                " where id = :p"
+            ),
+            {"p": child},
+        )
+    async with as_user(app_engine, owner) as conn:
+        assert not await scalar(conn, bound_text("select is_minor_patient(:p)"), {"p": child})
 
 
 async def test_audit_rows_cannot_be_attached_to_a_foreign_patient(

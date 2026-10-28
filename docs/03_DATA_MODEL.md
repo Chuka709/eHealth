@@ -115,7 +115,8 @@ create table patients (
   id uuid primary key default gen_random_uuid(),
   org_id uuid,                                 -- MVP-д null; клиник нэмэхэд FK
   full_name text not null, relation text,      -- 'self','child','parent','spouse','other'
-  is_minor boolean not null default false,     -- хүүхдийн профайл: зөвшөөрлийг асран хамгаалагч өгнө
+  -- насанд хүрээгүй эсэхийг хадгалахгүй: is_minor_patient() шалгах мөчид birth_date-ээс тооцно (18 нас хүрмэгц автоматаар дуусна);
+  -- birth_date-г хэрэглэгч нэг л удаа оруулна, өөрчлөхийг trigger хориглоно (support засна)
   archived_at timestamptz,                     -- нас барсан / идэвхгүй (админ эсвэл гэр бүл)
   birth_date date, sex sex not null default 'unknown',
   national_id_enc bytea, national_id_hmac text,
@@ -496,7 +497,7 @@ API нь хэзээ ч owner URL ашиглахгүй — шинэ auth үйлд
 - **Хүснэгт бүрийн RLS (SELECT/INSERT/UPDATE/DELETE тусдаа):**
   - `users`: SELECT/UPDATE `id = app_user_id()`; `GRANT UPDATE (display_name, locale, emergency_card_unlocked)` л (role, status эрх нэмэгдүүлэх боломжгүй). Нэрээр хуваалцахдаа `lookup_user_for_share(username)` → зөвхөн id (яг таарсан нэр, rate limit).
   - `sessions`: SELECT (`token_hash`-гүй баганууд), `UPDATE (revoked_at, revoked_reason)` `user_id = app_user_id()`; INSERT/DELETE — зөвхөн auth функц.
-  - `consents`: **append-only** (UPDATE/DELETE хориотой — хуулийн нотолгоо). INSERT `WITH CHECK (user_id = app_user_id() and (patient_id is null or (is_owner(patient_id) and is_minor(patient_id))))` — caregiver насанд хүрэгчийн өмнөөс зөвшөөрөл өгөхгүй.
+  - `consents`: **append-only** (UPDATE/DELETE хориотой — хуулийн нотолгоо). INSERT `WITH CHECK (user_id = app_user_id() and (patient_id is null or (is_owner(patient_id) and is_minor_patient(patient_id))))` — caregiver насанд хүрэгчийн өмнөөс зөвшөөрөл өгөхгүй.
   - `notifications`: SELECT, `UPDATE (read_at)` `user_id = app_user_id()`; INSERT — зөвхөн `notify(user_id, kind, …)` definer функц (worker бусдад илгээх).
   - `data_exports`: SELECT/INSERT өөрийнх; `status/storage_key/expires_at`-ийг зөвхөн worker функц.
   - `patients`: SELECT `can_read_patient(id)`, UPDATE/DELETE `is_owner(id)`; INSERT — `create_patient()` функц (үүсгэгчийг owner болгоно).

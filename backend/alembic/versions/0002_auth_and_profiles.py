@@ -129,7 +129,6 @@ _TABLES = [
       org_id uuid,
       full_name text not null check (length(full_name) between 1 and 200),
       relation text check (relation in ('self','child','parent','spouse','other')),
-      is_minor boolean not null default false,
       archived_at timestamptz,
       birth_date date check (birth_date > date '1900-01-01'),
       sex sex not null default 'unknown',
@@ -239,7 +238,9 @@ _FUNCTIONS = [
     """,
     f"""
     create function is_minor_patient(p uuid) returns boolean language sql stable {_DEFINER} as $$
-      select coalesce((select is_minor from public.patients where id = p), false)
+      -- Evaluated at check time: a child's profile stops being a minor's on the 18th birthday.
+      select coalesce((select birth_date > current_date - interval '18 years'
+                       from public.patients where id = p), false)
     $$
     """,
     # The caller becomes the owner of the new profile (the only way to insert a patient).
@@ -254,11 +255,8 @@ _FUNCTIONS = [
       if uid is null then
         raise exception 'no user context' using errcode = '42501';
       end if;
-      -- Minor status (which allows proxy consent) follows from the birth date only.
-      insert into public.patients (full_name, relation, is_minor, birth_date, sex, created_by)
-        values (p_full_name, p_relation,
-                p_birth_date is not null and p_birth_date > (current_date - interval '18 years'),
-                p_birth_date, p_sex, uid)
+      insert into public.patients (full_name, relation, birth_date, sex, created_by)
+        values (p_full_name, p_relation, p_birth_date, p_sex, uid)
         returning id into pid;
       insert into public.patient_access (patient_id, user_id, level, scopes, granted_by)
         values (pid, uid, 'owner', '{{*}}', uid);
@@ -360,6 +358,23 @@ _FUNCTIONS = [
       select exists (select 1 from public.users where id = p and account_status = 'active'
                      and role in ('user','doctor') and deleted_at is null)
     $$
+    """,
+    # Minor status (proxy consent) derives from birth_date, so users may set it once but never
+    # change it afterwards (a correction goes through support) - otherwise a parent could
+    # backdate an adult's profile to consent on their behalf.
+    """
+    create function patients_birth_date_once() returns trigger language plpgsql as $$
+    begin
+      if current_user = 'labtrack_app' and old.birth_date is not null
+         and new.birth_date is distinct from old.birth_date then
+        raise exception 'birth date cannot be changed' using errcode = '42501';
+      end if;
+      return new;
+    end $$
+    """,
+    """
+    create trigger patients_birth_date_once before update on patients
+      for each row execute function patients_birth_date_once()
     """,
     # L2: who granted access is recorded by the database, not by the caller.
     """
@@ -532,6 +547,7 @@ def downgrade() -> None:
         "audit_write(text, text, text, uuid, jsonb)",
         "create_patient(text, text, date, sex)",
         "is_minor_patient(uuid)",
+        "patients_birth_date_once()",
         "can_write_patient(uuid)",
         "can_read_patient(uuid)",
         "is_owner(uuid)",
