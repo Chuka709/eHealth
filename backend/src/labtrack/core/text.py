@@ -27,3 +27,10 @@ def normalize_unit(text: str) -> str:
     """Key for unit aliases: case-insensitive, no spaces, µ/μ unified; '/' and '^' kept."""
     s = unicodedata.normalize("NFKC", text).strip().replace("μ", "µ")
     return re.sub(r"\s+", "", s).casefold()
+
+
+def valid_display_name(name: str) -> bool:
+    """1-100 characters, no control or format characters (bidi overrides, zero-width)."""
+    return 1 <= len(name) <= 100 and not any(  # noqa: PLR2004
+        unicodedata.category(ch) in {"Cc", "Cf"} for ch in name
+    )

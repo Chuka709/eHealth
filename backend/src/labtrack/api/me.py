@@ -1,0 +1,209 @@
+"""/me: the signed-in user's own account - profile, consents, what admins did to the account,
+notifications and the "Би хүсээгүй" report (docs/04 §1, §5; Phase 1.7). RLS scopes every query
+to the user; nothing here can reach another account."""
+
+from datetime import datetime
+from typing import Annotated, Literal
+from uuid import UUID
+
+from fastapi import APIRouter, Query, Response, status
+from pydantic import AfterValidator, BaseModel, ConfigDict, Field, StringConstraints
+from sqlalchemy.exc import DBAPIError
+
+from labtrack import consents
+from labtrack.api.deps import UserDb
+from labtrack.api.errors import AppError, ErrorBody
+from labtrack.core.text import valid_display_name
+from labtrack.db.sql import bound_text
+
+router = APIRouter(prefix="/me", tags=["me"])
+
+_ERRORS: dict[int | str, dict[str, object]] = {
+    401: {"model": ErrorBody},
+    403: {"model": ErrorBody},
+    404: {"model": ErrorBody},
+    409: {"model": ErrorBody},
+    422: {"model": ErrorBody},
+}
+
+
+class _Strict(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+
+def _display_name(value: str) -> str:
+    if not valid_display_name(value):
+        raise ValueError("display_name")
+    return value
+
+
+DisplayName = Annotated[
+    str,
+    StringConstraints(strip_whitespace=True, min_length=1, max_length=100),
+    AfterValidator(_display_name),
+]
+
+
+class MeOut(BaseModel):
+    id: UUID
+    username: str
+    display_name: str
+    locale: str
+    role: str
+    account_status: str
+    password_changed_at: datetime | None
+    created_at: datetime
+
+
+class MeUpdate(_Strict):
+    display_name: DisplayName | None = None
+    locale: Literal["mn", "en"] | None = None
+
+
+class ConsentOut(BaseModel):
+    kind: str
+    current_version: str
+    granted: bool
+    granted_version: str | None
+    at: datetime | None
+    required: bool
+
+
+class ConsentItem(_Strict):
+    kind: consents.Kind
+    version: Annotated[str, StringConstraints(min_length=1, max_length=20)]
+    granted: bool
+
+
+class ConsentRequest(_Strict):
+    items: Annotated[list[ConsentItem], Field(min_length=1, max_length=5)]
+    # a minor's profile the user owns (Q9); omitted = the user's own consents
+    patient_id: UUID | None = None
+
+
+class AdminActionOut(BaseModel):
+    at: datetime
+    action: str
+    actor_role: str | None
+
+
+class NotificationOut(BaseModel):
+    id: int
+    kind: str
+    title_key: str
+    created_at: datetime
+    read_at: datetime | None
+
+
+async def _me(db: UserDb) -> MeOut:
+    row = (
+        await db.execute(
+            bound_text(
+                "select id, username::text as username, display_name, locale, role::text as role,"
+                " account_status, password_changed_at, created_at from users"
+            )
+        )
+    ).one()
+    return MeOut(**row._mapping)
+
+
+@router.get("", response_model=MeOut, responses=_ERRORS)
+async def me(db: UserDb) -> MeOut:
+    return await _me(db)
+
+
+@router.patch("", response_model=MeOut, responses=_ERRORS)
+async def update_me(body: MeUpdate, db: UserDb) -> MeOut:
+    await db.execute(
+        bound_text(
+            "update users set display_name = coalesce(:n, display_name),"
+            " locale = coalesce(:l, locale) where id = app_user_id()"
+        ),
+        {"n": body.display_name, "l": body.locale},
+    )
+    return await _me(db)
+
+
+@router.get("/consents", response_model=list[ConsentOut], responses=_ERRORS)
+async def get_consents(db: UserDb, patient_id: UUID | None = None) -> list[ConsentOut]:
+    return [ConsentOut(**s.__dict__) for s in await consents.states(db, patient_id)]
+
+
+@router.post("/consents", status_code=status.HTTP_204_NO_CONTENT, responses=_ERRORS)
+async def give_consents(body: ConsentRequest, db: UserDb) -> Response:
+    """Give or withdraw (granted=false). Only for the text version currently shown."""
+    if len({i.kind for i in body.items}) != len(body.items):
+        raise AppError(422, "validation")
+    if any(i.version != consents.VERSIONS[i.kind] for i in body.items):
+        raise AppError(409, "consent.version_outdated")
+    try:
+        for item in body.items:
+            await db.execute(
+                bound_text(
+                    "insert into consents (user_id, patient_id, kind, version, granted)"
+                    " values (app_user_id(), :p, :k, :v, :g)"
+                ),
+                {"p": body.patient_id, "k": item.kind, "v": item.version, "g": item.granted},
+            )
+    except DBAPIError:
+        # RLS: only the owner of a minor's profile consents for it (never for an adult's)
+        raise AppError(403, "consent.not_allowed") from None
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.get("/admin-actions", response_model=list[AdminActionOut], responses=_ERRORS)
+async def admin_actions(db: UserDb) -> list[AdminActionOut]:
+    """What admins did to this account (when, what, which role) - never who or why."""
+    rows = await db.execute(bound_text("select * from my_admin_actions()"))
+    return [AdminActionOut(**r._mapping) for r in rows]
+
+
+@router.get("/notifications", response_model=list[NotificationOut], responses=_ERRORS)
+async def notifications(
+    db: UserDb,
+    unread_only: bool = False,
+    limit: Annotated[int, Query(ge=1, le=100)] = 50,
+) -> list[NotificationOut]:
+    rows = await db.execute(
+        bound_text(
+            "select id, kind, title_key, created_at, read_at from notifications"
+            " where (not :u or read_at is null) order by created_at desc limit :n"
+        ),
+        {"u": unread_only, "n": limit},
+    )
+    return [NotificationOut(**r._mapping) for r in rows]
+
+
+@router.post(
+    "/notifications/{notification_id}/read",
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses=_ERRORS,
+)
+async def mark_read(notification_id: int, db: UserDb) -> Response:
+    done = (
+        await db.execute(
+            bound_text(
+                "update notifications set read_at = coalesce(read_at, now())"
+                " where id = :i returning id"
+            ),
+            {"i": notification_id},
+        )
+    ).scalar_one_or_none()
+    if done is None:
+        raise AppError(404, "me.notification_not_found")
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post(
+    "/report-unwanted-admin-action",
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses=_ERRORS,
+)
+async def report_unwanted_admin_action(db: UserDb) -> Response:
+    """ "Би хүсээгүй": locks the account and ends every session (this one too). The admins get a
+    security event; only a super admin can unlock it after verifying the person."""
+    try:
+        await db.execute(bound_text("select report_unwanted_admin_action()"))
+    except DBAPIError:
+        raise AppError(409, "me.no_recent_admin_action") from None
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

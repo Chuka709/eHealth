@@ -75,14 +75,6 @@ class SessionOut(BaseModel):
     current: bool
 
 
-class MeOut(BaseModel):
-    id: UUID
-    username: str
-    display_name: str
-    locale: str
-    role: str
-
-
 def _tokens(pair: service.TokenPair) -> TokenResponse:
     return TokenResponse(
         access_token=pair.access_token,
@@ -145,20 +137,6 @@ async def activate(body: ActivateRequest, request: Request, db: AnonymousDb) -> 
         presented=presented_credentials(request),
     )
     return Response(status_code=status.HTTP_204_NO_CONTENT)
-
-
-@router.get("/me", response_model=MeOut, responses=_ERRORS)
-async def me(claims: Claims, db: UserDb) -> MeOut:
-    row = (
-        await db.execute(bound_text("select id, username, display_name, locale, role from users"))
-    ).one()
-    return MeOut(
-        id=row.id,
-        username=row.username,
-        display_name=row.display_name,
-        locale=row.locale,
-        role=str(row.role),
-    )
 
 
 @router.post("/password", status_code=status.HTTP_204_NO_CONTENT, responses=_ERRORS)

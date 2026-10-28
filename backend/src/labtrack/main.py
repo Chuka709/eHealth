@@ -2,8 +2,8 @@ from collections.abc import Awaitable, Callable
 
 from fastapi import FastAPI, Request, Response
 
-from labtrack import __version__
-from labtrack.api import admin, auth, health
+from labtrack import __version__, consents
+from labtrack.api import admin, auth, health, me
 from labtrack.api.errors import install_error_handlers
 from labtrack.config import get_settings
 from labtrack.logging import configure_logging
@@ -12,6 +12,7 @@ from labtrack.observability import init_sentry
 
 def create_app() -> FastAPI:
     settings = get_settings()
+    consents.assert_releasable(settings.environment)
     configure_logging(json=settings.environment != "dev")
     init_sentry(settings)
     app = FastAPI(
@@ -39,5 +40,6 @@ def create_app() -> FastAPI:
 
     app.include_router(health.router, prefix=settings.api_prefix)
     app.include_router(auth.router, prefix=settings.api_prefix)
+    app.include_router(me.router, prefix=settings.api_prefix)
     app.include_router(admin.router, prefix=settings.api_prefix)
     return app

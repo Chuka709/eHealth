@@ -16,6 +16,7 @@ from labtrack.api.deps import client_ip
 from labtrack.api.errors import AppError, ErrorBody
 from labtrack.api.ratelimit import per_ip
 from labtrack.config import get_settings
+from labtrack.core.text import valid_display_name
 from labtrack.sms import SmsSender, get_sms_sender
 
 router = APIRouter(prefix="/admin", tags=["admin"], dependencies=[Depends(require_admin_network)])
@@ -89,7 +90,7 @@ async def me(ctx: Admin) -> AdminMeOut:
 
 
 def _display_name(value: str) -> str:
-    if not csv_import.valid_display_name(value):
+    if not valid_display_name(value):
         raise ValueError("display_name")
     return value
 

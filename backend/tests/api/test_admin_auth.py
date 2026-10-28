@@ -144,7 +144,7 @@ async def test_admins_cannot_sign_in_to_the_user_api(client_from: ClientFactory)
         assert r.status_code == 401
         token = (await admin_login(c, username, secret))[1]["session_token"]
         # an admin session token is not a user token (CLAUDE.md 2a)
-        assert (await c.get("/api/v1/auth/me", headers=bearer(token))).status_code == 401
+        assert (await c.get("/api/v1/me", headers=bearer(token))).status_code == 401
 
 
 async def test_stored_totp_secret_is_encrypted_and_bound_to_its_row(

@@ -39,7 +39,7 @@ async def test_login_returns_tokens_and_me_works(
         body = r.json()
         assert body["token_type"] == "bearer"
         assert body["device_token"]  # first login from this device
-        me = await c.get("/api/v1/auth/me", headers=_auth(body["access_token"]))
+        me = await c.get("/api/v1/me", headers=_auth(body["access_token"]))
     assert me.status_code == 200
     assert me.json()["username"] == username
 
@@ -155,9 +155,7 @@ async def test_refresh_rotates_and_reuse_kills_the_family(
         # ... and the legitimate newer token died with the family
         after = await c.post("/api/v1/auth/refresh", json={"refresh_token": new["refresh_token"]})
         assert after.status_code == 401
-        assert (
-            await c.get("/api/v1/auth/me", headers=_auth(new["access_token"]))
-        ).status_code == 401
+        assert (await c.get("/api/v1/me", headers=_auth(new["access_token"]))).status_code == 401
 
 
 async def test_concurrent_refresh_within_grace_does_not_log_the_user_out(
@@ -189,20 +187,14 @@ async def test_logout_and_disable_invalidate_access_tokens_at_once(
         s1 = (await _login(c, username)).json()
         s2 = (await _login(c, username)).json()
         await c.post("/api/v1/auth/logout", json={"refresh_token": s1["refresh_token"]})
-        assert (
-            await c.get("/api/v1/auth/me", headers=_auth(s1["access_token"]))
-        ).status_code == 401
-        assert (
-            await c.get("/api/v1/auth/me", headers=_auth(s2["access_token"]))
-        ).status_code == 200
+        assert (await c.get("/api/v1/me", headers=_auth(s1["access_token"]))).status_code == 401
+        assert (await c.get("/api/v1/me", headers=_auth(s2["access_token"]))).status_code == 200
         async with owner_engine.connect() as conn, conn.begin():
             await conn.execute(
                 bound_text("update users set account_status = 'disabled' where id = :u"),
                 {"u": uid},
             )
-        assert (
-            await c.get("/api/v1/auth/me", headers=_auth(s2["access_token"]))
-        ).status_code == 401
+        assert (await c.get("/api/v1/me", headers=_auth(s2["access_token"]))).status_code == 401
 
 
 async def test_admin_reset_is_reported_to_the_old_device(
@@ -355,9 +347,7 @@ async def test_sessions_list_and_revoke_own_only(
         assert (
             await c.delete(f"/api/v1/auth/sessions/{other}", headers=_auth(a1["access_token"]))
         ).status_code == 204
-        assert (
-            await c.get("/api/v1/auth/me", headers=_auth(a2["access_token"]))
-        ).status_code == 401
+        assert (await c.get("/api/v1/me", headers=_auth(a2["access_token"]))).status_code == 401
 
 
 # --- hardening from the commit review ----------------------------------------------------

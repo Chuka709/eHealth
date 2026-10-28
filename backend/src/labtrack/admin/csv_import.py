@@ -13,10 +13,11 @@ import csv
 import hashlib
 import io
 import re
-import unicodedata
 from collections.abc import Iterator
 from dataclasses import dataclass
 from typing import Final, Literal
+
+from labtrack.core.text import valid_display_name
 
 MAX_BYTES: Final = 1_000_000
 MAX_ROWS: Final = 1000
@@ -46,13 +47,6 @@ class Parsed:
     sha256: str
     rows: list[Row]
     problems: list[Problem]
-
-
-def valid_display_name(name: str) -> bool:
-    """1-100 characters, no control or format characters (bidi overrides, zero-width)."""
-    return 1 <= len(name) <= 100 and not any(  # noqa: PLR2004
-        unicodedata.category(ch) in {"Cc", "Cf"} for ch in name
-    )
 
 
 def normalise_phone(raw: str) -> str | None:
