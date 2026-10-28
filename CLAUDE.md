@@ -15,7 +15,7 @@
 
 ## Стек
 - **backend/** — Python 3.13, uv, FastAPI, Pydantic v2, SQLAlchemy 2 async + Alembic, Celery + Valkey, pwdlib[argon2], PyJWT (ES256), pdfplumber, pypdfium2, Pillow + pillow-heif, OpenCV, anthropic, rapidfuzz, structlog, exponent-server-sdk, WeasyPrint; pytest + hypothesis + schemathesis (DB тест — compose-ийн `labtrack_test`); Ruff, mypy --strict
-- **mobile/** (үндсэн) — Expo SDK 58 + Expo Router, styling: shared token (сан — Q14), TanStack Query, react-hook-form + zod, document-scanner, expo-share-intent, secure-store, local-authentication, notifications, MMKV, @wuba/react-native-echarts, react-native-pdf, use-intl; Jest + RNTL, Maestro
+- **mobile/** (үндсэн) — Expo SDK 58 + Expo Router, shared token + StyleSheet + `@expo/ui` (Tailwind-гүй, Q14), TanStack Query, react-hook-form + zod, document-scanner, expo-share-intent, secure-store, local-authentication, notifications, MMKV, @wuba/react-native-echarts, react-native-pdf, use-intl; Jest + RNTL, Maestro
 - **web/** (хоёрдогч) — Next.js App Router (BFF auth), shadcn/ui, ECharts, next-intl; Vitest, Playwright
 - **packages/shared/** — OpenAPI client, zod, `messages/{mn,en}.json`, design token
 - **infra/** — PostgreSQL 17, Valkey (Redis-ийн BSD fork — Redis 7.4+/8 нь RSAL/SSPL/AGPL), S3 нийцтэй storage (SeaweedFS dev), Caddy, Docker Compose

@@ -4,7 +4,7 @@
 > Phase бүрийн төгсгөлд DoD-г **нотолгоотой** (команд, тестийн тоо, дэлгэцийн зураг) энд бичнэ. Нээлттэй асуулт → `OPEN_QUESTIONS.md`.
 
 ## Одоогийн байдал
-**Phase 0 — код бүрэн, DoD-ийн 1/4 нотлогдсон** (2026.10.28). Үлдсэн 3 DoD нь таны аккаунт/төхөөрөмж шаардана (доор). Шинэ шийдвэр: Q14 (mobile styling сан).
+**Phase 0 — код бүрэн, DoD-ийн 1/4 нотлогдсон** (2026.10.28). Үлдсэн 3 DoD нь таны аккаунт/төхөөрөмж шаардана (доор). Q14 (mobile styling) шийдэгдсэн.
 
 ---
 
@@ -32,7 +32,7 @@
 - [x] 0.2 Compose: postgres 17 (`labtrack_owner/app/admin/maint` + `labtrack_test` DB), **Valkey 8** (Redis-ийн оронд — лиценз), SeaweedFS S3, migrate, api, worker, web, caddy — бүгд healthcheck; Caddy лог query string нууцална, аюулгүй header
 - [x] 0.3 Backend (Python 3.13): FastAPI factory, `/healthz` `/readyz` (алдааны дэлгэрэнгүй гаргахгүй), pydantic-settings, structlog PHI redact, `user_transaction` (`set_config(..., true)`), `bound_text` (`sqlalchemy.text` хориотой), Sentry (бүх data collection off + URL query хасна), Celery ping, Alembic baseline (`REVOKE CREATE/TEMPORARY`), ruff + mypy --strict
 - [x] 0.4 `packages/shared`: openapi-fetch client (`just gen-client`, `just check-client`), mn/en (түлхүүр тэнцүү тест), design token (бүх өнгөний хос WCAG AA — тест)
-- [x] 0.5 Mobile: **Expo SDK 58** (RN 0.88), Expo Router, TanStack Query, use-intl (mn), `app.config.ts` (fingerprint runtime, env bundle ID, `allowBackup=false`), `eas.json` (development/preview/production), API төлөвийн дэлгэц (өнгө+дүрс+текст, 44pt/48dp), Jest + RNTL v14. Styling сан — Q14
+- [x] 0.5 Mobile: **Expo SDK 58** (RN 0.88), Expo Router, TanStack Query, use-intl (mn), `app.config.ts` (fingerprint runtime, env bundle ID, `allowBackup=false`), `eas.json` (development/preview/production), API төлөвийн дэлгэц (өнгө+дүрс+текст, 44pt/48dp), Jest + RNTL v14. Styling: token + StyleSheet + `@expo/ui` (Q14 шийдэгдсэн)
 - [x] 0.6 Web: **Next.js 16.4** (cache components, standalone), `lang=mn`, Noto Sans кирилл, security header, `/healthz`, төлөвийн хуудас, Vitest, Docker image. next-intl/shadcn/BFF — Phase 1 (админ самбартай хамт)
 - [~] 0.7 CI `.github/workflows/ci.yml` (ruff, mypy, контейнер pytest + alembic up/down/up, biome, tsc, jest, vitest, expo-doctor, stale client) — **GitHub дээр ажиллуулаагүй** (репо байхгүй)
 - [x] 0.8 `backend/CLAUDE.md`, `mobile/CLAUDE.md`, `web/CLAUDE.md`

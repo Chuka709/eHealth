@@ -39,7 +39,7 @@
 | Хэрэгцээ | Сан |
 |---|---|
 | Framework | **Expo** (сүүлийн SDK) + **Expo Router**, EAS Build / Submit / **Update (OTA)** |
-| UI | Shared design token (`@labtrack/shared`) + `@expo/ui`; Tailwind сан — **Q14 шийдвэр хүлээж байна** (NativeWind v4 нь SDK 58/Reanimated 4-тэй эргэлзээтэй, v5 RC) |
+| UI | **Shared design token** (`@labtrack/shared`) + `StyleSheet` + **`@expo/ui`** (native SwiftUI / Jetpack Compose компонент) — Q14 |
 | API | openapi-fetch (shared) + **TanStack Query** |
 | Форм | react-hook-form + zod |
 | Баримт скан | **react-native-document-scanner-plugin** (ирмэг олох, хазайлт засах, олон хуудас) |
