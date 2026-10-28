@@ -61,10 +61,14 @@ mobile:
 web:
     pnpm --filter web dev
 
-# Regenerate the TypeScript API client from the running API's OpenAPI schema
+# Regenerate the TypeScript API client from the backend's OpenAPI schema (no DB needed)
 gen-client:
-    {{api}} python -m labtrack.cli openapi > packages/shared/openapi.json
+    cd backend; uv run python -m labtrack.cli openapi ../packages/shared/openapi.json
     pnpm --filter @labtrack/shared gen
+
+# CI: fail if the committed client is stale
+check-client: gen-client
+    git diff --exit-code -- packages/shared/openapi.json packages/shared/src/api/schema.d.ts
 
 # --- Aggregates ---
 lint: lint-api lint-js

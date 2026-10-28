@@ -1,0 +1,12 @@
+{
+  "app": {
+    "name": "LabTrack MN"
+  },
+  "status": {
+    "title": "System status",
+    "checking": "Connecting to the server…",
+    "ok": "Connected to the server",
+    "unreachable": "Could not reach the server. Check your internet connection and try again.",
+    "retry": "Try again"
+  }
+}
