@@ -1,0 +1,5 @@
+import os
+
+# Unit tests need no database; DB tests point DATABASE_URL at the compose test database.
+os.environ.setdefault("DATABASE_URL", "postgresql+asyncpg://unit@localhost:1/unit")
+os.environ.setdefault("ENVIRONMENT", "test")

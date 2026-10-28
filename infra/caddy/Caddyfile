@@ -1,0 +1,32 @@
+{
+	admin off
+	auto_https off
+}
+
+# Dev entry point. Production adds TLS, HSTS, CSP and the /admin IP allowlist (docs/04 §4).
+:8080 {
+	header {
+		-Server
+		X-Content-Type-Options nosniff
+		Referrer-Policy no-referrer
+		X-Frame-Options DENY
+	}
+	log {
+		format filter {
+			# Share-link tokens and query strings never reach logs (docs/04 §6.7).
+			fields {
+				request>uri query {
+					delete *
+				}
+				request>headers>Authorization delete
+				request>headers>Cookie delete
+			}
+		}
+	}
+	handle /api/* {
+		reverse_proxy api:8000
+	}
+	handle {
+		reverse_proxy web:3000
+	}
+}
