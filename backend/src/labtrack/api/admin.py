@@ -140,6 +140,7 @@ class UserOut(BaseModel):
     account_status: str
     phone_last4: str | None
     created_at: datetime
+    deletion_scheduled_for: datetime | None
 
 
 class UserListOut(BaseModel):
@@ -210,6 +211,7 @@ def _user_out(row: users.UserRow) -> UserOut:
         account_status=row.account_status,
         phone_last4=row.phone_last4,
         created_at=row.created_at,
+        deletion_scheduled_for=row.deletion_scheduled_for,
     )
 
 
@@ -229,12 +231,21 @@ async def create_user(body: CreateUserRequest, ctx: SuperAdmin) -> CreatedOut:
 @router.get("/users", response_model=UserListOut, responses=ERRORS)
 async def search_users(
     ctx: Admin,
+    *,
     q: Annotated[str | None, Query(max_length=64)] = None,
     status: Literal["pending_activation", "active", "locked", "disabled"] | None = None,
     after: Annotated[str | None, Query(max_length=32)] = None,
     limit: Annotated[int, Query(ge=1, le=100)] = 50,
+    deletion_pending: bool = False,
 ) -> UserListOut:
-    rows = await users.search_users(ctx.db, query=q, status=status, after=after, limit=limit)
+    rows = await users.search_users(
+        ctx.db,
+        query=q,
+        status=status,
+        after=after,
+        limit=limit,
+        deletion_pending=deletion_pending,
+    )
     return UserListOut(
         items=[_user_out(r) for r in rows],
         next_after=rows[-1].username if len(rows) == limit else None,
@@ -304,6 +315,14 @@ async def issue_token(
         admin_ip=client_ip(request),
     )
     return TokenOut(expires_at=issued.expires_at, link=issued.link, notice_sent=issued.notice_sent)
+
+
+@router.post("/users/{user_id}/cancel-deletion", status_code=204, responses=ERRORS)
+async def cancel_deletion(user_id: UUID, ctx: SuperAdmin) -> Response:
+    """Within 30 days of the user's request. The account comes back locked and needs a reset
+    (identity check + new password): cancelling never hands it to whoever asked."""
+    await users.cancel_deletion(ctx.db, user_id)
+    return Response(status_code=204)
 
 
 @router.post("/users/{user_id}/phone", response_model=PhoneOut, responses=ERRORS)

@@ -231,17 +231,11 @@ async def activate(
         raise AppError(400, "auth.activation_invalid")
 
 
-async def change_password(
-    db: AsyncSession,
-    *,
-    username: str,
-    display_name: str,
-    current_password: str,
-    new_password: str,
-    current_session: UUID,
-    sign_out_other_devices: bool,
-) -> None:
-    # Re-verifying the current password is a password oracle too: same lockout as login.
+async def reverify_password(db: AsyncSession, *, username: str, password: str) -> None:
+    """The signed-in user's current password, for sensitive changes (password, deletion).
+
+    Re-verifying is a password oracle too: the same lockout as login applies.
+    """
     await db.execute(
         bound_text("select pg_advisory_xact_lock(hashtext(lower(:u)))"), {"u": username}
     )
@@ -261,7 +255,7 @@ async def change_password(
     if not decision.allowed:
         raise AppError(429, "auth.locked", retry_after=decision.retry_after)
     stored = (await db.execute(bound_text("select auth_own_password_hash()"))).scalar_one()
-    ok = await run_hashing(verify_password, current_password, stored)
+    ok = await run_hashing(verify_password, password, stored)
     if not ok:
         await db.execute(
             bound_text("select auth_record_failure('change_password', :u, null, null, false)"),
@@ -269,6 +263,19 @@ async def change_password(
         )
         await db.commit()  # keep the failure even though we raise
         raise AppError(401, INVALID_CREDENTIALS)
+
+
+async def change_password(
+    db: AsyncSession,
+    *,
+    username: str,
+    display_name: str,
+    current_password: str,
+    new_password: str,
+    current_session: UUID,
+    sign_out_other_devices: bool,
+) -> None:
+    await reverify_password(db, username=username, password=current_password)
     problems = password_problems(new_password, username, display_name)
     if problems:
         raise AppError(422, problems[0])

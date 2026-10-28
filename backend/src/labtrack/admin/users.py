@@ -19,8 +19,9 @@ from labtrack.config import get_settings
 from labtrack.core.envelope import field_aad
 from labtrack.core.security import new_opaque_token
 from labtrack.db.sql import bound_text
-from labtrack.keys import decrypt_field, encrypt_field, get_key_provider
+from labtrack.keys import get_key_provider
 from labtrack.sms import SmsSender, SmsTemplate, SmsUnavailableError
+from labtrack.user_keys import DbUserKeyStore, decrypt_user_field, encrypt_user_field
 
 log = structlog.get_logger(__name__)
 
@@ -32,6 +33,7 @@ _DB_ERRORS: Final = (
     ("target not allowed", 404, "admin.user_not_found"),
     ("admin not allowed", 403, "admin.forbidden"),
     ("password reset required", 409, "admin.reset_required"),
+    ("no pending deletion", 409, "admin.no_pending_deletion"),
     ("already activated", 409, "admin.already_activated"),
     ("account is disabled", 409, "admin.account_disabled"),
     ("identity check is required", 409, "admin.identity_check_required"),
@@ -77,15 +79,24 @@ def normalise_phone(raw: str) -> str:
     return phone
 
 
-async def _phone_enc(user_id: UUID, phone: str) -> bytes:
-    return await encrypt_field(
-        get_key_provider(), phone, field_aad("users", "contact_phone_enc", user_id)
+# Phone numbers are sealed under the user's own key: purging the account shreds every copy.
+async def _phone_enc(db: AsyncSession, user_id: UUID, phone: str) -> bytes:
+    return await encrypt_user_field(
+        DbUserKeyStore(db, get_key_provider()),
+        user_id,
+        phone,
+        field_aad("users", "contact_phone_enc", user_id),
     )
 
 
-async def _phone_dec(user_id: UUID, blob: bytes) -> str:
-    return await decrypt_field(
-        get_key_provider(), blob, field_aad("users", "contact_phone_enc", user_id)
+async def _phone_dec(db: AsyncSession, user_id: UUID, blob: bytes) -> str:
+    provider = get_key_provider()
+    return await decrypt_user_field(
+        DbUserKeyStore(db, provider),
+        provider,
+        user_id,
+        blob,
+        field_aad("users", "contact_phone_enc", user_id),
     )
 
 
@@ -117,7 +128,7 @@ async def create_user(
                 "u": username,
                 "n": display_name,
                 "r": role,
-                "ph": await _phone_enc(uid, phone) if phone else None,
+                "ph": await _phone_enc(db, uid, phone) if phone else None,
                 "last4": phone[-4:] if phone else None,
                 "nid": national_id,
                 "pep": _pepper() if national_id else None,
@@ -137,6 +148,7 @@ class UserRow:
     account_status: str
     phone_last4: str | None
     created_at: datetime
+    deletion_scheduled_for: datetime | None = None  # deleted by the user, erased on this date
 
 
 _LIKE = str.maketrans({"\\": "\\\\", "%": "\\%", "_": "\\_"})
@@ -149,21 +161,25 @@ async def search_users(
     status: str | None,
     after: str | None,
     limit: int,
+    deletion_pending: bool = False,
 ) -> list[UserRow]:
-    """Users and doctors only, by username; `after` is the last username of the previous page."""
+    """Users and doctors only, by username; `after` is the last username of the previous page.
+
+    Deleted accounts appear only with `deletion_pending` (until they are erased)."""
     pattern = f"%{query.translate(_LIKE)}%" if query else None
     rows = await db.execute(
         bound_text(
             "select id, username::text as username, display_name, role::text as role,"
-            " account_status, contact_phone_last4, created_at from users"
-            " where role in ('user','doctor') and deleted_at is null"
+            " account_status, contact_phone_last4, created_at,"
+            " deleted_at + interval '30 days' as deletion_scheduled_for from users"
+            " where role in ('user','doctor') and (deleted_at is not null) = :d"
             " and (cast(:q as text) is null or username::text ilike :q"
             "      or display_name ilike :q)"
             " and (cast(:s as text) is null or account_status = :s)"
             " and (cast(:a as text) is null or username::text > :a)"
             " order by username limit :lim"
         ),
-        {"q": pattern, "s": status, "a": after, "lim": limit},
+        {"q": pattern, "s": status, "a": after, "lim": limit, "d": deletion_pending},
     )
     return [
         UserRow(
@@ -174,6 +190,7 @@ async def search_users(
             r.account_status,
             r.contact_phone_last4,
             r.created_at,
+            deletion_scheduled_for=r.deletion_scheduled_for,
         )
         for r in rows
     ]
@@ -193,12 +210,12 @@ async def get_user(db: AsyncSession, user_id: UUID) -> UserDetail:
             bound_text(
                 "select id, username::text as username, display_name, role::text as role,"
                 " account_status, contact_phone_last4, created_at,"
+                " deleted_at + interval '30 days' as deletion_scheduled_for,"
                 " (select count(*) from sessions s where s.user_id = u.id"
                 "  and s.revoked_at is null) as sessions,"
                 " (select count(*) from identity_checks c where c.user_id = u.id"
                 "  and c.at > now() - interval '1 day') as checks"
                 " from users u where id = :id and role in ('user','doctor')"
-                " and deleted_at is null"
             ),
             {"id": user_id},
         )
@@ -224,6 +241,7 @@ async def get_user(db: AsyncSession, user_id: UUID) -> UserDetail:
             row.account_status,
             row.contact_phone_last4,
             row.created_at,
+            deletion_scheduled_for=row.deletion_scheduled_for,
         ),
         (token.purpose, token.channel, token.expires_at) if token else None,
         int(row.sessions),
@@ -345,7 +363,7 @@ async def issue_token(
             ).scalar_one()
         except DBAPIError as exc:
             raise _db_error(exc) from exc
-        phone = await _phone_dec(user_id, blob) if blob is not None else None
+        phone = await _phone_dec(db, user_id, blob) if blob is not None else None
     if channel == "sms" and phone is None:
         raise AppError(409, "admin.no_phone")  # rolls the token back
     await db.commit()
@@ -385,7 +403,7 @@ async def reveal_phone(db: AsyncSession, user_id: UUID) -> str | None:
         ).scalar_one()
     except DBAPIError as exc:
         raise _db_error(exc) from exc
-    return await _phone_dec(user_id, blob) if blob is not None else None
+    return await _phone_dec(db, user_id, blob) if blob is not None else None
 
 
 async def log_import(db: AsyncSession, file_sha256: str, rows: int) -> None:
@@ -437,3 +455,11 @@ async def import_users(db: AsyncSession, parsed: csv_import.Parsed) -> list[csv_
         )
     await log_import(db, parsed.sha256, len(parsed.rows))
     return []
+
+
+async def cancel_deletion(db: AsyncSession, user_id: UUID) -> None:
+    """Restores a deleted account within 30 days as locked + reset_required (0008)."""
+    try:
+        await db.execute(bound_text("select admin_cancel_deletion(:u)"), {"u": user_id})
+    except DBAPIError as exc:
+        raise _db_error(exc) from exc

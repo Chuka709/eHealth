@@ -13,6 +13,7 @@ from sqlalchemy.exc import DBAPIError
 from labtrack import consents
 from labtrack.api.deps import UserDb
 from labtrack.api.errors import AppError, ErrorBody
+from labtrack.auth import service as auth_service
 from labtrack.core.text import valid_display_name
 from labtrack.db.sql import bound_text
 
@@ -235,3 +236,27 @@ async def report_unwanted_admin_action(db: UserDb) -> Response:
             raise
         raise AppError(409, "me.no_recent_admin_action") from None
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+class DeleteRequest(_Strict):
+    password: Annotated[str, StringConstraints(min_length=1, max_length=128)]
+
+
+class DeletionOut(BaseModel):
+    scheduled_for: datetime
+
+
+@router.post(
+    "/delete",
+    status_code=status.HTTP_202_ACCEPTED,
+    response_model=DeletionOut,
+    responses={**_ERRORS, 429: {"model": ErrorBody}},
+)
+async def delete_account(body: DeleteRequest, db: UserDb) -> DeletionOut:
+    """Delete the account (App Store / Play requirement). Signs out everywhere at once; the
+    data is erased 30 days later. Until then an admin can restore it - as a locked account
+    that needs an identity check and a new password."""
+    username = (await db.execute(bound_text("select username::text from users"))).scalar_one()
+    await auth_service.reverify_password(db, username=username, password=body.password)
+    scheduled = (await db.execute(bound_text("select request_account_deletion()"))).scalar_one()
+    return DeletionOut(scheduled_for=scheduled)

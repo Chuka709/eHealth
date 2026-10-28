@@ -3,6 +3,7 @@
 from typing import Any
 
 from celery import Celery, signals
+from celery.schedules import crontab
 
 from labtrack.config import get_settings
 from labtrack.logging import configure_logging
@@ -20,6 +21,13 @@ app.conf.update(
     task_default_queue="default",
     timezone="UTC",
     worker_hijack_root_logger=False,
+    # 03:00 Asia/Ulaanbaatar (UTC+8): account purge and auth_attempts retention.
+    beat_schedule={
+        "maintenance-daily": {
+            "task": "labtrack.maintenance.daily",
+            "schedule": crontab(hour=19, minute=0),
+        }
+    },
 )
 
 
@@ -32,3 +40,17 @@ def _setup_logging(**_: Any) -> None:
 @app.task(name="labtrack.ping")  # type: ignore[untyped-decorator]
 def ping() -> str:
     return "pong"
+
+
+@app.task(name="labtrack.maintenance.daily")  # type: ignore[untyped-decorator]
+def maintenance_daily() -> dict[str, int]:
+    from labtrack.worker.maintenance import run_daily_sync  # noqa: PLC0415
+
+    url = get_settings().maint_database_url
+    if url is None:
+        raise RuntimeError("MAINT_DATABASE_URL is not set (role labtrack_maint)")
+    result = run_daily_sync(str(url))
+    return {
+        "purged_accounts": result.purged_accounts,
+        "auth_attempts_removed": result.auth_attempts_removed,
+    }
