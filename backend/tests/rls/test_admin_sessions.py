@@ -396,7 +396,7 @@ async def test_status_change_checks_the_admin_first(
     del owner_engine
 
 
-async def test_support_cannot_lift_a_compromise_lock(
+async def test_nobody_lifts_a_compromise_lock_by_status(  # 0007: a reset is required
     owner_engine: AsyncEngine, admin_engine: AsyncEngine
 ) -> None:
     admin = await _new_admin(owner_engine)
@@ -410,12 +410,13 @@ async def test_support_cannot_lift_a_compromise_lock(
         await conn.execute(
             bound_text("select admin_set_status(:u, 'locked', 'user_request')"), {"u": other}
         )
-    with pytest.raises(DBAPIError, match="admin not allowed"):
-        async with as_user(admin_engine, support) as conn:
-            await conn.execute(
-                bound_text("select admin_set_status(:u, 'active', 'identity_verified')"),
-                {"u": user},
-            )
+    for actor in (support, admin):
+        with pytest.raises(DBAPIError, match="password reset required"):
+            async with as_user(admin_engine, actor) as conn:
+                await conn.execute(
+                    bound_text("select admin_set_status(:u, 'active', 'identity_verified')"),
+                    {"u": user},
+                )
     async with as_user(admin_engine, support) as conn:
         await conn.execute(
             bound_text("select admin_set_status(:u, 'active', 'identity_verified')"), {"u": other}

@@ -53,7 +53,7 @@ async def states(db: AsyncSession, patient_id: object = None) -> list[ConsentSta
     rows = await db.execute(
         bound_text(
             "select distinct on (kind) kind, version, granted, created_at from consents"
-            " where patient_id is not distinct from :p order by kind, created_at desc, id desc"
+            " where patient_id is not distinct from :p order by kind, id desc"
         ),
         {"p": patient_id},
     )
@@ -79,7 +79,12 @@ async def missing(db: AsyncSession, needed: frozenset[Kind]) -> set[Kind]:
 
 
 def require(needed: frozenset[Kind]) -> Callable[[AsyncSession], Awaitable[None]]:
-    """For PHI routes (Phase 2+): refuse until the user holds `needed` for the current text."""
+    """For PHI routes (Phase 2+): refuse until the user holds `needed` for the current text.
+
+    The user's own consents only. Writing to a minor's profile (Phase 2) must check that
+    profile's consents AND is_minor_patient() at that moment: at 18 the parent's consent
+    stops counting.
+    """
     from labtrack.api.errors import AppError  # noqa: PLC0415 - api depends on this module
 
     async def check(db: AsyncSession) -> None:

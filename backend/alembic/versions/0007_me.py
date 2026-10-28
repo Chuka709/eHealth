@@ -3,8 +3,9 @@
 - report_unwanted_admin_action(): the "Би хүсээгүй" button. A user who sees an admin action
   they did not ask for (within 30 days of it) locks their own account: every session and live
   token ends, and a security event reaches the admins.
-- Such a self-lock is treated like a lock for suspected compromise: support cannot lift it,
-  only a super admin (after verifying the person).
+- Such a self-lock, like any lock for suspected compromise, is not lifted by a status
+  change at all (the password may be known to someone else): recovery is an identity check
+  and a reset token, so the user sets a new password.
 
 Revision ID: 0007
 Revises: 0006
@@ -52,15 +53,26 @@ _REPORT = f"""
     end $$
     """
 
-_SUPPORT_CHECK_OLD = """           and (select l.diff ->> 'reason' from public.audit_logs l
+_SUPPORT_CHECK_OLD = """\
+        -- A lock for suspected compromise is lifted by a super admin, not support.
+        if exists (select 1 from public.users where id = actor and role = 'support')
+           and (select l.diff ->> 'reason' from public.audit_logs l
                 where l.action = 'admin.status_locked' and l.target_user_id = p_user_id
-                order by l.at desc limit 1) = 'suspected_compromise' then"""
-_SUPPORT_CHECK_NEW = """           and (select case when l.action = 'security.user_report'
-                            then 'suspected_compromise' else l.diff ->> 'reason' end
-                from public.audit_logs l
-                where l.action in ('admin.status_locked','security.user_report')
-                  and l.target_user_id = p_user_id
-                order by l.at desc limit 1) = 'suspected_compromise' then"""
+                order by l.at desc limit 1) = 'suspected_compromise' then
+          raise exception 'admin not allowed' using errcode = '42501';
+        end if;"""
+_SUPPORT_CHECK_NEW = """\
+        -- A lock for suspected compromise (an admin's, or the user's own report) is never
+        -- lifted by a status change: someone else may know the password. Recovery is a reset
+        -- token, which makes the user set a new password (activation_consume activates).
+        if (select case when l.action = 'security.user_report'
+                        then 'suspected_compromise' else l.diff ->> 'reason' end
+            from public.audit_logs l
+            where l.action in ('admin.status_locked','security.user_report')
+              and l.target_user_id = p_user_id
+            order by l.at desc, l.id desc limit 1) = 'suspected_compromise' then
+          raise exception 'password reset required' using errcode = '42501';
+        end if;"""
 
 
 def _set_status_0006() -> str:
@@ -85,5 +97,7 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    # Dev only: security.user_report rows stay in the (append-only) audit log, and 0006's
+    # admin_set_status does not look at them.
     op.execute("drop function if exists report_unwanted_admin_action()")
     op.execute(_set_status_0006())

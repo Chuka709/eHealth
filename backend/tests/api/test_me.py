@@ -209,19 +209,53 @@ async def test_admin_history_notifications_and_report(
             e["action"] == "security.user_report" and e["target_user_id"] == str(uid)
             for e in events
         )
-        # support cannot lift a self-reported lock; a super admin can
-        r = await c.post(
-            f"/api/v1/admin/users/{uid}/status",
-            json={"status": "active", "reason": "identity_verified"},
-            headers=support,
+        # nobody lifts a self-reported lock by a status change (the password may be known)
+        for who in (support, admin):
+            r = await c.post(
+                f"/api/v1/admin/users/{uid}/status",
+                json={"status": "active", "reason": "identity_verified"},
+                headers=who,
+            )
+            assert r.status_code in {403, 409}
+        assert r.json()["code"] == "admin.reset_required"
+        # recovery: another admin (not the one who enrolled the id) checks identity and resets
+        other = await _admin(c)
+        check = await c.post(
+            f"/api/v1/admin/users/{uid}/identity-check",
+            json={"national_id": "УБ90010101"},
+            headers=other,
         )
-        assert r.status_code == 403
         r = await c.post(
-            f"/api/v1/admin/users/{uid}/status",
-            json={"status": "active", "reason": "identity_verified"},
-            headers=admin,
+            f"/api/v1/admin/users/{uid}/tokens",
+            json={
+                "purpose": "admin_reset",
+                "channel": "in_person_qr",
+                "identity_check_id": check.json()["check_id"],
+                "reason": "suspected_compromise",
+            },
+            headers=other,
+        )
+        link = r.json()["link"]
+    async with client_from("198.51.100.23") as phone:
+        old = await phone.post(
+            "/api/v1/auth/login",
+            json=login_body(username, password="Тэрэлжийн уулс өвөл 2027 цагаан"),
+        )
+        assert old.status_code == 401
+    async with client_from("198.51.100.23") as phone:
+        r = await phone.post(
+            "/api/v1/auth/activate",
+            json={
+                "token": link.split("#", 1)[1],
+                "new_password": "Шинэ нууц үг Хангай 2028 ногоон",
+            },
         )
         assert r.status_code == 204
+        new = await phone.post(
+            "/api/v1/auth/login",
+            json=login_body(username, password="Шинэ нууц үг Хангай 2028 ногоон"),
+        )
+        assert new.status_code == 200
 
 
 async def test_report_needs_a_recent_admin_action(
@@ -252,5 +286,47 @@ async def test_consent_gate_for_future_phi_routes(owner_engine: AsyncEngine) -> 
                     {"k": kind, "v": consents.VERSIONS[kind]},
                 )
             await gate(session)
+    finally:
+        await engine.dispose()
+
+
+async def test_withdrawing_works_with_any_version_and_profile_changes_are_audited(
+    owner_engine: AsyncEngine, client_from: ClientFactory
+) -> None:
+    async with client_from() as c:
+        uid, h = await _signed_in(c, owner_engine)
+        await c.post("/api/v1/me/consents", json={"items": ALL}, headers=h)
+        old_client = [{"kind": "cross_border", "version": "0", "granted": False}]
+        assert (
+            await c.post("/api/v1/me/consents", json={"items": old_client}, headers=h)
+        ).status_code == 204
+        state = {s["kind"]: s for s in (await c.get("/api/v1/me/consents", headers=h)).json()}
+        assert state["cross_border"]["granted"] is False
+        assert state["cross_border"]["granted_version"] == consents.VERSIONS["cross_border"]
+        await c.patch("/api/v1/me", json={"display_name": "Шинэ нэр"}, headers=h)
+    async with owner_engine.connect() as conn:
+        diff = (
+            await conn.execute(
+                bound_text(
+                    "select diff from audit_logs where action = 'user.profile_update'"
+                    " and actor_id = :u"
+                ),
+                {"u": uid},
+            )
+        ).scalar_one()
+    assert diff == {"fields": ["display_name"]}  # never the value
+
+
+async def test_profile_update_touches_only_the_callers_row(owner_engine: AsyncEngine) -> None:
+    me, other = (await make_active_user(owner_engine))[0], (await make_active_user(owner_engine))[0]
+    engine = create_async_engine(os.environ["TEST_DATABASE_URL"])
+    try:
+        async with as_user(engine, me) as conn:
+            n = (
+                await conn.execute(
+                    bound_text("update users set display_name = 'x' where id = :o"), {"o": other}
+                )
+            ).rowcount
+        assert n == 0
     finally:
         await engine.dispose()

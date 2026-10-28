@@ -31,6 +31,7 @@ Channel = Literal["in_person_qr", "sms"]
 _DB_ERRORS: Final = (
     ("target not allowed", 404, "admin.user_not_found"),
     ("admin not allowed", 403, "admin.forbidden"),
+    ("password reset required", 409, "admin.reset_required"),
     ("already activated", 409, "admin.already_activated"),
     ("account is disabled", 409, "admin.account_disabled"),
     ("identity check is required", 409, "admin.identity_check_required"),
