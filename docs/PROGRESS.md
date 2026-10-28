@@ -52,7 +52,7 @@
 - [x] H1 dev DB-д definer функц PUBLIC-д нээлттэй байсан → migration бүрт тодорхой `revoke … from public` + `pg_proc` тест · H2 админ аудитын actor = `app.user_id` · H3 админ бусад админд хүрэхгүй, support зөвхөн тайлна · H4 сесс сэргээх боломжгүй (`revoke_my_session`) · H5 `notify` төрөл + хүлээн авагчийн хандалт шалгана
 - [x] M1 `is_minor` төрсөн огнооноос, засах боломжгүй · M2 зөвшөөрлийн огноо DB-ийнх · M3 `audit_write` харь өвчтөнд татгалзана · M4 хуваалцах lookup 30/цаг, зөвхөн идэвхтэй user/doctor-д · M5 self profile зөвхөн `admin_create_user`-д
 - [x] L1 устгасан профайл уншигдахгүй · L2 `granted_by` DB тогтооно
-- Нийт backend тест: **109** (RLS 74)
+- Нийт backend тест: **144** (RLS 76, API 15, unit 50+)
 
 **DoD — нотолгоо**
 - [x] `just up` — 7 сервис healthy; `curl :8080/api/v1/readyz` → `{"status":"ok","database":true,"queue":true}`; вэб хуудас Caddy-аар "Сервер хэвийн ажиллаж байна"
@@ -64,9 +64,9 @@
 ## Phase 1 — Auth, супер админ, профайл
 - [x] 1.1 Migration (`0002`, 35 RLS тест): extensions, enum, `labtrack_owner/app/admin/maint` role, `REVOKE TEMPORARY/CREATE`; users (`account_status`, `token_version`, шифрлэлттэй утас, РД argon2 hash) + column-level эрх, activation_tokens, sessions (`revoked_reason`, `device_trusted`), auth_attempts (+индекс), patients, patient_access, consents (append-only), notifications, audit_logs (`target_user_id`, trigger, `REVOKE TRUNCATE`); definer функцууд (`search_path` хатуу): `can_read/can_write_patient`, `is_owner`, `create_self_profile`, `auth_*`, `audit_write`, `my_admin_actions`, `notify`, `lookup_user_for_share`; хүснэгт бүрт 4 үйлдлийн policy; ENABLE+FORCE RLS
 - [x] 1.2 Migration `0003`: test_catalog, test_synonyms (сурсан синоним хувийн), unit_aliases, unit_conversions, medication_catalog; `just seed` (idempotent, Decimal, хязгаар/тун агуулбал татгалзана; 61 тест, 271 синоним, 30 эм); `core/text.normalize_name` (кирилл/латин ижил хэлбэрийн үсэг, hypothesis)
-- [ ] 1.3 `core/security`: envelope шифрлэлт (`KeyProvider`, AES-256-GCM, толгойтой формат, AAD), argon2id (+pepper РД-д), нууц үгийн бодлого (≥ 10, zxcvbn, задарсан жагсаалт), идэвхжүүлэх токен (≥ 128 бит, hash), JWT ES256 (kid, `sid`, `tv`), refresh rotation + reuse detection + 20 сек grace, device-cookie түгжээ, dummy hash — hypothesis тест
-- [ ] 1.4 Repository + service: auth, admin, consents, audit
-- [ ] 1.5 `/auth`: activate, login, refresh (`401 admin_reset` код), logout, change-password, sessions, delete-account request; slowapi; нэг төрлийн алдааны мессеж/хугацаа
+- [x] 1.3 `core/security` (+ `auth/tokens`; hypothesis түгжээний overflow-ыг илрүүлж засуулсан): envelope шифрлэлт (`KeyProvider`, AES-256-GCM, толгойтой формат, AAD), argon2id (+pepper РД-д), нууц үгийн бодлого (≥ 10, zxcvbn, задарсан жагсаалт), идэвхжүүлэх токен (≥ 128 бит, hash), JWT ES256 (kid, `sid`, `tv`), refresh rotation + reuse detection + 20 сек grace, device-cookie түгжээ, dummy hash — hypothesis тест
+- [~] 1.4 Service: auth ✓ (`auth/service.py`, DB-д зөвхөн `0005` definer функцээр); admin, consents — 1.6–1.7-той хамт
+- [x] 1.5 `/auth` (15 API тест бодит DB-тэй; slowapi IP хязгаар — дараа, одоо DB-ийн device-cookie түгжээ): activate, login, refresh (`401 admin_reset` код), logout, change-password, sessions, delete-account request; slowapi; нэг төрлийн алдааны мессеж/хугацаа
 - [ ] 1.6 `/admin/users` (`labtrack_admin` role): бүртгэх + идэвхжүүлэх QR, CSV (санах ойд) → `pending_activation`, хайх, идэвхгүй (`token_version`+1), түгжээ тайлах, таних шалгалт (тийм/үгүй, 5/өдөр, 10 мин state) → сэргээх токен (QR/SMS, шалтгаан, сесс цуцлах, хохирогчид SMS), утас нээх (аудит); `SmsSender` (dev: console); TOTP; `just create-admin`; `/admin` IP allowlist, сесс 8ц/15 мин
 - [ ] 1.7 `/me`: профайл, 5 зөвшөөрөл (хувилбартай; хүүхдийн профайлд асран хамгаалагчийн зөвшөөрөл API-д шалгах), админы үйлдлийн түүх
 - [ ] 1.8 Аккаунт устгах: soft delete + 30 хоногийн дараа Celery beat-ээр бүрэн устгах

@@ -17,7 +17,15 @@ class Settings(BaseSettings):
     sentry_dsn: SecretStr | None = None
     api_prefix: str = "/api/v1"
 
-    @field_validator("sentry_dsn", mode="before")
+    # Auth (docs/04 §1). The ES256 key is required outside dev/test (auth/tokens.py).
+    jwt_private_key: SecretStr | None = None
+    jwt_kid: str = "k1"
+    jwt_issuer: str = "labtrack"
+    jwt_audience: str = "labtrack-api"
+    access_token_ttl_seconds: int = 15 * 60
+    refresh_token_ttl_days: int = 60
+
+    @field_validator("sentry_dsn", "jwt_private_key", mode="before")
     @classmethod
     def _empty_is_unset(cls, value: object) -> object:
         # Compose passes `SENTRY_DSN=` when unset; that must disable Sentry, not init it.

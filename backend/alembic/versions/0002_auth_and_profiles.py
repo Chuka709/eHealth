@@ -102,7 +102,7 @@ _TABLES = [
       revoked_at timestamptz,
       replaced_by uuid references sessions,
       revoked_reason text check (revoked_reason in
-        ('logout','user_revoke','admin_reset','disabled','reuse_detected','expired')),
+        ('logout','user_revoke','admin_reset','disabled','reuse_detected','expired','rotated')),
       device_trusted boolean not null default false
     )
     """,
