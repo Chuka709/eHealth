@@ -53,7 +53,7 @@ create table users (
   token_version int not null default 0,        -- нэмэгдэхэд бүх access JWT шууд хүчингүй (идэвхгүй болгох, reset)
   contact_phone_enc bytea,                     -- envelope шифрлэлт (формат: 04 §6.4); админд зөвхөн last4, бүтнээр нээх = аудит
   contact_phone_last4 text,
-  identity_check_hash text,                    -- argon2id(РД нормчилсон, мөрийн salt) + pepper (OpenBao) — зөвхөн "тохирч байна/үгүй"; null бол зөвхөн биечлэн таних
+  identity_check_hash text,                    -- bcrypt(РД + pepper) — DB өөрөө (pgcrypto) тооцож шалгана, админ зөвхөн тийм/үгүй; null бол зөвхөн биечлэн таних
   created_by uuid references users,            -- бүртгэсэн админ
   display_name text not null, locale text not null default 'mn',
   role user_role not null default 'user',
@@ -474,6 +474,11 @@ create table audit_logs (
 create index on audit_logs (target_user_id, at desc);
 create index on audit_logs (patient_id, at desc);
 ```
+
+## Админ ба идэвхжүүлэлтийн функц (migration 0004)
+`labtrack_admin` хүснэгтэд **бичих эрхгүй** — бүх өөрчлөлт зөвхөн эдгээрээр (actor = `app.user_id`, идэвхтэй админ; зорилт зөвхөн `user`/`doctor`):
+`admin_create_user` (super_admin; "Би" профайл үүснэ, админд хандалтгүй) · `admin_identity_check` (DB тооцно; хэрэглэгч 5/өдөр, админ 50/өдөр) · `admin_issue_token` (activation — зөвхөн pending; admin_reset — тухайн админы ≤ 10 мин амжилттай шалгалт; QR 15 мин / SMS 24 ц; reset үед хуучин нууц үг null, бүх сесс цуцлагдана, мэдэгдэл) · `admin_set_status` (support — зөвхөн locked→active) · `admin_reveal_phone` (аудит). Хэрэглэгч талд: `activation_consume(token_hash, argon2id_hash)`.
+API нь хэзээ ч owner URL ашиглахгүй — шинэ auth үйлдэл бүрт definer функц нэмнэ.
 
 ## RLS (SQLAlchemy + Postgres)
 - Апп DB-д **`labtrack_app`** role-оор холбогдоно (superuser биш, `BYPASSRLS` байхгүй).

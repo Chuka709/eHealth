@@ -27,9 +27,9 @@ async def seeded() -> None:
 
 
 async def test_catalog_is_readable_and_read_only_for_users(
-    seeded: None, app_engine: AsyncEngine, admin_engine: AsyncEngine
+    seeded: None, app_engine: AsyncEngine, owner_engine: AsyncEngine, admin_engine: AsyncEngine
 ) -> None:
-    me = await make_user(admin_engine)
+    me = await make_user(owner_engine)
     async with as_user(app_engine, me) as conn:
         assert await scalar(conn, bound_text("select count(*) from test_catalog")) == 61
         tac = await scalar(
@@ -58,9 +58,9 @@ async def test_catalog_has_no_reference_ranges(seeded: None, app_engine: AsyncEn
 
 
 async def test_seeded_synonyms_resolve_printed_variants(
-    seeded: None, app_engine: AsyncEngine, admin_engine: AsyncEngine
+    seeded: None, app_engine: AsyncEngine, owner_engine: AsyncEngine, admin_engine: AsyncEngine
 ) -> None:
-    me = await make_user(admin_engine)
+    me = await make_user(owner_engine)
     async with as_user(app_engine, me) as conn:
         code = await scalar(
             conn,
@@ -71,9 +71,9 @@ async def test_seeded_synonyms_resolve_printed_variants(
 
 
 async def test_learned_synonyms_are_private(
-    seeded: None, app_engine: AsyncEngine, admin_engine: AsyncEngine
+    seeded: None, app_engine: AsyncEngine, owner_engine: AsyncEngine, admin_engine: AsyncEngine
 ) -> None:
-    alice, bob = await make_user(admin_engine), await make_user(admin_engine)
+    alice, bob = await make_user(owner_engine), await make_user(owner_engine)
     key = normalize_name("Сонгинохайрхан эмнэлэг WBC")
     insert = bound_text(
         "insert into test_synonyms (test_code, synonym, synonym_norm, user_id)"

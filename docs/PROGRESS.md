@@ -47,6 +47,13 @@
 - [x] Low: prod-д OpenAPI хаалттай, Redis client дахин ашиглана, compose `${VAR:?}`, SeaweedFS 4.50 pin, web файлууд root эзэмшилтэй, downgrade CREATE өгөхгүй, `.dockerignore` `.env.*`
 - [x] L8 `tests/rls/` — 39 тест (1.1, 1.2)
 
+**Phase 1 DB security review (1 Critical, 5 High, 5 Medium, 4 Low) — засагдсан**
+- [x] C1 админ аккаунт булаах боломжтой байсан → админд хүснэгт бичих эрх 0, бүх үйлдэл `0004` definer функцээр (DB шалгалттай); `activation_consume`
+- [x] H1 dev DB-д definer функц PUBLIC-д нээлттэй байсан → migration бүрт тодорхой `revoke … from public` + `pg_proc` тест · H2 админ аудитын actor = `app.user_id` · H3 админ бусад админд хүрэхгүй, support зөвхөн тайлна · H4 сесс сэргээх боломжгүй (`revoke_my_session`) · H5 `notify` төрөл + хүлээн авагчийн хандалт шалгана
+- [x] M1 `is_minor` төрсөн огнооноос, засах боломжгүй · M2 зөвшөөрлийн огноо DB-ийнх · M3 `audit_write` харь өвчтөнд татгалзана · M4 хуваалцах lookup 30/цаг, зөвхөн идэвхтэй user/doctor-д · M5 self profile зөвхөн `admin_create_user`-д
+- [x] L1 устгасан профайл уншигдахгүй · L2 `granted_by` DB тогтооно
+- Нийт backend тест: **109** (RLS 74)
+
 **DoD — нотолгоо**
 - [x] `just up` — 7 сервис healthy; `curl :8080/api/v1/readyz` → `{"status":"ok","database":true,"queue":true}`; вэб хуудас Caddy-аар "Сервер хэвийн ажиллаж байна"
 - [x] Шалгалтууд: `just lint` 0 алдаа; `just test` — backend 23 (DB, migration up/down, эрхийн регресс орсон), shared 6, web 3, mobile 2 — бүгд ногоон; `just check-client` цэвэр; `expo-doctor` 20/20; Android JS bundle (`expo export`) амжилттай; `next build` амжилттай

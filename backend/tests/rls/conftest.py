@@ -7,7 +7,7 @@ database is rebuilt by `alembic downgrade base && upgrade head` before every run
 import os
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from datetime import datetime
+from datetime import date, datetime
 from typing import Any
 from uuid import UUID, uuid4
 
@@ -33,6 +33,14 @@ def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
 @pytest.fixture(scope="session")
 async def app_engine() -> AsyncIterator[AsyncEngine]:
     engine = create_async_engine(os.environ["TEST_DATABASE_URL"])
+    yield engine
+    await engine.dispose()
+
+
+@pytest.fixture(scope="session")
+async def owner_engine() -> AsyncIterator[AsyncEngine]:
+    """Schema owner: used only to arrange fixtures, never as the role under test."""
+    engine = create_async_engine(os.environ["MIGRATION_DATABASE_URL"])
     yield engine
     await engine.dispose()
 
@@ -66,19 +74,20 @@ async def scalar(conn: AsyncConnection, sql: Any, params: dict[str, Any] | None 
     return (await conn.execute(sql, params or {})).scalar_one()
 
 
-async def make_user(admin_engine: AsyncEngine, role: str = "user") -> UUID:
-    """Create an active account the way the admin service will (role labtrack_admin)."""
-    async with admin_engine.connect() as conn, conn.begin():
+async def make_user(owner_engine: AsyncEngine, role: str = "user") -> UUID:
+    """Arrange an active account directly as the schema owner.
+
+    Real accounts are created by admin_create_user + activation_consume (tested separately);
+    this shortcut exists only so other tests can start from an active user.
+    """
+    async with owner_engine.connect() as conn, conn.begin():
         uid: UUID = await scalar(
             conn,
             bound_text(
-                "insert into users (username, display_name, role) "
-                "values (:u, 'Test', cast(:r as user_role)) returning id"
+                "insert into users (username, display_name, role, account_status)"
+                " values (:u, 'Test', cast(:r as user_role), 'active') returning id"
             ),
             {"u": f"t{uuid4().hex[:12]}", "r": role},
-        )
-        await conn.execute(
-            bound_text("update users set account_status = 'active' where id = :id"), {"id": uid}
         )
     return uid
 
@@ -87,8 +96,8 @@ async def make_patient(app_engine: AsyncEngine, owner: UUID, *, minor: bool = Fa
     async with as_user(app_engine, owner) as conn:
         pid: UUID = await scalar(
             conn,
-            bound_text("select create_patient('Test Patient', :rel, :minor, null, 'unknown'::sex)"),
-            {"rel": "child" if minor else "self", "minor": minor},
+            bound_text("select create_patient('Test Patient', :rel, :born, 'unknown'::sex)"),
+            {"rel": "child" if minor else "self", "born": date(2015, 1, 1) if minor else None},
         )
     return pid
 

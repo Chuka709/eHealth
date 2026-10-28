@@ -116,7 +116,8 @@ _TABLES = [
       ip inet,
       share_link_id uuid,
       kind text not null check (kind in
-        ('login','activation','change_password','identity_check','share_pin')),
+        ('login','activation','change_password','identity_check','share_pin',
+         'share_lookup')),
       success boolean not null
     )
     """,
@@ -213,6 +214,8 @@ _FUNCTIONS = [
       select exists (select 1 from public.patient_access a
         where a.patient_id = p and a.user_id = public.app_user_id() and a.level = 'owner'
           and a.revoked_at is null and (a.expires_at is null or a.expires_at > now()))
+          and not exists (select 1 from public.patients x
+                          where x.id = p and x.deleted_at is not null)
     $$
     """,
     f"""
@@ -220,6 +223,8 @@ _FUNCTIONS = [
       select exists (select 1 from public.patient_access a
         where a.patient_id = p and a.user_id = public.app_user_id()
           and a.revoked_at is null and (a.expires_at is null or a.expires_at > now()))
+          and not exists (select 1 from public.patients x
+                          where x.id = p and x.deleted_at is not null)
     $$
     """,
     f"""
@@ -228,6 +233,8 @@ _FUNCTIONS = [
         where a.patient_id = p and a.user_id = public.app_user_id()
           and a.level in ('owner','caregiver')
           and a.revoked_at is null and (a.expires_at is null or a.expires_at > now()))
+          and not exists (select 1 from public.patients x
+                          where x.id = p and x.deleted_at is not null)
     $$
     """,
     f"""
@@ -237,8 +244,8 @@ _FUNCTIONS = [
     """,
     # The caller becomes the owner of the new profile (the only way to insert a patient).
     f"""
-    create function create_patient(p_full_name text, p_relation text, p_is_minor boolean,
-                                   p_birth_date date, p_sex sex)
+    create function create_patient(p_full_name text, p_relation text, p_birth_date date,
+                                   p_sex sex)
     returns uuid language plpgsql volatile {_DEFINER} as $$
     declare
       uid uuid := public.app_user_id();
@@ -247,56 +254,33 @@ _FUNCTIONS = [
       if uid is null then
         raise exception 'no user context' using errcode = '42501';
       end if;
+      -- Minor status (which allows proxy consent) follows from the birth date only.
       insert into public.patients (full_name, relation, is_minor, birth_date, sex, created_by)
-        values (p_full_name, p_relation, p_is_minor, p_birth_date, p_sex, uid)
+        values (p_full_name, p_relation,
+                p_birth_date is not null and p_birth_date > (current_date - interval '18 years'),
+                p_birth_date, p_sex, uid)
         returning id into pid;
       insert into public.patient_access (patient_id, user_id, level, scopes, granted_by)
         values (pid, uid, 'owner', '{{*}}', uid);
       return pid;
     end $$
     """,
-    # Admin registration creates the "Би" profile without the admin gaining any access to it.
-    f"""
-    create function create_self_profile(p_user_id uuid) returns uuid
-    language plpgsql volatile {_DEFINER} as $$
-    declare
-      pid uuid;
-    begin
-      insert into public.patients (full_name, relation, created_by)
-        select display_name, 'self', p_user_id from public.users where id = p_user_id
-        returning id into pid;
-      if pid is null then
-        raise exception 'unknown user' using errcode = '22023';
-      end if;
-      insert into public.patient_access (patient_id, user_id, level, scopes, granted_by)
-        values (pid, p_user_id, 'owner', '{{*}}', p_user_id);
-      return pid;
-    end $$
-    """,
     # Audit rows can only be written through these; the actor is never caller-supplied.
-    f"""
+    rf"""
     create function audit_write(p_action text, p_entity text, p_entity_id text,
                                 p_patient_id uuid, p_diff jsonb)
-    returns void language sql volatile {_DEFINER} as $$
+    returns void language plpgsql volatile {_DEFINER} as $$
+    begin
+      if public.app_user_id() is null
+         or p_action !~ '^[a-z]+[.][a-z_]{{1,40}}$' or p_action like 'admin.%'
+         or (p_patient_id is not null and not public.can_read_patient(p_patient_id)) then
+        raise exception 'audit entry not allowed' using errcode = '42501';
+      end if;
       insert into public.audit_logs (actor_id, actor_role, action, entity, entity_id,
                                      patient_id, diff)
-      select public.app_user_id(), u.role::text, p_action, p_entity, p_entity_id,
-             p_patient_id, p_diff
-      from public.users u where u.id = public.app_user_id()
-        and p_action not like 'admin.%'
-    $$
-    """,
-    f"""
-    create function admin_audit_write(p_admin_id uuid, p_action text, p_target_user_id uuid,
-                                      p_entity_id text, p_diff jsonb)
-    returns void language sql volatile {_DEFINER} as $$
-      insert into public.audit_logs (actor_id, actor_role, action, target_user_id, entity,
-                                     entity_id, diff)
-      select u.id, u.role::text, p_action, p_target_user_id, 'user', p_entity_id, p_diff
-      from public.users u
-      where u.id = p_admin_id and u.role in ('super_admin','support')
-        and p_action like 'admin.%'
-    $$
+      select u.id, u.role::text, p_action, p_entity, p_entity_id, p_patient_id, p_diff
+      from public.users u where u.id = public.app_user_id();
+    end $$
     """,
     f"""
     create function my_admin_actions()
@@ -310,20 +294,86 @@ _FUNCTIONS = [
     f"""
     create function notify(p_user_id uuid, p_kind text, p_patient_id uuid, p_entity_id text,
                            p_title_key text)
-    returns void language sql volatile {_DEFINER} as $$
+    returns void language plpgsql volatile {_DEFINER} as $$
+    declare
+      allowed boolean;
+    begin
+      allowed := case
+        -- results: the caller writes for the patient, the recipient already has access
+        when p_kind in ('review_ready', 'critical_pending') then
+          p_patient_id is not null and public.can_write_patient(p_patient_id)
+          and exists (select 1 from public.patient_access a
+                      where a.patient_id = p_patient_id and a.user_id = p_user_id
+                        and a.revoked_at is null
+                        and (a.expires_at is null or a.expires_at > now()))
+        -- invitations come only from the owner of the shared profile
+        when p_kind = 'share_invite' then p_patient_id is not null and public.is_owner(p_patient_id)
+        -- reminders only to oneself
+        when p_kind = 'reminder' then p_user_id = public.app_user_id()
+        else false  -- 'admin_reset' etc. are written by the admin service, never by users
+      end;
+      if not coalesce(allowed, false) then
+        raise exception 'notification not allowed' using errcode = '42501';
+      end if;
       insert into public.notifications (user_id, kind, patient_id, entity_id, title_key)
-      select p_user_id, p_kind, p_patient_id, p_entity_id, p_title_key
-      where p_patient_id is null or public.can_read_patient(p_patient_id)
+        values (p_user_id, p_kind, p_patient_id, p_entity_id, p_title_key);
+    end $$
+    """,
+    # Users end their own sessions; a revoked session can never be revived.
+    f"""
+    create function revoke_my_session(p_session_id uuid, p_reason text) returns boolean
+    language sql volatile {_DEFINER} as $$
+      update public.sessions set revoked_at = now(), revoked_reason = p_reason
+      where id = p_session_id and user_id = public.app_user_id() and revoked_at is null
+        and p_reason in ('logout', 'user_revoke')
+      returning true
     $$
     """,
     # Exact-match lookup for sharing by username: returns only the id of an active account.
     f"""
     create function lookup_user_for_share(p_username text) returns uuid
-    language sql stable {_DEFINER} as $$
-      select id from public.users
+    language plpgsql volatile {_DEFINER} as $$
+    declare
+      me citext;
+      found uuid;
+    begin
+      select username into me from public.users where id = public.app_user_id();
+      if me is null then
+        raise exception 'no user context' using errcode = '42501';
+      end if;
+      -- Not an account-existence oracle: at most 30 lookups per caller per hour.
+      if (select count(*) from public.auth_attempts
+          where kind = 'share_lookup' and username = me and at > now() - interval '1 hour') >= 30
+      then
+        raise exception 'too many lookups' using errcode = '54000';
+      end if;
+      select id into found from public.users
       where username = p_username::citext and account_status = 'active'
-        and role in ('user','doctor') and deleted_at is null
+        and role in ('user','doctor') and deleted_at is null;
+      insert into public.auth_attempts (kind, username, success)
+        values ('share_lookup', me, found is not null);
+      return found;
+    end $$
+    """,
+    f"""
+    create function is_shareable_user(p uuid) returns boolean language sql stable {_DEFINER} as $$
+      select exists (select 1 from public.users where id = p and account_status = 'active'
+                     and role in ('user','doctor') and deleted_at is null)
     $$
+    """,
+    # L2: who granted access is recorded by the database, not by the caller.
+    """
+    create function patient_access_set_grantor() returns trigger language plpgsql as $$
+    begin
+      if current_user = 'labtrack_app' then
+        new.granted_by := public.app_user_id();
+      end if;
+      return new;
+    end $$
+    """,
+    """
+    create trigger patient_access_grantor before insert or update on patient_access
+      for each row execute function patient_access_set_grantor()
     """,
     # Audit rows are immutable.
     """
@@ -360,20 +410,17 @@ _POLICIES = [
     "create policy users_app_select on users for select to labtrack_app using (id = app_user_id())",
     """create policy users_app_update on users for update to labtrack_app
        using (id = app_user_id()) with check (id = app_user_id())""",
-    """create policy users_admin_all on users for all to labtrack_admin
-       using (true) with check (true)""",
+    """create policy users_admin_select on users for select to labtrack_admin using (true)""",
     # --- sessions ---
     """create policy sessions_app_select on sessions for select to labtrack_app
        using (user_id = app_user_id())""",
-    """create policy sessions_app_update on sessions for update to labtrack_app
-       using (user_id = app_user_id()) with check (user_id = app_user_id())""",
-    """create policy sessions_admin on sessions for all to labtrack_admin
-       using (true) with check (true)""",
+    """create policy sessions_admin_select on sessions for select to labtrack_admin
+       using (true)""",
     # --- admin-only account tables ---
-    """create policy identity_checks_admin on identity_checks for all to labtrack_admin
-       using (true) with check (true)""",
-    """create policy activation_tokens_admin on activation_tokens for all to labtrack_admin
-       using (true) with check (true)""",
+    """create policy identity_checks_admin_select on identity_checks for select
+       to labtrack_admin using (true)""",
+    """create policy activation_tokens_admin_select on activation_tokens for select
+       to labtrack_admin using (true)""",
     """create policy auth_attempts_admin on auth_attempts for select to labtrack_admin
        using (true)""",
     """create policy auth_attempts_maint on auth_attempts for all to labtrack_maint
@@ -388,10 +435,12 @@ _POLICIES = [
     """create policy access_select on patient_access for select to labtrack_app
        using (user_id = app_user_id() or is_owner(patient_id))""",
     """create policy access_insert on patient_access for insert to labtrack_app
-       with check (is_owner(patient_id) and user_id <> app_user_id() and level <> 'owner')""",
+       with check (is_owner(patient_id) and user_id <> app_user_id() and level <> 'owner'
+                   and is_shareable_user(user_id))""",
     """create policy access_update on patient_access for update to labtrack_app
        using (is_owner(patient_id) and user_id <> app_user_id())
-       with check (is_owner(patient_id) and user_id <> app_user_id() and level <> 'owner')""",
+       with check (is_owner(patient_id) and user_id <> app_user_id() and level <> 'owner'
+                   and is_shareable_user(user_id))""",
     """create policy access_delete on patient_access for delete to labtrack_app
        using (is_owner(patient_id) and user_id <> app_user_id())""",
     # --- consents: append-only; profile consents only by the owner of a minor's profile ---
@@ -418,41 +467,37 @@ _GRANTS = [
     """grant select (id, user_id, family_id, device_name, platform, created_at, last_used_at,
                      expires_at, revoked_at, revoked_reason, device_trusted)
        on sessions to labtrack_app""",
-    "grant update (revoked_at, revoked_reason) on sessions to labtrack_app",
-    "grant select, update, delete on patients to labtrack_app",
+    "grant select, delete on patients to labtrack_app",
+    """grant update (full_name, relation, birth_date, sex, archived_at, deleted_at,
+                     national_id_enc, national_id_hmac) on patients to labtrack_app""",
     "grant select, insert, update, delete on patient_access to labtrack_app",
-    "grant select, insert on consents to labtrack_app",
+    """grant select, insert (user_id, patient_id, kind, version, granted)
+       on consents to labtrack_app""",
     "grant usage on sequence consents_id_seq to labtrack_app",
     "grant select on notifications to labtrack_app",
     "grant update (read_at) on notifications to labtrack_app",
-    # labtrack_admin: account administration; never patient tables, never the password hash
+    # labtrack_admin: read-only on account tables; every change goes through the admin_*
+    # functions in 0004 (actor = app.user_id, rules enforced in SQL). Never patient tables.
     """grant select (id, username, display_name, locale, role, account_status, token_version,
                      contact_phone_last4, created_by, password_changed_at, created_at,
                      deleted_at)
        on users to labtrack_admin""",
-    """grant insert (username, display_name, locale, role, contact_phone_enc,
-                     contact_phone_last4, identity_check_hash, created_by)
-       on users to labtrack_admin""",
-    """grant update (display_name, role, account_status, token_version, contact_phone_enc,
-                     contact_phone_last4, identity_check_hash, password_hash, deleted_at)
-       on users to labtrack_admin""",
-    "grant select, insert, update on activation_tokens to labtrack_admin",
-    "grant select, insert on identity_checks to labtrack_admin",
-    "grant usage on sequence identity_checks_id_seq to labtrack_admin",
-    "grant select (id, user_id, revoked_at), update (revoked_at, revoked_reason) on sessions"
-    " to labtrack_admin",
+    """grant select (id, user_id, purpose, channel, issued_by, identity_check_id, expires_at,
+                     used_at, revoked_at, created_at)
+       on activation_tokens to labtrack_admin""",
+    "grant select on identity_checks to labtrack_admin",
+    "grant select (id, user_id, revoked_at, revoked_reason) on sessions to labtrack_admin",
     "grant select on auth_attempts to labtrack_admin",
     # labtrack_maint: retention only
     "grant select, delete on auth_attempts to labtrack_maint",
     # functions
     "grant execute on function app_user_id() to labtrack_app, labtrack_admin, labtrack_maint",
     """grant execute on function is_owner(uuid), can_read_patient(uuid), can_write_patient(uuid),
-       is_minor_patient(uuid), create_patient(text, text, boolean, date, sex),
+       is_minor_patient(uuid), is_shareable_user(uuid), create_patient(text, text, date, sex),
        audit_write(text, text, text, uuid, jsonb), my_admin_actions(),
-       notify(uuid, text, uuid, text, text), lookup_user_for_share(text)
+       notify(uuid, text, uuid, text, text), lookup_user_for_share(text),
+       revoke_my_session(uuid, text)
        to labtrack_app""",
-    """grant execute on function create_self_profile(uuid),
-       admin_audit_write(uuid, text, uuid, text, jsonb) to labtrack_admin""",
 ]
 
 
@@ -467,6 +512,7 @@ def upgrade() -> None:
             f"create policy {table}_owner on {table} for all to labtrack_owner "
             "using (true) with check (true)"
         )
+    op.execute("revoke execute on all functions in schema public from public")
     for sql in _POLICIES + _GRANTS:
         op.execute(sql)
     op.execute("revoke truncate on all tables in schema public from public")
@@ -477,13 +523,14 @@ def downgrade() -> None:
     for table in reversed(_RLS_TABLES):
         op.execute(f"drop table if exists {table} cascade")
     for fn in (
+        "revoke_my_session(uuid, text)",
+        "patient_access_set_grantor()",
+        "is_shareable_user(uuid)",
         "lookup_user_for_share(text)",
         "notify(uuid, text, uuid, text, text)",
         "my_admin_actions()",
-        "admin_audit_write(uuid, text, uuid, text, jsonb)",
         "audit_write(text, text, text, uuid, jsonb)",
-        "create_self_profile(uuid)",
-        "create_patient(text, text, boolean, date, sex)",
+        "create_patient(text, text, date, sex)",
         "is_minor_patient(uuid)",
         "can_write_patient(uuid)",
         "can_read_patient(uuid)",
