@@ -16,6 +16,8 @@ x-backend: &backend
     DATABASE_URL: postgresql+asyncpg://labtrack_app:${LABTRACK_APP_PASSWORD:?run just init}@postgres:5432/labtrack
     REDIS_URL: redis://:${VALKEY_PASSWORD:?run just init}@valkey:6379/0
     SENTRY_DSN: ${SENTRY_DSN:-}
+    LABTRACK_DEV_KEK: ${LABTRACK_DEV_KEK:?run just init}
+    IDENTITY_PEPPER: ${IDENTITY_PEPPER:?run just init}
   volumes:
     - ../backend/src:/app/src:ro
     - ../backend/tests:/app/tests:ro
@@ -89,6 +91,8 @@ services:
       <<: *backend-env
       # Trust X-Forwarded-For only from Caddy (fixed address below), never from clients.
       FORWARDED_ALLOW_IPS: 172.30.0.10
+      # /admin/* only (docs/03 RLS role table): no table writes, admin_* functions only.
+      ADMIN_DATABASE_URL: postgresql+asyncpg://labtrack_admin:${LABTRACK_ADMIN_PASSWORD:?run just init}@postgres:5432/labtrack
     ports: ["127.0.0.1:8000:8000"]
     networks: [backend, edge, egress]
     healthcheck:
@@ -164,6 +168,7 @@ services:
       TEST_DATABASE_URL: postgresql+asyncpg://labtrack_app:${LABTRACK_APP_PASSWORD:?run just init}@postgres:5432/labtrack_test
       TEST_ADMIN_DATABASE_URL: postgresql+asyncpg://labtrack_admin:${LABTRACK_ADMIN_PASSWORD:?run just init}@postgres:5432/labtrack_test
       TEST_MAINT_DATABASE_URL: postgresql+asyncpg://labtrack_maint:${LABTRACK_MAINT_PASSWORD:?run just init}@postgres:5432/labtrack_test
+      ADMIN_DATABASE_URL: postgresql+asyncpg://labtrack_admin:${LABTRACK_ADMIN_PASSWORD:?run just init}@postgres:5432/labtrack_test
       DATABASE_URL: postgresql+asyncpg://labtrack_app:${LABTRACK_APP_PASSWORD:?run just init}@postgres:5432/labtrack_test
     entrypoint: ["sh", "-c", "alembic upgrade head && alembic downgrade base && alembic upgrade head && exec \"$$@\"", "--"]
     command: ["pytest", "-q", "--no-header"]

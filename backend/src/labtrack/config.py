@@ -1,7 +1,7 @@
 from functools import lru_cache
 from typing import Literal
 
-from pydantic import PostgresDsn, RedisDsn, SecretStr, field_validator
+from pydantic import Field, PostgresDsn, RedisDsn, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -30,7 +30,22 @@ class Settings(BaseSettings):
     rate_refresh_per_minute: int = 60
     rate_activate_per_minute: int = 10
 
-    @field_validator("sentry_dsn", "jwt_private_key", mode="before")
+    # Field encryption (keys.py): dev/test KEK; production uses OpenBao transit.
+    dev_kek: SecretStr | None = Field(default=None, validation_alias="LABTRACK_DEV_KEK")
+    # Pepper for the national-id identity check (0004: bcrypt in the database, 16-60 chars).
+    identity_pepper: SecretStr | None = Field(default=None, min_length=16, max_length=60)
+
+    # Admin API (docs/04 §1 "Супер админ"): role labtrack_admin, never the app or owner role.
+    admin_database_url: PostgresDsn | None = None
+
+    @field_validator(
+        "sentry_dsn",
+        "jwt_private_key",
+        "dev_kek",
+        "identity_pepper",
+        "admin_database_url",
+        mode="before",
+    )
     @classmethod
     def _empty_is_unset(cls, value: object) -> object:
         # Compose passes `SENTRY_DSN=` when unset; that must disable Sentry, not init it.
