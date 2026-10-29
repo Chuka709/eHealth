@@ -63,3 +63,8 @@ desktop.ini
 .vscode/*
 !.vscode/extensions.json
 *.log
+
+# Playwright browsers live in the repo (F:), not the user profile
+.playwright-browsers/
+web/e2e/.auth/
+web/test-results/

@@ -24,6 +24,15 @@ export async function startSession(token: string, expiresAt: string): Promise<vo
   });
 }
 
+/** Only in a server action or route handler (a page render cannot change cookies). */
 export async function endSession(): Promise<void> {
-  (await cookies()).delete(ADMIN_COOKIE);
+  // A __Host- cookie is only replaced by one with the same attributes (Secure, path /):
+  // a bare delete would be ignored by the browser and leave the session cookie behind.
+  (await cookies()).set(ADMIN_COOKIE, "", {
+    httpOnly: true,
+    secure: true,
+    sameSite: "strict",
+    path: "/",
+    maxAge: 0,
+  });
 }

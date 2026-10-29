@@ -24,7 +24,9 @@ export async function signIn(_: ActionResult | null, form: FormData): Promise<Ac
   });
   if (!data) return failure(error, response.status);
   await startSession(data.session_token, data.expires_at);
-  redirect("/admin/users");
+  // The page navigates itself: a redirect here would render the next page in this same
+  // response, before the browser holds the new cookie.
+  return { ok: true, data: null };
 }
 
 export async function signOut(): Promise<void> {

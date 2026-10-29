@@ -5,6 +5,8 @@ set windows-shell := ["powershell.exe", "-NoLogo", "-NoProfile", "-Command"]
 pnpm := if os() == "windows" { "pnpm.cmd" } else { "pnpm" }
 
 compose := "docker compose -f infra/docker-compose.yml --env-file .env"
+# Playwright browsers inside the repo (the system drive may be small).
+export PLAYWRIGHT_BROWSERS_PATH := justfile_directory() / ".playwright-browsers"
 api := compose + " run --rm --no-deps api"
 
 default:
@@ -46,6 +48,10 @@ rewrap-user-keys:
 
 unlock-admin username:
     {{compose}} run --rm migrate python -m labtrack.cli unlock-admin {{username}}
+
+# Admin web end to end against the running stack (`just up` first). Creates a throwaway admin.
+e2e-web *args:
+    {{pnpm}} --filter web exec playwright test {{args}}
 
 test-api *args:
     {{compose}} run --rm test pytest -q --no-header {{args}}

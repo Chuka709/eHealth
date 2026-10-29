@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { useActionState } from "react";
+import { useActionState, useEffect } from "react";
 
 import { Alert, Button, Field, Input } from "@/components/ui";
 
@@ -10,6 +10,9 @@ import { signIn } from "../actions";
 export function SignInForm() {
   const t = useTranslations();
   const [state, action, pending] = useActionState(signIn, null);
+  useEffect(() => {
+    if (state?.ok) window.location.assign("/admin/users");
+  }, [state]);
   return (
     <form action={action} className="flex flex-col gap-4">
       <Field label={t("admin.login.username")} htmlFor="username">

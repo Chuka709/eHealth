@@ -5,7 +5,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { forwardedClientIp } from "@/lib/forwarded";
-import { endSession, sessionToken } from "@/lib/server/session";
+import { sessionToken } from "@/lib/server/session";
 
 const API_INTERNAL_URL = process.env.API_INTERNAL_URL ?? "http://localhost:8000";
 
@@ -40,8 +40,8 @@ export async function failure(
       ? String((error as ErrorBody)?.code)
       : "internal";
   if (status === 401 && code === "admin.session_invalid") {
-    await endSession();
-    redirect("/admin/login?expired=1");
+    // works from pages and actions alike: the route handler clears the cookie
+    redirect("/admin/session-ended");
   }
   return { ok: false, code };
 }
