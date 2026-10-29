@@ -15,6 +15,8 @@ export const secureKeys = {
    * trust on admin reset, disable and password change.
    */
   device: "lt.device",
+  /** Set when an admin reset ended the session; cleared once the user has seen the notice. */
+  adminResetNotice: "lt.admin_reset",
 } as const;
 
 export type SecureKey = (typeof secureKeys)[keyof typeof secureKeys];

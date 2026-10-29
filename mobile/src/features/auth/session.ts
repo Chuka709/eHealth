@@ -3,6 +3,7 @@ import type { components } from "@labtrack/shared";
 import { publicApi } from "@/lib/api-base";
 import { queryClient } from "@/lib/query-client";
 
+import { clearPendingActivationToken } from "./activation-link";
 import { onFreshInstall } from "./install-marker";
 import { deleteSecure, readSecure, secureKeys, writeSecure } from "./secure-tokens";
 import { clearAccessToken, getStatus, setAccessToken, setStatus } from "./session-store";
@@ -20,7 +21,14 @@ let epoch = 0;
 export async function restoreSession(): Promise<void> {
   try {
     // iOS keeps Keychain items after uninstall: a fresh install must not inherit a session.
-    await onFreshInstall(() => deleteSecure(secureKeys.refresh, secureKeys.device));
+    await onFreshInstall(() =>
+      deleteSecure(secureKeys.refresh, secureKeys.device, secureKeys.adminResetNotice),
+    );
+    // An unacknowledged admin-reset notice survives a restart (docs/04 §1 step 5a).
+    if (await readSecure(secureKeys.adminResetNotice)) {
+      setStatus("adminReset");
+      return;
+    }
     setStatus((await readSecure(secureKeys.refresh)) ? "signedIn" : "signedOut");
   } catch {
     // e.g. the Keychain is unavailable while the phone is locked (background start). Do not
@@ -117,14 +125,22 @@ export async function wipeLocal(
 ): Promise<void> {
   epoch += 1;
   clearAccessToken();
+  clearPendingActivationToken();
   await queryClient.cancelQueries();
   queryClient.clear();
   try {
     await deleteSecure(
       ...(forgetDevice ? [secureKeys.refresh, secureKeys.device] : [secureKeys.refresh]),
     );
+    if (next === "adminReset") await writeSecure(secureKeys.adminResetNotice, "1");
   } finally {
     // An admin-reset notice is not replaced by a later, plainer "signed out".
     if (!(next === "signedOut" && getStatus() === "adminReset")) setStatus(next);
   }
+}
+
+/** The user has read the admin-reset notice; continue to sign-in. */
+export async function acknowledgeAdminReset(): Promise<void> {
+  await deleteSecure(secureKeys.adminResetNotice).catch(() => undefined);
+  setStatus("signedOut");
 }

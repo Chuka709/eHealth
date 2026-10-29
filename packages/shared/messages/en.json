@@ -1,6 +1,72 @@
 {
   "app": {
-    "name": "LabTrack MN"
+    "name": "LabTrack MN",
+    "common": {
+      "call": "Call {phone}",
+      "fieldRequired": "Fill in this field.",
+      "offline": "Could not reach the server. Check your internet connection and try again.",
+      "signOut": "Sign out",
+      "loading": "Loading…",
+      "back": "Back"
+    },
+    "passwordField": {
+      "show": "Show password",
+      "hide": "Hide password",
+      "showShort": "Show",
+      "hideShort": "Hide"
+    },
+    "strength": {
+      "label": "Password strength: {level}",
+      "level0": "very weak",
+      "level1": "weak",
+      "level2": "fair",
+      "level3": "strong",
+      "level4": "very strong"
+    },
+    "welcome": {
+      "title": "Welcome to LabTrack MN",
+      "body": "Scan the activation QR code from your admin to activate your account. If you have activated it before, sign in.",
+      "activate": "Activate account",
+      "login": "Sign in"
+    },
+    "activate": {
+      "title": "Activate account",
+      "scanHint": "Point the camera at the QR code on the admin's screen.",
+      "scanInvalid": "This QR code is not a LabTrack MN activation code. Scan the code your admin gave you.",
+      "cameraNeeded": "Camera access is needed to scan the QR code.",
+      "cameraAllow": "Allow camera access",
+      "cameraSettings": "Open settings",
+      "cameraLabel": "QR code scanner camera",
+      "codeReady": "Activation code read. Now set your own password. Your admin does not know it.",
+      "password": "New password",
+      "confirm": "Repeat the password",
+      "mismatch": "The passwords do not match.",
+      "rules": "At least 10 characters. Pick a hard-to-guess password made of several words. It is best not to include your name.",
+      "submit": "Set password",
+      "scanAgain": "Scan another code",
+      "done": "Your account is active. Sign in with your username and new password.",
+      "noCamera": "If you cannot use the camera, ask your admin to send the activation link by SMS and open it on this phone."
+    },
+    "login": {
+      "title": "Sign in",
+      "username": "Username",
+      "password": "Password",
+      "submit": "Sign in",
+      "forgot": "Forgot your password?"
+    },
+    "forgot": {
+      "title": "Forgot your password?",
+      "body": "For your security, only an admin can reset a password. The admin calls you back on your registered phone, confirms who you are, and gives you a code to set a new password.",
+      "never": "An admin never asks for or knows your password.",
+      "noPhone": "Contact your organisation's admin."
+    },
+    "adminReset": {
+      "title": "An admin reset your password",
+      "body": "An admin issued a code to set a new password for your account, so this device was signed out.",
+      "ifNotYou": "If you did not ask for this, call {phone} right away.",
+      "ifNotYouNoPhone": "If you did not ask for this, contact your organisation's admin right away.",
+      "login": "Sign in with the new password"
+    }
   },
   "status": {
     "title": "System status",

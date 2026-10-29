@@ -11,6 +11,17 @@ if (variant !== "development" && !process.env.EXPO_PUBLIC_API_URL?.startsWith("h
   throw new Error(`EXPO_PUBLIC_API_URL must be an https:// URL for the ${variant} build`);
 }
 
+// "Forgot password" and the admin-reset notice tell users whom to call (docs/04 §1).
+// Same rule as src/lib/support.ts: digits, spaces, ( ) - and a leading +; 7–15 digits.
+const supportPhone = process.env.EXPO_PUBLIC_SUPPORT_PHONE?.trim() ?? "";
+const supportDigits = supportPhone.replace(/\D/g, "").length;
+if (
+  variant !== "development" &&
+  !(/^\+?[0-9 ()-]+$/.test(supportPhone) && supportDigits >= 7 && supportDigits <= 15)
+) {
+  throw new Error(`EXPO_PUBLIC_SUPPORT_PHONE must be set for the ${variant} build`);
+}
+
 // Native permission prompts are shown before the JS bundle (and use-intl) loads, so they live
 // here rather than in messages/*.json. Mongolian is the primary UI language.
 const faceIdText = "LabTrack MN-ийг Face ID-аар түгжиж, нээхэд ашиглана.";
