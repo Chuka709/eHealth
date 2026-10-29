@@ -69,7 +69,10 @@ adb devices          # emulator-5554  device
 `http://10.0.2.2:8080` (компьютерийн localhost → Caddy) — `mobile/src/lib/api.ts`-д анхдагчаар тохируулсан.
 `just up` ажиллаж байх ёстой.
 
-**А. Санал болгох — EAS cloud build** (Java, NDK, Gradle-ийн кэш шаардлагагүй, диск хэмнэнэ):
+**А. Санал болгох — EAS cloud build** (Java, NDK, Gradle-ийн кэш шаардлагагүй, диск хэмнэнэ).
+PowerShell "running scripts is disabled" гэвэл нэг удаа (админ эрхгүй, зөвхөн таны хэрэглэгчид):
+`Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` — эсвэл бодлогыг өөрчлөхгүйгээр
+`npm.cmd`, `eas.cmd` гэж `.cmd`-тэй нь бичнэ.
 ```powershell
 npm install -g eas-cli
 eas login                       # үнэгүй Expo аккаунт
