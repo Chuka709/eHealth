@@ -3088,6 +3088,11 @@
             "minLength": 20,
             "title": "Token"
           },
+          "username": {
+            "type": "string",
+            "pattern": "^[a-z0-9._]{3,32}$",
+            "title": "Username"
+          },
           "new_password": {
             "type": "string",
             "maxLength": 128,
@@ -3099,6 +3104,7 @@
         "type": "object",
         "required": [
           "token",
+          "username",
           "new_password"
         ],
         "title": "ActivateRequest"

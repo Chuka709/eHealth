@@ -115,7 +115,8 @@ describe("activation", () => {
 
     mockCamera.qr = link;
     await fireEvent.press(screen.getByRole("button", { name: "scan" }));
-    const password = await screen.findByLabelText("Шинэ нууц үг");
+    await fireEvent.changeText(await screen.findByLabelText("Хэрэглэгчийн нэр"), " Bat.01 ");
+    const password = screen.getByLabelText("Шинэ нууц үг");
     await fireEvent.changeText(password, "short");
     await fireEvent.changeText(screen.getByLabelText("Нууц үгээ давтах"), "other");
     await fireEvent.press(screen.getByRole("button", { name: "Нууц үг тохируулах" }));
@@ -131,7 +132,9 @@ describe("activation", () => {
 
     expect(await screen.findByText(/Аккаунт идэвхжлээ/)).toBeOnTheScreen();
     expect(screen).toHavePathname("/login");
-    expect(await bodies("/api/v1/auth/activate")).toEqual([{ token, new_password: strong }]);
+    expect(await bodies("/api/v1/auth/activate")).toEqual([
+      { token, username: "bat.01", new_password: strong },
+    ]);
   });
 
   test("a link token skips the scanner; server policy errors show under the field", async () => {
@@ -139,7 +142,8 @@ describe("activation", () => {
     route({ "/api/v1/auth/activate": () => err(422, "password.too_weak") });
     await app("/activate");
     const strong = "aaaaaaaaaaaa";
-    await fireEvent.changeText(await screen.findByLabelText("Шинэ нууц үг"), strong);
+    await fireEvent.changeText(await screen.findByLabelText("Хэрэглэгчийн нэр"), "bat");
+    await fireEvent.changeText(screen.getByLabelText("Шинэ нууц үг"), strong);
     await fireEvent.changeText(screen.getByLabelText("Нууц үгээ давтах"), strong);
     await fireEvent.press(screen.getByRole("button", { name: "Нууц үг тохируулах" }));
     expect(await screen.findByText(/хэт амархан таагдана/)).toBeOnTheScreen();
@@ -151,10 +155,11 @@ describe("activation", () => {
     route({ "/api/v1/auth/activate": () => err(400, "auth.activation_invalid") });
     await app("/activate");
     const strong = "ногоон-цонх-гурван-морь";
-    await fireEvent.changeText(await screen.findByLabelText("Шинэ нууц үг"), strong);
+    await fireEvent.changeText(await screen.findByLabelText("Хэрэглэгчийн нэр"), "bat");
+    await fireEvent.changeText(screen.getByLabelText("Шинэ нууц үг"), strong);
     await fireEvent.changeText(screen.getByLabelText("Нууц үгээ давтах"), strong);
     await fireEvent.press(screen.getByRole("button", { name: "Нууц үг тохируулах" }));
-    expect(await screen.findByText(/хүчингүй эсвэл хугацаа нь дууссан/)).toBeOnTheScreen();
+    expect(await screen.findByText(/кодын хугацаа дууссан/)).toBeOnTheScreen();
     await fireEvent.press(screen.getByRole("button", { name: "Өөр код уншуулах" }));
     expect(await screen.findByRole("button", { name: "scan" })).toBeOnTheScreen();
   });

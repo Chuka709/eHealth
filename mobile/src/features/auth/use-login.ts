@@ -22,7 +22,7 @@ export function useLogin() {
       const deviceToken = await readSecure(secureKeys.device).catch(() => null);
       const { data, error } = await publicApi.POST("/api/v1/auth/login", {
         body: {
-          username: username.trim().toLowerCase(),
+          username,
           password,
           platform: Platform.OS === "ios" ? "ios" : "android",
           // The model ("iPhone 15"), not the user-chosen device name, which often holds a name.

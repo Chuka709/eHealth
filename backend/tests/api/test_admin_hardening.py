@@ -95,13 +95,13 @@ class _FailingSender(ConsoleSmsSender):
 async def test_sms_failures(client_from: ClientFactory, monkeypatch: pytest.MonkeyPatch) -> None:
     async with client_from("10.20.0.5") as c:
         enrolling = await _admin(c)
-        uid, _ = await _create(c, enrolling, national_id=NID)
+        uid, username = await _create(c, enrolling, national_id=NID)
         r = await c.post(
             f"/api/v1/admin/users/{uid}/tokens",
             json={"purpose": "activation", "channel": "in_person_qr"},
             headers=enrolling,
         )
-        assert await _activate(client_from, r.json()["link"]) == 204
+        assert await _activate(client_from, r.json()["link"], username) == 204
         h = await _admin(c)
         monkeypatch.setattr(get_sms_sender(), "send", _FailingSender().send)
         check = await c.post(

@@ -13,6 +13,7 @@ import { PasswordField } from "@/components/password-field";
 import { Screen } from "@/components/screen";
 import { StrengthMeter } from "@/components/strength-meter";
 import { Paragraph, Title } from "@/components/text";
+import { TextField } from "@/components/text-field";
 import {
   takeActivationTokenFromUrl,
   takePendingActivationToken,
@@ -25,10 +26,12 @@ import {
 import { ActivationQrScanner } from "@/features/auth/qr-scanner";
 import { useActivate } from "@/features/auth/use-activate";
 import { useAppSwitcherProtection } from "@/features/auth/use-app-switcher-protection";
+import { usernameSchema } from "@/features/auth/username";
 import { ApiError, useErrorText } from "@/lib/use-error-text";
 
 const schema = z
   .object({
+    username: usernameSchema,
     password: z
       .string()
       .min(MIN_PASSWORD_LENGTH, "password.too_short")
@@ -64,7 +67,7 @@ export default function ActivateScreen() {
 
   const { control, handleSubmit, formState, watch, setError, setFocus } = useForm({
     resolver: zodResolver(schema),
-    defaultValues: { password: "", confirm: "" },
+    defaultValues: { username: "", password: "", confirm: "" },
   });
   const password = watch("password");
   const score = useMemo(() => passwordScore(password), [password]);
@@ -72,7 +75,7 @@ export default function ActivateScreen() {
   const submit = handleSubmit((values) => {
     if (!token) return;
     activate.mutate(
-      { token, password: values.password },
+      { token, username: values.username, password: values.password },
       {
         onSuccess: () => router.replace({ pathname: "/login", params: { activated: "1" } }),
         onError: (error) => {
@@ -123,6 +126,33 @@ export default function ActivateScreen() {
     <Screen>
       <Title>{t("app.activate.title")}</Title>
       <Paragraph>{t("app.activate.codeReady")}</Paragraph>
+      <Controller
+        control={control}
+        name="username"
+        render={({ field }) => (
+          <TextField
+            inputRef={field.ref}
+            label={t("app.activate.username")}
+            hint={t("app.activate.usernameHint")}
+            value={field.value}
+            onChangeText={field.onChange}
+            onBlur={field.onBlur}
+            error={
+              formState.errors.username?.message
+                ? t(`app.common.${formState.errors.username.message}`)
+                : undefined
+            }
+            autoCapitalize="none"
+            autoCorrect={false}
+            spellCheck={false}
+            autoComplete="username"
+            textContentType="username"
+            returnKeyType="next"
+            submitBehavior="submit"
+            onSubmitEditing={() => setFocus("password")}
+          />
+        )}
+      />
       <Controller
         control={control}
         name="password"

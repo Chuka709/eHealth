@@ -1,6 +1,7 @@
 """Authentication use cases (docs/04 §1, §6). Database work goes through the 0005 functions."""
 
 import functools
+import hmac
 import ipaddress
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -186,19 +187,29 @@ async def logout(db: AsyncSession, *, refresh_token: str) -> None:
 
 
 async def activate(
-    db: AsyncSession, *, token: str, new_password: str, ip: str | None, presented: list[str]
+    db: AsyncSession,
+    *,
+    token: str,
+    username: str,
+    new_password: str,
+    ip: str | None,
+    presented: list[str],
 ) -> None:
     token_hash = sha256_hex(token)
     owner = (
         await db.execute(bound_text("select * from activation_token_user(:h)"), {"h": token_hash})
     ).one_or_none()
-    if owner is None:
-        # Counted per address so token guessing shows up (the rate limit is the barrier).
+    # The token alone is not enough (an SMS link may be caught by another app): the username
+    # must match too. An unknown token and a wrong username take the same path (same SQL, same
+    # error), checked before the password policy so no answer reveals that the token is live.
+    # The failure is counted per address (token guessing shows up; the rate limit is the
+    # barrier) and, for a live token, against the token: the third wrong username revokes it.
+    if owner is None or not hmac.compare_digest(
+        owner.username.casefold().encode(), username.casefold().encode()
+    ):
         await db.execute(
-            bound_text(
-                "select auth_record_failure('activation', null, cast(:ip as inet), null, false)"
-            ),
-            {"ip": client_network(ip)},
+            bound_text("select activation_username_mismatch(:h, cast(:ip as inet))"),
+            {"h": token_hash, "ip": ip},
         )
         await db.commit()
         raise AppError(400, "auth.activation_invalid")

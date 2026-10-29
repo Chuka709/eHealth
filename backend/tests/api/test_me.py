@@ -167,7 +167,7 @@ async def test_admin_history_notifications_and_report(
             json={"purpose": "activation", "channel": "in_person_qr"},
             headers=admin,
         )
-        assert await _activate(client_from, r.json()["link"]) == 204
+        assert await _activate(client_from, r.json()["link"], username) == 204
         await c.put(
             f"/api/v1/admin/users/{uid}/identity", json={"national_id": "УБ90010101"}, headers=admin
         )
@@ -247,6 +247,7 @@ async def test_admin_history_notifications_and_report(
             "/api/v1/auth/activate",
             json={
                 "token": link.split("#", 1)[1],
+                "username": username,
                 "new_password": "Шинэ нууц үг Хангай 2028 ногоон",
             },
         )

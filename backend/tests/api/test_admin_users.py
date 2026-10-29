@@ -46,11 +46,11 @@ def _token(link: str) -> str:
     return link.split("#", 1)[1]
 
 
-async def _activate(client_from: ClientFactory, link: str, **headers: str) -> int:
+async def _activate(client_from: ClientFactory, link: str, username: str, **headers: str) -> int:
     async with client_from(HOME) as phone:
         r = await phone.post(
             "/api/v1/auth/activate",
-            json={"token": _token(link), "new_password": NEW_PASSWORD},
+            json={"token": _token(link), "username": username, "new_password": NEW_PASSWORD},
             headers=headers,
         )
     return r.status_code
@@ -75,7 +75,7 @@ async def test_registered_user_activates_with_qr_and_sets_own_password(
         assert link.startswith("labtrack://activate#")
         detail = (await c.get(f"/api/v1/admin/users/{uid}", headers=h)).json()
         assert detail["live_token"]["channel"] == "in_person_qr"
-    assert await _activate(client_from, link) == 204
+    assert await _activate(client_from, link, username) == 204
     async with client_from(HOME) as phone:
         login = await phone.post(
             "/api/v1/auth/login", json=login_body(username, password=NEW_PASSWORD)
@@ -154,7 +154,7 @@ async def test_reset_by_sms_after_identity_check(client_from: ClientFactory) -> 
             json={"purpose": "activation", "channel": "in_person_qr"},
             headers=h,
         )
-        assert await _activate(client_from, r.json()["link"]) == 204
+        assert await _activate(client_from, r.json()["link"], username) == 204
         async with client_from(HOME) as phone:
             old = (
                 await phone.post(
@@ -205,21 +205,21 @@ async def test_reset_by_sms_after_identity_check(client_from: ClientFactory) -> 
             "/api/v1/auth/refresh", json={"refresh_token": old["refresh_token"]}
         )
         assert refreshed.json()["code"] == "auth.admin_reset"
-    assert await _activate(client_from, link) == 204
+    assert await _activate(client_from, link, username) == 204
 
 
 async def test_in_person_reset_still_notifies_the_registered_phone(
     client_from: ClientFactory,
 ) -> None:
     async with client_from(OFFICE) as c:
-        uid, _ = await _create(c, await _admin(c), national_id=NID)
+        uid, username = await _create(c, await _admin(c), national_id=NID)
         h = await _admin(c)
         r = await c.post(
             f"/api/v1/admin/users/{uid}/tokens",
             json={"purpose": "activation", "channel": "in_person_qr"},
             headers=h,
         )
-        assert await _activate(client_from, r.json()["link"]) == 204
+        assert await _activate(client_from, r.json()["link"], username) == 204
         check = await c.post(
             f"/api/v1/admin/users/{uid}/identity-check", json={"national_id": NID}, headers=h
         )
@@ -258,13 +258,13 @@ async def test_status_unlock_and_phone_reveal(client_from: ClientFactory) -> Non
     async with client_from(OFFICE) as c:
         h = await _admin(c)
         support = await _admin(c, "support")
-        uid, _ = await _create(c, h)
+        uid, username = await _create(c, h)
         r = await c.post(
             f"/api/v1/admin/users/{uid}/tokens",
             json={"purpose": "activation", "channel": "in_person_qr"},
             headers=h,
         )
-        assert await _activate(client_from, r.json()["link"]) == 204
+        assert await _activate(client_from, r.json()["link"], username) == 204
         lock = await c.post(
             f"/api/v1/admin/users/{uid}/status",
             json={"status": "locked", "reason": "user_request"},
@@ -297,7 +297,7 @@ async def test_a_user_bearer_does_not_burn_the_token_but_an_admin_session_does(
 ) -> None:
     async with client_from(OFFICE) as c:
         h = await _admin(c)
-        uid, _ = await _create(c, h)
+        uid, username = await _create(c, h)
         r = await c.post(
             f"/api/v1/admin/users/{uid}/tokens",
             json={"purpose": "activation", "channel": "in_person_qr"},
@@ -305,7 +305,7 @@ async def test_a_user_bearer_does_not_burn_the_token_but_an_admin_session_does(
         )
         link = r.json()["link"]
         # the issuing admin's own session presented with the token: refused and reported
-        assert await _activate(client_from, link, Authorization=h["Authorization"]) == 400
+        assert await _activate(client_from, link, username, Authorization=h["Authorization"]) == 400
         events = (await c.get("/api/v1/admin/security-events", headers=h)).json()
         assert any(
             e["action"] == "security.admin_token_self_use" and e["target_user_id"] == str(uid)
@@ -318,7 +318,10 @@ async def test_a_user_bearer_does_not_burn_the_token_but_an_admin_session_does(
         )
         fresh = r.json()["link"]
     # a stale non-admin bearer (e.g. an old app token) is not an admin credential
-    assert await _activate(client_from, fresh, Authorization="Bearer not-an-admin-token") == 204
+    assert (
+        await _activate(client_from, fresh, username, Authorization="Bearer not-an-admin-token")
+        == 204
+    )
 
 
 async def test_password_is_never_known_to_the_admin(client_from: ClientFactory) -> None:
@@ -335,13 +338,13 @@ async def test_the_enrolling_admin_must_leave_the_reset_to_another(
 ) -> None:
     async with client_from(OFFICE) as c:
         h = await _admin(c)
-        uid, _ = await _create(c, h, national_id=NID)
+        uid, username = await _create(c, h, national_id=NID)
         r = await c.post(
             f"/api/v1/admin/users/{uid}/tokens",
             json={"purpose": "activation", "channel": "in_person_qr"},
             headers=h,
         )
-        assert await _activate(client_from, r.json()["link"]) == 204
+        assert await _activate(client_from, r.json()["link"], username) == 204
         check = await c.post(
             f"/api/v1/admin/users/{uid}/identity-check", json={"national_id": NID}, headers=h
         )

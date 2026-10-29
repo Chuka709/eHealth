@@ -594,6 +594,8 @@ export interface components {
         ActivateRequest: {
             /** Token */
             token: string;
+            /** Username */
+            username: string;
             /** New Password */
             new_password: string;
         };

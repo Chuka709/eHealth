@@ -28,7 +28,7 @@ async def _active_user(client_from: ClientFactory) -> tuple[str, str, dict[str, 
             json={"purpose": "activation", "channel": "in_person_qr"},
             headers=enrolling,
         )
-    assert await _activate(client_from, r.json()["link"]) == 204
+    assert await _activate(client_from, r.json()["link"], username) == 204
     async with client_from(HOME) as phone:
         login = await phone.post(
             "/api/v1/auth/login", json=login_body(username, password=NEW_PASSWORD)
@@ -110,7 +110,7 @@ async def test_cancellation_goes_through_a_reset(client_from: ClientFactory) -> 
             headers=admin,
         )
         assert (again.status_code, again.json()["code"]) == (409, "admin.no_pending_deletion")
-    assert await _activate(client_from, r.json()["link"]) == 204
+    assert await _activate(client_from, r.json()["link"], username) == 204
     async with client_from(HOME) as phone:
         login = await phone.post(
             "/api/v1/auth/login",

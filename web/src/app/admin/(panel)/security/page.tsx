@@ -10,6 +10,7 @@ const KNOWN = new Set([
   "security.admin_network_activation",
   "security.user_report",
   "security.purge_failed",
+  "security.activation_username_mismatch",
 ]);
 
 export default async function SecurityEventsPage() {

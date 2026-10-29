@@ -234,7 +234,8 @@ async def test_admin_reset_is_reported_to_the_old_device(
         assert r.json()["code"] == "auth.admin_reset"
         assert (await _login(c, username)).status_code == 401  # the old password is gone
         act = await c.post(
-            "/api/v1/auth/activate", json={"token": raw, "new_password": NEW_PASSWORD}
+            "/api/v1/auth/activate",
+            json={"token": raw, "username": username, "new_password": NEW_PASSWORD},
         )
         assert act.status_code == 204
         assert (await _login(c, username, password=NEW_PASSWORD)).status_code == 200
@@ -269,19 +270,24 @@ async def test_activation_checks_the_token_first_then_the_password_policy(
         )
     async with client_from() as c:
         bogus = await c.post(
-            "/api/v1/auth/activate", json={"token": "x" * 43, "new_password": "password123"}
+            "/api/v1/auth/activate",
+            json={"token": "x" * 43, "username": username, "new_password": "password123"},
         )
         weak = await c.post(
-            "/api/v1/auth/activate", json={"token": raw, "new_password": "password123"}
+            "/api/v1/auth/activate",
+            json={"token": raw, "username": username, "new_password": "password123"},
         )
         named = await c.post(
-            "/api/v1/auth/activate", json={"token": raw, "new_password": f"{username} 2026 сайхан"}
+            "/api/v1/auth/activate",
+            json={"token": raw, "username": username, "new_password": f"{username} 2026 сайхан"},
         )
         good = await c.post(
-            "/api/v1/auth/activate", json={"token": raw, "new_password": NEW_PASSWORD}
+            "/api/v1/auth/activate",
+            json={"token": raw, "username": username, "new_password": NEW_PASSWORD},
         )
         reused = await c.post(
-            "/api/v1/auth/activate", json={"token": raw, "new_password": NEW_PASSWORD}
+            "/api/v1/auth/activate",
+            json={"token": raw, "username": username, "new_password": NEW_PASSWORD},
         )
         logged_in = await _login(c, username, password=NEW_PASSWORD)
     assert bogus.status_code == 400  # an invalid token reveals nothing about the policy
@@ -292,6 +298,89 @@ async def test_activation_checks_the_token_first_then_the_password_policy(
     assert good.status_code == 204
     assert reused.status_code == 400
     assert logged_in.status_code == 200
+
+
+async def test_activation_needs_the_username_and_three_wrong_ones_revoke_the_token(
+    owner_engine: AsyncEngine, admin_engine: AsyncEngine, client_from: ClientFactory
+) -> None:
+    """A caught SMS link alone does not activate (Phase 1.11b review M2)."""
+    admin, _ = await make_active_user(owner_engine, role="super_admin")
+    raw = secrets.token_urlsafe(32)
+    username = f"a{secrets.token_hex(5)}"
+    session = await open_admin_session(owner_engine, admin)
+    async with admin_engine.connect() as conn, conn.begin():
+        await set_admin_context(conn, session)
+        uid = (
+            await conn.execute(
+                bound_text(
+                    "select admin_create_user(gen_random_uuid(), :n, 'Сараа', 'user',"
+                    " null, null, null, null)"
+                ),
+                {"n": username},
+            )
+        ).scalar_one()
+        await conn.execute(
+            bound_text(
+                "select admin_issue_token(:u, 'activation', 'in_person_qr', :h, null, null, null)"
+            ),
+            {"u": uid, "h": hashlib.sha256(raw.encode()).hexdigest()},
+        )
+
+    async def attempt(name: str, password: str = NEW_PASSWORD) -> Response:
+        return await c.post(
+            "/api/v1/auth/activate",
+            json={"token": raw, "username": name, "new_password": password},
+        )
+
+    async with client_from() as c:
+        # A weak password with the wrong name: the token check comes first, nothing leaks.
+        weak_wrong = await attempt("someone.else", "password123")
+        case_and_space = await attempt(f" {username.upper()} ")  # pydantic lower-cases; 422
+        wrong = await attempt("someone.else2")
+        unknown = await c.post(
+            "/api/v1/auth/activate",
+            json={"token": "x" * 43, "username": "someone.else", "new_password": NEW_PASSWORD},
+        )
+        third = await attempt("someone.else3")
+        right_too_late = await attempt(username)
+        after_revoke = await attempt("someone.else4")  # no longer counted against the token
+        cannot_log_in = await _login(c, username, password=NEW_PASSWORD)
+    # A live token with a wrong username answers exactly like an unknown token.
+    assert (wrong.status_code, wrong.json()) == (unknown.status_code, unknown.json())
+    assert after_revoke.json() == unknown.json()
+    assert (weak_wrong.status_code, weak_wrong.json()["code"]) == (400, "auth.activation_invalid")
+    assert case_and_space.status_code == 422  # the pattern rejects spaces; the app trims
+    assert (wrong.status_code, wrong.json()["code"]) == (400, "auth.activation_invalid")
+    assert third.json()["code"] == "auth.activation_invalid"
+    assert right_too_late.json()["code"] == "auth.activation_invalid"  # revoked after 3
+    assert cannot_log_in.status_code == 401
+    async with owner_engine.connect() as conn:
+        events = (
+            (
+                await conn.execute(
+                    bound_text(
+                        "select diff from audit_logs where target_user_id = :u"
+                        " and action = 'security.activation_username_mismatch'"
+                    ),
+                    {"u": uid},
+                )
+            )
+            .scalars()
+            .all()
+        )
+        revoked = (
+            await conn.execute(
+                bound_text(
+                    "select revoked_at is not null and username_failures = 3"
+                    " from activation_tokens where token_hash = :h"
+                ),
+                {"h": hashlib.sha256(raw.encode()).hexdigest()},
+            )
+        ).scalar_one()
+    assert revoked  # and the count stopped at 3
+    assert len(events) == 1
+    assert events[0]["failures"] == 3
+    assert "username" not in events[0]  # no names in the event
 
 
 async def test_password_change_signs_out_other_devices(

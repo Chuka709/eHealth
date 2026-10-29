@@ -47,6 +47,9 @@ class RefreshRequest(_Strict):
 
 class ActivateRequest(_Strict):
     token: OpaqueToken
+    # From the user's sign-in card: the token alone does not activate (an SMS link may be
+    # caught by another app claiming the labtrack:// scheme).
+    username: Username
     new_password: Password
 
 
@@ -130,6 +133,7 @@ async def activate(body: ActivateRequest, request: Request, db: AnonymousDb) -> 
     await service.activate(
         db,
         token=body.token,
+        username=body.username,
         new_password=body.new_password,
         ip=client_ip(request),
         # The app sends no credentials here; a live admin session among them means the

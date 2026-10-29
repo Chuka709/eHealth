@@ -7,7 +7,8 @@
       "offline": "Could not reach the server. Check your internet connection and try again.",
       "signOut": "Sign out",
       "loading": "Loading…",
-      "back": "Back"
+      "back": "Back",
+      "usernameFormat": "Enter the username exactly as on your sign-in card (Latin letters, digits, dot, underscore)."
     },
     "passwordField": {
       "show": "Show password",
@@ -45,7 +46,9 @@
       "submit": "Set password",
       "scanAgain": "Scan another code",
       "done": "Your account is active. Sign in with your username and new password.",
-      "noCamera": "If you cannot use the camera, ask your admin to send the activation link by SMS and open it on this phone."
+      "noCamera": "If you cannot use the camera, ask your admin to send the activation link by SMS and open it on this phone.",
+      "username": "Username",
+      "usernameHint": "Enter the username printed on your sign-in card."
     },
     "login": {
       "title": "Sign in",
@@ -104,7 +107,7 @@
       "username_taken": "This username is already taken."
     },
     "auth": {
-      "activation_invalid": "The activation code is invalid or has expired. Ask an admin for a new one.",
+      "activation_invalid": "The username or code is wrong, or the code has expired. Check the username on your sign-in card and try again. Too many wrong tries revoke the code — then ask your admin for a new one.",
       "admin_reset": "An admin reset your account password, so this device was signed out.",
       "forbidden": "You don't have access to this.",
       "invalid_credentials": "Wrong username or password.",
@@ -341,7 +344,8 @@
         "admin_token_self_use": "An admin tried to use a token they issued (refused)",
         "admin_network_activation": "QR activated from the issuing admin's network",
         "user_report": "User reported \"not me\" (account locked)",
-        "purge_failed": "A deleted account could not be erased"
+        "purge_failed": "A deleted account could not be erased",
+        "activation_username_mismatch": "An activation code was tried 3 times with the wrong username (code revoked)"
       },
       "unknown": "Other: {action}"
     },

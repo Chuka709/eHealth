@@ -13,10 +13,11 @@ import { Title } from "@/components/text";
 import { TextField } from "@/components/text-field";
 import { useAppSwitcherProtection } from "@/features/auth/use-app-switcher-protection";
 import { useLogin } from "@/features/auth/use-login";
+import { usernameSchema } from "@/features/auth/username";
 import { useErrorText } from "@/lib/use-error-text";
 
 const schema = z.object({
-  username: z.string().trim().min(1),
+  username: usernameSchema,
   password: z.string().min(1),
 });
 
@@ -54,7 +55,11 @@ export default function LoginScreen() {
             value={field.value}
             onChangeText={field.onChange}
             onBlur={field.onBlur}
-            error={formState.errors.username ? required : undefined}
+            error={
+              formState.errors.username?.message
+                ? t(`common.${formState.errors.username.message}`)
+                : undefined
+            }
             autoCapitalize="none"
             autoCorrect={false}
             spellCheck={false}
