@@ -8,5 +8,78 @@
     "ok": "Connected to the server",
     "unreachable": "Could not reach the server. Check your internet connection and try again.",
     "retry": "Try again"
+  },
+  "error": {
+    "admin": {
+      "account_disabled": "The account is disabled, so this is not possible.",
+      "address_required": "Your address could not be determined. Reload the page.",
+      "already_activated": "This account is already activated. If the password is forgotten, issue a reset token.",
+      "forbidden": "You are not allowed to do this.",
+      "identity_already_set": "This user's national ID is already enrolled.",
+      "identity_check_limit": "Today's identity check limit is reached. Try again tomorrow.",
+      "identity_check_required": "Run a successful identity check first (valid for 10 minutes).",
+      "identity_in_person": "No national ID is enrolled. Identify the person in person with their ID card and enrol it.",
+      "import_changed": "The file changed since the preview. Preview it again.",
+      "import_invalid": "The file has invalid rows. Fix them and upload again. No account was created.",
+      "import_too_large": "The file is too large (up to 1 MB).",
+      "invalid_phone": "The phone number is invalid. Enter an 8-digit Mongolian number.",
+      "lockout_clear_limit": "This user's lockout was cleared too many times today.",
+      "no_pending_deletion": "This account has no pending deletion, or 30 days have passed.",
+      "no_phone": "This user has no registered phone. Use the in-person QR.",
+      "phone_reveal_limit": "Today's phone reveal limit (20) is reached.",
+      "reason_required": "Choose a reason.",
+      "reset_needs_other_admin": "You enrolled this user's national ID, so another admin must do the reset.",
+      "reset_required": "The account was locked for security reasons. It reopens only through an identity check and a password reset.",
+      "session_invalid": "Your session has ended. Sign in again.",
+      "sms_failed": "The SMS could not be sent. The token is still valid — issue again or use the in-person QR.",
+      "sms_unavailable": "SMS is not set up yet. Use the in-person QR.",
+      "status_change_not_allowed": "This status change is not possible.",
+      "user_not_found": "User not found.",
+      "username_taken": "This username is already taken."
+    },
+    "auth": {
+      "activation_invalid": "The activation code is invalid or has expired. Ask an admin for a new one.",
+      "forbidden": "You don't have access to this.",
+      "invalid_credentials": "Wrong username or password.",
+      "locked": "Too many failed attempts. Wait a while and try again.",
+      "rate_limited": "Too many requests. Wait a moment and try again.",
+      "required": "Please sign in.",
+      "session_invalid": "Your session has ended. Sign in again.",
+      "session_not_found": "Device not found."
+    },
+    "consent": {
+      "not_allowed": "You cannot give consent for this profile.",
+      "required": "Give the required consents to continue.",
+      "version_outdated": "The consent text was updated. Read the new text and consent again."
+    },
+    "internal": "Something went wrong. Please try again.",
+    "me": {
+      "no_recent_admin_action": "No admin action on your account in the last 30 days.",
+      "notification_not_found": "Notification not found."
+    },
+    "not_found": "Not found.",
+    "password": {
+      "contains_username": "Don't include your username in the password.",
+      "too_long": "The password is too long (up to 128 characters).",
+      "too_short": "The password needs at least 10 characters.",
+      "too_weak": "The password is too easy to guess. Use a longer phrase of several words."
+    },
+    "validation": "Check what you entered."
+  },
+  "import": {
+    "problem": {
+      "columns": "Wrong columns (username, display_name; optionally phone, role).",
+      "display_name": "Display name is empty, too long or contains forbidden characters.",
+      "empty": "The file has no rows.",
+      "encoding": "The file is not UTF-8. Save it from Excel as \"CSV UTF-8\".",
+      "format": "The CSV structure is broken.",
+      "phone": "Invalid phone (8-digit Mongolian number).",
+      "role": "Invalid role (user or doctor).",
+      "too_large": "The file is too large (up to 1 MB).",
+      "too_many_rows": "Too many rows (up to 1000).",
+      "username": "Invalid username (a-z 0-9 . _, 3–32 characters).",
+      "username_duplicate": "Username repeated in the file.",
+      "username_taken": "Username already taken."
+    }
   }
 }

@@ -20,6 +20,15 @@ def _openapi(out: Path) -> None:
     out.write_text(text, encoding="utf-8", newline="\n")  # LF on Windows too
 
 
+def _error_codes(out: Path) -> None:
+    os.environ.setdefault("DATABASE_URL", "postgresql+asyncpg://openapi@localhost/openapi")
+    os.environ.setdefault("ENVIRONMENT", "dev")
+    from labtrack.error_codes import error_codes, import_problem_fields  # noqa: PLC0415
+
+    data = {"errors": error_codes(), "import_problems": import_problem_fields()}
+    out.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8", newline="\n")
+
+
 def _seed(seed_dir: Path) -> int:
     from labtrack.seed import SeedError, run  # noqa: PLC0415
 
@@ -84,6 +93,8 @@ def main(argv: list[str] | None = None) -> int:
     sub = parser.add_subparsers(dest="command", required=True)
     p_openapi = sub.add_parser("openapi", help="write the OpenAPI schema as UTF-8 JSON")
     p_openapi.add_argument("out", type=Path)
+    p_codes = sub.add_parser("error-codes", help="write the API error codes as JSON")
+    p_codes.add_argument("out", type=Path)
     p_seed = sub.add_parser("seed", help="load seed/ catalogs as labtrack_owner (idempotent)")
     p_seed.add_argument("--dir", type=Path, default=Path(os.environ.get("SEED_DIR", "/seed")))
     p_admin = sub.add_parser("create-admin", help="create an admin account with TOTP")
@@ -96,6 +107,9 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     if args.command == "openapi":
         _openapi(args.out)
+        return 0
+    if args.command == "error-codes":
+        _error_codes(args.out)
         return 0
     if args.command == "seed":
         return _seed(args.dir)

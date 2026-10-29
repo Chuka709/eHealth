@@ -75,11 +75,12 @@ web:
 # Regenerate the TypeScript API client from the backend's OpenAPI schema (no DB needed)
 gen-client:
     cd backend; uv run python -m labtrack.cli openapi ../packages/shared/openapi.json
+    cd backend; uv run python -m labtrack.cli error-codes ../packages/shared/error-codes.json
     {{pnpm}} --filter @labtrack/shared gen
 
 # CI: fail if the committed client is stale
 check-client: gen-client
-    git diff --exit-code -- packages/shared/openapi.json packages/shared/src/api/schema.d.ts
+    git diff --exit-code -- packages/shared/openapi.json packages/shared/src/api/schema.d.ts packages/shared/error-codes.json
 
 # --- Aggregates ---
 lint: lint-api lint-js

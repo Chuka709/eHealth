@@ -23,6 +23,23 @@ MAX_BYTES: Final = 1_000_000
 MAX_ROWS: Final = 1000
 REQUIRED: Final = ("username", "display_name")
 KNOWN: Final = frozenset({"username", "display_name", "phone", "role"})
+# Every `field` a Problem can carry (the admin web translates them: import.problem.<field>).
+PROBLEM_FIELDS: Final = frozenset(
+    {
+        "too_large",
+        "encoding",
+        "columns",
+        "empty",
+        "too_many_rows",
+        "format",
+        "username",
+        "username_duplicate",
+        "username_taken",
+        "display_name",
+        "phone",
+        "role",
+    }
+)
 _USERNAME = re.compile(r"^[a-z0-9._]{3,32}$")
 _NON_DIGITS = re.compile(r"[^0-9]")  # ASCII: "\D" keeps Arabic or full-width digits
 

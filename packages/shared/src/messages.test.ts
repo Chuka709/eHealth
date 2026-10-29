@@ -28,3 +28,17 @@ test("no message is empty", () => {
     }
   }
 });
+
+test("every API error code and CSV import problem has a text (error-codes.json)", () => {
+  const codes = JSON.parse(
+    readFileSync(new URL("../error-codes.json", import.meta.url), "utf8"),
+  ) as { errors: string[]; import_problems: string[] };
+  for (const lang of ["mn", "en"]) {
+    const defined = new Set(keys(load(lang)));
+    for (const code of codes.errors)
+      assert.ok(defined.has(`error.${code}`), `${lang}: error.${code}`);
+    for (const field of codes.import_problems) {
+      assert.ok(defined.has(`import.problem.${field}`), `${lang}: import.problem.${field}`);
+    }
+  }
+});
