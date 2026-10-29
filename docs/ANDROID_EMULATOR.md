@@ -38,6 +38,8 @@ $p = ($p -split ';' | Where-Object { $_ -notlike '*AppData\Local\Android\Sdk*' }
    ```
    idea.config.path=E:/Android/studio-config
    idea.system.path=E:/Android/studio-system
+   idea.plugins.path=E:/Android/studio-config/plugins
+   idea.log.path=E:/Android/studio-system/log
    ```
 4. Setup Wizard → **Custom** → **Android SDK Location: `E:\Android\Sdk`** (C:\Users\… биш эсэхийг шалга).
 
