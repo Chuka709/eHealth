@@ -169,10 +169,10 @@ async def refresh(db: AsyncSession, *, refresh_token: str) -> TokenPair:
     if result.status != "ok":
         await db.commit()  # persist family revocation on reuse
         # The old device learns that an admin reset its account (docs/04 §1 step 5).
-        code = (
-            "auth.admin_reset" if result.status == "revoked:admin_reset" else "auth.session_invalid"
-        )
-        raise AppError(401, code)
+        # Literal codes so error_codes.py lists them (and clients must translate them).
+        if result.status == "revoked:admin_reset":
+            raise AppError(401, "auth.admin_reset")
+        raise AppError(401, "auth.session_invalid")
     access, expires_in = _access(
         result.user_id, result.session_id, result.token_version, str(result.role)
     )

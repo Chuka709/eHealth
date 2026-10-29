@@ -1,16 +1,18 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClientProvider } from "@tanstack/react-query";
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { useState } from "react";
+import { useEffect } from "react";
 import { useColorScheme } from "react-native";
 
+import { restoreSession } from "@/features/auth/session";
 import { I18nProvider } from "@/lib/i18n";
+import { queryClient } from "@/lib/query-client";
 
 export default function RootLayout() {
   const scheme = useColorScheme();
-  const [queryClient] = useState(
-    () => new QueryClient({ defaultOptions: { queries: { retry: 1, staleTime: 30_000 } } }),
-  );
+  useEffect(() => {
+    void restoreSession();
+  }, []);
   return (
     <I18nProvider>
       <QueryClientProvider client={queryClient}>

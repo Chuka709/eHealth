@@ -9,13 +9,16 @@ minimumReleaseAgeExclude:
   - '@expo/router-server@58.0.18'
   - '@expo/ui@58.0.24'
   - babel-preset-expo@58.0.21
-  - expo-file-system@58.0.12
+  - expo-file-system@58.0.12 || 58.0.13
   - expo-modules-cli@0.3.3
   - expo-modules-core@58.0.27
   - expo-modules-jsi@58.0.20
   - expo-router@58.0.27
   - expo-web-browser@58.0.7
   - expo@58.0.20
+  - expo-camera@58.0.14
+  - expo-dev-client@58.0.17
+  - expo-dev-launcher@58.0.17
 # React Native / Metro / Jest resolve most reliably from a hoisted node_modules.
 nodeLinker: hoisted
 # Install scripts are opt-in (supply-chain hardening). Native binaries we rely on ship prebuilt.

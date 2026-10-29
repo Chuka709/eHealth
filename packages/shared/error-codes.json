@@ -26,6 +26,7 @@
     "admin.user_not_found",
     "admin.username_taken",
     "auth.activation_invalid",
+    "auth.admin_reset",
     "auth.forbidden",
     "auth.invalid_credentials",
     "auth.locked",

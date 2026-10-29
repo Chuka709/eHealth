@@ -39,6 +39,7 @@
     },
     "auth": {
       "activation_invalid": "The activation code is invalid or has expired. Ask an admin for a new one.",
+      "admin_reset": "An admin reset your account password, so this device was signed out.",
       "forbidden": "You don't have access to this.",
       "invalid_credentials": "Wrong username or password.",
       "locked": "Too many failed attempts. Wait a while and try again.",

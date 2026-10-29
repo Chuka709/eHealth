@@ -1,15 +1,10 @@
 import { createApiClient } from "@labtrack/shared";
-import { Platform } from "react-native";
 
-// Dev default goes through Caddy (:8080). The Android emulator reaches the host at 10.0.2.2;
-// a physical phone needs EXPO_PUBLIC_API_URL=http://<PC LAN IP>:8080.
-const devDefault = Platform.OS === "android" ? "http://10.0.2.2:8080" : "http://localhost:8080";
+import { createAuthFetch } from "@/features/auth/auth-fetch";
 
-export const apiBaseUrl = process.env.EXPO_PUBLIC_API_URL ?? devDefault;
+import { apiBaseUrl } from "./api-base";
 
-if (!__DEV__ && !apiBaseUrl.startsWith("https://")) {
-  throw new Error("API URL must use https:// outside development");
-}
+export { apiBaseUrl, publicApi } from "./api-base";
 
-// Late-bound so tests (and any fetch polyfill installed later) are picked up.
-export const api = createApiClient(apiBaseUrl, (input, init) => globalThis.fetch(input, init));
+/** Authenticated client: adds the in-memory access token and refreshes it single-flight. */
+export const api = createApiClient(apiBaseUrl, createAuthFetch(apiBaseUrl));

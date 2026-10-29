@@ -11,6 +11,11 @@ if (variant !== "development" && !process.env.EXPO_PUBLIC_API_URL?.startsWith("h
   throw new Error(`EXPO_PUBLIC_API_URL must be an https:// URL for the ${variant} build`);
 }
 
+// Native permission prompts are shown before the JS bundle (and use-intl) loads, so they live
+// here rather than in messages/*.json. Mongolian is the primary UI language.
+const faceIdText = "LabTrack MN-ийг Face ID-аар түгжиж, нээхэд ашиглана.";
+const cameraText = "Админы өгсөн идэвхжүүлэх QR кодыг уншихад камер ашиглана.";
+
 export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
   name: isProd ? "LabTrack MN" : `LabTrack MN (${variant})`,
@@ -38,9 +43,25 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     // PHI must not end up in Android cloud backups.
     allowBackup: false,
     predictiveBackGestureEnabled: false,
+    // The camera only scans QR codes; never request the microphone.
+    blockedPermissions: ["android.permission.RECORD_AUDIO"],
   },
   plugins: [
     "expo-router",
+    // Dev launcher only outside production (it adds an exp+ URL scheme).
+    ...(isProd ? [] : ["expo-dev-client"]),
+    // Both plugins write NSFaceIDUsageDescription; keep the text identical.
+    ["expo-secure-store", { configureAndroidBackup: true, faceIDPermission: faceIdText }],
+    ["expo-local-authentication", { faceIDPermission: faceIdText }],
+    [
+      "expo-camera",
+      {
+        cameraPermission: cameraText,
+        microphonePermission: false,
+        recordAudioAndroid: false,
+        barcodeScannerEnabled: true,
+      },
+    ],
     [
       "expo-splash-screen",
       {
