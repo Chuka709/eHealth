@@ -17,7 +17,7 @@
 - [x] Хэрэгсэл: Node 22, pnpm, Docker 29, Python 3.13, git, pyright, typescript-language-server
 - [x] `just` 1.59, `uv` 0.13.6, `jq` — winget (шинэ терминал нээхэд PATH-д орно)
 - [ ] `eas-cli` (`npm i -g eas-cli`) + Expo аккаунт (`eas login`)
-- [ ] Android Studio + эмулятор (Android SDK олдсон — AVD үүсгэх)
+- [ ] Android Studio + эмулятор **E: дээр** — заавар `docs/ANDROID_EMULATOR.md` (WHPX бэлэн; iPhone, CI — хойшлуулсан)
 - [ ] iOS: Apple Developer Program ($99/жил) + бодит iPhone-ийг `eas device:create`-ээр бүртгэх (Q1 — шийдэгдсэн)
 - [ ] Maestro (Android эмулятор; iOS E2E — GitHub Actions macOS)
 - [ ] Anthropic API key (Phase 4-өөс заавал; `.env`-д — Claude уншихгүй)
