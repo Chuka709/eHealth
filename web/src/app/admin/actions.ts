@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 
 import { type ActionResult, adminApi, failure } from "@/lib/server/api";
-import { endSession, startSession } from "@/lib/server/session";
+import { endSession, sessionToken, startSession } from "@/lib/server/session";
 
 // Server Actions: Next checks the Origin of every call; the session cookie is SameSite=Strict.
 // Values from the form are passed to the API as they are - the API validates everything.
@@ -15,6 +15,10 @@ function text(form: FormData, name: string): string {
 
 export async function signIn(_: ActionResult | null, form: FormData): Promise<ActionResult> {
   const api = await adminApi();
+  if (await sessionToken()) {
+    // signing in again (e.g. as someone else) ends the session this browser still holds
+    await api.POST("/api/v1/admin/auth/logout").catch(() => undefined);
+  }
   const { data, error, response } = await api.POST("/api/v1/admin/auth/login", {
     body: {
       username: text(form, "username").trim().toLowerCase(),
@@ -30,8 +34,11 @@ export async function signIn(_: ActionResult | null, form: FormData): Promise<Ac
 }
 
 export async function signOut(): Promise<void> {
-  const api = await adminApi();
-  await api.POST("/api/v1/admin/auth/logout");
-  await endSession();
+  try {
+    const api = await adminApi();
+    await api.POST("/api/v1/admin/auth/logout");
+  } finally {
+    await endSession();
+  }
   redirect("/admin/login");
 }

@@ -4,13 +4,15 @@ import { type ApiClient, createApiClient } from "@labtrack/shared";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
-import { forwardedClientIp } from "@/lib/forwarded";
+import { CLIENT_IP_HEADER, forwardedClientIp } from "@/lib/forwarded";
 import { sessionToken } from "@/lib/server/session";
 
 const API_INTERNAL_URL = process.env.API_INTERNAL_URL ?? "http://localhost:8000";
 
 /** What a server action returns to the page: data, or an error code to translate. */
-export type ActionResult<T = null> = { ok: true; data: T } | { ok: false; code: string };
+export type ActionResult<T = null> =
+  | { ok: true; data: T }
+  | { ok: false; code: string; fields?: string[] };
 
 /**
  * A typed API client for this request: the admin session as a bearer token and the admin's
@@ -19,7 +21,7 @@ export type ActionResult<T = null> = { ok: true; data: T } | { ok: false; code: 
  */
 export async function adminApi(): Promise<ApiClient> {
   const token = await sessionToken();
-  const ip = forwardedClientIp((await headers()).get("x-forwarded-for"));
+  const ip = forwardedClientIp((await headers()).get(CLIENT_IP_HEADER));
   return createApiClient(API_INTERNAL_URL, (input, init) => {
     const request = new Request(input, init);
     if (token) request.headers.set("Authorization", `Bearer ${token}`);
@@ -28,13 +30,13 @@ export async function adminApi(): Promise<ApiClient> {
   });
 }
 
-type ErrorBody = { code?: unknown } | undefined;
+type ErrorBody = { code?: unknown; fields?: unknown } | undefined;
 
 /** Maps an API error to a code; an ended session goes back to the sign-in page. */
 export async function failure(
   error: unknown,
   status: number,
-): Promise<{ ok: false; code: string }> {
+): Promise<{ ok: false; code: string; fields?: string[] }> {
   const code =
     typeof (error as ErrorBody)?.code === "string"
       ? String((error as ErrorBody)?.code)
@@ -43,5 +45,8 @@ export async function failure(
     // works from pages and actions alike: the route handler clears the cookie
     redirect("/admin/session-ended");
   }
-  return { ok: false, code };
+  const fields = (error as ErrorBody)?.fields;
+  return Array.isArray(fields)
+    ? { ok: false, code, fields: fields.filter((f): f is string => typeof f === "string") }
+    : { ok: false, code };
 }

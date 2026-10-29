@@ -1,7 +1,8 @@
 import Link from "next/link";
-import { getFormatter, getTranslations } from "next-intl/server";
+import { getTranslations } from "next-intl/server";
 
 import { Alert, Button, Field, Input, Select } from "@/components/ui";
+import { formatDate } from "@/lib/dates";
 import { adminApi, failure } from "@/lib/server/api";
 
 import { StatusBadge } from "./status-badge";
@@ -16,7 +17,6 @@ function one(value: string | string[] | undefined): string {
 export default async function UsersPage({ searchParams }: PageProps<"/admin/users">) {
   const tRoot = await getTranslations();
   const t = await getTranslations("admin");
-  const format = await getFormatter();
   const params = await searchParams;
   const q = one(params.q).slice(0, 64);
   const status = (STATUSES as readonly string[]).includes(one(params.status))
@@ -51,14 +51,14 @@ export default async function UsersPage({ searchParams }: PageProps<"/admin/user
         <Link
           href="/admin/users"
           aria-current={pending ? undefined : "page"}
-          className="py-2 underline"
+          className="inline-flex min-h-11 items-center underline"
         >
           {t("users.all")}
         </Link>
         <Link
           href="/admin/users?pending=1"
           aria-current={pending ? "page" : undefined}
-          className="py-2 underline"
+          className="inline-flex min-h-11 items-center underline"
         >
           {t("users.deletion_tab")}
         </Link>
@@ -112,7 +112,10 @@ export default async function UsersPage({ searchParams }: PageProps<"/admin/user
               {result.items.map((u) => (
                 <tr key={u.id} className="border-t border-slate-200">
                   <td className="p-2">
-                    <Link href={`/admin/users/${u.id}`} className="text-blue-800 underline">
+                    <Link
+                      href={`/admin/users/${u.id}`}
+                      className="inline-flex min-h-11 items-center text-blue-800 underline"
+                    >
                       {u.username}
                     </Link>
                   </td>
@@ -124,17 +127,21 @@ export default async function UsersPage({ searchParams }: PageProps<"/admin/user
                       deletionPending={!!u.deletion_scheduled_for}
                     />
                   </td>
-                  <td className="p-2">{u.phone_last4 ? `••••${u.phone_last4}` : "—"}</td>
                   <td className="p-2">
-                    {format.dateTime(
-                      new Date(
-                        pending && u.deletion_scheduled_for
-                          ? u.deletion_scheduled_for
-                          : u.created_at,
-                      ),
-                      {
-                        dateStyle: "medium",
-                      },
+                    {u.phone_last4 ? (
+                      <>
+                        <span aria-hidden="true">••••{u.phone_last4}</span>
+                        <span className="sr-only">
+                          {t("detail.phone_last4", { last4: u.phone_last4 })}
+                        </span>
+                      </>
+                    ) : (
+                      "—"
+                    )}
+                  </td>
+                  <td className="p-2">
+                    {formatDate(
+                      pending && u.deletion_scheduled_for ? u.deletion_scheduled_for : u.created_at,
                     )}
                   </td>
                 </tr>
@@ -144,7 +151,10 @@ export default async function UsersPage({ searchParams }: PageProps<"/admin/user
         </div>
       ) : null}
       {nextHref ? (
-        <Link href={nextHref} className="self-start py-2 text-blue-800 underline">
+        <Link
+          href={nextHref}
+          className="inline-flex min-h-11 items-center self-start text-blue-800 underline"
+        >
           {t("users.next_page")}
         </Link>
       ) : null}

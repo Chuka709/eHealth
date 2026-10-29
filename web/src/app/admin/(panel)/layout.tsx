@@ -1,10 +1,10 @@
-import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 
 import { Button } from "@/components/ui";
 import { adminApi, failure } from "@/lib/server/api";
 
 import { signOut } from "../actions";
+import { NavLinks } from "./nav-links";
 
 export default async function PanelLayout({ children }: LayoutProps<"/admin">) {
   const t = await getTranslations("admin");
@@ -20,18 +20,19 @@ export default async function PanelLayout({ children }: LayoutProps<"/admin">) {
   ] as const;
   return (
     <>
-      <header className="border-b border-slate-300 bg-white">
+      <a
+        href="#main"
+        className="sr-only focus:not-sr-only focus:absolute focus:left-2 focus:top-2 focus:z-10 focus:rounded focus:bg-white focus:p-2"
+      >
+        {t("nav.skip")}
+      </a>
+      <header className="border-b border-slate-300 bg-white print:hidden">
         <div className="mx-auto flex max-w-5xl flex-wrap items-center gap-4 p-3">
           <span className="font-bold">{t("title")}</span>
-          <nav aria-label={t("title")} className="flex flex-wrap gap-4">
-            {nav
-              .filter((item) => item.show)
-              .map((item) => (
-                <Link key={item.href} href={item.href} className="py-2 text-blue-800 underline">
-                  {item.label}
-                </Link>
-              ))}
-          </nav>
+          <NavLinks
+            label={t("nav.main")}
+            items={nav.filter((item) => item.show).map(({ href, label }) => ({ href, label }))}
+          />
           <span className="ml-auto text-sm text-slate-700">
             {t("nav.signed_in_as", { role: t(`role.${me?.role ?? "support"}`) })}
           </span>
@@ -42,7 +43,13 @@ export default async function PanelLayout({ children }: LayoutProps<"/admin">) {
           </form>
         </div>
       </header>
-      <main className="mx-auto flex w-full max-w-5xl flex-col gap-4 p-4">{children}</main>
+      <main
+        id="main"
+        tabIndex={-1}
+        className="mx-auto flex w-full max-w-5xl flex-col gap-4 p-4 print:p-0"
+      >
+        {children}
+      </main>
     </>
   );
 }

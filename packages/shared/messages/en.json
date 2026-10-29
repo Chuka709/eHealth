@@ -16,7 +16,7 @@
       "already_activated": "This account is already activated. If the password is forgotten, issue a reset token.",
       "forbidden": "You are not allowed to do this.",
       "identity_already_set": "This user's national ID is already enrolled.",
-      "identity_check_limit": "Today's identity check limit is reached. Try again tomorrow.",
+      "identity_check_limit": "Today's identity check limit is reached. Another admin can check, or try again tomorrow.",
       "identity_check_required": "Run a successful identity check first (valid for 10 minutes).",
       "identity_in_person": "No national ID is enrolled. Identify the person in person with their ID card and enrol it.",
       "import_changed": "The file changed since the preview. Preview it again.",
@@ -29,7 +29,7 @@
       "phone_reveal_limit": "Today's phone reveal limit (20) is reached.",
       "reason_required": "Choose a reason.",
       "reset_needs_other_admin": "You enrolled this user's national ID, so another admin must do the reset.",
-      "reset_required": "The account was locked for security reasons. It reopens only through an identity check and a password reset.",
+      "reset_required": "The account was locked for security reasons. It reopens only after an identity check and a password reset.",
       "session_invalid": "Your session has ended. Sign in again.",
       "sms_failed": "The SMS could not be sent. The token is still valid — issue again or use the in-person QR.",
       "sms_unavailable": "SMS is not set up yet. Use the in-person QR.",
@@ -52,7 +52,7 @@
       "required": "Give the required consents to continue.",
       "version_outdated": "The consent text was updated. Read the new text and consent again."
     },
-    "internal": "Something went wrong. Please try again.",
+    "internal": "Something went wrong. Try again; if it keeps happening, contact the system administrator.",
     "me": {
       "no_recent_admin_action": "No admin action on your account in the last 30 days.",
       "notification_not_found": "Notification not found."
@@ -90,11 +90,13 @@
       "import": "CSV import",
       "security": "Security events",
       "signed_in_as": "Signed in: {role}",
-      "sign_out": "Sign out"
+      "sign_out": "Sign out",
+      "main": "Main menu",
+      "skip": "Skip to main content"
     },
     "role": {
       "super_admin": "Super admin",
-      "support": "Support",
+      "support": "Support staff",
       "user": "User",
       "doctor": "Doctor"
     },
@@ -104,7 +106,8 @@
       "password": "Password",
       "totp": "Authenticator code (6 digits)",
       "submit": "Sign in",
-      "expired": "Your session ended (15 min idle or 8 hours). Sign in again."
+      "expired": "Your session ended (15 min idle or 8 hours). Sign in again.",
+      "invalid": "Wrong username, password or authenticator code."
     },
     "status": {
       "pending_activation": "Not activated",
@@ -137,8 +140,8 @@
       "username": "Username (a-z 0-9 . _)",
       "display_name": "Display name",
       "role": "Role",
-      "phone": "Contact phone (optional)",
-      "national_id": "National ID (from the ID card, optional)",
+      "phone": "Contact phone (8 digits, optional)",
+      "national_id": "National ID (from the ID card, e.g. УБ90010101; optional)",
       "submit": "Register"
     },
     "detail": {
@@ -146,7 +149,7 @@
       "phone_last4": "Phone ends in {last4}",
       "no_phone": "No phone registered",
       "sessions": "Active devices: {count}",
-      "checks_today": "Identity checks today: {count}/5",
+      "checks_today": "Identity checks today: {count}/{max}",
       "live_token": "Live token: {purpose} ({channel}) until {expires}",
       "deletion": "The user asked to delete the account. It is erased on {date}."
     },
@@ -166,11 +169,13 @@
     },
     "qr": {
       "alt": "Activation QR code",
-      "expires": "Expires in {seconds} s",
+      "expires": "Expires in {time}",
       "expired": "The QR expired. Create a new one.",
       "hide": "Hide QR",
       "sms_sent": "SMS sent (valid until {expires}).",
-      "notice_not_sent": "No notice reached the user's registered phone. Tell them another way."
+      "notice_not_sent": "No notice reached the user's registered phone. Tell them another way.",
+      "once": "The QR is shown only once — after hiding it you cannot see it again.",
+      "hidden": "The QR is hidden. Create a new one if needed (the old one stops working)."
     },
     "card": {
       "print": "Print login card",
@@ -182,15 +187,15 @@
       "print_button": "Print"
     },
     "identity": {
-      "title": "Identify the person (before a reset)",
       "hint": "First call the registered phone BACK, then ask the person for their national ID. The system only says whether it matches.",
       "national_id": "National ID",
       "check": "Check",
       "match": "It matches. You may reset within 10 minutes.",
-      "no_match": "It does not match.",
+      "no_match": "It does not match. Do not reset unless the person is verified.",
       "enrol_title": "Enrol national ID (in person, from the ID card)",
       "enrol": "Enrol national ID",
-      "enrolled": "National ID enrolled."
+      "enrolled": "National ID enrolled.",
+      "match_expired": "The identity check's 10 minutes are over. Check again."
     },
     "reset": {
       "title": "Password reset",
@@ -198,7 +203,8 @@
       "reason": "Reason",
       "qr": "Create reset QR",
       "sms": "Send reset SMS",
-      "needs_check": "Run a successful identity check above first."
+      "needs_check": "Run a successful identity check above first.",
+      "confirm": "You are about to reset {name}'s password. The old password stops working and every device is signed out."
     },
     "reason": {
       "forgot_password": "Forgot the password",
@@ -213,7 +219,9 @@
       "title": "Change status",
       "to": "New status",
       "submit": "Save",
-      "done": "Status changed."
+      "done": "Status changed.",
+      "confirm": "You are about to set {name} to \"{status}\". Every device is signed out.",
+      "none": "You cannot change this status."
     },
     "unlock": {
       "title": "Clear login lockout",
@@ -226,13 +234,16 @@
       "confirm": "This is recorded in the audit log (up to 20 a day). Use it only to call back.",
       "reveal": "Show number",
       "hidden_in": "Hidden in {seconds} s",
-      "none": "No phone registered."
+      "none": "No phone registered.",
+      "hidden": "The number is hidden.",
+      "shown": "Phone number: {phone}"
     },
     "deletion": {
       "cancel_title": "Cancel deletion",
       "cancel_hint": "Only at the user's request. The account comes back locked and needs an identity check and a password reset.",
       "cancel": "Cancel deletion",
-      "cancelled": "Deletion cancelled. The account is locked."
+      "cancelled": "Deletion cancelled. The account is locked.",
+      "confirm": "You are about to cancel {name}'s deletion. Only at the user's request."
     },
     "import": {
       "title": "Bulk registration from CSV",
@@ -240,11 +251,14 @@
       "file": "CSV file (UTF-8)",
       "preview": "Preview",
       "rows": "{count} rows ready",
-      "problems": "Problems",
+      "problems": "Problems ({count})",
       "row": "Row {row}",
       "whole_file": "Whole file",
       "commit": "Register {count} users",
-      "done": "{count} users registered (not activated)."
+      "done": "{count} users registered (not activated).",
+      "confirm": "You are about to register {count} users. This cannot be undone.",
+      "stale": "The file changed. Preview it again.",
+      "caption": "Rows ready to register"
     },
     "security": {
       "title": "Security events",
@@ -268,7 +282,16 @@
       "saving": "Please wait…",
       "confirm": "Confirm",
       "cancel": "Cancel",
-      "date": "{date}"
+      "choose": "Choose",
+      "check_fields": "Check: {fields}",
+      "loading": "Loading…"
+    },
+    "field": {
+      "username": "username",
+      "display_name": "display name",
+      "phone": "phone",
+      "national_id": "national ID",
+      "role": "role"
     }
   }
 }

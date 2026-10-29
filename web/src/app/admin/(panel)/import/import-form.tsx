@@ -13,7 +13,9 @@ function Problems({ problems }: { problems: Problem[] }) {
   const t = useTranslations();
   return (
     <div className="flex flex-col gap-2">
-      <h2 className="text-lg font-semibold">{t("admin.import.problems")}</h2>
+      <h2 className="text-lg font-semibold">
+        {t("admin.import.problems", { count: problems.length })}
+      </h2>
       <ul className="flex flex-col gap-1">
         {problems.map((p) => (
           <li key={`${p.row}-${p.field}`} className="rounded bg-red-50 p-2 text-red-900">
@@ -35,6 +37,7 @@ export function ImportForm() {
   // after a form action).
   const [fileVersion, setFileVersion] = useState(0);
   const [previewedVersion, setPreviewedVersion] = useState(-1);
+  const [confirming, setConfirming] = useState(false);
   const outcome = state?.ok ? state.data : null;
   const preview = outcome?.kind === "preview" ? outcome.preview : null;
   const ready =
@@ -48,6 +51,7 @@ export function ImportForm() {
     const data = new FormData(event.currentTarget);
     if (commit && preview) data.set("sha256", preview.sha256);
     else setPreviewedVersion(fileVersion);
+    setConfirming(false);
     startTransition(() => action(data));
   }
 
@@ -94,8 +98,9 @@ export function ImportForm() {
         <>
           {preview.problems.length > 0 ? <Problems problems={preview.problems} /> : null}
           <p>{t("admin.import.rows", { count: preview.rows.length })}</p>
-          <div className="overflow-x-auto rounded-lg border border-slate-300 bg-white">
+          <div className="max-h-96 overflow-auto rounded-lg border border-slate-300 bg-white">
             <table className="w-full text-left text-sm">
+              <caption className="sr-only">{t("admin.import.caption")}</caption>
               <thead className="bg-slate-100">
                 <tr>
                   <th scope="col" className="p-2">
@@ -122,22 +127,48 @@ export function ImportForm() {
                     <td className="p-2">{r.username}</td>
                     <td className="p-2">{r.display_name}</td>
                     <td className="p-2">{t(`admin.role.${r.role}`)}</td>
-                    <td className="p-2">{r.phone_last4 ? `••••${r.phone_last4}` : "—"}</td>
+                    <td className="p-2">
+                      {r.phone_last4 ? (
+                        <>
+                          <span aria-hidden="true">••••{r.phone_last4}</span>
+                          <span className="sr-only">
+                            {t("admin.detail.phone_last4", { last4: r.phone_last4 })}
+                          </span>
+                        </>
+                      ) : (
+                        "—"
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-          {ready ? (
+          {preview && previewedVersion !== fileVersion ? (
+            <Alert tone="info">{t("admin.import.stale")}</Alert>
+          ) : null}
+          {ready && !confirming ? (
             <Button
-              type="submit"
-              name="intent"
-              value="commit"
+              type="button"
+              onClick={() => setConfirming(true)}
               disabled={pending}
               className="self-start"
             >
               {t("admin.import.commit", { count: preview.rows.length })}
             </Button>
+          ) : null}
+          {ready && confirming ? (
+            <div className="flex flex-col gap-2">
+              <Alert tone="warn">{t("admin.import.confirm", { count: preview.rows.length })}</Alert>
+              <div className="flex gap-2">
+                <Button type="submit" name="intent" value="commit" disabled={pending}>
+                  {t("admin.common.confirm")}
+                </Button>
+                <Button type="button" variant="secondary" onClick={() => setConfirming(false)}>
+                  {t("admin.common.cancel")}
+                </Button>
+              </div>
+            </div>
           ) : null}
         </>
       ) : null}

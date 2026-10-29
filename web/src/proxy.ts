@@ -38,13 +38,6 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: [
-    {
-      source: "/admin/:path*",
-      missing: [
-        { type: "header", key: "next-router-prefetch" },
-        { type: "header", key: "purpose", value: "prefetch" },
-      ],
-    },
-  ],
+  // no prefetch exemption: every /admin response carries the CSP and the session check
+  matcher: ["/admin/:path*"],
 };

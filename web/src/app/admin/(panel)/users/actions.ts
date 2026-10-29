@@ -16,6 +16,9 @@ function oneOf<T extends string>(value: string, allowed: readonly T[]): T | null
 
 const invalid = { ok: false, code: "validation" } as const;
 
+// A path parameter must be a UUID: ".." or "." would make openapi-fetch reach another endpoint.
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 const STATUSES = [
   "active",
   "locked",
@@ -74,6 +77,7 @@ export async function setStatus(
   _: ActionResult | null,
   form: FormData,
 ): Promise<ActionResult> {
+  if (!UUID.test(userId)) return invalid;
   const status = oneOf(field(form, "status"), STATUSES);
   const reason = oneOf(field(form, "reason"), STATUS_REASONS);
   if (!status || !reason) return invalid;
@@ -88,6 +92,7 @@ export async function setStatus(
 }
 
 export async function clearLockout(userId: string): Promise<ActionResult> {
+  if (!UUID.test(userId)) return invalid;
   const api = await adminApi();
   const { error, response } = await api.POST("/api/v1/admin/users/{user_id}/unlock-login", {
     params: { path: { user_id: userId } },
@@ -96,6 +101,7 @@ export async function clearLockout(userId: string): Promise<ActionResult> {
 }
 
 export async function revealPhone(userId: string): Promise<ActionResult<string | null>> {
+  if (!UUID.test(userId)) return invalid;
   const api = await adminApi();
   const { data, error, response } = await api.POST("/api/v1/admin/users/{user_id}/phone", {
     params: { path: { user_id: userId } },
@@ -110,6 +116,7 @@ export async function identityCheck(
   _: ActionResult<CheckResult> | null,
   form: FormData,
 ): Promise<ActionResult<CheckResult>> {
+  if (!UUID.test(userId)) return invalid;
   const api = await adminApi();
   const { data, error, response } = await api.POST("/api/v1/admin/users/{user_id}/identity-check", {
     params: { path: { user_id: userId } },
@@ -125,6 +132,7 @@ export async function setIdentity(
   _: ActionResult | null,
   form: FormData,
 ): Promise<ActionResult> {
+  if (!UUID.test(userId)) return invalid;
   const api = await adminApi();
   const { error, response } = await api.PUT("/api/v1/admin/users/{user_id}/identity", {
     params: { path: { user_id: userId } },
@@ -145,6 +153,7 @@ export async function issueToken(
   _: ActionResult<IssuedToken> | null,
   form: FormData,
 ): Promise<ActionResult<IssuedToken>> {
+  if (!UUID.test(userId)) return invalid;
   const purpose = field(form, "purpose") === "admin_reset" ? "admin_reset" : "activation";
   const channel = field(form, "channel") === "sms" ? "sms" : "in_person_qr";
   const checkId = Number.parseInt(field(form, "identity_check_id"), 10);
@@ -175,6 +184,7 @@ export async function cancelDeletion(
   _: ActionResult | null,
   form: FormData,
 ): Promise<ActionResult> {
+  if (!UUID.test(userId)) return invalid;
   const reason = oneOf(field(form, "reason"), CANCEL_REASONS);
   if (!reason) return invalid;
   const api = await adminApi();

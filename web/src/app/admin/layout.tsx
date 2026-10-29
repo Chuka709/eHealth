@@ -12,9 +12,17 @@ export const metadata: Metadata = {
 // whole tree renders per request inside this boundary.
 export default function AdminLayout({ children }: LayoutProps<"/admin">) {
   return (
-    <Suspense fallback={<p className="p-6">…</p>}>
+    <Suspense
+      fallback={
+        <p role="status" className="p-6">
+          Ачаалж байна…
+        </p>
+      }
+    >
       <NextIntlClientProvider>
-        <div className="flex min-h-full flex-col bg-slate-50 text-slate-900">{children}</div>
+        <div className="flex min-h-full flex-col bg-slate-50 text-slate-900 [color-scheme:light]">
+          {children}
+        </div>
       </NextIntlClientProvider>
     </Suspense>
   );

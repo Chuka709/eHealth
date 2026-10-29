@@ -106,5 +106,8 @@ def presented_credentials(request: Request) -> list[str]:
 
 
 Claims = Annotated[AccessClaims, Depends(current_claims)]
-AnonymousDb = Annotated[AsyncSession, Depends(anonymous_db)]
-UserDb = Annotated[AsyncSession, Depends(user_db)]
+# scope="function": the transaction commits when the endpoint returns, before the response is
+# sent. With the default ("request") the client could receive a new session or refresh token
+# and use it before the row that backs it is committed.
+AnonymousDb = Annotated[AsyncSession, Depends(anonymous_db, scope="function")]
+UserDb = Annotated[AsyncSession, Depends(user_db, scope="function")]

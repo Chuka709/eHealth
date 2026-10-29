@@ -15,6 +15,7 @@ const ORG_SUPPORT_PHONE = process.env.ORG_SUPPORT_PHONE ?? "";
  */
 export default async function LoginCardPage({ params }: PageProps<"/admin/users/[id]/card">) {
   const { id } = await params;
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) notFound();
   const t = await getTranslations("admin.card");
   const api = await adminApi();
   const { data: user } = await api.GET("/api/v1/admin/users/{user_id}", {

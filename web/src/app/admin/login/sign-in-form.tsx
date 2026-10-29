@@ -44,7 +44,13 @@ export function SignInForm() {
           required
         />
       </Field>
-      {state && !state.ok ? <Alert tone="danger">{t(`error.${state.code}`)}</Alert> : null}
+      {state && !state.ok ? (
+        <Alert tone="danger">
+          {state.code === "auth.invalid_credentials"
+            ? t("admin.login.invalid")
+            : t(`error.${state.code}`)}
+        </Alert>
+      ) : null}
       <Button type="submit" disabled={pending}>
         {pending ? t("admin.common.saving") : t("admin.login.submit")}
       </Button>

@@ -4,6 +4,7 @@ import { defineConfig, devices } from "@playwright/test";
 export default defineConfig({
   testDir: "./e2e",
   globalSetup: "./e2e/global-setup.ts",
+  globalTeardown: "./e2e/global-teardown.ts",
   workers: 1, // one admin, one TOTP step per sign-in
   timeout: 120_000,
   expect: { timeout: 20_000 }, // argon2 + TOTP + DB per sign-in, dev images

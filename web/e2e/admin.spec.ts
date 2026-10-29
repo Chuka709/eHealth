@@ -1,6 +1,6 @@
 import { execFileSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
-import { readFileSync, writeFileSync } from "node:fs";
+import { readFileSync, rmSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
@@ -50,7 +50,7 @@ async function signIn(page: Page, code?: string) {
 
 test("a wrong code is refused with the generic message", async ({ page }) => {
   await signIn(page, "000000");
-  await expect(page.getByText("Нэр эсвэл нууц үг буруу байна.")).toBeVisible();
+  await expect(page.getByText("Нэр, нууц үг эсвэл баталгаажуулах код буруу байна.")).toBeVisible();
   await expect(page).toHaveURL(/\/admin\/login$/);
 });
 
@@ -72,7 +72,7 @@ test("register, activation QR, login card, phone, CSV import, security, sign out
   await page.getByRole("link", { name: "Шинэ хэрэглэгч" }).click();
   await page.getByLabel("Хэрэглэгчийн нэр (a-z 0-9 . _)").fill(username);
   await page.getByLabel("Харуулах нэр").fill("Туршилт Болд");
-  await page.getByLabel("Холбоо барих утас (сонголттой)").fill("9911 2233");
+  await page.getByLabel("Холбоо барих утас (8 оронтой, сонголттой)").fill("9911 2233");
   await page.getByRole("button", { name: "Бүртгэх" }).click();
   await expect(page.getByRole("heading", { name: "Туршилт Болд" })).toBeVisible();
   await expect(page.getByText("Идэвхжүүлээгүй")).toBeVisible();
@@ -81,7 +81,7 @@ test("register, activation QR, login card, phone, CSV import, security, sign out
   await page.getByRole("button", { name: "Идэвхжүүлэх QR үүсгэх" }).click();
   const qr = page.getByRole("img", { name: "Идэвхжүүлэх QR код" });
   await expect(qr).toBeVisible();
-  await expect(page.getByText(/секундын дараа хүчингүй болно/)).toBeVisible();
+  await expect(page.getByText(/минутын дараа хүчингүй болно/)).toBeVisible();
   // the API recorded the admin's address, not the web container's (docs/04 §6.1)
   const issuedFrom = sql(
     `select host(t.issued_ip) from activation_tokens t join users u on u.id = t.user_id where u.username = '${username}' order by t.created_at desc limit 1`,
@@ -120,7 +120,10 @@ test("register, activation QR, login card, phone, CSV import, security, sign out
   await page.getByRole("button", { name: "Урьдчилан харах" }).click();
   await expect(page.getByText("2 мөр бүртгэхэд бэлэн")).toBeVisible();
   await page.getByRole("button", { name: "2 хэрэглэгч бүртгэх" }).click();
+  await page.getByRole("button", { name: "Баталгаажуулах" }).click();
   await expect(page.getByText(/2 хэрэглэгч бүртгэгдлээ/)).toBeVisible();
+  rmSync(bad, { force: true });
+  rmSync(good, { force: true });
 
   await page.getByRole("link", { name: "Аюулгүй байдлын дохио" }).click();
   await expect(page.getByRole("heading", { name: "Аюулгүй байдлын дохио" })).toBeVisible();

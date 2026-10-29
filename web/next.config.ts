@@ -18,6 +18,9 @@ const nextConfig: NextConfig = {
   outputFileTracingRoot: path.join(import.meta.dirname, ".."),
   transpilePackages: ["@labtrack/shared"],
   poweredByHeader: false,
+  // Dev logging prints Server Function arguments (passwords, TOTP codes, national IDs) and
+  // request URLs (names searched for): off.
+  logging: { serverFunctions: false, incomingRequests: false, fetches: { fullUrl: false } },
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },

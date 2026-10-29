@@ -3,7 +3,9 @@
 import { useTranslations } from "next-intl";
 import { useActionState } from "react";
 
-import { Alert, Button, Field, Input, Select } from "@/components/ui";
+import { Button, Field, Input, Select } from "@/components/ui";
+
+import { ErrorAlert } from "../[id]/panels";
 
 import { createUser } from "../actions";
 
@@ -44,7 +46,7 @@ export function NewUserForm() {
       <Field label={t("admin.new.national_id")} htmlFor="national_id">
         <Input id="national_id" name="national_id" maxLength={10} autoComplete="off" />
       </Field>
-      {state && !state.ok ? <Alert tone="danger">{t(`error.${state.code}`)}</Alert> : null}
+      <ErrorAlert state={state} />
       <Button type="submit" disabled={pending} className="self-start">
         {pending ? t("admin.common.saving") : t("admin.new.submit")}
       </Button>

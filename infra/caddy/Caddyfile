@@ -44,6 +44,9 @@
 		reverse_proxy api:8000
 	}
 	handle {
-		reverse_proxy web:3000
+		reverse_proxy web:3000 {
+			# the admin's real address for the BFF (docs/04 §6.1); replaces any client value
+			header_up X-LabTrack-Client-IP {client_ip}
+		}
 	}
 }

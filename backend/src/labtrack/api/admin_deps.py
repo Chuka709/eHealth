@@ -89,7 +89,9 @@ async def admin_context(
             raise
 
 
-async def super_admin(ctx: Annotated[AdminContext, Depends(admin_context)]) -> AdminContext:
+async def super_admin(
+    ctx: Annotated[AdminContext, Depends(admin_context, scope="function")],
+) -> AdminContext:
     """Support staff may only unlock and reveal phones; everything else is super_admin.
 
     The database enforces the same split (admin_actor role lists); this gives a clean 403.
@@ -99,6 +101,6 @@ async def super_admin(ctx: Annotated[AdminContext, Depends(admin_context)]) -> A
     return ctx
 
 
-AdminLoginDb = Annotated[AsyncSession, Depends(admin_login_db)]
-Admin = Annotated[AdminContext, Depends(admin_context)]
+AdminLoginDb = Annotated[AsyncSession, Depends(admin_login_db, scope="function")]
+Admin = Annotated[AdminContext, Depends(admin_context, scope="function")]
 SuperAdmin = Annotated[AdminContext, Depends(super_admin)]
