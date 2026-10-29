@@ -3,7 +3,7 @@
 @AGENTS.md
 
 - Next 16 differs from older versions; consult `node_modules/next/dist/docs/` or https://nextjs.org/docs (llms.txt) before using an API.
-- `cacheComponents` is on: data is dynamic by default; uncached data must render inside `<Suspense>`; cache explicitly with `"use cache"`.
+- `cacheComponents`/PPR is OFF (Phase 1.10): pages are rendered per request so the strict nonce CSP (`src/proxy.ts`) covers every script; a prerendered shell cannot carry the nonce.
 - Auth (Phase 1): BFF — route handlers keep tokens in httpOnly cookies; browser JS never sees a token. `/api/*` is FastAPI (via Caddy); web-only server routes go under `/bff/*`.
 - `lang="mn"`, Noto Sans (Cyrillic). Flags = colour + glyph + text. Never expose error details to the page.
 

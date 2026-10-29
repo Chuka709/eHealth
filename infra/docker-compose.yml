@@ -90,8 +90,9 @@ services:
     <<: *backend
     environment:
       <<: *backend-env
-      # Trust X-Forwarded-For only from Caddy (fixed address below), never from clients.
-      FORWARDED_ALLOW_IPS: 172.30.0.10
+      # Trust X-Forwarded-For only from Caddy and the admin web BFF (fixed addresses below),
+      # never from clients. The BFF forwards the admin's address that Caddy saw (docs/04 §6.1).
+      FORWARDED_ALLOW_IPS: 172.30.0.10,172.30.0.11
       # /admin/* only (docs/03 RLS role table): no table writes, admin_* functions only.
       ADMIN_DATABASE_URL: postgresql+asyncpg://labtrack_admin:${LABTRACK_ADMIN_PASSWORD:?run just init}@postgres:5432/labtrack
       ADMIN_LOGIN_DATABASE_URL: postgresql+asyncpg://labtrack_admin_login:${LABTRACK_ADMIN_LOGIN_PASSWORD:?run just init}@postgres:5432/labtrack
@@ -152,7 +153,12 @@ services:
     image: labtrack-web:dev
     environment:
       API_INTERNAL_URL: http://api:8000
-    networks: [edge]
+      # Login card (docs/04 §1 step 5): until Q10/Q11 decide the real ones.
+      APP_DOWNLOAD_URL: ${APP_DOWNLOAD_URL:-https://labtrack.mn/app}
+      ORG_SUPPORT_PHONE: ${ORG_SUPPORT_PHONE:-7000-0000}
+    networks:
+      edge:
+        ipv4_address: 172.30.0.11
     healthcheck:
       test: ["CMD-SHELL", "wget -q -O- http://127.0.0.1:3000/healthz >/dev/null"]
       interval: 5s

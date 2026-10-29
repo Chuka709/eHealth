@@ -1,5 +1,6 @@
 import path from "node:path";
 import type { NextConfig } from "next";
+import createNextIntlPlugin from "next-intl/plugin";
 
 const securityHeaders = [
   { key: "X-Content-Type-Options", value: "nosniff" },
@@ -9,8 +10,9 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
-  cacheComponents: true,
-  partialPrefetching: true,
+  // No cacheComponents / partial prerendering: every page here (admin panel, share viewer)
+  // is per-request, and a prerendered shell's scripts cannot carry the per-request CSP nonce
+  // (docs: nonce CSP is incompatible with PPR).
   // Self-contained server for the Docker image; trace files from the monorepo root.
   output: "standalone",
   outputFileTracingRoot: path.join(import.meta.dirname, ".."),
@@ -30,4 +32,4 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+export default createNextIntlPlugin("./src/i18n/request.ts")(nextConfig);

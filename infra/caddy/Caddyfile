@@ -28,12 +28,13 @@
 	handle @internal {
 		respond 404
 	}
-	# docs/04 §1: the admin API only from allowlisted networks (the API checks again).
+	# docs/04 §1: the admin API and the admin web pages only from allowlisted networks (the
+	# API checks again).
 	# ADMIN_ALLOWLIST: space-separated CIDRs; dev default = loopback/private ranges.
 	# Production: set it explicitly (no default), and behind a load balancer match on the
 	# real client address (trusted_proxies), not the balancer's private IP.
 	@admin_outside {
-		path /api/v1/admin /api/v1/admin/*
+		path /api/v1/admin /api/v1/admin/* /admin /admin/*
 		not remote_ip {$ADMIN_ALLOWLIST:private_ranges}
 	}
 	handle @admin_outside {

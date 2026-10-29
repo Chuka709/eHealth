@@ -81,5 +81,194 @@
       "username_duplicate": "Username repeated in the file.",
       "username_taken": "Username already taken."
     }
+  },
+  "admin": {
+    "title": "Admin panel",
+    "nav": {
+      "users": "Users",
+      "new_user": "New user",
+      "import": "CSV import",
+      "security": "Security events",
+      "signed_in_as": "Signed in: {role}",
+      "sign_out": "Sign out"
+    },
+    "role": {
+      "super_admin": "Super admin",
+      "support": "Support",
+      "user": "User",
+      "doctor": "Doctor"
+    },
+    "login": {
+      "title": "Admin sign-in",
+      "username": "Username",
+      "password": "Password",
+      "totp": "Authenticator code (6 digits)",
+      "submit": "Sign in",
+      "expired": "Your session ended (15 min idle or 8 hours). Sign in again."
+    },
+    "status": {
+      "pending_activation": "Not activated",
+      "active": "Active",
+      "locked": "Locked",
+      "disabled": "Disabled",
+      "deletion_pending": "Deletion pending"
+    },
+    "users": {
+      "search": "Search by name or username",
+      "status_filter": "Status",
+      "all": "All",
+      "deletion_tab": "Deletion pending",
+      "submit_search": "Search",
+      "empty": "No users found.",
+      "next_page": "Next page",
+      "col": {
+        "username": "Username",
+        "name": "Name",
+        "role": "Role",
+        "status": "Status",
+        "phone": "Phone",
+        "created": "Registered",
+        "deletion": "Erased on"
+      }
+    },
+    "new": {
+      "title": "Register a user",
+      "hint": "Register only after identifying the person (in person or by video call). No password is set — the user activates the account.",
+      "username": "Username (a-z 0-9 . _)",
+      "display_name": "Display name",
+      "role": "Role",
+      "phone": "Contact phone (optional)",
+      "national_id": "National ID (from the ID card, optional)",
+      "submit": "Register"
+    },
+    "detail": {
+      "back": "← Users",
+      "phone_last4": "Phone ends in {last4}",
+      "no_phone": "No phone registered",
+      "sessions": "Active devices: {count}",
+      "checks_today": "Identity checks today: {count}/5",
+      "live_token": "Live token: {purpose} ({channel}) until {expires}",
+      "deletion": "The user asked to delete the account. It is erased on {date}."
+    },
+    "purpose": {
+      "activation": "activation",
+      "admin_reset": "password reset"
+    },
+    "channel": {
+      "in_person_qr": "in-person QR",
+      "sms": "SMS"
+    },
+    "activation": {
+      "title": "Activation",
+      "hint": "The user scans this QR with the phone that has the app and sets their own password. Valid 15 minutes, shown once.",
+      "qr": "Create activation QR",
+      "sms": "Send SMS to the registered phone"
+    },
+    "qr": {
+      "alt": "Activation QR code",
+      "expires": "Expires in {seconds} s",
+      "expired": "The QR expired. Create a new one.",
+      "hide": "Hide QR",
+      "sms_sent": "SMS sent (valid until {expires}).",
+      "notice_not_sent": "No notice reached the user's registered phone. Tell them another way."
+    },
+    "card": {
+      "print": "Print login card",
+      "title": "LabTrack MN — login card",
+      "download": "Get the app",
+      "username": "Your username",
+      "support": "Help: {phone}",
+      "note": "This card holds no password. Never tell anyone your password.",
+      "print_button": "Print"
+    },
+    "identity": {
+      "title": "Identify the person (before a reset)",
+      "hint": "First call the registered phone BACK, then ask the person for their national ID. The system only says whether it matches.",
+      "national_id": "National ID",
+      "check": "Check",
+      "match": "It matches. You may reset within 10 minutes.",
+      "no_match": "It does not match.",
+      "enrol_title": "Enrol national ID (in person, from the ID card)",
+      "enrol": "Enrol national ID",
+      "enrolled": "National ID enrolled."
+    },
+    "reset": {
+      "title": "Password reset",
+      "hint": "The old password stops working at once and every device is signed out. The user sets a new password.",
+      "reason": "Reason",
+      "qr": "Create reset QR",
+      "sms": "Send reset SMS",
+      "needs_check": "Run a successful identity check above first."
+    },
+    "reason": {
+      "forgot_password": "Forgot the password",
+      "lost_device": "Lost the phone",
+      "suspected_compromise": "Account may be compromised",
+      "other": "Other",
+      "user_request": "User's request",
+      "identity_verified": "Person verified",
+      "left_program": "Left the programme"
+    },
+    "status_change": {
+      "title": "Change status",
+      "to": "New status",
+      "submit": "Save",
+      "done": "Status changed."
+    },
+    "unlock": {
+      "title": "Clear login lockout",
+      "hint": "Clears the temporary lockout from failed logins (the account status is unchanged).",
+      "submit": "Clear lockout",
+      "done": "Lockout cleared."
+    },
+    "phone": {
+      "title": "Reveal phone number",
+      "confirm": "This is recorded in the audit log (up to 20 a day). Use it only to call back.",
+      "reveal": "Show number",
+      "hidden_in": "Hidden in {seconds} s",
+      "none": "No phone registered."
+    },
+    "deletion": {
+      "cancel_title": "Cancel deletion",
+      "cancel_hint": "Only at the user's request. The account comes back locked and needs an identity check and a password reset.",
+      "cancel": "Cancel deletion",
+      "cancelled": "Deletion cancelled. The account is locked."
+    },
+    "import": {
+      "title": "Bulk registration from CSV",
+      "hint": "Columns: username, display_name, phone (optional), role (user/doctor). The file is never stored, only checked in memory. National IDs are enrolled in person later.",
+      "file": "CSV file (UTF-8)",
+      "preview": "Preview",
+      "rows": "{count} rows ready",
+      "problems": "Problems",
+      "row": "Row {row}",
+      "whole_file": "Whole file",
+      "commit": "Register {count} users",
+      "done": "{count} users registered (not activated)."
+    },
+    "security": {
+      "title": "Security events",
+      "empty": "No events.",
+      "col": {
+        "at": "When",
+        "event": "Event",
+        "user": "User"
+      }
+    },
+    "event": {
+      "security": {
+        "admin_token_self_use": "An admin tried to use a token they issued (refused)",
+        "admin_network_activation": "QR activated from the issuing admin's network",
+        "user_report": "User reported \"not me\" (account locked)",
+        "purge_failed": "A deleted account could not be erased"
+      },
+      "unknown": "Other: {action}"
+    },
+    "common": {
+      "saving": "Please wait…",
+      "confirm": "Confirm",
+      "cancel": "Cancel",
+      "date": "{date}"
+    }
   }
 }
