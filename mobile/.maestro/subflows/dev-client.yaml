@@ -1,0 +1,39 @@
+# Development builds only: after `clearState` the dev launcher forgot the Metro server and shows
+# its first-run developer menu. Connect to Metro (MAESTRO_DEV_SERVER, set by `just e2e-mobile`)
+# and dismiss the menu. Every step is conditional, so the flow also runs on a release build.
+appId: ${MAESTRO_APP_ID}
+---
+# The launcher renders a few seconds after launch; absent on a release build. Before it, Android
+# 17 asks for local network access ("nearby devices"): a dev build needs it to reach Metro and the
+# dev API on 10.0.2.2, so it is allowed here (a release build talks to a public https API).
+- extendedWaitUntil:
+    visible: "(DEVELOPMENT SERVERS|.*nearby devices.*)"
+    timeout: 20000
+    optional: true
+- runFlow:
+    when:
+      visible: ".*nearby devices.*"
+    commands:
+      - tapOn: "Allow"
+      - extendedWaitUntil:
+          visible: "DEVELOPMENT SERVERS"
+          timeout: 20000
+          optional: true
+- runFlow:
+    when:
+      visible: "DEVELOPMENT SERVERS"
+    commands:
+      - openLink: "exp+labtrack://expo-development-client/?url=${MAESTRO_DEV_SERVER}"
+- extendedWaitUntil:
+    notVisible: "Bundling.*"
+    timeout: 180000
+- runFlow:
+    when:
+      visible: "Continue"
+    commands:
+      - tapOn: "Continue"
+- runFlow:
+    when:
+      visible: "TOOLS"
+    commands:
+      - tapOn: "Close"

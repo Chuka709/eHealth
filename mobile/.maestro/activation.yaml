@@ -1,46 +1,48 @@
 # Phase 1 DoD: a registered user activates with the admin's QR/link, sets their own password,
 # signs in, gives the consents and reaches Home (docs/01 Phase 1 DoD, docs/08 "Анх нэвтрэх").
 #
-# Not run yet: needs a development build on an emulator/phone (deferred, see PROGRESS 1.12).
-# Run:  maestro test mobile/.maestro/activation.yaml \
-#         -e APP_ID=mn.labtrack.app.development \
-#         -e ACTIVATION_TOKEN=<token from the admin's activation link> \
-#         -e USERNAME=<the user's username> -e PASSWORD='<a new strong password>'
-appId: ${APP_ID}
+# Run with `just e2e-mobile`: it provisions the user and passes the values as MAESTRO_*
+# environment variables (never on the command line).
+appId: ${MAESTRO_APP_ID}
 ---
 - launchApp:
     clearState: true
     clearKeychain: true
-- assertVisible: "LabTrack MN-д тавтай морил"
+- runFlow: subflows/dev-client.yaml
+- extendedWaitUntil:
+    visible: "Аккаунт идэвхжүүлэх"
+    timeout: 60000
 
 # The admin's link (the same URL the QR holds). The token never reaches the router.
-- openLink: "labtrack://activate#${ACTIVATION_TOKEN}"
+- openLink: "labtrack://activate#${MAESTRO_ACTIVATION_TOKEN}"
 - assertVisible: "Идэвхжүүлэх код уншигдлаа.*"
+# Fields are filled through the keyboard's next/done actions, as a user would: tapping a label
+# does not focus its input, and hideKeyboard presses Back on Android (leaving the app).
 - tapOn: "Хэрэглэгчийн нэр"
-- inputText: ${USERNAME}
-- tapOn: "Шинэ нууц үг"
-- inputText: ${PASSWORD}
-- tapOn: "Нууц үгээ давтах"
-- inputText: ${PASSWORD}
-- hideKeyboard
-- tapOn: "Нууц үг тохируулах"
-- assertVisible: "Аккаунт идэвхжлээ.*"
+- inputText: ${MAESTRO_USERNAME}
+- pressKey: Enter
+- inputText: ${MAESTRO_PASSWORD}
+- pressKey: Enter
+- inputText: ${MAESTRO_PASSWORD}
+- pressKey: Enter
+- extendedWaitUntil:
+    visible: "Аккаунт идэвхжлээ.*"
+    timeout: 15000
 
 # Sign in with the password only the user knows.
 - tapOn: "Хэрэглэгчийн нэр"
-- inputText: ${USERNAME}
-- tapOn: "Нууц үг"
-- inputText: ${PASSWORD}
-- hideKeyboard
-- tapOn:
-    text: "Нэвтрэх"
-    index: 1 # the button, not the heading
+- inputText: ${MAESTRO_USERNAME}
+- pressKey: Enter
+- inputText: ${MAESTRO_PASSWORD}
+- pressKey: Enter # the password field's "go" action signs in
 
 # Consents: the three required ones, AI stays off.
-- assertVisible: "Зөвшөөрөл"
-- tapOn: "Үйлчилгээний нөхцөл (Заавал)"
-- tapOn: "Нууцлалын бодлого (Заавал)"
-- tapOn: "Эрүүл мэндийн мэдээлэл боловсруулах (Заавал)"
+- extendedWaitUntil:
+    visible: 'Үйлчилгээний нөхцөл \(Заавал\)' # text is a regex: escape the brackets
+    timeout: 15000
+- tapOn: 'Үйлчилгээний нөхцөл \(Заавал\)'
+- tapOn: 'Нууцлалын бодлого \(Заавал\)'
+- tapOn: 'Эрүүл мэндийн мэдээлэл боловсруулах \(Заавал\)'
 - scrollUntilVisible:
     element: "Үргэлжлүүлэх"
 - tapOn: "Үргэлжлүүлэх"
@@ -52,4 +54,6 @@ appId: ${APP_ID}
     commands:
       - tapOn: "Одоо биш"
 
-- assertVisible: "Системийн төлөв"
+- extendedWaitUntil:
+    visible: "Системийн төлөв"
+    timeout: 15000

@@ -90,7 +90,7 @@ def _create_admin(username: str, password: str, secret: str) -> None:
     )
 
 
-def _cleanup() -> bool:
+def cleanup() -> bool:
     """Disable every fuzz account still enabled, as the database superuser: an admin cannot
     disable another admin through the API, and a run cut short never reaches the API steps."""
     out = subprocess.run(  # noqa: S603 - fixed command and SQL
@@ -115,9 +115,9 @@ def _cleanup() -> bool:
         check=False,
     )
     if out.returncode != 0:
-        sys.stderr.write("fuzz-api: CLEANUP FAILED - disable the fz* accounts by hand\n")
+        sys.stderr.write("cleanup: FAILED - disable the fz* accounts by hand\n")
         return False
-    sys.stderr.write(f"fuzz-api: disabled {out.stdout.strip()} throwaway account(s)\n")
+    sys.stderr.write(f"cleanup: disabled {out.stdout.strip()} throwaway account(s)\n")
     return True
 
 
@@ -155,45 +155,54 @@ def _schemathesis(access_token: str | None = None) -> int:
     return run.returncode
 
 
-def main() -> int:
-    # Dev only: it creates a super admin through MIGRATION_DATABASE_URL and fuzzes the API.
+def require_local_target() -> None:
+    # Dev only: it creates a super admin through MIGRATION_DATABASE_URL.
     if httpx.URL(BASE).host not in {"localhost", "127.0.0.1", "::1"}:
-        sys.exit("fuzz-api: refusing a non-local target")
+        sys.exit("refusing a non-local target")
+
+
+def main() -> int:
+    require_local_target()
     result = 1
     try:
         result = _run()
     finally:
-        cleaned = _cleanup()
+        cleaned = cleanup()
     return result if cleaned else 1
 
 
-def _run() -> int:
+def provision_user(c: httpx.Client) -> tuple[str, str]:
+    """Create a throwaway super admin, and through it a user with an activation token.
+    Returns (username, activation token). `cleanup()` disables both afterwards."""
     admin_user = f"fz{secrets.token_hex(4)}"
     admin_password = f"Fuzz {secrets.token_urlsafe(12)} нууц"
     secret = pyotp.random_base32(length=32)
     _create_admin(admin_user, admin_password, secret)
-
+    code = pyotp.TOTP(secret).at(int(time.time()))
+    session = _ok(
+        c.post(
+            "/api/v1/admin/auth/login",
+            json={"username": admin_user, "password": admin_password, "totp_code": code},
+        )
+    )["session_token"]
+    admin = {"Authorization": f"Bearer {session}"}
     user = f"fzu{secrets.token_hex(4)}"
+    uid = _ok(c.post("/api/v1/admin/users", json={"username": user, "display_name": "Fuzz"},
+                     headers=admin))["id"]  # fmt: skip
+    link = _ok(
+        c.post(
+            f"/api/v1/admin/users/{uid}/tokens",
+            json={"purpose": "activation", "channel": "in_person_qr"},
+            headers=admin,
+        )
+    )["link"]
+    return user, str(link).split("#", 1)[1]
+
+
+def _run() -> int:
     password = f"Fuzz {secrets.token_urlsafe(16)} цонх"
     with httpx.Client(base_url=BASE, timeout=30) as c:
-        code = pyotp.TOTP(secret).at(int(time.time()))
-        session = _ok(
-            c.post(
-                "/api/v1/admin/auth/login",
-                json={"username": admin_user, "password": admin_password, "totp_code": code},
-            )
-        )["session_token"]
-        admin = {"Authorization": f"Bearer {session}"}
-        uid = _ok(c.post("/api/v1/admin/users", json={"username": user, "display_name": "Fuzz"},
-                         headers=admin))["id"]  # fmt: skip
-        link = _ok(
-            c.post(
-                f"/api/v1/admin/users/{uid}/tokens",
-                json={"purpose": "activation", "channel": "in_person_qr"},
-                headers=admin,
-            )
-        )["link"]
-        token = str(link).split("#", 1)[1]
+        user, token = provision_user(c)
         _ok(c.post("/api/v1/auth/activate",
                    json={"token": token, "username": user, "new_password": password}))  # fmt: skip
         access = _ok(

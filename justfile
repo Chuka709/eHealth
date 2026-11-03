@@ -61,6 +61,12 @@ test-api *args:
 fuzz-api:
     $env:UV_CACHE_DIR = "F:/.uv-cache"; $env:UV_TOOL_DIR = "F:/.uv-tools"; cd backend; uv run python scripts/fuzz_api.py
 
+# Maestro flows (mobile/.maestro, or the given files) against the dev build on the running
+# Android emulator; a throwaway user is provisioned and disabled afterwards. Maestro needs Java:
+# JAVA_HOME (Android Studio's jbr). See backend/scripts/e2e_mobile.py
+e2e-mobile *flows:
+    $env:UV_CACHE_DIR = "F:/.uv-cache"; $env:UV_TOOL_DIR = "F:/.uv-tools"; cd backend; uv run python scripts/e2e_mobile.py {{quote(flows)}}
+
 test-rls:
     {{compose}} run --rm test pytest -q --no-header tests/rls
 

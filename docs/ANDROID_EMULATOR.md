@@ -94,6 +94,21 @@ cd "F:\My Projects\eHealth\mobile"; npx expo run:android
 ```
 Эхний build 10–20 мин, `E:\Android\gradle`-д ~10 GB кэш үүснэ.
 
+Энэ машин дээр (2026.11.03) шаардлагатай болсон зүйлс:
+- **Windows long paths** (`LongPathsEnabled=1`, админаар нэг удаа) + **CMake 4.1.2** (ninja 1.12 — урт
+  зам дэмждэг; 3.22.1-ийн ninja 1.10 "Filename longer than 260 characters" гэж унана). `mobile/android/local.properties`:
+  ```
+  sdk.dir=E\:/Android/Sdk
+  cmake.dir=E\:/Android/Sdk/cmake/4.1.2
+  ```
+  `expo prebuild --clean` энэ файлыг устгадаг — дахин бич. CMake солисны дараа `app/.cxx` ба
+  `node_modules/*/android/.cxx`-ийг устга.
+- **Санах ой:** paging file C: дээр (сул зай бага) тул emulator + Docker + Gradle зэрэг ажиллахад Gradle
+  "paging file is too small" гэж унана. Build хийхдээ emulator-ийг унтрааж:
+  `.\gradlew.bat app:assembleDebug -PreactNativeArchitectures=x86_64 --no-parallel --max-workers=2 -Pkotlin.compiler.execution.strategy=in-process`
+  (`mobile/android`-аас), дараа нь `adb install -r app\build\outputs\apk\debug\app-debug.apk`.
+- Emulator snapshot-оос сэргэхэд adb `offline` хэвээр үлдвэл: `emulator -avd Pixel_API36 -no-snapshot` (cold boot, ~3 мин).
+
 ## 6. C: дискийг чөлөөлөх (сонголттой, бүгд ажилласны дараа)
 - Flutter-ийг шинэ SDK руу заах: `flutter config --android-sdk E:\Android\Sdk`
 - Хуучин `C:\Users\PC\AppData\Local\Android\Sdk`-ийг устгах (хэдэн GB чөлөөлнө).
