@@ -1,0 +1,55 @@
+# Phase 1 DoD: a registered user activates with the admin's QR/link, sets their own password,
+# signs in, gives the consents and reaches Home (docs/01 Phase 1 DoD, docs/08 "Анх нэвтрэх").
+#
+# Not run yet: needs a development build on an emulator/phone (deferred, see PROGRESS 1.12).
+# Run:  maestro test mobile/.maestro/activation.yaml \
+#         -e APP_ID=mn.labtrack.app.development \
+#         -e ACTIVATION_TOKEN=<token from the admin's activation link> \
+#         -e USERNAME=<the user's username> -e PASSWORD='<a new strong password>'
+appId: ${APP_ID}
+---
+- launchApp:
+    clearState: true
+    clearKeychain: true
+- assertVisible: "LabTrack MN-д тавтай морил"
+
+# The admin's link (the same URL the QR holds). The token never reaches the router.
+- openLink: "labtrack://activate#${ACTIVATION_TOKEN}"
+- assertVisible: "Идэвхжүүлэх код уншигдлаа.*"
+- tapOn: "Хэрэглэгчийн нэр"
+- inputText: ${USERNAME}
+- tapOn: "Шинэ нууц үг"
+- inputText: ${PASSWORD}
+- tapOn: "Нууц үгээ давтах"
+- inputText: ${PASSWORD}
+- hideKeyboard
+- tapOn: "Нууц үг тохируулах"
+- assertVisible: "Аккаунт идэвхжлээ.*"
+
+# Sign in with the password only the user knows.
+- tapOn: "Хэрэглэгчийн нэр"
+- inputText: ${USERNAME}
+- tapOn: "Нууц үг"
+- inputText: ${PASSWORD}
+- hideKeyboard
+- tapOn:
+    text: "Нэвтрэх"
+    index: 1 # the button, not the heading
+
+# Consents: the three required ones, AI stays off.
+- assertVisible: "Зөвшөөрөл"
+- tapOn: "Үйлчилгээний нөхцөл (Заавал)"
+- tapOn: "Нууцлалын бодлого (Заавал)"
+- tapOn: "Эрүүл мэндийн мэдээлэл боловсруулах (Заавал)"
+- scrollUntilVisible:
+    element: "Үргэлжлүүлэх"
+- tapOn: "Үргэлжлүүлэх"
+
+# Biometric offer only on phones with strong biometrics enrolled.
+- runFlow:
+    when:
+      visible: "Аппыг хурдан, аюулгүй нээх"
+    commands:
+      - tapOn: "Одоо биш"
+
+- assertVisible: "Системийн төлөв"

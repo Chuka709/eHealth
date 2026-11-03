@@ -11,8 +11,19 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from sqlalchemy.exc import DBAPIError
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 log = structlog.get_logger(__name__)
+
+# Errors raised by the framework itself (unparsable JSON body, unknown route, wrong method):
+# they get the same `{code, message_key}` shape as ours instead of `{"detail": ...}`.
+_FRAMEWORK_CODES = {
+    400: "validation",
+    401: "auth.required",
+    403: "auth.forbidden",
+    404: "not_found",
+    405: "not_found",
+}
 
 
 class ErrorBody(BaseModel):
@@ -48,6 +59,15 @@ def install_error_handlers(app: FastAPI) -> None:
         log.error("db_error", sqlstate=getattr(pg, "sqlstate", None))
         return JSONResponse(
             status_code=500, content={"code": "internal", "message_key": "error.internal"}
+        )
+
+    @app.exception_handler(StarletteHTTPException)
+    async def _framework(_: Request, exc: StarletteHTTPException) -> JSONResponse:
+        code = _FRAMEWORK_CODES.get(exc.status_code, "internal")
+        return JSONResponse(
+            status_code=exc.status_code,
+            content=ErrorBody(code=code, message_key=f"error.{code}").model_dump(),
+            headers=exc.headers,
         )
 
     @app.exception_handler(RequestValidationError)

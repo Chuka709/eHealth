@@ -8,7 +8,8 @@ import { useSyncExternalStore } from "react";
 export type Notice =
   | { kind: "adminReset" }
   | { kind: "reported" }
-  | { kind: "deleted"; scheduledFor: string };
+  // scheduledFor is missing when the device only learned it from a refresh.
+  | { kind: "deleted"; scheduledFor?: string };
 
 let current: Notice | null = null;
 const listeners = new Set<() => void>();
@@ -38,13 +39,11 @@ export function parseNotice(raw: string | null): Notice | null {
     const value: unknown = JSON.parse(raw);
     if (typeof value !== "object" || value === null || !("kind" in value)) return null;
     if (value.kind === "adminReset" || value.kind === "reported") return { kind: value.kind };
-    if (
-      value.kind === "deleted" &&
-      "scheduledFor" in value &&
-      typeof value.scheduledFor === "string" &&
-      !Number.isNaN(Date.parse(value.scheduledFor))
-    ) {
-      return { kind: "deleted", scheduledFor: value.scheduledFor };
+    if (value.kind === "deleted") {
+      const at = "scheduledFor" in value ? value.scheduledFor : undefined;
+      return typeof at === "string" && !Number.isNaN(Date.parse(at))
+        ? { kind: "deleted", scheduledFor: at }
+        : { kind: "deleted" };
     }
   } catch {
     // fall through

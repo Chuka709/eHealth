@@ -196,7 +196,8 @@
     "deleted": {
       "title": "Deletion request received",
       "body": "Your account and data will be erased for good on {date}. This phone was signed out.",
-      "undo": "If you change your mind, contact your organisation's admin before that date."
+      "undo": "If you change your mind, contact your organisation's admin before that date.",
+      "bodyNoDate": "Your account and data will be erased for good 30 days after the request. This phone was signed out."
     },
     "notification": {
       "banner": "An admin made a change to your account",
@@ -318,7 +319,9 @@
       "rate_limited": "Too many requests. Wait a moment and try again.",
       "required": "Please sign in.",
       "session_invalid": "Your session has ended. Sign in again.",
-      "session_not_found": "Device not found."
+      "session_not_found": "Device not found.",
+      "account_reported": "You reported “I didn't ask for this”, so the account was locked and signed out everywhere.",
+      "deletion_pending": "Your account deletion request is pending, so it was signed out everywhere."
     },
     "consent": {
       "not_allowed": "You cannot give consent for this profile.",

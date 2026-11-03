@@ -173,6 +173,12 @@ async def refresh(db: AsyncSession, *, refresh_token: str) -> TokenPair:
         # Literal codes so error_codes.py lists them (and clients must translate them).
         if result.status == "revoked:admin_reset":
             raise AppError(401, "auth.admin_reset")
+        # The user's own report / deletion request (0011): if that response was lost, the
+        # device still learns why it was signed out.
+        if result.status == "revoked:user_report":
+            raise AppError(401, "auth.account_reported")
+        if result.status == "revoked:account_deletion":
+            raise AppError(401, "auth.deletion_pending")
         raise AppError(401, "auth.session_invalid")
     access, expires_in = _access(
         result.user_id, result.session_id, result.token_version, str(result.role)

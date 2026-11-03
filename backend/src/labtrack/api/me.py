@@ -6,7 +6,7 @@ from datetime import datetime
 from typing import Annotated, Literal
 from uuid import UUID
 
-from fastapi import APIRouter, Query, Response, status
+from fastapi import APIRouter, Path, Query, Response, status
 from pydantic import AfterValidator, BaseModel, ConfigDict, Field, StringConstraints
 from sqlalchemy.exc import DBAPIError
 
@@ -213,7 +213,11 @@ async def notifications(
     status_code=status.HTTP_204_NO_CONTENT,
     responses=_ERRORS,
 )
-async def mark_read(notification_id: int, db: UserDb) -> Response:
+async def mark_read(
+    # bigint range: a larger id would overflow in the database (500) instead of a 422.
+    notification_id: Annotated[int, Path(ge=1, le=2**63 - 1)],
+    db: UserDb,
+) -> Response:
     done = (
         await db.execute(
             bound_text(

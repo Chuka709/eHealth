@@ -33,7 +33,13 @@ async def _active_user(client_from: ClientFactory) -> tuple[str, str, dict[str, 
         login = await phone.post(
             "/api/v1/auth/login", json=login_body(username, password=NEW_PASSWORD)
         )
+    _refresh_tokens[str(uid)] = login.json()["refresh_token"]
     return str(uid), username, {"Authorization": f"Bearer {login.json()['access_token']}"}
+
+
+# The refresh token of each user's login above, for tests that check how a device learns why
+# its session ended.
+_refresh_tokens: dict[str, str] = {}
 
 
 async def test_delete_needs_the_password_and_signs_out_everywhere(
@@ -51,6 +57,10 @@ async def test_delete_needs_the_password_and_signs_out_everywhere(
         scheduled = datetime.fromisoformat(r.json()["scheduled_for"])
         assert timedelta(days=29) < scheduled - datetime.now(UTC) <= timedelta(days=30)
         assert (await phone.get("/api/v1/me", headers=h)).status_code == 401
+        refresh = await phone.post(
+            "/api/v1/auth/refresh", json={"refresh_token": _refresh_tokens[uid]}
+        )
+        assert (refresh.status_code, refresh.json()["code"]) == (401, "auth.deletion_pending")
         again = await phone.post(
             "/api/v1/auth/login", json=login_body(username, password=NEW_PASSWORD)
         )

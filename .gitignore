@@ -68,3 +68,7 @@ desktop.ini
 .playwright-browsers/
 web/e2e/.auth/
 web/test-results/
+
+# schemathesis reports (just fuzz-api)
+backend/.fuzz-reports/
+.schemathesis/

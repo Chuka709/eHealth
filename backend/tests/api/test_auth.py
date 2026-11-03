@@ -72,6 +72,36 @@ async def test_validation_errors_never_echo_the_password(client_from: ClientFact
     assert "SECRET-VALUE" not in r.text
 
 
+async def test_framework_errors_have_the_same_shape(client_from: ClientFactory) -> None:
+    """Found by schemathesis (1.12): framework errors answered `{"detail": ...}`, which clients
+    cannot translate. Every error body is `{code, message_key}`."""
+    async with client_from() as c:
+        broken = await c.post(
+            "/api/v1/auth/login",
+            content=b'{"username": "a',
+            headers={"Content-Type": "application/json"},
+        )
+        missing = await c.get("/api/v1/no-such-route")
+        method = await c.delete("/api/v1/auth/login")
+    for r in (broken, missing, method):
+        assert set(r.json()) >= {"code", "message_key"}
+        assert "detail" not in r.json()
+    assert broken.json()["code"] == "validation"
+    assert (missing.status_code, missing.json()["code"]) == (404, "not_found")
+    assert (method.status_code, method.json()["code"]) == (405, "not_found")
+
+
+async def test_a_notification_id_beyond_bigint_is_rejected_not_a_500(
+    owner_engine: AsyncEngine, client_from: ClientFactory
+) -> None:
+    """Found by schemathesis (1.12): 2**63 overflowed in the database."""
+    _, username = await make_active_user(owner_engine)
+    async with client_from() as c:
+        h = _auth((await _login(c, username)).json()["access_token"])
+        r = await c.post(f"/api/v1/me/notifications/{2**63}/read", headers=h)
+    assert r.status_code == 422
+
+
 async def test_pending_and_disabled_accounts_cannot_log_in(
     owner_engine: AsyncEngine, client_from: ClientFactory
 ) -> None:

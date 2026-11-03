@@ -13,7 +13,8 @@ import { clearAccessToken, getStatus, setAccessToken, setStatus } from "./sessio
 
 type TokenResponse = components["schemas"]["TokenResponse"];
 
-export type RefreshOutcome = "ok" | "adminReset" | "signedOut" | "offline";
+/** "notice": the session ended for a reason the user must see (see notice.ts). */
+export type RefreshOutcome = "ok" | "notice" | "signedOut" | "offline";
 
 let inflight: Promise<RefreshOutcome> | null = null;
 // Bumped by every sign-in and wipe: a refresh started in an older epoch must not write back
@@ -98,12 +99,18 @@ async function runRefresh(): Promise<RefreshOutcome> {
     return "ok";
   }
   if (response.status === 401) {
-    if (error?.code === "auth.admin_reset") {
-      await wipeLocal({ kind: "adminReset" });
-      return "adminReset";
-    }
-    await wipeLocal("signedOut");
-    return "signedOut";
+    // Why the session ended decides the notice (also when the response that ended it - a
+    // report or a deletion request - never arrived).
+    const notice: Notice | null =
+      error?.code === "auth.admin_reset"
+        ? { kind: "adminReset" }
+        : error?.code === "auth.account_reported"
+          ? { kind: "reported" }
+          : error?.code === "auth.deletion_pending"
+            ? { kind: "deleted" }
+            : null;
+    await wipeLocal(notice ?? "signedOut");
+    return notice ? "notice" : "signedOut";
   }
   return "offline"; // 429 / 5xx: the session may still be valid
 }

@@ -209,6 +209,11 @@ async def test_admin_history_notifications_and_report(
         r = await phone.post("/api/v1/me/report-unwanted-admin-action", headers=h)
         assert r.status_code == 204
         assert (await phone.get("/api/v1/me", headers=h)).status_code == 401  # sessions ended
+        # A device that missed the response learns why on its next refresh (0011).
+        refresh = await phone.post(
+            "/api/v1/auth/refresh", json={"refresh_token": login.json()["refresh_token"]}
+        )
+        assert (refresh.status_code, refresh.json()["code"]) == (401, "auth.account_reported")
     async with client_from(OFFICE) as c:
         detail = (await c.get(f"/api/v1/admin/users/{uid}", headers=admin)).json()
         assert detail["account_status"] == "locked"

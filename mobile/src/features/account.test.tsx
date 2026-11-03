@@ -319,3 +319,43 @@ test("the AI switch shows on while one part is still given, and off withdraws bo
     ],
   });
 });
+
+test("a lost report response: the refresh tells why and the notice still appears", async () => {
+  notifications = [
+    {
+      id: 7,
+      kind: "admin_reset",
+      title_key: "account.admin_reset",
+      created_at: new Date().toISOString(),
+      read_at: null,
+    },
+  ];
+  let refreshes = 0;
+  route({
+    "POST /api/v1/me/report-unwanted-admin-action": () => {
+      throw new TypeError("Network request failed"); // the server did it; the answer is lost
+    },
+    "POST /api/v1/auth/refresh": () =>
+      ++refreshes === 1
+        ? json(200, {
+            access_token: "a1",
+            token_type: "bearer",
+            expires_in: 900,
+            refresh_token: "r1",
+          })
+        : err(401, "auth.account_reported"),
+  });
+  await open();
+  await fireEvent.press(
+    await screen.findByRole("button", { name: "Би хүсээгүй — аккаунтаа түгжих" }),
+  );
+  confirm("Түгжих");
+  expect(await screen.findByText("Аккаунт тань түгжигдлээ")).toBeOnTheScreen();
+});
+
+test("a deletion learnt from a refresh shows the notice without a date", async () => {
+  route({ "POST /api/v1/auth/refresh": () => err(401, "auth.deletion_pending") });
+  await open();
+  expect(await screen.findByText("Устгах хүсэлтийг хүлээн авлаа")).toBeOnTheScreen();
+  expect(screen.getByText(/хүсэлт гаргаснаас хойш 30 хоногийн дараа/)).toBeOnTheScreen();
+});

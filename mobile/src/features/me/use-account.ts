@@ -2,7 +2,7 @@ import type { components } from "@labtrack/shared";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useRef } from "react";
 
-import { wipeLocal } from "@/features/auth/session";
+import { refreshSession, wipeLocal } from "@/features/auth/session";
 import { api } from "@/lib/api";
 import { queryClient } from "@/lib/query-client";
 import { apiError } from "@/lib/use-error-text";
@@ -11,6 +11,16 @@ export type AdminAction = components["schemas"]["AdminActionOut"];
 export type AppNotification = components["schemas"]["NotificationOut"];
 
 const actionsKey = ["me", "admin-actions"] as const;
+
+/**
+ * The response to a report or deletion may be lost after the server already ended every
+ * session. A refresh then answers why (auth.account_reported / auth.deletion_pending) and the
+ * device shows that notice instead of leaving the user unaware.
+ */
+function checkWhetherItWentThrough(error: unknown): void {
+  if (error instanceof TypeError) void refreshSession();
+}
+
 const notificationsKey = ["me", "notifications"] as const;
 
 /** What admins did on this account: when, what, which role — never who (docs/04 §1). */
@@ -63,6 +73,7 @@ export function useMarkNoticeRead() {
  */
 export function useReportUnwantedAdminAction() {
   return useMutation({
+    onError: checkWhetherItWentThrough,
     mutationFn: async () => {
       const { error, response } = await api.POST("/api/v1/me/report-unwanted-admin-action");
       if (!response.ok) throw apiError(error);
@@ -79,6 +90,7 @@ export function useDeleteAccount() {
   const password = useRef<string | null>(null);
   const mutation = useMutation({
     gcTime: 0,
+    onError: checkWhetherItWentThrough,
     mutationFn: async () => {
       const value = password.current;
       password.current = null;

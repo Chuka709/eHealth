@@ -147,6 +147,39 @@ async def test_admins_cannot_sign_in_to_the_user_api(client_from: ClientFactory)
         assert (await c.get("/api/v1/me", headers=bearer(token))).status_code == 401
 
 
+# Routes anyone may call without a user token (sign-in, activation, health).
+_ANONYMOUS = {
+    "/api/v1/healthz",
+    "/api/v1/readyz",
+    "/api/v1/auth/login",
+    "/api/v1/auth/activate",
+    "/api/v1/auth/refresh",
+    "/api/v1/auth/logout",
+}
+
+
+async def test_an_admin_token_opens_no_user_route(client_from: ClientFactory) -> None:
+    """CLAUDE.md 2a for every user route, taken from the OpenAPI schema, so future PHI routes
+    are covered the day they are added: an admin session token is refused (401), not served."""
+    from labtrack.main import create_app  # noqa: PLC0415
+
+    paths = create_app().openapi()["paths"]
+    username, secret = await make_admin()
+    async with client_from(OFFICE) as c:
+        token = (await admin_login(c, username, secret))[1]["session_token"]
+        checked = 0
+        for path, operations in paths.items():
+            if path.startswith("/api/v1/admin") or path in _ANONYMOUS:
+                continue
+            url = path.replace("{session_id}", "00000000-0000-0000-0000-000000000000")
+            url = url.replace("{notification_id}", "1")
+            for method in operations:
+                r = await c.request(method.upper(), url, headers=bearer(token), json={})
+                assert r.status_code == 401, (method, path, r.status_code)
+                checked += 1
+    assert checked >= 10  # the user API is really there
+
+
 async def test_stored_totp_secret_is_encrypted_and_bound_to_its_row(
     owner_engine: AsyncEngine, client_from: ClientFactory
 ) -> None:

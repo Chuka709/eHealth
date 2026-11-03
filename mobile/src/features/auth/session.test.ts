@@ -176,7 +176,7 @@ test("the admin-reset notice is not replaced by later signed-out refreshes", asy
     "/api/v1/auth/refresh": () =>
       json(401, { code: "auth.admin_reset", message_key: "error.auth.admin_reset" }),
   });
-  expect(await refreshSession()).toBe("adminReset");
+  expect(await refreshSession()).toBe("notice");
   // The server dropped the device trust too.
   expect(mockStore.has("lt.device")).toBe(false);
   expect(await refreshSession()).toBe("signedOut");
@@ -224,7 +224,7 @@ test("admin_reset wipes credentials and cache and the trusted-device token", asy
       json(401, { code: "auth.admin_reset", message_key: "error.auth.admin_reset" }),
   });
 
-  expect(await refreshSession()).toBe("adminReset");
+  expect(await refreshSession()).toBe("notice");
   expect(getStatus()).toBe("notice");
   expect(mockStore.has("lt.refresh")).toBe(false);
   expect(mockStore.has("lt.device")).toBe(false);

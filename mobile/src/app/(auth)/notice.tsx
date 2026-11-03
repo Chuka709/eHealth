@@ -66,7 +66,11 @@ export default function NoticeScreen() {
           <Title>{t("deleted.title")}</Title>
           <FormMessage
             kind="success"
-            text={t("deleted.body", { date: formatDate(notice.scheduledFor) })}
+            text={
+              notice.scheduledFor
+                ? t("deleted.body", { date: formatDate(notice.scheduledFor) })
+                : t("deleted.bodyNoDate")
+            }
           />
           <Paragraph>{t("deleted.undo")}</Paragraph>
         </>

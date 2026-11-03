@@ -56,6 +56,11 @@ e2e-web *args:
 test-api *args:
     {{compose}} run --rm test pytest -q --no-header {{args}}
 
+# Fuzz the user API with schemathesis against the running dev stack (`just up` first).
+# schemathesis runs from a uv tool env on F: (not in the API image); see backend/scripts/fuzz_api.py
+fuzz-api:
+    $env:UV_CACHE_DIR = "F:/.uv-cache"; $env:UV_TOOL_DIR = "F:/.uv-tools"; cd backend; uv run python scripts/fuzz_api.py
+
 test-rls:
     {{compose}} run --rm test pytest -q --no-header tests/rls
 
