@@ -9,7 +9,12 @@ const mockBio = { hardware: true, enrolled: true, success: true };
 
 jest.mock("expo-secure-store", () => ({
   WHEN_UNLOCKED_THIS_DEVICE_ONLY: 6,
-  getItemAsync: jest.fn(async (key: string) => mockStore.get(key) ?? null),
+  WHEN_PASSCODE_SET_THIS_DEVICE_ONLY: 4,
+  // Items with requireAuthentication stand behind the biometric prompt (mockBio.success).
+  getItemAsync: jest.fn(async (key: string, options?: { requireAuthentication?: boolean }) => {
+    if (options?.requireAuthentication && !mockBio.success) throw new Error("user cancel");
+    return mockStore.get(key) ?? null;
+  }),
   setItemAsync: jest.fn(async (key: string, value: string) => {
     mockStore.set(key, value);
   }),
@@ -198,16 +203,17 @@ describe("biometric offer", () => {
     });
   });
 
-  test("enable confirms once without the passcode fallback, then opens the app", async () => {
-    const LocalAuthentication = jest.requireMock<{ authenticateAsync: jest.Mock }>(
-      "expo-local-authentication",
-    );
+  test("enable creates the biometric-bound unlock key, proves it opens, then opens the app", async () => {
+    const SecureStore = jest.requireMock<{ setItemAsync: jest.Mock }>("expo-secure-store");
     await app();
     await fireEvent.press(await screen.findByRole("button", { name: "Биометрээр түгжих" }));
     expect(await screen.findByText("Системийн төлөв")).toBeOnTheScreen();
     expect(mockStore.get("lt.biometric")).toBe("on");
-    expect(LocalAuthentication.authenticateAsync).toHaveBeenCalledWith(
-      expect.objectContaining({ disableDeviceFallback: true }),
+    expect(mockStore.get("lt.unlock_gate")).toBe("1");
+    expect(SecureStore.setItemAsync).toHaveBeenCalledWith(
+      "lt.unlock_gate",
+      "1",
+      expect.objectContaining({ requireAuthentication: true, keychainAccessible: 4 }),
     );
   });
 
@@ -217,6 +223,7 @@ describe("biometric offer", () => {
     await fireEvent.press(await screen.findByRole("button", { name: "Биометрээр түгжих" }));
     expect(await screen.findByText(/Баталгаажуулж чадсангүй/)).toBeOnTheScreen();
     expect(mockStore.has("lt.biometric")).toBe(false);
+    expect(mockStore.has("lt.unlock_gate")).toBe(false);
   });
 
   test("not now is remembered", async () => {
@@ -233,7 +240,7 @@ describe("biometric offer", () => {
   });
 
   test("signing out forgets the choice (it belongs to the user, not the phone)", async () => {
-    mockStore.set("lt.biometric", "on");
+    mockStore.set("lt.biometric", "off"); // "on" would open on the lock screen (lock.test.tsx)
     route({ "/api/v1/auth/logout": () => new Response(null, { status: 204 }) });
     await app();
     await fireEvent.press(await screen.findByRole("button", { name: "Гарах" }));

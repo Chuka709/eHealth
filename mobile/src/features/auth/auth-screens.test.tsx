@@ -30,7 +30,7 @@ jest.mock("expo-file-system", () => ({
   },
 }));
 jest.mock("expo-screen-capture", () => ({
-  usePreventScreenCapture: jest.fn(),
+  preventScreenCaptureAsync: jest.fn(async () => undefined),
   enableAppSwitcherProtectionAsync: jest.fn(async () => undefined),
   disableAppSwitcherProtectionAsync: jest.fn(async () => undefined),
 }));

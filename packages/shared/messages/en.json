@@ -116,6 +116,15 @@
       "prompt": "Unlock LabTrack MN",
       "failed": "Could not confirm. Try again or choose \"Not now\".",
       "later": "You can turn this on later in Settings."
+    },
+    "lock": {
+      "title": "LabTrack MN is locked",
+      "body": "To protect your health information, unlock with your phone's fingerprint or face. The phone PIN does not work here.",
+      "unlock": "Unlock",
+      "prompt": "Unlock LabTrack MN",
+      "failed": "Could not unlock. Try again, or sign out and sign in again with your password.",
+      "changed": "The phone's biometric settings changed (a finger or face was added or removed), so for your security sign in again with your password.",
+      "usePassword": "Sign out and sign in with password"
     }
   },
   "status": {

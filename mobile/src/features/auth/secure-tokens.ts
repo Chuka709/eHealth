@@ -19,9 +19,53 @@ export const secureKeys = {
   adminResetNotice: "lt.admin_reset",
   /** Biometric unlock choice of the signed-in user: "on" | "off" (removed on sign-out). */
   biometric: "lt.biometric",
+  /**
+   * Unlock key: readable only after a biometric check against the *current* enrollment (iOS
+   * `.biometryCurrentSet`, Android Keystore with BIOMETRIC_STRONG, no passcode fallback). Adding
+   * a finger or face invalidates it, so someone who knows the phone PIN and enrols their own
+   * finger cannot open the app. The value carries no secret; the access control is the point.
+   */
+  unlockGate: "lt.unlock_gate",
 } as const;
 
 export type SecureKey = (typeof secureKeys)[keyof typeof secureKeys];
+
+const GATE_VALUE = "1";
+
+// Stricter than the other items: removed by iOS if the phone's passcode is turned off.
+const gateOptions: SecureStore.SecureStoreOptions = {
+  keychainAccessible: SecureStore.WHEN_PASSCODE_SET_THIS_DEVICE_ONLY,
+  requireAuthentication: true,
+};
+
+/** Creates the unlock key (whether this already prompts differs by platform). */
+export function writeUnlockGate(prompt: string): Promise<void> {
+  return SecureStore.setItemAsync(secureKeys.unlockGate, GATE_VALUE, {
+    ...gateOptions,
+    authenticationPrompt: prompt,
+  });
+}
+
+/**
+ * Reads the unlock key behind the biometric prompt: "ok"; "invalidated" when the key is gone
+ * (biometrics changed or removed — only a password sign-in may follow); "failed" on cancel or a
+ * failed check (try again).
+ */
+export async function readUnlockGate(prompt: string): Promise<"ok" | "invalidated" | "failed"> {
+  try {
+    const value = await SecureStore.getItemAsync(secureKeys.unlockGate, {
+      ...gateOptions,
+      authenticationPrompt: prompt,
+    });
+    if (value === null) return "invalidated";
+    return value === GATE_VALUE ? "ok" : "invalidated";
+  } catch (error) {
+    // A key invalidated by an enrollment change may throw instead of reading as missing
+    // (Android KeyPermanentlyInvalidatedException); never let that loop as a mere failure.
+    // To confirm on devices: add/remove a finger, then unlock.
+    return /invalidat/i.test(String(error)) ? "invalidated" : "failed";
+  }
+}
 
 export function readSecure(key: SecureKey): Promise<string | null> {
   return SecureStore.getItemAsync(key, options);

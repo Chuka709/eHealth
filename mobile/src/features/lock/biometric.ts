@@ -1,8 +1,17 @@
 import { useQuery } from "@tanstack/react-query";
 import * as LocalAuthentication from "expo-local-authentication";
 
-import { deleteSecure, readSecure, secureKeys, writeSecure } from "@/features/auth/secure-tokens";
+import {
+  deleteSecure,
+  readSecure,
+  readUnlockGate,
+  secureKeys,
+  writeSecure,
+  writeUnlockGate,
+} from "@/features/auth/secure-tokens";
 import { queryClient } from "@/lib/query-client";
+
+import { setBiometricOn } from "./lock-store";
 
 export type BiometricChoice = "on" | "off";
 
@@ -44,30 +53,37 @@ export function useBiometricState() {
 }
 
 /**
- * Confirms once with the phone's biometrics, without the passcode fallback: the threat model
- * counts family members, who may know the phone PIN (decided in the 1.11 plan). On cancel or
- * failure nothing is stored.
+ * Turns biometric unlock on: creates the unlock key bound to the current biometric enrollment
+ * and proves it opens by reading it back. No passcode
+ * fallback - the threat model counts family members, who may know the phone PIN (1.11 plan).
+ * On cancel or failure nothing stays behind.
  */
-export async function authenticate(promptMessage: string, cancelLabel: string): Promise<boolean> {
+export async function enableBiometricLock(prompt: string): Promise<boolean> {
   try {
-    const result = await LocalAuthentication.authenticateAsync({
-      promptMessage,
-      cancelLabel,
-      disableDeviceFallback: true,
-      fallbackLabel: "",
-      biometricsSecurityLevel: "strong",
-    });
-    return result.success;
+    await writeUnlockGate(prompt);
+    // Read back on every platform: "on" only once the key is proven to open (some Android
+    // versions may not prompt on write).
+    if ((await readUnlockGate(prompt)) !== "ok") {
+      await deleteSecure(secureKeys.unlockGate);
+      return false;
+    }
+    await setBiometricChoice("on");
+    setBiometricOn(true);
+    return true;
   } catch {
+    await deleteSecure(secureKeys.unlockGate).catch(() => undefined);
     return false;
   }
 }
 
-export async function setBiometricChoice(choice: BiometricChoice): Promise<void> {
-  await writeSecure(secureKeys.biometric, choice);
-  await queryClient.invalidateQueries({ queryKey: biometricKey });
+/** "Not now" in the offer, or turning it off later: the unlock key goes too. */
+export async function disableBiometricLock(): Promise<void> {
+  setBiometricOn(false);
+  await deleteSecure(secureKeys.unlockGate);
+  await setBiometricChoice("off");
 }
 
-export async function clearBiometricChoice(): Promise<void> {
-  await deleteSecure(secureKeys.biometric);
+async function setBiometricChoice(choice: BiometricChoice): Promise<void> {
+  await writeSecure(secureKeys.biometric, choice);
+  await queryClient.invalidateQueries({ queryKey: biometricKey });
 }

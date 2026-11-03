@@ -1,6 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { usePreventScreenCapture } from "expo-screen-capture";
 import { Controller, useForm } from "react-hook-form";
 import { useTranslations } from "use-intl";
 import { z } from "zod";
@@ -11,7 +10,6 @@ import { PasswordField } from "@/components/password-field";
 import { Screen } from "@/components/screen";
 import { Title } from "@/components/text";
 import { TextField } from "@/components/text-field";
-import { useAppSwitcherProtection } from "@/features/auth/use-app-switcher-protection";
 import { useLogin } from "@/features/auth/use-login";
 import { usernameSchema } from "@/features/auth/username";
 import { useErrorText } from "@/lib/use-error-text";
@@ -22,8 +20,6 @@ const schema = z.object({
 });
 
 export default function LoginScreen() {
-  usePreventScreenCapture("login");
-  useAppSwitcherProtection();
   const t = useTranslations("app");
   const router = useRouter();
   const errorText = useErrorText();

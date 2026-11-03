@@ -1,7 +1,6 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as Linking from "expo-linking";
 import { useGlobalSearchParams, useRouter } from "expo-router";
-import { usePreventScreenCapture } from "expo-screen-capture";
 import { useEffect, useMemo, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { useTranslations } from "use-intl";
@@ -25,7 +24,6 @@ import {
 } from "@/features/auth/password-strength";
 import { ActivationQrScanner } from "@/features/auth/qr-scanner";
 import { useActivate } from "@/features/auth/use-activate";
-import { useAppSwitcherProtection } from "@/features/auth/use-app-switcher-protection";
 import { usernameSchema } from "@/features/auth/username";
 import { ApiError, useErrorText } from "@/lib/use-error-text";
 
@@ -44,8 +42,6 @@ const isPolicyError = (error: unknown) =>
   error instanceof ApiError && Boolean(error.code?.startsWith("password."));
 
 export default function ActivateScreen() {
-  usePreventScreenCapture("activate");
-  useAppSwitcherProtection();
   const t = useTranslations();
   const router = useRouter();
   const errorText = useErrorText();

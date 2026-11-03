@@ -7,6 +7,9 @@ import { useColorScheme } from "react-native";
 
 import { restoreSession } from "@/features/auth/session";
 import { useSession } from "@/features/auth/use-session";
+import { useLocked } from "@/features/lock/lock-store";
+import { enablePrivacyProtection } from "@/features/lock/privacy";
+import { useAppLock } from "@/features/lock/use-app-lock";
 import { I18nProvider } from "@/lib/i18n";
 import { queryClient } from "@/lib/query-client";
 
@@ -16,8 +19,10 @@ void SplashScreen.preventAutoHideAsync();
 export default function RootLayout() {
   const scheme = useColorScheme();
   useEffect(() => {
+    void enablePrivacyProtection();
     void restoreSession();
   }, []);
+  useAppLock();
   return (
     <I18nProvider>
       <QueryClientProvider client={queryClient}>
@@ -32,6 +37,7 @@ export default function RootLayout() {
 
 function RootNavigator() {
   const status = useSession();
+  const locked = useLocked();
   useEffect(() => {
     if (status !== "loading") SplashScreen.hide();
   }, [status]);
@@ -40,7 +46,11 @@ function RootNavigator() {
   return (
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="index" />
-      <Stack.Protected guard={signedIn}>
+      {/* Locked: the lock screen is the only signed-in screen; (app) is not even mounted. */}
+      <Stack.Protected guard={signedIn && locked}>
+        <Stack.Screen name="lock" options={{ gestureEnabled: false }} />
+      </Stack.Protected>
+      <Stack.Protected guard={signedIn && !locked}>
         <Stack.Screen name="(app)" />
       </Stack.Protected>
       <Stack.Protected guard={!signedIn}>

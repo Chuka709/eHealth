@@ -1,5 +1,6 @@
 import type { components } from "@labtrack/shared";
 
+import { setBiometricOn, setLocked } from "@/features/lock/lock-store";
 import { publicApi } from "@/lib/api-base";
 import { queryClient } from "@/lib/query-client";
 
@@ -27,7 +28,13 @@ export async function restoreSession(): Promise<void> {
       setStatus("adminReset");
       return;
     }
-    setStatus((await readSecure(secureKeys.refresh)) ? "signedIn" : "signedOut");
+    const signedIn = Boolean(await readSecure(secureKeys.refresh));
+    // With biometric unlock on, a cold start opens locked - decided before the status flips,
+    // so no signed-in screen is ever drawn first.
+    const biometricOn = signedIn && (await readSecure(secureKeys.biometric)) === "on";
+    setBiometricOn(biometricOn);
+    if (biometricOn) setLocked(true);
+    setStatus(signedIn ? "signedIn" : "signedOut");
   } catch {
     // e.g. the Keychain is unavailable while the phone is locked (background start). Do not
     // delete anything: the session may be fine once the phone is unlocked.
@@ -124,16 +131,20 @@ export async function wipeLocal(
   epoch += 1;
   clearAccessToken();
   clearPendingActivationToken();
+  setBiometricOn(false);
   await queryClient.cancelQueries();
   queryClient.clear();
   try {
-    // The biometric choice belongs to the user who signed out, not to the phone.
-    const keys = [secureKeys.refresh, secureKeys.biometric];
+    // The biometric choice and unlock key belong to the user who signed out, not the phone.
+    const keys = [secureKeys.refresh, secureKeys.biometric, secureKeys.unlockGate];
     await deleteSecure(...(forgetDevice ? [...keys, secureKeys.device] : keys));
     if (next === "adminReset") await writeSecure(secureKeys.adminResetNotice, "1");
   } finally {
     // An admin-reset notice is not replaced by a later, plainer "signed out".
     if (!(next === "signedOut" && getStatus() === "adminReset")) setStatus(next);
+    // Only now, with the status no longer signedIn: unlocking any earlier would mount the
+    // signed-in screens for a moment (and let them start requests) during the wipe.
+    setLocked(false);
   }
 }
 
