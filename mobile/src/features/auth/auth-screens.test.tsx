@@ -84,6 +84,7 @@ function route(handlers: Record<string, Handler>) {
     const handler = handlers[request.url.slice(apiBaseUrl.length)];
     // Signed-in screens need the consents; all given unless a test says otherwise.
     if (!handler && request.url.endsWith("/api/v1/me/consents")) return json(200, allGiven);
+    if (!handler && request.url.endsWith("/api/v1/me/notifications")) return json(200, []);
     if (!handler) return json(200, { status: "ok" });
     return handler(request);
   });
@@ -262,14 +263,14 @@ test("after an admin reset the notice is the only screen until acknowledged", as
   await fireEvent.press(screen.getByRole("button", { name: "Шинэ нууц үгээр нэвтрэх" }));
   expect(await screen.findByLabelText("Хэрэглэгчийн нэр")).toBeOnTheScreen();
   expect(screen).toHavePathname("/login");
-  expect(mockStore.has("lt.admin_reset")).toBe(false);
+  expect(mockStore.has("lt.notice")).toBe(false);
 });
 
 test("the admin-reset notice survives an app restart until acknowledged", async () => {
-  mockStore.set("lt.admin_reset", "1");
+  mockStore.set("lt.notice", JSON.stringify({ kind: "adminReset" }));
   await app("/");
   expect(await screen.findByText("Таны нууц үгийг админ шинэчилсэн байна")).toBeOnTheScreen();
-  expect(screen).toHavePathname("/admin-reset");
+  expect(screen).toHavePathname("/notice");
 });
 
 test("camera denied: settings button and the SMS-link alternative", async () => {

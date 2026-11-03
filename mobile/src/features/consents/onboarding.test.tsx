@@ -69,6 +69,8 @@ function route(extra: Record<string, Handler> = {}) {
   const handlers: Record<string, Handler> = {
     "/api/v1/auth/refresh": tokens,
     "/api/v1/healthz": () => json(200, { status: "ok" }),
+    "/api/v1/me": () => json(200, { locale: "mn" }),
+    "/api/v1/me/notifications": () => json(200, []),
     "/api/v1/me/consents": async (request) => {
       if (request.method === "GET") return json(200, consentState);
       const body = (await request.json()) as {

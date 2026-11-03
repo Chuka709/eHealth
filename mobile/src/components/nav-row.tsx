@@ -13,11 +13,14 @@ export function NavRow({
   hint,
   onPress,
   testID,
+  tone = "normal",
 }: {
   label: string;
   hint?: string;
   onPress: () => void;
   testID?: string;
+  /** "danger" for a row leading to an irreversible step (account deletion). */
+  tone?: "normal" | "danger";
 }) {
   const p = usePalette();
   return (
@@ -32,7 +35,9 @@ export function NavRow({
       ]}
     >
       <View style={styles.text}>
-        <Text style={[styles.label, { color: p.text }]}>{label}</Text>
+        <Text style={[styles.label, { color: tone === "danger" ? p.danger : p.text }]}>
+          {label}
+        </Text>
         {hint && <Text style={[styles.hint, { color: p.textMuted }]}>{hint}</Text>}
       </View>
       <Text importantForAccessibility="no" style={[styles.chevron, { color: p.textMuted }]}>

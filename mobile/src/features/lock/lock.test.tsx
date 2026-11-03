@@ -102,6 +102,7 @@ beforeEach(() => {
       });
     }
     if (path === "/api/v1/me/consents") return json(200, given);
+    if (path === "/api/v1/me/notifications") return json(200, []);
     if (path === "/api/v1/auth/logout") return new Response(null, { status: 204 });
     return json(200, { status: "ok" });
   });

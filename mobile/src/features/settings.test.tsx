@@ -99,6 +99,7 @@ function route(extra: Record<string, Handler> = {}) {
     "POST /api/v1/auth/password": () => new Response(null, { status: 204 }),
     "POST /api/v1/auth/logout": () => new Response(null, { status: 204 }),
     "GET /api/v1/healthz": () => json(200, { status: "ok" }),
+    "GET /api/v1/me/notifications": () => json(200, []),
     ...extra,
   };
   mockFetch.mockImplementation(async (input: Request | string, init?: RequestInit) => {

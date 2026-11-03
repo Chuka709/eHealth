@@ -6,8 +6,8 @@ import { useSession } from "@/features/auth/use-session";
 export default function AuthLayout() {
   const t = useTranslations("app.common");
   const status = useSession();
-  // After an admin reset the notice is the only screen until the user acknowledges it.
-  const adminReset = status === "adminReset";
+  // A notice (admin reset, report, deletion) is the only screen until the user acknowledges it.
+  const notice = status === "notice";
   return (
     <Stack
       screenOptions={{
@@ -18,14 +18,14 @@ export default function AuthLayout() {
         headerBackButtonDisplayMode: "minimal",
       }}
     >
-      <Stack.Protected guard={!adminReset}>
+      <Stack.Protected guard={!notice}>
         <Stack.Screen name="welcome" options={{ headerShown: false }} />
         <Stack.Screen name="activate" />
         <Stack.Screen name="login" />
         <Stack.Screen name="forgot" />
       </Stack.Protected>
-      <Stack.Protected guard={adminReset}>
-        <Stack.Screen name="admin-reset" options={{ headerShown: false }} />
+      <Stack.Protected guard={notice}>
+        <Stack.Screen name="notice" options={{ headerShown: false }} />
       </Stack.Protected>
     </Stack>
   );

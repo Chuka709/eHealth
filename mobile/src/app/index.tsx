@@ -8,5 +8,5 @@ export default function Index() {
   const status = useSession();
   const locked = useLocked();
   if (status === "signedIn") return <Redirect href={locked ? "/lock" : "/home"} />;
-  return <Redirect href={status === "adminReset" ? "/admin-reset" : "/welcome"} />;
+  return <Redirect href={status === "notice" ? "/notice" : "/welcome"} />;
 }

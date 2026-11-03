@@ -38,6 +38,8 @@
     "consent.required",
     "consent.version_outdated",
     "internal",
+    "me.account_not_active",
+    "me.deletion_not_allowed",
     "me.no_recent_admin_action",
     "me.notification_not_found",
     "not_found",

@@ -4,6 +4,7 @@ import { useTranslations } from "use-intl";
 import { Button } from "@/components/button";
 import { Screen } from "@/components/screen";
 import { Title } from "@/components/text";
+import { AdminNoticeBanner } from "@/features/me/admin-notice-banner";
 import { useMe } from "@/features/me/use-me";
 import { HealthStatus } from "@/features/status/health-status";
 
@@ -14,6 +15,7 @@ export default function HomeScreen() {
   useMe();
   return (
     <Screen>
+      <AdminNoticeBanner />
       <Title>{t("status.title")}</Title>
       <HealthStatus />
       <Button

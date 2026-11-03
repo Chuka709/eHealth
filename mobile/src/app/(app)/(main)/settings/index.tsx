@@ -45,6 +45,18 @@ export default function SettingsScreen() {
         onPress={() => router.push("/settings/devices")}
         testID="settings-devices"
       />
+      <NavRow
+        label={t("consentSettings.open")}
+        hint={t("consentSettings.hint")}
+        onPress={() => router.push("/settings/consents")}
+        testID="settings-consents"
+      />
+      <NavRow
+        label={t("adminHistory.open")}
+        hint={t("adminHistory.hint")}
+        onPress={() => router.push("/settings/admin-history")}
+        testID="settings-admin-history"
+      />
       {/* Its own block: the switch's label is the only label (nothing read twice). */}
       <View style={[styles.block, { backgroundColor: p.surface, borderColor: p.border }]}>
         <Host matchContents={{ vertical: true }} style={styles.wide}>
@@ -65,6 +77,15 @@ export default function SettingsScreen() {
       </View>
       <View style={styles.separated}>
         <Button variant="danger" label={t("settings.signOut")} onPress={confirmSignOut} />
+      </View>
+      <View style={styles.separated}>
+        <NavRow
+          tone="danger"
+          label={t("deleteAccount.open")}
+          hint={t("deleteAccount.hint")}
+          onPress={() => router.push("/settings/delete-account")}
+          testID="settings-delete-account"
+        />
       </View>
     </Screen>
   );

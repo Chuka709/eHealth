@@ -241,6 +241,10 @@ async def report_unwanted_admin_action(db: UserDb) -> Response:
     except DBAPIError as exc:
         if _sqlstate(exc) != "42501":
             raise
+        # Two refusals share the SQLSTATE (0007): tell them apart by the database message, so
+        # an already locked account is not told "no admin action in 30 days".
+        if "account not active" in str(exc.orig):
+            raise AppError(409, "me.account_not_active") from None
         raise AppError(409, "me.no_recent_admin_action") from None
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
@@ -265,5 +269,10 @@ async def delete_account(body: DeleteRequest, db: UserDb) -> DeletionOut:
     that needs an identity check and a new password."""
     username = (await db.execute(bound_text("select username::text from users"))).scalar_one()
     await auth_service.reverify_password(db, username=username, password=body.password)
-    scheduled = (await db.execute(bound_text("select request_account_deletion()"))).scalar_one()
+    try:
+        scheduled = (await db.execute(bound_text("select request_account_deletion()"))).scalar_one()
+    except DBAPIError as exc:
+        if _sqlstate(exc) != "42501":
+            raise
+        raise AppError(409, "me.deletion_not_allowed") from None  # e.g. not an active account
     return DeletionOut(scheduled_for=scheduled)

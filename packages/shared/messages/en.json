@@ -11,7 +11,8 @@
       "usernameFormat": "Enter the username exactly as on your sign-in card (Latin letters, digits, dot, underscore).",
       "cancel": "Cancel",
       "save": "Save",
-      "saved": "Saved."
+      "saved": "Saved.",
+      "understood": "Understood"
     },
     "passwordField": {
       "show": "Show password",
@@ -186,6 +187,91 @@
       "web": "Web",
       "signOutThis": "Sign out on this device",
       "revoked": "The device “{device}” was signed out."
+    },
+    "reported": {
+      "title": "Your account is locked",
+      "body": "You reported “I didn't ask for this”, so the account was locked and signed out everywhere. To open it again, call {phone} for an identity check.",
+      "bodyNoPhone": "You reported “I didn't ask for this”, so the account was locked and signed out everywhere. To open it again, contact your organisation's admin for an identity check."
+    },
+    "deleted": {
+      "title": "Deletion request received",
+      "body": "Your account and data will be erased for good on {date}. This phone was signed out.",
+      "undo": "If you change your mind, contact your organisation's admin before that date."
+    },
+    "notification": {
+      "banner": "An admin made a change to your account",
+      "when": "{what} — {date}",
+      "ifNotYou": "If you didn't ask for this, press “I didn't ask for this”.",
+      "account": {
+        "admin_reset": "An admin issued a code to reset your password",
+        "identity_set": "An admin registered your national ID"
+      },
+      "unknown": "An admin changed your account",
+      "wasMe": "This was my request"
+    },
+    "adminHistory": {
+      "title": "Admin history",
+      "open": "Admin history",
+      "hint": "See what admins did on your account",
+      "intro": "What admins did on your account. Admins do not see your health information.",
+      "none": "No admin actions yet.",
+      "role": {
+        "super_admin": "Super admin",
+        "support": "Support staff",
+        "unknown": "Admin"
+      },
+      "report": "I didn't ask for this",
+      "reportHint": "If an action in the last 30 days was not your request, press the button below.",
+      "reportTitle": "Lock your account?",
+      "reportBody": "Your account will be locked and signed out on every device. The admins get an alert. To open it again, call an admin for an identity check and set a new password.",
+      "reportConfirm": "Lock",
+      "noRecent": "There was no admin action in the last 30 days, so there is nothing to report.",
+      "whenWho": "{date} · {role}",
+      "reportLabel": "I didn't ask for this — lock my account"
+    },
+    "adminAction": {
+      "user_create": "Created the account",
+      "token_issue": "Issued an activation or password reset code",
+      "identity_check": "Checked who you are",
+      "identity_set": "Registered your national ID",
+      "phone_reveal": "Viewed your registered phone number",
+      "sms_target": "Sent an SMS to your phone",
+      "status_active": "Activated the account",
+      "status_locked": "Locked the account",
+      "status_disabled": "Disabled the account",
+      "lockout_clear": "Cleared a sign-in lockout",
+      "deletion_cancel": "Cancelled the account deletion",
+      "unknown": "Other admin action"
+    },
+    "deleteAccount": {
+      "title": "Delete account",
+      "open": "Delete account",
+      "what": "Your account, profile, results, medicines, transplant details and all other data will be erased for good after 30 days. Backup copies expire within the following 35 days.",
+      "shared": "Copies you have already shared yourself (PDFs, etc.) cannot be recalled by us.",
+      "undo": "If you change your mind within 30 days, contact an admin.",
+      "password": "Confirm with your password",
+      "passwordWrong": "The password is wrong.",
+      "submit": "Delete my account",
+      "confirmTitle": "Delete your account?",
+      "confirmBody": "All your data will be erased for good around {date}. This phone signs out now.",
+      "confirm": "Delete",
+      "hint": "All data is erased for good after 30 days"
+    },
+    "consentSettings": {
+      "title": "Consents",
+      "open": "Consents",
+      "hint": "See and withdraw the consents you gave",
+      "given": "Given: {date}",
+      "notGiven": "Not given",
+      "withdraw": "Withdraw",
+      "withdrawLabel": "Withdraw the consent “{consent}”",
+      "withdrawTitle": "Withdraw this consent?",
+      "withdrawBody": "The app cannot be used without this consent. After withdrawing, the consents screen opens; what you entered stays stored.",
+      "withdrawConfirm": "Withdraw"
+    },
+    "noticeGeneric": {
+      "title": "Signed out on this device",
+      "body": "Sign in again to continue."
     }
   },
   "status": {
@@ -242,7 +328,9 @@
     "internal": "Something went wrong. Try again; if it keeps happening, contact the system administrator.",
     "me": {
       "no_recent_admin_action": "No admin action on your account in the last 30 days.",
-      "notification_not_found": "Notification not found."
+      "notification_not_found": "Notification not found.",
+      "account_not_active": "Your account is not active, so this is not possible. Contact an admin.",
+      "deletion_not_allowed": "The account cannot be deleted right now. Contact an admin."
     },
     "not_found": "Not found.",
     "password": {

@@ -3,7 +3,8 @@
  * The access token lives only in memory (docs/08 security); it is never persisted.
  */
 
-export type AuthStatus = "loading" | "signedOut" | "signedIn" | "adminReset";
+/** "notice": signed out behind a notice that must be read first (see notice.ts). */
+export type AuthStatus = "loading" | "signedOut" | "signedIn" | "notice";
 
 let status: AuthStatus = "loading";
 let access: { token: string; expiresAt: number } | null = null;

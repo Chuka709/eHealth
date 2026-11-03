@@ -181,7 +181,7 @@ test("the admin-reset notice is not replaced by later signed-out refreshes", asy
   expect(mockStore.has("lt.device")).toBe(false);
   expect(await refreshSession()).toBe("signedOut");
   await wipeLocal("signedOut");
-  expect(getStatus()).toBe("adminReset");
+  expect(getStatus()).toBe("notice");
 });
 
 test("concurrent refreshes share one rotation (single-flight)", async () => {
@@ -225,7 +225,7 @@ test("admin_reset wipes credentials and cache and the trusted-device token", asy
   });
 
   expect(await refreshSession()).toBe("adminReset");
-  expect(getStatus()).toBe("adminReset");
+  expect(getStatus()).toBe("notice");
   expect(mockStore.has("lt.refresh")).toBe(false);
   expect(mockStore.has("lt.device")).toBe(false);
   expect(queryClient.getQueryData(["me"])).toBeUndefined();

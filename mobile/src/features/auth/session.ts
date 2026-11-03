@@ -7,6 +7,7 @@ import { queryClient } from "@/lib/query-client";
 
 import { clearPendingActivationToken } from "./activation-link";
 import { onFreshInstall } from "./install-marker";
+import { type Notice, parseNotice, setNotice } from "./notice";
 import { deleteSecure, readSecure, type SecureKey, secureKeys, writeSecure } from "./secure-tokens";
 import { clearAccessToken, getStatus, setAccessToken, setStatus } from "./session-store";
 
@@ -24,9 +25,11 @@ export async function restoreSession(): Promise<void> {
   try {
     // iOS keeps Keychain items after uninstall: a fresh install must not inherit a session.
     await onFreshInstall(() => deleteSecure(...(Object.values(secureKeys) as SecureKey[])));
-    // An unacknowledged admin-reset notice survives a restart (docs/04 §1 step 5a).
-    if (await readSecure(secureKeys.adminResetNotice)) {
-      setStatus("adminReset");
+    // An unread notice (admin reset, report, deletion) survives a restart (docs/04 §1 5a).
+    const notice = parseNotice(await readSecure(secureKeys.notice));
+    if (notice) {
+      setNotice(notice);
+      setStatus("notice");
       return;
     }
     const signedIn = Boolean(await readSecure(secureKeys.refresh));
@@ -72,7 +75,7 @@ async function runRefresh(): Promise<RefreshOutcome> {
   } catch {
     return "offline"; // Keychain not readable right now (locked phone); try again later
   }
-  // Already wiped: keep the current status (e.g. adminReset stays visible to the user).
+  // Already wiped: keep the current status (e.g. a notice stays visible to the user).
   if (!refreshToken) return "signedOut";
   let result: Awaited<ReturnType<typeof postRefresh>>;
   try {
@@ -95,9 +98,12 @@ async function runRefresh(): Promise<RefreshOutcome> {
     return "ok";
   }
   if (response.status === 401) {
-    const next = error?.code === "auth.admin_reset" ? "adminReset" : "signedOut";
-    await wipeLocal(next);
-    return next;
+    if (error?.code === "auth.admin_reset") {
+      await wipeLocal({ kind: "adminReset" });
+      return "adminReset";
+    }
+    await wipeLocal("signedOut");
+    return "signedOut";
   }
   return "offline"; // 429 / 5xx: the session may still be valid
 }
@@ -121,13 +127,14 @@ export async function signOut(): Promise<void> {
 
 /**
  * Removes every credential and cached response from the device (CLAUDE.md rule 8).
- * The trusted-device token stays on a normal sign-out (see `secureKeys.device`); it goes after
- * an admin reset (the server has dropped the trust) or when `forgetDevice` is set.
+ * The trusted-device token stays on a normal sign-out (see `secureKeys.device`); it goes with
+ * any notice (admin reset, report, deletion: the account is not simply signed out) or when
+ * `forgetDevice` is set.
  * TODO(phase2): also clear the encrypted MMKV cache/queue and scheduled local reminders.
  */
 export async function wipeLocal(
-  next: "signedOut" | "adminReset",
-  { forgetDevice = next === "adminReset" }: { forgetDevice?: boolean } = {},
+  next: "signedOut" | Notice,
+  { forgetDevice = next !== "signedOut" }: { forgetDevice?: boolean } = {},
 ): Promise<void> {
   epoch += 1;
   clearAccessToken();
@@ -137,21 +144,29 @@ export async function wipeLocal(
   await queryClient.cancelQueries();
   queryClient.clear();
   try {
+    // The notice first: if the app dies mid-wipe, the next start still shows it (restoreSession
+    // reads the notice before the refresh token).
+    if (next !== "signedOut") await writeSecure(secureKeys.notice, JSON.stringify(next));
     // The biometric choice and unlock key belong to the user who signed out, not the phone.
     const keys = [secureKeys.refresh, secureKeys.biometric, secureKeys.unlockGate];
     await deleteSecure(...(forgetDevice ? [...keys, secureKeys.device] : keys));
-    if (next === "adminReset") await writeSecure(secureKeys.adminResetNotice, "1");
   } finally {
-    // An admin-reset notice is not replaced by a later, plainer "signed out".
-    if (!(next === "signedOut" && getStatus() === "adminReset")) setStatus(next);
+    // A notice is not replaced by a later, plainer "signed out".
+    if (next !== "signedOut") {
+      setNotice(next);
+      setStatus("notice");
+    } else if (getStatus() !== "notice") {
+      setStatus("signedOut");
+    }
     // Only now, with the status no longer signedIn: unlocking any earlier would mount the
     // signed-in screens for a moment (and let them start requests) during the wipe.
     setLocked(false);
   }
 }
 
-/** The user has read the admin-reset notice; continue to sign-in. */
-export async function acknowledgeAdminReset(): Promise<void> {
-  await deleteSecure(secureKeys.adminResetNotice).catch(() => undefined);
+/** The user has read the notice; continue signed out. */
+export async function acknowledgeNotice(): Promise<void> {
+  await deleteSecure(secureKeys.notice).catch(() => undefined);
+  setNotice(null);
   setStatus("signedOut");
 }
