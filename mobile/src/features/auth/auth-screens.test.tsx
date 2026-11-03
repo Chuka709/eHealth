@@ -1,12 +1,12 @@
-import { act, fireEvent, renderRouter, screen } from "expo-router/testing-library";
+import { fireEvent, renderRouter, screen } from "expo-router/testing-library";
 import type { ReactNode } from "react";
 import { AccessibilityInfo, Linking } from "react-native";
 
 import { apiBaseUrl } from "@/lib/api-base";
+import { queryClient } from "@/lib/query-client";
 
 import { setPendingActivationToken } from "./activation-link";
-import { refreshSession } from "./session";
-import { getStatus, setStatus } from "./session-store";
+import { clearAccessToken, getStatus, setStatus } from "./session-store";
 
 const mockStore = new Map<string, string>();
 const mockCamera = { qr: "", permission: { granted: true, canAskAgain: true } };
@@ -35,6 +35,10 @@ jest.mock("expo-screen-capture", () => ({
   disableAppSwitcherProtectionAsync: jest.fn(async () => undefined),
 }));
 jest.mock("expo-device", () => ({ modelName: "Pixel 8" }));
+jest.mock("expo-local-authentication", () => ({
+  hasHardwareAsync: jest.fn(async () => false),
+  isEnrolledAsync: jest.fn(async () => false),
+}));
 jest.mock("expo-camera", () => {
   const { Pressable: P } = jest.requireActual<typeof import("react-native")>("react-native");
   return {
@@ -57,6 +61,17 @@ jest.mock("@/lib/support", () => ({ supportPhone: "7011 0000", supportPhoneUrl: 
 const openURL = jest.spyOn(Linking, "openURL").mockResolvedValue(undefined);
 jest.spyOn(AccessibilityInfo, "announceForAccessibility");
 
+const allGiven = ["terms", "privacy", "sensitive_data", "ai_processing", "cross_border"].map(
+  (kind) => ({
+    kind,
+    current_version: "v1",
+    granted: true,
+    granted_version: "v1",
+    at: "2026-10-29T00:00:00Z",
+    required: !kind.startsWith("ai") && kind !== "cross_border",
+  }),
+);
+
 type Handler = (request: Request) => Promise<Response> | Response;
 const mockFetch = jest.fn<Promise<Response>, [Request]>();
 const json = (status: number, body: unknown) =>
@@ -67,6 +82,8 @@ function route(handlers: Record<string, Handler>) {
   mockFetch.mockImplementation(async (input: Request | string, init?: RequestInit) => {
     const request = typeof input === "string" ? new Request(input, init) : input;
     const handler = handlers[request.url.slice(apiBaseUrl.length)];
+    // Signed-in screens need the consents; all given unless a test says otherwise.
+    if (!handler && request.url.endsWith("/api/v1/me/consents")) return json(200, allGiven);
     if (!handler) return json(200, { status: "ok" });
     return handler(request);
   });
@@ -82,6 +99,9 @@ const token = `${"T".repeat(30)}_-abc123XYZ90`;
 const link = `labtrack://activate#${token}`;
 
 beforeEach(() => {
+  // Module state shared by the app (cache, session) must not leak between tests.
+  queryClient.clear();
+  clearAccessToken();
   mockStore.clear();
   mockFetch.mockReset();
   route({});
@@ -230,9 +250,8 @@ test("after an admin reset the notice is the only screen until acknowledged", as
   mockStore.set("lt.refresh", "r0");
   route({ "/api/v1/auth/refresh": () => err(401, "auth.admin_reset") });
   await app("/");
-  expect(await screen.findByText("Системийн төлөв")).toBeOnTheScreen(); // signed in from storage
-  // The next authenticated request refreshes and learns about the reset.
-  await act(() => refreshSession());
+  // Signed in from storage; the first authenticated request (the consents check) refreshes
+  // and learns about the reset.
   expect(await screen.findByText("Таны нууц үгийг админ шинэчилсэн байна")).toBeOnTheScreen();
   expect(screen.getByText(/7011 0000 руу нэн даруй залгана уу/)).toBeOnTheScreen();
   expect(mockStore.has("lt.refresh")).toBe(false);

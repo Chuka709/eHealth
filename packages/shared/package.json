@@ -8,7 +8,8 @@
   "exports": {
     ".": "./src/index.ts",
     "./messages/mn.json": "./messages/mn.json",
-    "./messages/en.json": "./messages/en.json"
+    "./messages/en.json": "./messages/en.json",
+    "./consent-versions.json": "./consent-versions.json"
   },
   "scripts": {
     "gen": "openapi-typescript openapi.json -o src/api/schema.d.ts",

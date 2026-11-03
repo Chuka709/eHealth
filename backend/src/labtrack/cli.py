@@ -29,6 +29,14 @@ def _error_codes(out: Path) -> None:
     out.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8", newline="\n")
 
 
+def _consent_versions(out: Path) -> None:
+    """The consent text versions the app bundles next to its texts: the app sends these, not
+    the server's, so a consent always names the text the user actually read."""
+    from labtrack.consents import VERSIONS  # noqa: PLC0415
+
+    out.write_text(json.dumps(VERSIONS, indent=2) + "\n", encoding="utf-8", newline="\n")
+
+
 def _seed(seed_dir: Path) -> int:
     from labtrack.seed import SeedError, run  # noqa: PLC0415
 
@@ -95,6 +103,8 @@ def main(argv: list[str] | None = None) -> int:
     p_openapi.add_argument("out", type=Path)
     p_codes = sub.add_parser("error-codes", help="write the API error codes as JSON")
     p_codes.add_argument("out", type=Path)
+    p_consents = sub.add_parser("consent-versions", help="write consent text versions as JSON")
+    p_consents.add_argument("out", type=Path)
     p_seed = sub.add_parser("seed", help="load seed/ catalogs as labtrack_owner (idempotent)")
     p_seed.add_argument("--dir", type=Path, default=Path(os.environ.get("SEED_DIR", "/seed")))
     p_admin = sub.add_parser("create-admin", help="create an admin account with TOTP")
@@ -105,11 +115,13 @@ def main(argv: list[str] | None = None) -> int:
     p_unlock.add_argument("username")
 
     args = parser.parse_args(argv)
-    if args.command == "openapi":
-        _openapi(args.out)
-        return 0
-    if args.command == "error-codes":
-        _error_codes(args.out)
+    writers = {
+        "openapi": _openapi,
+        "error-codes": _error_codes,
+        "consent-versions": _consent_versions,
+    }
+    if args.command in writers:
+        writers[args.command](args.out)
         return 0
     if args.command == "seed":
         return _seed(args.dir)

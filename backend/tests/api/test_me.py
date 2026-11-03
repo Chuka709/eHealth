@@ -62,18 +62,26 @@ async def test_consents_are_appended_and_versioned(
         assert (
             await c.post("/api/v1/me/consents", json={"items": ALL}, headers=h)
         ).status_code == 204
-        withdraw = [
-            {
-                "kind": "ai_processing",
-                "version": consents.VERSIONS["ai_processing"],
-                "granted": False,
-            }
-        ]
-        await c.post("/api/v1/me/consents", json={"items": withdraw}, headers=h)
+
+        def ai(processing: bool | None, cross_border: bool | None) -> list[dict[str, object]]:
+            return [
+                {"kind": kind, "version": consents.VERSIONS[kind], "granted": granted}
+                for kind, granted in (("ai_processing", processing), ("cross_border", cross_border))
+                if granted is not None
+            ]
+
+        # The AI pair is given together (both are needed for AI extraction)...
+        for half in (ai(True, None), ai(None, True), ai(True, False)):
+            r = await c.post("/api/v1/me/consents", json={"items": half}, headers=h)
+            assert r.status_code == 422
+        # ...but withdrawing is never harder than giving: one alone is fine.
+        r = await c.post("/api/v1/me/consents", json={"items": ai(False, None)}, headers=h)
+        assert r.status_code == 204
+        await c.post("/api/v1/me/consents", json={"items": ai(None, False)}, headers=h)
         after = {
             s["kind"]: s["granted"] for s in (await c.get("/api/v1/me/consents", headers=h)).json()
         }
-        assert after == {k: k != "ai_processing" for k in consents.VERSIONS}
+        assert after == {k: k not in consents.AI_EXTRACTION for k in consents.VERSIONS}
         old = [{"kind": "terms", "version": "0", "granted": True}]
         r = await c.post("/api/v1/me/consents", json={"items": old}, headers=h)
         assert (r.status_code, r.json()["code"]) == (409, "consent.version_outdated")

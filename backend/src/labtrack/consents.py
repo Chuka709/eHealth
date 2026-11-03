@@ -19,7 +19,8 @@ from labtrack.db.sql import bound_text
 
 Kind = Literal["terms", "privacy", "sensitive_data", "ai_processing", "cross_border"]
 
-# Text version shown to the user; bump when the text changes (mn.json/en.json keys follow it).
+# Text version shown to the user; bump when the text changes (mn.json/en.json app.consent.*),
+# then `just gen-client` so the app bundles the new version with the new text.
 VERSIONS: Final[dict[Kind, str]] = {
     "terms": "draft-2026-10",
     "privacy": "draft-2026-10",

@@ -69,6 +69,53 @@
       "ifNotYou": "If you did not ask for this, call {phone} right away.",
       "ifNotYouNoPhone": "If you did not ask for this, contact your organisation's admin right away.",
       "login": "Sign in with the new password"
+    },
+    "consent": {
+      "title": "Consents",
+      "intro": "Before using LabTrack MN, read and accept the terms below. You can review and withdraw your consents later in Settings.",
+      "updated": "The terms have changed. Please read and accept them again.",
+      "draft": "Draft text — under legal review.",
+      "required": "Required",
+      "optional": "Not required",
+      "readMore": "Read more",
+      "readLess": "Show less",
+      "continue": "Continue",
+      "needAll": "To continue, give the three required consents.",
+      "decline": "I don't agree",
+      "declined": "Without these consents LabTrack MN cannot store your health information, so the app cannot be used. You can come back and agree later.",
+      "backToConsents": "Back to consents",
+      "outdated": "The terms were just updated. Read the new version and accept again.",
+      "terms": {
+        "title": "Terms of service",
+        "summary": "LabTrack MN is a tool to organise and keep your test results, medicines and treatments. It gives no diagnosis or treatment advice — ask your doctor about health questions.",
+        "body": "The app is for organising, storing and reviewing information, reminders you set up, and sharing with people you choose. It does not suggest medicine doses, check drug interactions or interpret results. Only your organisation's admin creates accounts; you set your own password and the admin never knows it. You can delete your account at any time in Settings."
+      },
+      "privacy": {
+        "title": "Privacy policy",
+        "summary": "Explains who is responsible for your data, where it is kept, who it is shared with and for how long.",
+        "body": "The data controller is the company that provides the app. Data is kept on servers in Mongolia and sent over encrypted connections. Admins cannot see your health information — only in a documented emergency approved by two admins, which then shows in the admin history in the app. Data is passed only to people you allow (doctor, caregiver) and to contracted providers needed to run the service (hosting, SMS, notifications; and the AI service if you allow AI). You have the right to see, correct and delete your data. After you ask to delete your account, data is erased for good after 30 days; backup copies expire within a limited time. Copies you have already shared yourself (PDFs, etc.) cannot be recalled by us."
+      },
+      "sensitive_data": {
+        "title": "Processing health information",
+        "summary": "Test results, medicines and transplant details are sensitive data under the law, so separate consent is needed.",
+        "body": "Under the Law on Personal Data Protection, health information is sensitive data. You agree that the results, medicines, treatments and transplant details you enter are processed only for this app's service (storing, organising, charts, reminders, sharing). If you withdraw this consent, the app can no longer be used; what you entered stays stored and you can have your account deleted."
+      },
+      "ai": {
+        "title": "Read results with AI",
+        "summary": "Photos and PDFs of your results are sent to an AI service in the USA (Anthropic Claude) to read the values automatically. Without this, you enter values by hand.",
+        "body": "This consent has two parts: (1) processing documents with AI, and (2) transferring data outside Mongolia (to the USA). Values read by the AI are stored as a draft; they appear in charts and summaries only after you check and confirm them (a value that may need urgent attention is flagged before that). How long the provider keeps sent documents is set out in the privacy policy. You can withdraw at any time; from then on no document is sent abroad, but documents already sent cannot be recalled."
+      },
+      "missingOne": "Required — not given yet.",
+      "appOutdated": "The terms have a new version, so please update the app. After updating, read the new text and accept it."
+    },
+    "biometric": {
+      "title": "Open the app quickly and safely",
+      "body": "Unlock with biometrics (fingerprint or face) when you open the app and after {minutes} minutes away? Your biometric data stays on the phone and is never sent to us.",
+      "enable": "Lock with biometrics",
+      "skip": "Not now",
+      "prompt": "Unlock LabTrack MN",
+      "failed": "Could not confirm. Try again or choose \"Not now\".",
+      "later": "You can turn this on later in Settings."
     }
   },
   "status": {

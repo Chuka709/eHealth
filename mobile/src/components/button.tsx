@@ -12,6 +12,8 @@ interface ButtonProps {
   disabled?: boolean;
   /** Spoken label when it differs from the visible text (e.g. adds context). */
   accessibilityLabel?: string;
+  /** For show/hide toggles: announced as expanded/collapsed (role button, not link). */
+  expanded?: boolean;
 }
 
 export function Button({
@@ -21,6 +23,7 @@ export function Button({
   busy = false,
   disabled = false,
   accessibilityLabel,
+  expanded,
 }: ButtonProps) {
   const p = usePalette();
   const inactive = disabled || busy;
@@ -29,9 +32,9 @@ export function Button({
     <Pressable
       onPress={onPress}
       disabled={inactive}
-      accessibilityRole={variant === "link" ? "link" : "button"}
+      accessibilityRole={variant === "link" && expanded === undefined ? "link" : "button"}
       accessibilityLabel={accessibilityLabel ?? label}
-      accessibilityState={{ disabled: inactive, busy }}
+      accessibilityState={{ disabled: inactive, busy, expanded }}
       style={({ pressed }) => [
         styles.button,
         filled && { backgroundColor: p.primary },

@@ -82,11 +82,12 @@ web:
 gen-client:
     cd backend; uv run python -m labtrack.cli openapi ../packages/shared/openapi.json
     cd backend; uv run python -m labtrack.cli error-codes ../packages/shared/error-codes.json
+    cd backend; uv run python -m labtrack.cli consent-versions ../packages/shared/consent-versions.json
     {{pnpm}} --filter @labtrack/shared gen
 
 # CI: fail if the committed client is stale
 check-client: gen-client
-    git diff --exit-code -- packages/shared/openapi.json packages/shared/src/api/schema.d.ts packages/shared/error-codes.json
+    git diff --exit-code -- packages/shared/openapi.json packages/shared/src/api/schema.d.ts packages/shared/error-codes.json packages/shared/consent-versions.json
 
 # --- Aggregates ---
 lint: lint-api lint-js

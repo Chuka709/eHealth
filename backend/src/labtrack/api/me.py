@@ -150,6 +150,13 @@ async def give_consents(body: ConsentRequest, db: UserDb) -> Response:
     version: withdrawing must never be harder than giving)."""
     if len({i.kind for i in body.items}) != len(body.items):
         raise AppError(422, "validation")
+    # AI extraction needs both (processing + transfer abroad), so they are given together.
+    # Withdrawing either one alone stays possible (it already stops AI extraction).
+    ai = [i for i in body.items if i.kind in consents.AI_EXTRACTION]
+    if any(i.granted for i in ai) and (
+        len(ai) != len(consents.AI_EXTRACTION) or not all(i.granted for i in ai)
+    ):
+        raise AppError(422, "validation")
     if any(i.granted and i.version != consents.VERSIONS[i.kind] for i in body.items):
         raise AppError(409, "consent.version_outdated")
     # One writer per user at a time, so the latest row is also the last one committed.

@@ -17,6 +17,8 @@ export const secureKeys = {
   device: "lt.device",
   /** Set when an admin reset ended the session; cleared once the user has seen the notice. */
   adminResetNotice: "lt.admin_reset",
+  /** Biometric unlock choice of the signed-in user: "on" | "off" (removed on sign-out). */
+  biometric: "lt.biometric",
 } as const;
 
 export type SecureKey = (typeof secureKeys)[keyof typeof secureKeys];

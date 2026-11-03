@@ -5,7 +5,7 @@ import { queryClient } from "@/lib/query-client";
 
 import { clearPendingActivationToken } from "./activation-link";
 import { onFreshInstall } from "./install-marker";
-import { deleteSecure, readSecure, secureKeys, writeSecure } from "./secure-tokens";
+import { deleteSecure, readSecure, type SecureKey, secureKeys, writeSecure } from "./secure-tokens";
 import { clearAccessToken, getStatus, setAccessToken, setStatus } from "./session-store";
 
 type TokenResponse = components["schemas"]["TokenResponse"];
@@ -21,9 +21,7 @@ let epoch = 0;
 export async function restoreSession(): Promise<void> {
   try {
     // iOS keeps Keychain items after uninstall: a fresh install must not inherit a session.
-    await onFreshInstall(() =>
-      deleteSecure(secureKeys.refresh, secureKeys.device, secureKeys.adminResetNotice),
-    );
+    await onFreshInstall(() => deleteSecure(...(Object.values(secureKeys) as SecureKey[])));
     // An unacknowledged admin-reset notice survives a restart (docs/04 §1 step 5a).
     if (await readSecure(secureKeys.adminResetNotice)) {
       setStatus("adminReset");
@@ -129,9 +127,9 @@ export async function wipeLocal(
   await queryClient.cancelQueries();
   queryClient.clear();
   try {
-    await deleteSecure(
-      ...(forgetDevice ? [secureKeys.refresh, secureKeys.device] : [secureKeys.refresh]),
-    );
+    // The biometric choice belongs to the user who signed out, not to the phone.
+    const keys = [secureKeys.refresh, secureKeys.biometric];
+    await deleteSecure(...(forgetDevice ? [...keys, secureKeys.device] : keys));
     if (next === "adminReset") await writeSecure(secureKeys.adminResetNotice, "1");
   } finally {
     // An admin-reset notice is not replaced by a later, plainer "signed out".
