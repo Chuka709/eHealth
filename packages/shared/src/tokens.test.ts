@@ -27,6 +27,8 @@ for (const scheme of ["light", "dark"] as Scheme[]) {
       assert.ok(contrast(p.textMuted, bg) >= AA_TEXT);
     }
     assert.ok(contrast(p.onPrimary, p.primary) >= AA_TEXT);
+    // Danger is used as text/outline on the background and surface.
+    for (const bg of [p.background, p.surface]) assert.ok(contrast(p.danger, bg) >= AA_TEXT);
   });
 
   test(`${scheme}: every flag badge meets AA`, () => {

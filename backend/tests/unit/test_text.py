@@ -1,7 +1,9 @@
+import unicodedata
+
 from hypothesis import given
 from hypothesis import strategies as st
 
-from labtrack.core.text import normalize_name, normalize_unit
+from labtrack.core.text import clean_device_label, normalize_name, normalize_unit
 
 # Cyrillic letters that print identically to Latin ones.
 _HOMOGLYPHS = {
@@ -52,3 +54,22 @@ def test_normalisation_is_idempotent(text: str) -> None:
 def test_unit_keys_unify_micro_signs_case_and_spaces() -> None:
     assert normalize_unit("μmol/L") == normalize_unit("µmol/l") == normalize_unit(" µmol / L")
     assert normalize_unit("ммоль/л") == "ммоль/л"
+
+
+@given(st.text(max_size=300))
+def test_device_labels_never_carry_invisible_characters(label: str) -> None:
+    cleaned = clean_device_label(label)
+    if cleaned is None:
+        return
+    assert len(cleaned) <= 100
+    assert cleaned == cleaned.strip()
+    assert not any(unicodedata.category(ch) in {"Cc", "Cf"} for ch in cleaned)
+
+
+def test_device_label_examples() -> None:
+    assert clean_device_label("Pixel 8") == "Pixel 8"
+    rtl, pop = chr(0x202E), chr(0x202C)  # bidi override + pop
+    assert clean_device_label(f"{rtl}Энэ төхөөрөмж{pop}") == "Энэ төхөөрөмж"
+    assert clean_device_label("a\u200b\u200bb  \n c") == "ab c"
+    assert clean_device_label("\u200b \t") is None
+    assert clean_device_label(None) is None

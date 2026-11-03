@@ -3,9 +3,18 @@ import { useTranslations } from "use-intl";
 
 /**
  * Every signed-in screen except onboarding lives in this group, so a new screen is behind the
- * consent/onboarding guard of (app)/_layout by default.
+ * consent/onboarding guard of (app)/_layout by default. Each screen names itself in the header
+ * (read first by screen readers); the back button says "Back" in the app language.
  */
 export default function MainLayout() {
   const t = useTranslations("app");
-  return <Stack screenOptions={{ headerTitle: t("name") }} />;
+  return (
+    <Stack screenOptions={{ headerBackTitle: t("common.back") }}>
+      <Stack.Screen name="home" options={{ title: t("name") }} />
+      <Stack.Screen name="settings/index" options={{ title: t("settings.title") }} />
+      <Stack.Screen name="settings/profile" options={{ title: t("profile.title") }} />
+      <Stack.Screen name="settings/password" options={{ title: t("passwordChange.title") }} />
+      <Stack.Screen name="settings/devices" options={{ title: t("devices.title") }} />
+    </Stack>
+  );
 }

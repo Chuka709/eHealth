@@ -15,6 +15,8 @@ interface Palette {
   border: string;
   primary: string;
   onPrimary: string;
+  /** Destructive actions (sign out, delete). Not a clinical flag colour. */
+  danger: string;
   flag: Record<Flag, { fg: string; bg: string }>;
 }
 
@@ -27,6 +29,7 @@ export const colors: Record<Scheme, Palette> = {
     border: "#D1D5DB",
     primary: "#0B5FA5",
     onPrimary: "#FFFFFF",
+    danger: "#9F1239",
     flag: {
       normal: { fg: "#166534", bg: "#DCFCE7" },
       low: { fg: "#1E40AF", bg: "#DBEAFE" },
@@ -44,6 +47,7 @@ export const colors: Record<Scheme, Palette> = {
     border: "#30363D",
     primary: "#60A5FA",
     onPrimary: "#0B0F14",
+    danger: "#FDA4AF",
     flag: {
       normal: { fg: "#86EFAC", bg: "#14301F" },
       low: { fg: "#93C5FD", bg: "#172554" },

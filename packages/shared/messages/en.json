@@ -8,7 +8,10 @@
       "signOut": "Sign out",
       "loading": "Loading…",
       "back": "Back",
-      "usernameFormat": "Enter the username exactly as on your sign-in card (Latin letters, digits, dot, underscore)."
+      "usernameFormat": "Enter the username exactly as on your sign-in card (Latin letters, digits, dot, underscore).",
+      "cancel": "Cancel",
+      "save": "Save",
+      "saved": "Saved."
     },
     "passwordField": {
       "show": "Show password",
@@ -125,6 +128,64 @@
       "failed": "Could not unlock. Try again, or sign out and sign in again with your password.",
       "changed": "The phone's biometric settings changed (a finger or face was added or removed), so for your security sign in again with your password.",
       "usePassword": "Sign out and sign in with password"
+    },
+    "settings": {
+      "title": "Settings",
+      "open": "Settings",
+      "profile": "Profile",
+      "profileHint": "Name, language",
+      "password": "Change password",
+      "devices": "Signed-in devices",
+      "devicesHint": "See which phones are signed in and sign them out",
+      "biometric": "Lock with biometrics",
+      "biometricHint": "When opening the app and after {minutes} minutes away",
+      "biometricUnavailable": "This phone has no fingerprint or face unlock set up.",
+      "biometricFailed": "Could not confirm with biometrics. Nothing was changed.",
+      "biometricDisablePrompt": "Confirm to turn off the biometric lock",
+      "signOut": "Sign out",
+      "signOutConfirmTitle": "Sign out on this phone?",
+      "signOutConfirmBody": "Your sign-in and the temporary data on this phone will be removed. Your account and history stay on the server. To come back, sign in with your username and password."
+    },
+    "profile": {
+      "title": "Profile",
+      "username": "Username",
+      "displayName": "Display name",
+      "displayNameRequired": "Enter your name.",
+      "language": "Language",
+      "mn": "Монгол",
+      "en": "English",
+      "usernameValue": "Username: {username}",
+      "displayNameInvalid": "The name has characters that are not allowed or is too long (up to 80 characters)."
+    },
+    "passwordChange": {
+      "title": "Change password",
+      "current": "Current password",
+      "currentWrong": "The current password is wrong.",
+      "new": "New password",
+      "confirm": "Repeat the new password",
+      "signOutOthers": "Sign out all other devices",
+      "signOutOthersHint": "Keep this on if you think someone may know your password.",
+      "submit": "Change password",
+      "done": "Your password was changed.",
+      "doneOthers": "Your password was changed and other devices were signed out."
+    },
+    "devices": {
+      "title": "Signed-in devices",
+      "intro": "Devices signed in to your account. If you see one you don't know, sign it out and change your password.",
+      "thisDevice": "This device",
+      "unknownDevice": "Unknown device",
+      "lastUsed": "Last used: {date}",
+      "since": "Signed in: {date}",
+      "signOutDevice": "Sign out",
+      "signOutDeviceLabel": "Sign out the device “{device}”",
+      "confirmTitle": "Sign out this device?",
+      "confirmBody": "The session on {device} ends now.",
+      "none": "No other devices.",
+      "ios": "iPhone",
+      "android": "Android",
+      "web": "Web",
+      "signOutThis": "Sign out on this device",
+      "revoked": "The device “{device}” was signed out."
     }
   },
   "status": {

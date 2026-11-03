@@ -6,13 +6,14 @@ from typing import Annotated, Literal
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Request, Response, status
-from pydantic import BaseModel, ConfigDict, Field, StringConstraints
+from pydantic import AfterValidator, BaseModel, ConfigDict, Field, StringConstraints
 
 from labtrack.api.deps import AnonymousDb, Claims, UserDb, client_ip, presented_credentials
 from labtrack.api.errors import AppError, ErrorBody
 from labtrack.api.ratelimit import per_ip
 from labtrack.auth import service
 from labtrack.config import get_settings
+from labtrack.core.text import clean_device_label
 from labtrack.db.sql import bound_text
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -36,7 +37,9 @@ class _Strict(BaseModel):
 class LoginRequest(_Strict):
     username: Username
     password: Password
-    device_name: Annotated[str, StringConstraints(max_length=100)] | None = None
+    device_name: Annotated[
+        str | None, StringConstraints(max_length=200), AfterValidator(clean_device_label)
+    ] = None
     platform: Literal["ios", "android", "web"]
     device_token: OpaqueToken | None = None
 
@@ -57,6 +60,8 @@ class ChangePasswordRequest(_Strict):
     current_password: Password
     new_password: Password
     sign_out_other_devices: bool = True
+    # This phone's trusted-device token: it keeps its trust, every other device loses it.
+    device_token: OpaqueToken | None = None
 
 
 class TokenResponse(BaseModel):
@@ -154,6 +159,7 @@ async def change_password(body: ChangePasswordRequest, claims: Claims, db: UserD
         new_password=body.new_password,
         current_session=claims.session_id,
         sign_out_other_devices=body.sign_out_other_devices,
+        device_token=body.device_token,
     )
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 

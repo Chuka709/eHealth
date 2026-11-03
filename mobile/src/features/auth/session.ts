@@ -2,6 +2,7 @@ import type { components } from "@labtrack/shared";
 
 import { setBiometricOn, setLocked } from "@/features/lock/lock-store";
 import { publicApi } from "@/lib/api-base";
+import { setLocale } from "@/lib/i18n";
 import { queryClient } from "@/lib/query-client";
 
 import { clearPendingActivationToken } from "./activation-link";
@@ -132,6 +133,7 @@ export async function wipeLocal(
   clearAccessToken();
   clearPendingActivationToken();
   setBiometricOn(false);
+  setLocale("mn"); // the next user starts in the default language
   await queryClient.cancelQueries();
   queryClient.clear();
   try {

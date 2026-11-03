@@ -29,6 +29,18 @@ def normalize_unit(text: str) -> str:
     return re.sub(r"\s+", "", s).casefold()
 
 
+def clean_device_label(label: str | None) -> str | None:
+    """A device name as sent by a client, safe to show in "Signed-in devices": control and
+    format characters (bidi overrides, zero-width) removed, spaces collapsed, at most 100
+    characters; None when nothing is left. A client cannot make a label look like UI text
+    through invisible characters."""
+    if label is None:
+        return None
+    kept = "".join(ch for ch in label if unicodedata.category(ch) not in {"Cc", "Cf"})
+    collapsed = " ".join(kept.split())[:100]
+    return collapsed or None
+
+
 def valid_display_name(name: str) -> bool:
     """1-100 characters, no control or format characters (bidi overrides, zero-width)."""
     return 1 <= len(name) <= 100 and not any(  # noqa: PLR2004

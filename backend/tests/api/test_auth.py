@@ -413,6 +413,43 @@ async def test_password_change_signs_out_other_devices(
         assert (await _login(c, username, password=NEW_PASSWORD)).status_code == 200
 
 
+@pytest.mark.parametrize("sign_out_others", [False, True])
+async def test_password_change_keeps_only_this_devices_trust(
+    owner_engine: AsyncEngine, client_from: ClientFactory, sign_out_others: bool
+) -> None:
+    """Whoever knew the old password loses a trusted device's softer lockout; the phone that
+    changes the password keeps it - whether or not the others are signed out (1.11e M1)."""
+    uid, username = await make_active_user(owner_engine)
+    async with client_from() as c:
+        phone = (await _login(c, username)).json()
+        tablet = (await _login(c, username)).json()
+        assert phone["device_token"]
+        assert tablet["device_token"]
+        ok = await c.post(
+            "/api/v1/auth/password",
+            headers=_auth(phone["access_token"]),
+            json={
+                "current_password": PASSWORD,
+                "new_password": NEW_PASSWORD,
+                "sign_out_other_devices": sign_out_others,
+                "device_token": phone["device_token"],
+            },
+        )
+        assert ok.status_code == 204
+    async with owner_engine.connect() as conn:
+        trusted = set(
+            (
+                await conn.execute(
+                    bound_text("select device_hash from trusted_devices where user_id = :u"),
+                    {"u": uid},
+                )
+            )
+            .scalars()
+            .all()
+        )
+    assert trusted == {hashlib.sha256(phone["device_token"].encode()).hexdigest()}
+
+
 async def test_sessions_list_and_revoke_own_only(
     owner_engine: AsyncEngine, client_from: ClientFactory
 ) -> None:

@@ -285,16 +285,18 @@ async def change_password(
     new_password: str,
     current_session: UUID,
     sign_out_other_devices: bool,
+    device_token: str | None = None,
 ) -> None:
     await reverify_password(db, username=username, password=current_password)
     problems = password_problems(new_password, username, display_name)
     if problems:
         raise AppError(422, problems[0])
     await db.execute(
-        bound_text("select auth_change_password(:pw, :keep, :others)"),
+        bound_text("select auth_change_password(:pw, :keep, :others, :device)"),
         {
             "pw": await run_hashing(hash_password, new_password),
             "keep": current_session,
             "others": sign_out_other_devices,
+            "device": sha256_hex(device_token) if device_token else None,
         },
     )

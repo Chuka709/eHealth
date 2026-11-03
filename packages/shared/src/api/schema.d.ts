@@ -659,6 +659,8 @@ export interface components {
              * @default true
              */
             sign_out_other_devices: boolean;
+            /** Device Token */
+            device_token?: string | null;
         };
         /** ConsentItem */
         ConsentItem: {

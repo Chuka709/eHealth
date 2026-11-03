@@ -1,4 +1,5 @@
 import { fireEvent, renderRouter, screen } from "expo-router/testing-library";
+import { Alert } from "react-native";
 
 import { clearAccessToken, setStatus } from "@/features/auth/session-store";
 import { apiBaseUrl } from "@/lib/api-base";
@@ -241,10 +242,19 @@ describe("biometric offer", () => {
 
   test("signing out forgets the choice (it belongs to the user, not the phone)", async () => {
     mockStore.set("lt.biometric", "off"); // "on" would open on the lock screen (lock.test.tsx)
-    route({ "/api/v1/auth/logout": () => new Response(null, { status: 204 }) });
+    route({
+      "/api/v1/auth/logout": () => new Response(null, { status: 204 }),
+      "/api/v1/me": () => json(200, { locale: "mn" }),
+    });
+    // Sign-out lives in Settings and asks first: confirm the dialog.
+    const alert = jest.spyOn(Alert, "alert").mockImplementation((_t, _m, buttons) => {
+      buttons?.find((b) => b.style === "destructive")?.onPress?.();
+    });
     await app();
+    await fireEvent.press(await screen.findByRole("button", { name: "Тохиргоо" }));
     await fireEvent.press(await screen.findByRole("button", { name: "Гарах" }));
     expect(await screen.findByText("LabTrack MN-д тавтай морил")).toBeOnTheScreen();
     expect(mockStore.has("lt.biometric")).toBe(false);
+    alert.mockRestore();
   });
 });

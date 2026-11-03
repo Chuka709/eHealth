@@ -6,14 +6,19 @@ import { usePalette } from "@/theme/use-palette";
 interface ButtonProps {
   label: string;
   onPress: () => void;
-  /** primary: filled; secondary: outlined; link: text only (same touch target). */
-  variant?: "primary" | "secondary" | "link";
+  /**
+   * primary: filled; secondary: outlined; danger: outlined in the danger colour (sign out,
+   * delete); link: text only (same touch target).
+   */
+  variant?: "primary" | "secondary" | "danger" | "link";
   busy?: boolean;
   disabled?: boolean;
   /** Spoken label when it differs from the visible text (e.g. adds context). */
   accessibilityLabel?: string;
   /** For show/hide toggles: announced as expanded/collapsed (role button, not link). */
   expanded?: boolean;
+  /** For one-of choices: announced as selected and marked with ✓ (not colour alone). */
+  selected?: boolean;
 }
 
 export function Button({
@@ -24,30 +29,40 @@ export function Button({
   disabled = false,
   accessibilityLabel,
   expanded,
+  selected,
 }: ButtonProps) {
   const p = usePalette();
   const inactive = disabled || busy;
   const filled = variant === "primary";
+  const tone = variant === "danger" ? p.danger : p.primary;
+  const role =
+    selected !== undefined
+      ? "radio"
+      : variant === "link" && expanded === undefined
+        ? "link"
+        : "button";
   return (
     <Pressable
       onPress={onPress}
       disabled={inactive}
-      accessibilityRole={variant === "link" && expanded === undefined ? "link" : "button"}
+      accessibilityRole={role}
       accessibilityLabel={accessibilityLabel ?? label}
-      accessibilityState={{ disabled: inactive, busy, expanded }}
+      accessibilityState={{ disabled: inactive, busy, expanded, selected, checked: selected }}
       style={({ pressed }) => [
         styles.button,
         filled && { backgroundColor: p.primary },
-        variant === "secondary" && {
-          borderColor: p.primary,
+        (variant === "secondary" || variant === "danger") && {
+          borderColor: tone,
           borderWidth: StyleSheet.hairlineWidth * 2,
         },
         // Busy stays fully legible (the label is still being read); only disabled is dimmed.
         { opacity: disabled ? 0.5 : pressed ? 0.85 : 1 },
       ]}
     >
-      {busy && <ActivityIndicator color={filled ? p.onPrimary : p.primary} />}
-      <Text style={[styles.label, { color: filled ? p.onPrimary : p.primary }]}>{label}</Text>
+      {busy && <ActivityIndicator color={filled ? p.onPrimary : tone} />}
+      <Text style={[styles.label, { color: filled ? p.onPrimary : tone }]}>
+        {selected ? `✓ ${label}` : label}
+      </Text>
     </Pressable>
   );
 }

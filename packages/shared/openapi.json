@@ -3243,6 +3243,19 @@
             "type": "boolean",
             "title": "Sign Out Other Devices",
             "default": true
+          },
+          "device_token": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 200,
+                "minLength": 20
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Device Token"
           }
         },
         "additionalProperties": false,
@@ -3673,7 +3686,7 @@
             "anyOf": [
               {
                 "type": "string",
-                "maxLength": 100
+                "maxLength": 200
               },
               {
                 "type": "null"
