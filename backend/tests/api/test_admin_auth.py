@@ -156,6 +156,8 @@ _ANONYMOUS = {
     "/api/v1/auth/refresh",
     "/api/v1/auth/logout",
 }
+# A well-formed value per path parameter type, so the request reaches the auth check.
+_PATH_SAMPLES = {"uuid": "00000000-0000-0000-0000-000000000000", "integer": "1", "string": "x"}
 
 
 async def test_an_admin_token_opens_no_user_route(client_from: ClientFactory) -> None:
@@ -171,9 +173,13 @@ async def test_an_admin_token_opens_no_user_route(client_from: ClientFactory) ->
         for path, operations in paths.items():
             if path.startswith("/api/v1/admin") or path in _ANONYMOUS:
                 continue
-            url = path.replace("{session_id}", "00000000-0000-0000-0000-000000000000")
-            url = url.replace("{notification_id}", "1")
-            for method in operations:
+            for method, operation in operations.items():
+                url = path
+                for p in operation.get("parameters", []):
+                    if p["in"] == "path":
+                        sample = _PATH_SAMPLES[p["schema"].get("format", p["schema"]["type"])]
+                        url = url.replace(f"{{{p['name']}}}", sample)
+                assert "{" not in url, (method, path)
                 r = await c.request(method.upper(), url, headers=bearer(token), json={})
                 assert r.status_code == 401, (method, path, r.status_code)
                 checked += 1

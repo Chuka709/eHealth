@@ -63,7 +63,9 @@ def install_error_handlers(app: FastAPI) -> None:
 
     @app.exception_handler(StarletteHTTPException)
     async def _framework(_: Request, exc: StarletteHTTPException) -> JSONResponse:
-        code = _FRAMEWORK_CODES.get(exc.status_code, "internal")
+        # Any other 4xx (413, 415, ...) is something the client sent, not our failure.
+        fallback = "validation" if exc.status_code < 500 else "internal"  # noqa: PLR2004
+        code = _FRAMEWORK_CODES.get(exc.status_code, fallback)
         return JSONResponse(
             status_code=exc.status_code,
             content=ErrorBody(code=code, message_key=f"error.{code}").model_dump(),

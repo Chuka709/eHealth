@@ -1,0 +1,3 @@
+# `just fuzz-api`, signed-in run: the access token comes from the environment, never argv
+# (a command line is visible to every process on the machine).
+headers = { Authorization = "Bearer ${FUZZ_ACCESS_TOKEN}" }
