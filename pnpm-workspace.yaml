@@ -34,6 +34,7 @@ minimumReleaseAgeExclude:
   - expo-splash-screen@58.0.13
   - react-native-safe-area-context@5.11.1
   - jest-expo@58.0.14
+  - expo-notifications@58.1.8
 # React Native / Metro / Jest resolve most reliably from a hoisted node_modules.
 nodeLinker: hoisted
 # Install scripts are opt-in (supply-chain hardening). Native binaries we rely on ship prebuilt.

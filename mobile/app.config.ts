@@ -101,6 +101,9 @@ const appConfig = ({ config }: ConfigContext): ExpoConfig => ({
       "android.permission.READ_MEDIA_VISUAL_USER_SELECTED",
       "android.permission.READ_EXTERNAL_STORAGE",
       "android.permission.WRITE_EXTERNAL_STORAGE",
+      // Google Play allows it only for alarm/calendar apps: reminders use SCHEDULE_EXACT_ALARM
+      // with an explanation and an inexact fallback (docs/08, hazard H18) - never this one.
+      "android.permission.USE_EXACT_ALARM",
       ...(isProd ? ["android.permission.SYSTEM_ALERT_WINDOW"] : []),
     ],
   },
@@ -120,6 +123,9 @@ const appConfig = ({ config }: ConfigContext): ExpoConfig => ({
         barcodeScannerEnabled: true,
       },
     ],
+    // Local medication reminders (Phase 2.5); push (caregiver alerts) in 2.8. The icon and
+    // channel are set with the reminder screens.
+    ["expo-notifications", { color: "#0B5FA5" }],
     [
       "expo-splash-screen",
       {

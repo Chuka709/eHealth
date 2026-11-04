@@ -1,6 +1,8 @@
 import { Stack } from "expo-router";
 import { useTranslations } from "use-intl";
 
+import { useLocalData } from "@/features/offline/use-local-data";
+
 /**
  * Every signed-in screen except onboarding lives in this group, so a new screen is behind the
  * consent/onboarding guard of (app)/_layout by default. Each screen names itself in the header
@@ -8,6 +10,8 @@ import { useTranslations } from "use-intl";
  */
 export default function MainLayout() {
   const t = useTranslations("app");
+  // encrypted offline cache + queued writes: only past the consent guard, signed in, unlocked
+  useLocalData();
   return (
     <Stack screenOptions={{ headerBackTitle: t("common.back") }}>
       <Stack.Screen name="home" options={{ title: t("name") }} />

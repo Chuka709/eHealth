@@ -31,7 +31,9 @@
       "Bash(npx expo start*)",
       "Bash(npx expo-doctor*)",
       "Bash(eas build --profile development *)",
-      "Bash(maestro test *)"
+      "Bash(maestro test *)",
+      "Bash(git push -u origin phase-*)",
+      "Bash(git push origin phase-*)"
     ],
     "deny": [
       "Read(./.env)",
@@ -43,7 +45,9 @@
       "Read(./**/node_modules/**)",
       "Read(./**/pnpm-lock.yaml)",
       "Read(./**/uv.lock)",
-      "Bash(git push *)",
+      "Bash(git push --force*)",
+      "Bash(git push * --force*)",
+      "Bash(git push origin main*)",
       "Bash(docker compose down -v*)",
       "Bash(docker compose down *--volumes*)",
       "Bash(docker compose down *-v*)",
