@@ -12,20 +12,23 @@ import { usePalette } from "@/theme/use-palette";
 export function FormMessage({
   kind,
   text,
+  quiet = false,
 }: {
   kind: "error" | "warning" | "success";
   text: string;
+  /** a standing notice (not a reaction to the user's action): read politely, never announced */
+  quiet?: boolean;
 }) {
   const p = usePalette();
   const colours = p.feedback[kind];
   useEffect(() => {
-    if (Platform.OS === "ios") AccessibilityInfo.announceForAccessibility(text);
-  }, [text]);
+    if (Platform.OS === "ios" && !quiet) AccessibilityInfo.announceForAccessibility(text);
+  }, [text, quiet]);
   return (
     <View
       accessible
       accessibilityRole={kind === "success" ? "text" : "alert"}
-      accessibilityLiveRegion={kind === "success" ? "polite" : "assertive"}
+      accessibilityLiveRegion={kind === "success" || quiet ? "polite" : "assertive"}
       accessibilityLabel={text}
       style={[styles.box, { backgroundColor: colours.bg }]}
     >

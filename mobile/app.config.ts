@@ -94,6 +94,9 @@ const appConfig = ({ config }: ConfigContext): ExpoConfig => ({
     // DETECT_SCREEN_CAPTURE (install-time "normal") must stay: on Android 14+ the module registers
     // a screen-capture callback unconditionally at start, which throws without it.
     // The overlay permission is for the dev menu only.
+    // Medicine reminders on time (docs/08, H18): the user grants it on the explanation screen;
+    // without it reminders still come, up to ~10 min late (inexact), and Home says so.
+    permissions: ["android.permission.SCHEDULE_EXACT_ALARM"],
     blockedPermissions: [
       "android.permission.RECORD_AUDIO",
       "android.permission.READ_MEDIA_IMAGES",

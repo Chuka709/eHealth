@@ -1,4 +1,4 @@
-# Phase 1 DoD: a registered user activates with the admin's QR/link, sets their own password,
+# Phase 1 DoD (+ Phase 2.5): a registered user activates with the admin's QR/link, sets their own password,
 # signs in, gives the consents and reaches Home (docs/01 Phase 1 DoD, docs/08 "Анх нэвтрэх").
 #
 # Run with `just e2e-mobile`: it provisions the user and passes the values as MAESTRO_*
@@ -54,6 +54,20 @@ appId: ${MAESTRO_APP_ID}
     commands:
       - tapOn: "Одоо биш"
 
+# First sign-in (Phase 2.4): the transplant wizard can be skipped; the own profile is created.
+- extendedWaitUntil:
+    visible: "Одоохондоо алгасах"
+    timeout: 15000
+    optional: true
+- runFlow:
+    when:
+      visible: "Одоохондоо алгасах"
+    commands:
+      - tapOn: "Одоохондоо алгасах"
+
 - extendedWaitUntil:
     visible: "Системийн төлөв"
     timeout: 15000
+
+# Phase 2.5: medicines, today's doses and reminders.
+- runFlow: subflows/medication.yaml

@@ -392,3 +392,49 @@ test("a reminder for another profile or medicine records nothing", async () => {
   await waitFor(() => expect(posts.filter((p) => p.key === "intake")).toHaveLength(0));
   expect(posts).toHaveLength(0);
 });
+
+test("reminders that cannot work say so, with the way to fix it (H6)", async () => {
+  const mocked = jest.requireMock("expo-notifications") as {
+    getPermissionsAsync: jest.Mock;
+    requestPermissionsAsync: jest.Mock;
+  };
+  const off = { granted: false, status: "denied", canAskAgain: false };
+  mocked.getPermissionsAsync.mockResolvedValue(off);
+  mocked.requestPermissionsAsync.mockResolvedValue(off);
+  try {
+    await openMeds();
+    expect(
+      await screen.findByText(/^Эмийн сануулга ажиллахгүй байна: апп-ын мэдэгдэл унтраалттай\./),
+    ).toBeOnTheScreen();
+    // the OS will not ask again: the button opens the app's settings
+    expect(screen.getByRole("button", { name: "Апп-ын тохиргоог нээх" })).toBeOnTheScreen();
+  } finally {
+    mocked.getPermissionsAsync.mockResolvedValue({
+      granted: true,
+      status: "granted",
+      canAskAgain: true,
+    });
+    mocked.requestPermissionsAsync.mockResolvedValue({ granted: true, status: "granted" });
+  }
+});
+
+test("Android without exact alarms: Medicines says reminders may be late, Home does not", async () => {
+  const rn = jest.requireActual("react-native") as { Platform: { OS: string } };
+  const mocked = jest.requireMock("expo-notifications") as {
+    getExactAlarmPermissionsAsync: jest.Mock;
+  };
+  const os = rn.Platform.OS;
+  rn.Platform.OS = "android";
+  mocked.getExactAlarmPermissionsAsync.mockResolvedValue({ granted: false, status: "denied" });
+  try {
+    await renderRouter("./src/app", { initialUrl: "/" });
+    await screen.findByText("Системийн төлөв");
+    expect(screen.queryByText(/хэдэн минут хоцорч/)).toBeNull();
+    await fireEvent.press(await screen.findByRole("button", { name: /^Эм/ }));
+    expect(await screen.findByText(/хэдэн минут хоцорч/)).toBeOnTheScreen();
+    expect(screen.getByRole("button", { name: "Тайлбар ба тохиргоо" })).toBeOnTheScreen();
+  } finally {
+    rn.Platform.OS = os;
+    mocked.getExactAlarmPermissionsAsync.mockResolvedValue({ granted: true, status: "granted" });
+  }
+});

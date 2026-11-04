@@ -46,7 +46,6 @@ export async function registerReminderKinds(texts: NotifyTexts): Promise<void> {
       importance: Notifications.AndroidImportance.HIGH,
       // the secure lock screen shows "content hidden", never the text
       lockscreenVisibility: Notifications.AndroidNotificationVisibility.PRIVATE,
-      sound: "default",
     });
   }
   // "Уусан" opens the app, which records the dose at once (whether a background action runs
@@ -88,7 +87,7 @@ function content(n: Pick<PlannedNotification, "title" | "body" | "data" | "kind"
     title: n.title,
     body: n.body,
     data: n.data,
-    sound: "default",
+    sound: true, // the system default sound (a string names a bundled custom file)
     ...(n.kind === "dose"
       ? { categoryIdentifier: n.data.d.length > 1 ? CATEGORY_MANY : CATEGORY_ONE }
       : {}),

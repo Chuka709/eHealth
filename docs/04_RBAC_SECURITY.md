@@ -110,6 +110,11 @@ CLI-ээр (`just create-admin`), **TOTP заавал**, тусдаа `/admin` w
 3. **Storage** — private bucket, эрх шалгаад presigned URL (≤ 5 мин), түлхүүр `{patient_id}/{document_id}/…`.
 4. **RLS тест** — шинэ хүснэгт бүрт харь хэрэглэгч, хугацаа дууссан/цуцлагдсан хандалт.
 
+### Төхөөрөмж дээрх мэдэгдэл ба URL-ийн мэдэгдэж буй үлдэгдэл (Phase 2.5)
+- Локал мэдэгдлийн id ба агуулгыг expo-notifications нь Android SharedPreferences-д шифрлэлтгүй хадгална: id нь `dose.<цаг>.<hash>` (профайлын id-гүй), агуулга нь анхдагчаар «Эм уух цаг боллоо» + «N тун» (нэргүй); нэр харуулахыг хэрэглэгч асаасан үед л нэр орно. `allowBackup: false`; гарахад бүгд цуцлагдана.
+- Эмийн каталогийн хайлт `GET /medication-catalog?q=<нэр>` — эмийн нэр query string-д. Caddy болон Sentry query string-ийг логлохгүй (`observability.py`); шинэ proxy/CDN/APM нэмэхэд энэ дүрмийг хадгална, эсвэл POST руу шилжүүлнэ.
+- Google Play: `SCHEDULE_EXACT_ALARM`-ийн declaration — «хэрэглэгчийн тохируулсан, цаг хугацаа чухал эмийн сануулга; зөвшөөрөлгүй бол inexact горимд ажиллана».
+
 ## 4. Аюулгүй байдлын хяналтын жагсаалт
 - [ ] TLS (Caddy), HSTS; web CSP (nonce), `frame-ancestors 'none'`
 - [ ] Access JWT 15 мин, ES256, `iss/aud/exp` шалгах; түлхүүр солих (kid) боломж

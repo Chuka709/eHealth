@@ -66,6 +66,8 @@ jest.mock("expo-notifications", () => {
       canAskAgain: true,
     })),
     requestPermissionsAsync: jest.fn(async () => ({ granted: true, status: "granted" })),
+    getExactAlarmPermissionsAsync: jest.fn(async () => ({ granted: true, status: "granted" })),
+    requestExactAlarmPermissionsAsync: jest.fn(async () => ({ granted: true, status: "granted" })),
     getAllScheduledNotificationsAsync: jest.fn(async () => [...scheduled.values()]),
     scheduleNotificationAsync: jest.fn(
       async ({

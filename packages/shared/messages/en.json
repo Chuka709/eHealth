@@ -589,6 +589,23 @@
         "switch": "Move",
         "keep": "Don't change",
         "failed": "Could not save the time zone. Try again."
+      },
+      "health": {
+        "notificationsOff": "Medicine reminders are not working: notifications are off for the app. Keep taking your medicines on your schedule.",
+        "notificationsOn": "Turn on notifications",
+        "exactOff": "Medicine reminders may come a few minutes late: the “Alarms & reminders” permission is not given.",
+        "exactMore": "Explanation and settings",
+        "exactTitle": "Reminders on time",
+        "exactBody": "For medicine reminders to come exactly on time, Android needs the “Alarms & reminders” permission. Without it reminders still come, but up to 10 minutes late.",
+        "exactAllow": "Give permission",
+        "exactOk": "✓ Reminders come on time.",
+        "batteryTitle": "Battery saving",
+        "batteryBody": "Some phones delay app reminders to save battery. If reminders come late or not at all, exempt this app from battery saving. Menu and label names differ by phone model and version:",
+        "batterySamsung": "Samsung: Settings → Apps → LabTrack → Battery → “Unrestricted”.",
+        "batteryXiaomi": "Xiaomi: Settings → Apps → Manage apps → LabTrack → Battery saver → “No restrictions”, and turn on “Autostart”.",
+        "batteryOppo": "Oppo / Realme: Settings → Apps → App management → LabTrack → Battery usage → “Allow background activity”.",
+        "batteryOther": "Other phones: Settings → Apps → LabTrack → Battery → unrestricted.",
+        "openSettings": "Open the app's settings"
       }
     }
   },

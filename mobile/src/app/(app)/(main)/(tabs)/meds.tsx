@@ -6,6 +6,7 @@ import { Screen } from "@/components/screen";
 import { LoadingView, RetryView } from "@/components/state-view";
 import { Paragraph, Title } from "@/components/text";
 import { MonthSummary } from "@/features/meds/month-summary";
+import { ReminderWarnings } from "@/features/meds/reminder-warnings";
 import { TodayList } from "@/features/meds/today-list";
 import { useRegimenText } from "@/features/meds/use-med-text";
 import { useNow } from "@/features/meds/use-now";
@@ -37,6 +38,7 @@ export default function MedsScreen() {
 
   return (
     <Screen>
+      <ReminderWarnings late />
       <Title>{t("today")}</Title>
       <TodayList patientId={own.id} doses={doses} now={now.getTime()} />
       <MonthSummary patientId={own.id} now={now} />

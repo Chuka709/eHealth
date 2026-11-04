@@ -42,12 +42,27 @@ def _run(flows: list[str]) -> int:
     cmd = [MAESTRO, "test", "--debug-output", debug, "--flatten-debug-output",
            *(flows or [str(ROOT / "mobile" / ".maestro")])]  # fmt: skip
     try:
-        return subprocess.run(cmd, cwd=ROOT, env=env, check=False).returncode  # noqa: S603
+        code = subprocess.run(cmd, cwd=ROOT, env=env, check=False).returncode  # noqa: S603
+        return code or _reminders_scheduled()
     finally:
         if os.environ.get("E2E_KEEP_DEBUG") == "1":
             sys.stderr.write(f"e2e-mobile: Maestro debug output kept in {debug}\n")
         else:
             shutil.rmtree(debug, ignore_errors=True)
+
+
+def _reminders_scheduled() -> int:
+    """Phase 2.5 DoD: after the flow added a medicine, its reminders are on the OS schedule
+    (the app's alarms in AlarmManager). Reads counts only, never notification text."""
+    adb = shutil.which("adb") or "adb"
+    serial = os.environ.get("ANDROID_SERIAL")
+    target = ["-s", serial] if serial else []
+    out = subprocess.run(  # noqa: S603
+        [adb, *target, "shell", "dumpsys", "alarm"], capture_output=True, text=True, check=False
+    ).stdout
+    count = sum(1 for line in out.splitlines() if APP_ID in line and "RTC" in line)
+    sys.stderr.write(f"e2e-mobile: {count} alarm entries for {APP_ID}\n")
+    return 0 if count > 0 else 1
 
 
 def main() -> int:
