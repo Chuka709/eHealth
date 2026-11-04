@@ -701,7 +701,8 @@
     },
     "record": {
       "conflict": "This information changed meanwhile. Refresh and try again.",
-      "delete_not_allowed": "Only the profile's owner can delete this. If the doctor stopped a medication, you can mark it as stopped."
+      "delete_not_allowed": "Only the profile's owner can delete this. If the doctor stopped a medication, you can mark it as stopped.",
+      "too_many": "There are too many records of this kind."
     },
     "transplant": {
       "not_found": "Transplant record not found."
@@ -709,6 +710,29 @@
     "regimen": {
       "not_found": "Dose change not found.",
       "not_voidable": "A dose that has started cannot be cancelled - it stays in the history. Enter the dose your doctor prescribed as a new change."
+    },
+    "event": {
+      "not_found": "This entry was not found."
+    },
+    "allergy": {
+      "not_found": "This allergy was not found."
+    },
+    "contact": {
+      "not_found": "This contact was not found."
+    },
+    "appointment": {
+      "not_found": "This appointment was not found."
+    },
+    "question": {
+      "not_found": "This question was not found."
+    },
+    "vital": {
+      "not_found": "This reading was not found.",
+      "implausible": "This number may have been mistyped. Check it and enter it again.",
+      "format": "Not a valid number. Write it like 128 or 36.6.",
+      "too_many": "There are too many readings in this period. Choose a shorter one.",
+      "glucose_unit": "Enter glucose in mmol/L (e.g. 5.6). If your meter shows mg/dL, do not enter that number here.",
+      "bp_order": "The upper pressure must be higher than the lower one. Check whether the fields are swapped."
     }
   },
   "import": {
