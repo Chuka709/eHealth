@@ -82,13 +82,9 @@ def upgrade() -> None:
         "alter table medication_intakes add column taken_by uuid references users"
         " on delete set null"
     )
-    # existing taken rows: the first writer marked them taken only if nobody changed the row
-    # since; otherwise who did is unknown, and only the owner may delete (taken_by null)
-    op.execute(
-        "update medication_intakes set taken_by = case"
-        " when updated_by is null or updated_by = recorded_by then recorded_by end"
-        " where status <> 'skipped'"
-    )
+    # Existing taken rows: who marked them taken is not recorded and cannot be inferred
+    # reliably (a row may have been skipped by one user, taken by another, edited by the
+    # first again). taken_by stays null for them, so only the profile's owner may delete.
     op.execute(_SET_ROW_WRITER)
     op.execute("drop policy medication_intakes_delete on medication_intakes")
     op.execute(_DELETE_POLICY)
