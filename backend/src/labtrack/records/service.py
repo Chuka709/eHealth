@@ -246,7 +246,8 @@ def window_ok(since: datetime, until: datetime) -> bool:
 # --- reminder time zone and monthly summary ---------------------------------------------------
 
 
-# per user per profile, and per profile (a caregiver cannot use up the owner's switches)
+# per user per profile; and for everyone but the owner, per profile together - caregivers
+# cannot use up the owner's switches (commit security review)
 MAX_SWITCHES_PER_DAY = 20
 MAX_PROFILE_SWITCHES_PER_DAY = 40
 
@@ -260,9 +261,10 @@ async def switch_zone(
     - Never before the latest stored switch: a switch that arrives late from an offline phone
       starts when the newest one did (doses already due under that one are not moved -
       medical review H1); the stored row says when it took effect.
-    - At most MAX_SWITCHES_PER_DAY new switches per user per profile and
-      MAX_PROFILE_SWITCHES_PER_DAY per profile in 24 hours: 429 (the phone's queue keeps it
-      and retries on its next flush - app start, network back, foreground)."""
+    - At most MAX_SWITCHES_PER_DAY new switches per user per profile in 24 hours, and
+      MAX_PROFILE_SWITCHES_PER_DAY by everyone together - the owner excepted: 429 (the
+      phone's queue keeps it and retries on its next flush - app start, network back,
+      foreground)."""
     stored = await repo.zone_by_client(db, patient_id, client_id)
     if stored is not None:
         return _same_switch(stored, timezone, effective_at), False
@@ -270,8 +272,10 @@ async def switch_zone(
     stored = await repo.zone_by_client(db, patient_id, client_id)  # a parallel retry won
     if stored is not None:
         return _same_switch(stored, timezone, effective_at), False
-    total, mine = await repo.recent_zone_switches(db, patient_id)
-    if mine >= MAX_SWITCHES_PER_DAY or total >= MAX_PROFILE_SWITCHES_PER_DAY:
+    others, mine, owner = await repo.recent_zone_switches(db, patient_id)
+    if mine >= MAX_SWITCHES_PER_DAY or (
+        not owner and others + mine >= MAX_PROFILE_SWITCHES_PER_DAY
+    ):
         raise AppError(429, "timezone.too_many", retry_after=timedelta(hours=1))
     latest = await repo.latest_zone_switch(db, patient_id)
     starts = max(effective_at, latest) if latest is not None else effective_at

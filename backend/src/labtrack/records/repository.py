@@ -429,12 +429,13 @@ _ZONES_WINDOW = bound_text(
     " order by effective_at desc, seq desc limit 1)"
     " order by effective_at desc, seq desc"
 )
-# 40 a day per profile (service caps) over a month, its 2-day margin and 7 days of backdating
-# is at most 40 * 40 = 1600; a summary past this keeps the newest (service.zone_switches)
-ZONE_WINDOW_MAX = 2000
+# 20 a day by the owner + 40 by others (service caps) over a month, its 2-day margin and 7
+# days of backdating: at most 60 * 40 = 2400; past this a summary keeps the newest
+ZONE_WINDOW_MAX = 2500
 _ZONES_RECENT = bound_text(
-    "select count(*), count(*) filter (where recorded_by = app_user_id()),"
-    " max(effective_at) from patient_timezones where patient_id = :p"
+    "select count(*) filter (where recorded_by is distinct from app_user_id()),"
+    " count(*) filter (where recorded_by = app_user_id()), is_owner(:p)"
+    " from patient_timezones where patient_id = :p"
     " and created_at > now() - interval '24 hours'"
 )
 _ZONE_LATEST = bound_text("select max(effective_at) from patient_timezones where patient_id = :p")
@@ -463,10 +464,11 @@ async def lock_zones(db: AsyncSession, patient_id: UUID) -> None:
     await db.execute(_ZONE_LOCK, {"p": patient_id})
 
 
-async def recent_zone_switches(db: AsyncSession, patient_id: UUID) -> tuple[int, int]:
-    """Switches written in the last 24 hours: (by anyone, by the acting user)."""
+async def recent_zone_switches(db: AsyncSession, patient_id: UUID) -> tuple[int, int, bool]:
+    """Switches written in the last 24 hours: (by others, by the acting user), and whether
+    the acting user owns the profile."""
     row = (await db.execute(_ZONES_RECENT, {"p": patient_id})).one()
-    return int(row[0]), int(row[1])
+    return int(row[0]), int(row[1]), bool(row[2])
 
 
 async def latest_zone_switch(db: AsyncSession, patient_id: UUID) -> datetime | None:

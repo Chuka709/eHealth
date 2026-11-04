@@ -328,6 +328,22 @@ async def test_parallel_switches_respect_the_cap(
     assert sorted(codes).count(429) == 5
 
 
+async def test_caregivers_together_cannot_block_the_owner(
+    client: AsyncClient, client_from: ClientFactory, owner_engine: AsyncEngine
+) -> None:
+    """Commit security review: two caregivers fill the profile cap (40); the owner still
+    switches, a third caregiver does not."""
+    _, h, base = await _profile(client, owner_engine)
+    for n in range(3):
+        async with client_from(f"203.0.113.{20 + n}") as other:
+            uid, ch = await _signed_in(other, owner_engine)
+            await _grant(owner_engine, base, uid, "caregiver")
+            for _ in range(20 if n < 2 else 1):
+                r = await other.post(f"{base}/timezone", json=_switch(), headers=ch)
+                assert r.status_code == (201 if n < 2 else 429), r.text
+    assert (await client.post(f"{base}/timezone", json=_switch(), headers=h)).status_code == 201
+
+
 async def test_a_caregiver_cannot_use_up_the_owners_switches(
     client: AsyncClient, client_from: ClientFactory, owner_engine: AsyncEngine
 ) -> None:
