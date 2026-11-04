@@ -34,6 +34,12 @@ export default function SettingsScreen() {
   return (
     <Screen>
       <NavRow
+        label={t("meds.reminders.open")}
+        hint={t("meds.reminders.openHint")}
+        onPress={() => router.push("/settings/reminders")}
+        testID="settings-reminders"
+      />
+      <NavRow
         label={t("transplant.open")}
         hint={t("transplant.openHint")}
         onPress={() => router.push("/transplants")}

@@ -15,6 +15,8 @@ import { queryClient } from "@/lib/query-client";
 import { newClientId } from "@/lib/random";
 import { apiError } from "@/lib/use-error-text";
 
+import { requestReminderSync } from "./reminder-bus";
+
 export type Medication = components["schemas"]["MedicationDetail"];
 export type Regimen = components["schemas"]["RegimenOut"];
 export type MedicationCreate = components["schemas"]["MedicationCreate"];
@@ -203,6 +205,7 @@ export type DoseRecord = {
 };
 
 const settle = (patientId: string) => {
+  requestReminderSync(); // a recorded dose is not reminded (and an undone one is again)
   void queryClient.invalidateQueries({ queryKey: ["queue", "doses", patientId] });
   void queryClient.invalidateQueries({ queryKey: ["queue", "failed", patientId] });
   void queryClient.invalidateQueries({ queryKey: ["intakes", patientId] });

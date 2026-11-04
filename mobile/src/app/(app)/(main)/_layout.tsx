@@ -1,6 +1,8 @@
 import { Stack } from "expo-router";
 import { useTranslations } from "use-intl";
 
+import { useReminderResponses, useReminderSync } from "@/features/meds/use-reminders";
+import { useZonePrompt } from "@/features/meds/use-zone-prompt";
 import { useLocalData } from "@/features/offline/use-local-data";
 
 /**
@@ -12,6 +14,10 @@ export default function MainLayout() {
   const t = useTranslations("app");
   // encrypted offline cache + queued writes: only past the consent guard, signed in, unlocked
   useLocalData();
+  // local medicine reminders: planned, answered, and moved when the time zone changes
+  useReminderSync();
+  useReminderResponses();
+  useZonePrompt();
   return (
     <Stack screenOptions={{ headerBackTitle: t("common.back") }}>
       <Stack.Screen name="(tabs)" options={{ headerShown: false, title: t("name") }} />
@@ -25,6 +31,7 @@ export default function MainLayout() {
       <Stack.Screen name="transplants/new" options={{ title: t("transplant.add") }} />
       <Stack.Screen name="transplants/[id]" options={{ title: t("transplant.editTitle") }} />
       <Stack.Screen name="meds/new" options={{ title: t("meds.add") }} />
+      <Stack.Screen name="settings/reminders" options={{ title: t("meds.reminders.title") }} />
       <Stack.Screen name="meds/[id]/index" options={{ title: t("meds.detail.title") }} />
       <Stack.Screen name="meds/[id]/dose" options={{ title: t("meds.change.title") }} />
     </Stack>

@@ -11,7 +11,11 @@ import { useLocked } from "@/features/lock/lock-store";
 import { enablePrivacyProtection } from "@/features/lock/privacy";
 import { useAppLock } from "@/features/lock/use-app-lock";
 import { I18nProvider } from "@/lib/i18n";
+import { showRemindersInForeground } from "@/lib/notifications";
 import { queryClient } from "@/lib/query-client";
+
+// Reminders that fire while the app is open are shown too (H6).
+showRemindersInForeground();
 
 // Keep the native splash until the stored session has been read (no flash of the wrong stack).
 void SplashScreen.preventAutoHideAsync();

@@ -45,8 +45,47 @@ jest.mock("expo-crypto", () => {
     getRandomBytes: (n: number) => new Uint8Array(randomBytes(n)),
   };
 });
-jest.mock("expo-notifications", () => ({
-  cancelAllScheduledNotificationsAsync: jest.fn(async () => undefined),
-  dismissAllNotificationsAsync: jest.fn(async () => undefined),
-  setNotificationHandler: jest.fn(),
-}));
+jest.mock("expo-notifications", () => {
+  // scheduled local notifications, as the OS would keep them (tests read and reset it)
+  const scheduled = new Map<string, { identifier: string; content: unknown; trigger: unknown }>();
+  return {
+    __scheduled: scheduled,
+    SchedulableTriggerInputTypes: { DATE: "date" },
+    AndroidImportance: { HIGH: 4, DEFAULT: 3 },
+    AndroidNotificationVisibility: { PRIVATE: 0, PUBLIC: 1, SECRET: -1 },
+    DEFAULT_ACTION_IDENTIFIER: "expo.modules.notifications.actions.DEFAULT",
+    cancelAllScheduledNotificationsAsync: jest.fn(async () => scheduled.clear()),
+    dismissAllNotificationsAsync: jest.fn(async () => undefined),
+    dismissNotificationAsync: jest.fn(async () => undefined),
+    setNotificationHandler: jest.fn(),
+    setNotificationChannelAsync: jest.fn(async () => null),
+    setNotificationCategoryAsync: jest.fn(async () => null),
+    getPermissionsAsync: jest.fn(async () => ({
+      granted: true,
+      status: "granted",
+      canAskAgain: true,
+    })),
+    requestPermissionsAsync: jest.fn(async () => ({ granted: true, status: "granted" })),
+    getAllScheduledNotificationsAsync: jest.fn(async () => [...scheduled.values()]),
+    scheduleNotificationAsync: jest.fn(
+      async ({
+        identifier,
+        content,
+        trigger,
+      }: {
+        identifier: string;
+        content: unknown;
+        trigger: unknown;
+      }) => {
+        scheduled.set(identifier, { identifier, content, trigger });
+        return identifier;
+      },
+    ),
+    cancelScheduledNotificationAsync: jest.fn(async (id: string) => {
+      scheduled.delete(id);
+    }),
+    addNotificationResponseReceivedListener: jest.fn(() => ({ remove: jest.fn() })),
+    useLastNotificationResponse: jest.fn(() => null),
+    clearLastNotificationResponse: jest.fn(),
+  };
+});

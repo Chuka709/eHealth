@@ -11,3 +11,18 @@ export async function clearLocalNotifications(): Promise<void> {
     Notifications.dismissAllNotificationsAsync(),
   ]);
 }
+
+/**
+ * Medicine reminders also show while the app is open (without a handler the OS keeps them
+ * silent in the foreground - H6). Registered once, at the app's start.
+ */
+export function showRemindersInForeground(): void {
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowBanner: true,
+      shouldShowList: true,
+      shouldPlaySound: true,
+      shouldSetBadge: false,
+    }),
+  });
+}

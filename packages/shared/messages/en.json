@@ -562,6 +562,33 @@
         "title": "Records not saved",
         "item": "{time} {name}: not accepted by the server.",
         "dismiss": "Got it"
+      },
+      "notify": {
+        "channel": "Medicine reminders",
+        "title": "Time for your medicine",
+        "count": "{n, plural, one {# dose} other {# doses}}",
+        "item": "{name} {amount}",
+        "taken": "Taken",
+        "takenAll": "All taken",
+        "snooze": "In 10 min",
+        "renewTitle": "Time to renew your reminders",
+        "renewBody": "Open the app to renew your reminders."
+      },
+      "reminders": {
+        "title": "Medicine reminders",
+        "open": "Medicine reminders",
+        "openHint": "Lock screen, time zone",
+        "showNames": "Show medicine names in reminders",
+        "showNamesHint": "Off by default: reminders only say “Time for your medicine”. When on, anyone who sees your phone may see the medicine names.",
+        "zoneNow": "Reminder time zone: {zone}",
+        "zoneHome": "Medicines set to “Ulaanbaatar time” always remind on Ulaanbaatar time."
+      },
+      "zone": {
+        "askTitle": "Your time zone has changed",
+        "askBody": "Your phone is now in the {zone} time zone. Move reminders of medicines set to “Time where I am” to this time? Talk about the time between doses with your doctor.",
+        "switch": "Move",
+        "keep": "Don't change",
+        "failed": "Could not save the time zone. Try again."
       }
     }
   },

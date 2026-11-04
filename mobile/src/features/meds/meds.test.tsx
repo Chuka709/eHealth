@@ -302,3 +302,93 @@ test("a recorded dose can be undone; a refused one is shown, never dropped", asy
   await press("Ойлголоо");
   await waitFor(() => expect(screen.queryByTestId("failed-doses")).toBeNull());
 });
+
+type Scheduled = {
+  identifier: string;
+  content: {
+    title: string;
+    body: string;
+    data: { kind: string; p: string; d: { m: string; at: number }[] };
+  };
+  trigger: { date: number; channelId: string };
+};
+const notifications = jest.requireMock("expo-notifications") as {
+  __scheduled: Map<string, Scheduled>;
+  addNotificationResponseReceivedListener: jest.Mock;
+};
+
+test("reminders are scheduled on the phone, without the medicine's name (H10)", async () => {
+  notifications.__scheduled.clear();
+  await openMeds();
+  await screen.findByTestId(`dose-${MED_ID}-08:00`);
+  await waitFor(() => expect(notifications.__scheduled.size).toBeGreaterThan(0));
+  const all = [...notifications.__scheduled.values()];
+  const doses = all.filter((n) => n.identifier.startsWith("dose."));
+  // 2 a day fit 7 days; the next 08:00/20:00 doses, never one in the past
+  expect(doses.length).toBeGreaterThanOrEqual(13);
+  expect(doses.length).toBeLessThanOrEqual(14);
+  for (const n of doses) {
+    expect(n.trigger.date).toBeGreaterThan(Date.now());
+    expect(n.trigger.channelId).toBe("doses");
+    expect(n.content.title).toBe("Эм уух цаг боллоо");
+    expect(JSON.stringify(n.content)).not.toContain("Такролимус");
+    expect(n.content.data.d).toEqual([{ m: MED_ID, at: n.trigger.date }]);
+  }
+  expect(all.some((n) => n.identifier.startsWith("renew."))).toBe(true);
+});
+
+test("'Уусан' on a reminder records that dose", async () => {
+  await openMeds();
+  await screen.findByTestId(`dose-${MED_ID}-08:00`);
+  const listener = notifications.addNotificationResponseReceivedListener.mock.calls.at(-1)?.[0] as (
+    r: unknown,
+  ) => void;
+  const at = Date.parse("2026-11-04T00:00:00Z");
+  listener({
+    actionIdentifier: "taken",
+    notification: {
+      date: Date.now(),
+      request: {
+        identifier: `dose.${at}.x`,
+        content: {
+          title: "Эм уух цаг боллоо",
+          body: "1 эм",
+          data: { kind: "dose", p: OWN.id, d: [{ m: MED_ID, at }] },
+        },
+      },
+    },
+  });
+  await waitFor(() => expect(posts.filter((p) => p.key === "intake")).toHaveLength(1));
+  expect(posts[0].body).toMatchObject({
+    medication_id: MED_ID,
+    status: "taken",
+    scheduled_at: "2026-11-04T00:00:00.000Z",
+  });
+});
+
+test("a reminder for another profile or medicine records nothing", async () => {
+  await openMeds();
+  await screen.findByTestId(`dose-${MED_ID}-08:00`);
+  const listener = notifications.addNotificationResponseReceivedListener.mock.calls.at(-1)?.[0] as (
+    r: unknown,
+  ) => void;
+  const at = Date.parse("2026-11-04T00:00:00Z");
+  const respond = (p: string, m: string, id: string) =>
+    listener({
+      actionIdentifier: "taken",
+      notification: {
+        date: Date.now(),
+        request: {
+          identifier: id,
+          content: { title: "", body: "", data: { kind: "dose", p, d: [{ m, at }] } },
+        },
+      },
+    });
+  respond("33333333-3333-4333-8333-333333333399", MED_ID, "dose.a"); // a profile not ours
+  respond(OWN.id, "44444444-4444-4444-8444-444444444444", "dose.b"); // a medicine not ours
+  respond(OWN.id, "../../admin", "dose.c"); // not an id at all
+  // each is handled as a plain tap (opens the list) - never as "taken"
+  expect(await screen.findByTestId(`dose-${MED_ID}-08:00`)).toBeOnTheScreen();
+  await waitFor(() => expect(posts.filter((p) => p.key === "intake")).toHaveLength(0));
+  expect(posts).toHaveLength(0);
+});
