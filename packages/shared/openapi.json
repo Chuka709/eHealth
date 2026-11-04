@@ -3173,6 +3173,311 @@
         }
       }
     },
+    "/api/v1/patients/{patient_id}/timezone": {
+      "get": {
+        "tags": [
+          "records"
+        ],
+        "summary": "Get Timezone",
+        "description": "The profile's reminder time zone, and the switches a phone needs to plan reminders.",
+        "operationId": "get_timezone_api_v1_patients__patient_id__timezone_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "patient_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Patient Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ZonesOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "records"
+        ],
+        "summary": "Switch Timezone",
+        "description": "Switch the zone of \"local\" medications (the user said yes on the phone). Idempotent by\nclient_id; a past switch is never edited - a new one replaces it from its time on.\n`effective_at`: at most a week ago (a switch accepted offline), never ahead.",
+        "operationId": "switch_timezone_api_v1_patients__patient_id__timezone_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "patient_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Patient Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ZoneSwitchIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ZoneSwitchOut"
+                }
+              }
+            }
+          },
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ZoneSwitchOut"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        }
+      }
+    },
+    "/api/v1/patients/{patient_id}/adherence": {
+      "get": {
+        "tags": [
+          "records"
+        ],
+        "summary": "Get Adherence",
+        "description": "Planned doses of a calendar month (Ulaanbaatar) up to now, and how many were recorded\ntaken or skipped. As-needed medications plan no doses and are not counted.",
+        "operationId": "get_adherence_api_v1_patients__patient_id__adherence_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "patient_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Patient Id"
+            }
+          },
+          {
+            "name": "month",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^20[0-9]{2}-(0[1-9]|1[0-2])$",
+              "title": "Month"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdherenceOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        }
+      }
+    },
     "/api/v1/medication-catalog": {
       "get": {
         "tags": [
@@ -5107,6 +5412,31 @@
         ],
         "title": "ActivateRequest"
       },
+      "AdherenceOut": {
+        "properties": {
+          "month": {
+            "type": "string",
+            "title": "Month"
+          },
+          "total": {
+            "$ref": "#/components/schemas/SummaryOut"
+          },
+          "medications": {
+            "items": {
+              "$ref": "#/components/schemas/MedicationSummaryOut"
+            },
+            "type": "array",
+            "title": "Medications"
+          }
+        },
+        "type": "object",
+        "required": [
+          "month",
+          "total",
+          "medications"
+        ],
+        "title": "AdherenceOut"
+      },
       "AdminActionOut": {
         "properties": {
           "at": {
@@ -6940,6 +7270,57 @@
         ],
         "title": "MedicationOut"
       },
+      "MedicationSummaryOut": {
+        "properties": {
+          "planned": {
+            "type": "integer",
+            "title": "Planned"
+          },
+          "taken": {
+            "type": "integer",
+            "title": "Taken"
+          },
+          "skipped": {
+            "type": "integer",
+            "title": "Skipped"
+          },
+          "unrecorded": {
+            "type": "integer",
+            "title": "Unrecorded"
+          },
+          "open": {
+            "type": "integer",
+            "title": "Open"
+          },
+          "percent_taken": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Percent Taken"
+          },
+          "medication_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Medication Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "planned",
+          "taken",
+          "skipped",
+          "unrecorded",
+          "open",
+          "percent_taken",
+          "medication_id"
+        ],
+        "title": "MedicationSummaryOut"
+      },
       "NationalIdRequest": {
         "properties": {
           "national_id": {
@@ -7608,6 +7989,52 @@
           "reason"
         ],
         "title": "StatusRequest"
+      },
+      "SummaryOut": {
+        "properties": {
+          "planned": {
+            "type": "integer",
+            "title": "Planned"
+          },
+          "taken": {
+            "type": "integer",
+            "title": "Taken"
+          },
+          "skipped": {
+            "type": "integer",
+            "title": "Skipped"
+          },
+          "unrecorded": {
+            "type": "integer",
+            "title": "Unrecorded"
+          },
+          "open": {
+            "type": "integer",
+            "title": "Open"
+          },
+          "percent_taken": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Percent Taken"
+          }
+        },
+        "type": "object",
+        "required": [
+          "planned",
+          "taken",
+          "skipped",
+          "unrecorded",
+          "open",
+          "percent_taken"
+        ],
+        "title": "SummaryOut",
+        "description": "Counts only: no \"on time\" threshold, no colour, no judgement (Q23, rule 10)."
       },
       "TokenOut": {
         "properties": {
@@ -9046,6 +9473,94 @@
           "reason"
         ],
         "title": "VoidIn"
+      },
+      "ZoneSwitchIn": {
+        "properties": {
+          "client_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Client Id"
+          },
+          "timezone": {
+            "type": "string",
+            "title": "Timezone"
+          },
+          "effective_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Effective At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "client_id",
+          "timezone",
+          "effective_at"
+        ],
+        "title": "ZoneSwitchIn"
+      },
+      "ZoneSwitchOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "timezone": {
+            "type": "string",
+            "title": "Timezone"
+          },
+          "effective_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Effective At"
+          },
+          "seq": {
+            "type": "integer",
+            "title": "Seq"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "timezone",
+          "effective_at",
+          "seq",
+          "created_at"
+        ],
+        "title": "ZoneSwitchOut"
+      },
+      "ZonesOut": {
+        "properties": {
+          "home": {
+            "type": "string",
+            "title": "Home"
+          },
+          "current": {
+            "type": "string",
+            "title": "Current"
+          },
+          "switches": {
+            "items": {
+              "$ref": "#/components/schemas/ZoneSwitchOut"
+            },
+            "type": "array",
+            "title": "Switches"
+          }
+        },
+        "type": "object",
+        "required": [
+          "home",
+          "current",
+          "switches"
+        ],
+        "title": "ZonesOut"
       }
     },
     "securitySchemes": {

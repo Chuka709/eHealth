@@ -65,6 +65,7 @@
     "record.delete_not_allowed",
     "regimen.not_found",
     "regimen.not_voidable",
+    "timezone.too_many",
     "transplant.not_found",
     "validation"
   ],

@@ -481,6 +481,9 @@
       "self_exists": "Your own profile already exists.",
       "read_only": "You can only view this profile, not add to it."
     },
+    "timezone": {
+      "too_many": "The time zone was switched too many times today. Try again tomorrow."
+    },
     "intake": {
       "not_found": "This record was not found.",
       "delete_not_allowed": "Only whoever recorded this, or the profile's owner, can delete it.",

@@ -9,13 +9,15 @@ Input models validate; output models only describe (a stored row is never re-jud
 odd row cannot break a whole list).
 """
 
+import re
 import unicodedata
 from collections.abc import Callable
 from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
+from functools import cache
 from typing import Annotated, Any, Literal
 from uuid import UUID
-from zoneinfo import ZoneInfo
+from zoneinfo import ZoneInfo, available_timezones
 
 from fastapi import APIRouter, Query, Response, status
 from pydantic import (
@@ -41,6 +43,7 @@ from labtrack.core.medications import (
     parse_amount,
     regimen_on,
 )
+from labtrack.core.slots import HOME_TIMEZONE, RECORDING_WINDOW, Summary
 from labtrack.core.timeline import elapsed_since
 from labtrack.records import repository as repo
 from labtrack.records import service
@@ -610,7 +613,7 @@ async def delete_medication(patient_id: UUID, medication_id: UUID, db: PatientWr
 # reminder), within a day after. Tomorrow's dose cannot be marked taken tonight by a slip -
 # "taken" always wins (H20), so such a slip would silence that dose's reminder.
 _EARLY = timedelta(hours=3)
-_LATE = timedelta(hours=24)
+_LATE = RECORDING_WINDOW  # the summary's "open" uses the same window
 
 
 class IntakeIn(_Strict):
@@ -713,6 +716,159 @@ async def delete_intake(patient_id: UUID, intake_id: UUID, db: PatientWriteDb) -
         refused=AppError(403, "intake.delete_not_allowed"),
     )
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+# --- reminder time zone (Q22) ------------------------------------------------------------------
+
+# A switch accepted on a phone offline arrives later: at most a week late, never ahead
+_SWITCH_LATE = timedelta(days=7)
+_ZONE_SHAPE = re.compile(r"^[A-Za-z][A-Za-z0-9_+-]*(/[A-Za-z0-9_+-]+){0,2}$")
+
+
+@cache
+def _zone_names() -> frozenset[str]:
+    return frozenset(available_timezones())
+
+
+def _zone(value: str) -> str:
+    if len(value) > 64 or not _ZONE_SHAPE.match(value) or value not in _zone_names():  # noqa: PLR2004
+        raise ValueError("timezone")
+    return value
+
+
+ZoneName = Annotated[str, AfterValidator(_zone)]
+
+
+class ZoneSwitchIn(_Strict):
+    client_id: UUID
+    timezone: ZoneName
+    effective_at: datetime
+
+    @model_validator(mode="after")
+    def _aware(self) -> "ZoneSwitchIn":
+        if self.effective_at.tzinfo is None:
+            raise ValueError("timezone")
+        self.effective_at = self.effective_at.astimezone(UTC).replace(microsecond=0)
+        return self
+
+
+class ZoneSwitchOut(BaseModel):
+    id: UUID
+    timezone: str
+    effective_at: datetime
+    seq: int
+    created_at: datetime
+
+
+class ZonesOut(BaseModel):
+    home: str  # "home" mode medications: always this zone
+    current: str  # "local" mode medications: this zone now (home until the first switch)
+    # newest first: only the switches that can still place a planned dose (the one in force
+    # two days ago and any since) - not a travel history
+    switches: list[ZoneSwitchOut]
+
+
+@router.get("/timezone", response_model=ZonesOut, responses=_ERRORS)
+async def get_timezone(patient_id: UUID, db: PatientReadDb) -> ZonesOut:
+    """The profile's reminder time zone, and the switches a phone needs to plan reminders."""
+    now = datetime.now(UTC)
+    rows = await repo.zones(db, patient_id, now, now + timedelta(days=1))
+    switches = [ZoneSwitchOut.model_validate(r._mapping) for r in rows[: repo.ZONE_WINDOW_MAX]]
+    current = next((z.timezone for z in switches if z.effective_at <= now), HOME_TIMEZONE)
+    return ZonesOut(home=HOME_TIMEZONE, current=current, switches=switches)
+
+
+@router.post(
+    "/timezone",
+    response_model=ZoneSwitchOut,
+    status_code=status.HTTP_201_CREATED,
+    responses={200: {"model": ZoneSwitchOut}, 429: {"model": ErrorBody}, **_ERRORS},
+)
+async def switch_timezone(
+    patient_id: UUID, body: ZoneSwitchIn, db: PatientWriteDb, response: Response
+) -> ZoneSwitchOut:
+    """Switch the zone of "local" medications (the user said yes on the phone). Idempotent by
+    client_id; a past switch is never edited - a new one replaces it from its time on.
+    `effective_at`: at most a week ago (a switch accepted offline), never ahead."""
+    now = datetime.now(UTC)
+    if not now - _SWITCH_LATE <= body.effective_at <= now + timedelta(minutes=5):
+        # a queued retry of a switch already stored is still that switch, however late
+        stored = await service.stored_switch(
+            db, patient_id, body.client_id, body.timezone, body.effective_at
+        )
+        if stored is None:
+            raise AppError(422, "validation")
+        response.status_code = status.HTTP_200_OK
+        return ZoneSwitchOut.model_validate(stored._mapping)
+    row, created = await service.switch_zone(
+        db, patient_id, body.client_id, body.timezone, body.effective_at
+    )
+    if not created:
+        response.status_code = status.HTTP_200_OK
+    return ZoneSwitchOut.model_validate(row._mapping)
+
+
+# --- monthly summary (Q23) ---------------------------------------------------------------------
+
+
+# a whole percent as a string ("96"), like every number in the API (CLAUDE.md rule 7)
+Percent = Annotated[
+    Decimal, PlainSerializer(lambda d: format(d, "f"), return_type=str, when_used="json")
+]
+
+
+class SummaryOut(BaseModel):
+    """Counts only: no "on time" threshold, no colour, no judgement (Q23, rule 10)."""
+
+    planned: int  # planned doses up to now (from when the medication was entered)
+    taken: int  # recorded taken, including the user's own "late"
+    skipped: int
+    unrecorded: int  # not recorded, past the 24-hour recording window
+    open: int  # not recorded yet, still within the recording window
+    # of the closed doses (planned - open): whole percent rounded down; none when none closed
+    percent_taken: Percent | None
+
+
+class MedicationSummaryOut(SummaryOut):
+    medication_id: UUID
+
+
+class AdherenceOut(BaseModel):
+    month: str
+    total: SummaryOut
+    medications: list[MedicationSummaryOut]  # only medications with planned doses
+
+
+def _summary(s: Summary) -> dict[str, object]:
+    return {
+        "planned": s.planned,
+        "taken": s.taken,
+        "skipped": s.skipped,
+        "unrecorded": s.unrecorded,
+        "open": s.open,
+        "percent_taken": s.percent_taken,
+    }
+
+
+@router.get("/adherence", response_model=AdherenceOut, responses=_ERRORS)
+async def get_adherence(
+    patient_id: UUID,
+    db: PatientReadDb,
+    month: Annotated[str, Query(pattern=r"^20[0-9]{2}-(0[1-9]|1[0-2])$")],
+) -> AdherenceOut:
+    """Planned doses of a calendar month (Ulaanbaatar) up to now, and how many were recorded
+    taken or skipped. As-needed medications plan no doses and are not counted."""
+    year, mon = (int(p) for p in month.split("-"))
+    if (year, mon) > (_today().year, _today().month):
+        raise AppError(422, "validation")
+    total, per = await service.month_summary(db, patient_id, year, mon, datetime.now(UTC))
+    return AdherenceOut(
+        month=month,
+        total=SummaryOut.model_validate(_summary(total)),
+        medications=[
+            MedicationSummaryOut(medication_id=p.medication_id, **_summary(p.summary)) for p in per
+        ],
+    )
 
 
 # --- catalog --------------------------------------------------------------------------------------

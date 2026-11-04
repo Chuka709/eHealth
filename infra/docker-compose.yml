@@ -191,6 +191,13 @@ services:
   test:
     <<: *backend
     profiles: ["test"]
+    volumes:
+      - ../backend/src:/app/src:ro
+      - ../backend/tests:/app/tests:ro
+      - ../backend/alembic:/app/alembic:ro
+      - ../seed:/seed:ro
+      # shared test vectors (dose-slots.json): the app's reminder planner uses the same file
+      - ../packages/shared/fixtures:/fixtures:ro
     environment:
       <<: *backend-env
       ENVIRONMENT: test

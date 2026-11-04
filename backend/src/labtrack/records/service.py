@@ -22,6 +22,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from labtrack.api.errors import AppError
 from labtrack.core.medications import IntakeRecord, merge_intake
+from labtrack.core.slots import (
+    MedicationPlan,
+    Summary,
+    ZoneSwitch,
+    dose_slots,
+    month_window,
+    summarize,
+)
 from labtrack.records import repository as repo
 
 MAX_INTAKE_WINDOW = timedelta(days=93)
@@ -233,6 +241,123 @@ async def record_intake(
 
 def window_ok(since: datetime, until: datetime) -> bool:
     return since < until and until - since <= MAX_INTAKE_WINDOW
+
+
+# --- reminder time zone and monthly summary ---------------------------------------------------
+
+
+# per user per profile, and per profile (a caregiver cannot use up the owner's switches)
+MAX_SWITCHES_PER_DAY = 20
+MAX_PROFILE_SWITCHES_PER_DAY = 40
+
+
+async def switch_zone(
+    db: AsyncSession, patient_id: UUID, client_id: UUID, timezone: str, effective_at: datetime
+) -> tuple[Row[Any], bool]:
+    """A new zone from `effective_at` on (append-only; Q22). Idempotent by client_id: a retry
+    gets the stored row (False), another switch under the same client_id is a conflict.
+
+    - Never before the latest stored switch: a switch that arrives late from an offline phone
+      starts when the newest one did (doses already due under that one are not moved -
+      medical review H1); the stored row says when it took effect.
+    - At most MAX_SWITCHES_PER_DAY new switches per user per profile and
+      MAX_PROFILE_SWITCHES_PER_DAY per profile in 24 hours: 429 (the phone's queue keeps it
+      and retries on its next flush - app start, network back, foreground)."""
+    stored = await repo.zone_by_client(db, patient_id, client_id)
+    if stored is not None:
+        return _same_switch(stored, timezone, effective_at), False
+    await repo.lock_zones(db, patient_id)
+    stored = await repo.zone_by_client(db, patient_id, client_id)  # a parallel retry won
+    if stored is not None:
+        return _same_switch(stored, timezone, effective_at), False
+    total, mine = await repo.recent_zone_switches(db, patient_id)
+    if mine >= MAX_SWITCHES_PER_DAY or total >= MAX_PROFILE_SWITCHES_PER_DAY:
+        raise AppError(429, "timezone.too_many", retry_after=timedelta(hours=1))
+    latest = await repo.latest_zone_switch(db, patient_id)
+    starts = max(effective_at, latest) if latest is not None else effective_at
+    new_id = await _guarded(
+        db, lambda: repo.insert_zone(db, patient_id, client_id, timezone, starts)
+    )
+    stored = await repo.zone_by_client(db, patient_id, client_id)
+    if new_id is None or stored is None:
+        raise AppError(409, "record.conflict")
+    await repo.audit(db, "timezone.switch", "patient_timezone", new_id, patient_id)
+    return stored, True
+
+
+def _same_switch(stored: Row[Any], timezone: str, effective_at: datetime) -> Row[Any]:
+    """A retry of this request: the same zone, taking effect when asked or later (moved to
+    the newest switch then)."""
+    if stored.timezone != timezone or stored.effective_at < effective_at:
+        raise AppError(409, "record.conflict")
+    return stored
+
+
+async def stored_switch(
+    db: AsyncSession, patient_id: UUID, client_id: UUID, timezone: str, effective_at: datetime
+) -> Row[Any] | None:
+    """The stored switch this exact request made, if any (a late retry of a queued write)."""
+    stored = await repo.zone_by_client(db, patient_id, client_id)
+    if stored is None or stored.timezone != timezone or stored.effective_at < effective_at:
+        return None
+    return stored
+
+
+async def zone_switches(
+    db: AsyncSession, patient_id: UUID, since: datetime, until: datetime
+) -> list[ZoneSwitch]:
+    """Switches for a summary window. Past ZONE_WINDOW_MAX in the window (only rows written
+    around the caps over many days) the newest are kept and the summary still answers."""
+    rows = await repo.zones(db, patient_id, since, until)
+    return [ZoneSwitch(r.timezone, r.effective_at, r.seq) for r in rows]
+
+
+@dataclass(frozen=True)
+class MedicationSummary:
+    medication_id: UUID
+    summary: Summary
+
+
+async def month_summary(
+    db: AsyncSession, patient_id: UUID, year: int, month: int, now: datetime
+) -> tuple[Summary, list[MedicationSummary]]:
+    """Planned doses of the month up to `now` against the recorded ones (Q23: counts only).
+
+    A medication counts from when it was entered in the app: doses before that (a medication
+    taken since 2019, entered today) were never recordable and are not "not recorded"."""
+    start, end = month_window(year, month)
+    end = min(end, now)
+    if end <= start:
+        return Summary(0, 0, 0, 0, 0), []
+    meds = await repo.medications(db, patient_id)
+    history = await repo.regimens(db, patient_id, [m.id for m in meds])
+    switches = await zone_switches(db, patient_id, start, end)
+    records: dict[UUID, list[tuple[datetime, IntakeRecord]]] = {}
+    for r in await repo.scheduled_intakes(db, patient_id, start, end):
+        records.setdefault(r.medication_id, []).append(
+            (r.scheduled_at, IntakeRecord(r.status, r.taken_at))
+        )
+    per: list[MedicationSummary] = []
+    for m in meds:
+        plan = MedicationPlan(
+            mode=m.reminder_timezone_mode,
+            started_on=m.started_on,
+            stopped_on=m.stopped_on,
+            planned_end_on=m.planned_end_on,
+            regimens=[r for r in history if r.medication_id == m.id],
+        )
+        slots = dose_slots(plan, switches, max(start, m.created_at), end)
+        if slots:
+            summary = summarize(slots, records.get(m.id, []), now)
+            per.append(MedicationSummary(m.id, summary))
+    total = Summary(
+        sum(p.summary.planned for p in per),
+        sum(p.summary.taken for p in per),
+        sum(p.summary.skipped for p in per),
+        sum(p.summary.unrecorded for p in per),
+        sum(p.summary.open for p in per),
+    )
+    return total, per
 
 
 # --- deletes ----------------------------------------------------------------------------------

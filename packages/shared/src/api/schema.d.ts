@@ -518,6 +518,53 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/patients/{patient_id}/timezone": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Timezone
+         * @description The profile's reminder time zone, and the switches a phone needs to plan reminders.
+         */
+        get: operations["get_timezone_api_v1_patients__patient_id__timezone_get"];
+        put?: never;
+        /**
+         * Switch Timezone
+         * @description Switch the zone of "local" medications (the user said yes on the phone). Idempotent by
+         *     client_id; a past switch is never edited - a new one replaces it from its time on.
+         *     `effective_at`: at most a week ago (a switch accepted offline), never ahead.
+         */
+        post: operations["switch_timezone_api_v1_patients__patient_id__timezone_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/patients/{patient_id}/adherence": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Adherence
+         * @description Planned doses of a calendar month (Ulaanbaatar) up to now, and how many were recorded
+         *     taken or skipped. As-needed medications plan no doses and are not counted.
+         */
+        get: operations["get_adherence_api_v1_patients__patient_id__adherence_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/medication-catalog": {
         parameters: {
             query?: never;
@@ -833,6 +880,14 @@ export interface components {
             username: string;
             /** New Password */
             new_password: string;
+        };
+        /** AdherenceOut */
+        AdherenceOut: {
+            /** Month */
+            month: string;
+            total: components["schemas"]["SummaryOut"];
+            /** Medications */
+            medications: components["schemas"]["MedicationSummaryOut"][];
         };
         /** AdminActionOut */
         AdminActionOut: {
@@ -1390,6 +1445,26 @@ export interface components {
             /** Updated At */
             updated_at: string | null;
         };
+        /** MedicationSummaryOut */
+        MedicationSummaryOut: {
+            /** Planned */
+            planned: number;
+            /** Taken */
+            taken: number;
+            /** Skipped */
+            skipped: number;
+            /** Unrecorded */
+            unrecorded: number;
+            /** Open */
+            open: number;
+            /** Percent Taken */
+            percent_taken: string | null;
+            /**
+             * Medication Id
+             * Format: uuid
+             */
+            medication_id: string;
+        };
         /** NationalIdRequest */
         NationalIdRequest: {
             /** National Id */
@@ -1619,6 +1694,24 @@ export interface components {
              * @enum {string}
              */
             reason: "user_request" | "identity_verified" | "suspected_compromise" | "left_program" | "other";
+        };
+        /**
+         * SummaryOut
+         * @description Counts only: no "on time" threshold, no colour, no judgement (Q23, rule 10).
+         */
+        SummaryOut: {
+            /** Planned */
+            planned: number;
+            /** Taken */
+            taken: number;
+            /** Skipped */
+            skipped: number;
+            /** Unrecorded */
+            unrecorded: number;
+            /** Open */
+            open: number;
+            /** Percent Taken */
+            percent_taken: string | null;
         };
         /** TokenOut */
         TokenOut: {
@@ -1988,6 +2081,52 @@ export interface components {
         VoidIn: {
             /** Reason */
             reason: string;
+        };
+        /** ZoneSwitchIn */
+        ZoneSwitchIn: {
+            /**
+             * Client Id
+             * Format: uuid
+             */
+            client_id: string;
+            /** Timezone */
+            timezone: string;
+            /**
+             * Effective At
+             * Format: date-time
+             */
+            effective_at: string;
+        };
+        /** ZoneSwitchOut */
+        ZoneSwitchOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Timezone */
+            timezone: string;
+            /**
+             * Effective At
+             * Format: date-time
+             */
+            effective_at: string;
+            /** Seq */
+            seq: number;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
+        /** ZonesOut */
+        ZonesOut: {
+            /** Home */
+            home: string;
+            /** Current */
+            current: string;
+            /** Switches */
+            switches: components["schemas"]["ZoneSwitchOut"][];
         };
     };
     responses: never;
@@ -4325,6 +4464,231 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    get_timezone_api_v1_patients__patient_id__timezone_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                patient_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ZonesOut"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    switch_timezone_api_v1_patients__patient_id__timezone_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                patient_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ZoneSwitchIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ZoneSwitchOut"];
+                };
+            };
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ZoneSwitchOut"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    get_adherence_api_v1_patients__patient_id__adherence_get: {
+        parameters: {
+            query: {
+                month: string;
+            };
+            header?: never;
+            path: {
+                patient_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdherenceOut"];
+                };
             };
             /** @description Unauthorized */
             401: {

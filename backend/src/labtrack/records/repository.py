@@ -154,6 +154,9 @@ _BY_CLIENT = {
     "medication_intakes": bound_text(
         "select id from medication_intakes where patient_id = :p and client_id = :c"
     ),
+    "patient_timezones": bound_text(
+        "select id from patient_timezones where patient_id = :p and client_id = :c"
+    ),
 }
 
 _DELETE = {
@@ -408,6 +411,98 @@ async def merge_intake(
 ) -> int:
     result = await db.execute(_INTAKE_MERGE, {"p": patient_id, "i": intake_id, **values})
     return result.rowcount  # type: ignore[attr-defined, no-any-return]
+
+
+# --- reminder time zone (0017) --------------------------------------------------------------
+
+_ZONE_COLUMNS = "select id, timezone, effective_at, seq, created_at from patient_timezones"
+# Switches that can place a dose in [since, until): those from a margin before `since` (a dose
+# day starts up to 14 hours before UTC midnight) plus the one in force before them - an older
+# switch never wins over that one (core.slots.place). Never the whole history.
+_ZONES_WINDOW = bound_text(
+    "("
+    + _ZONE_COLUMNS
+    + " where patient_id = :p and effective_at >= cast(:since as timestamptz) - interval '2 days'"
+    " and effective_at < :until order by effective_at desc, seq desc limit :limit)"
+    " union all (" + _ZONE_COLUMNS + " where patient_id = :p"
+    " and effective_at < cast(:since as timestamptz) - interval '2 days'"
+    " order by effective_at desc, seq desc limit 1)"
+    " order by effective_at desc, seq desc"
+)
+# 40 a day per profile (service caps) over a month, its 2-day margin and 7 days of backdating
+# is at most 40 * 40 = 1600; a summary past this keeps the newest (service.zone_switches)
+ZONE_WINDOW_MAX = 2000
+_ZONES_RECENT = bound_text(
+    "select count(*), count(*) filter (where recorded_by = app_user_id()),"
+    " max(effective_at) from patient_timezones where patient_id = :p"
+    " and created_at > now() - interval '24 hours'"
+)
+_ZONE_LATEST = bound_text("select max(effective_at) from patient_timezones where patient_id = :p")
+# one switch at a time per profile: the daily cap and the order check see every committed row
+_ZONE_LOCK = bound_text(
+    "select pg_advisory_xact_lock("
+    "hashtextextended('patient_timezones:' || cast(cast(:p as uuid) as text), 0))"
+)
+_ZONE_BY_CLIENT = bound_text(_ZONE_COLUMNS + " where patient_id = :p and client_id = :c")
+_ZONE_INSERT = bound_text(
+    "insert into patient_timezones (patient_id, client_id, timezone, effective_at)"
+    " values (:p, :c, :timezone, :effective_at) on conflict do nothing returning id"
+)
+
+
+async def zones(
+    db: AsyncSession, patient_id: UUID, since: datetime, until: datetime
+) -> Sequence[Row[Any]]:
+    """Newest first: the switches that can place a dose in [since, until) (see above); at most
+    ZONE_WINDOW_MAX of them in the window (the newest) plus the one before."""
+    params = {"p": patient_id, "since": since, "until": until, "limit": ZONE_WINDOW_MAX}
+    return (await db.execute(_ZONES_WINDOW, params)).all()
+
+
+async def lock_zones(db: AsyncSession, patient_id: UUID) -> None:
+    await db.execute(_ZONE_LOCK, {"p": patient_id})
+
+
+async def recent_zone_switches(db: AsyncSession, patient_id: UUID) -> tuple[int, int]:
+    """Switches written in the last 24 hours: (by anyone, by the acting user)."""
+    row = (await db.execute(_ZONES_RECENT, {"p": patient_id})).one()
+    return int(row[0]), int(row[1])
+
+
+async def latest_zone_switch(db: AsyncSession, patient_id: UUID) -> datetime | None:
+    found: datetime | None = (
+        await db.execute(_ZONE_LATEST, {"p": patient_id})
+    ).scalar_one_or_none()
+    return found
+
+
+async def zone_by_client(db: AsyncSession, patient_id: UUID, client_id: UUID) -> Row[Any] | None:
+    return (await db.execute(_ZONE_BY_CLIENT, {"p": patient_id, "c": client_id})).one_or_none()
+
+
+async def insert_zone(
+    db: AsyncSession, patient_id: UUID, client_id: UUID, timezone: str, effective_at: datetime
+) -> UUID | None:
+    params = {"p": patient_id, "c": client_id, "timezone": timezone, "effective_at": effective_at}
+    new_id: UUID | None = (await db.execute(_ZONE_INSERT, params)).scalar_one_or_none()
+    return new_id
+
+
+# --- monthly summary --------------------------------------------------------------------------
+
+_SCHEDULED_INTAKES = bound_text(
+    "select medication_id, scheduled_at, status, taken_at from medication_intakes"
+    " where patient_id = :p and scheduled_at >= :since and scheduled_at < :until"
+)
+
+
+async def scheduled_intakes(
+    db: AsyncSession, patient_id: UUID, since: datetime, until: datetime
+) -> Sequence[Row[Any]]:
+    """Records of planned doses in [since, until) - a month at most (≤ 12 doses a day per
+    medication, so no page is needed)."""
+    params = {"p": patient_id, "since": since, "until": until}
+    return (await db.execute(_SCHEDULED_INTAKES, params)).all()
 
 
 # --- catalog ----------------------------------------------------------------------------------
