@@ -37,6 +37,7 @@
     "auth.session_invalid",
     "auth.session_not_found",
     "consent.not_allowed",
+    "consent.profile_required",
     "consent.required",
     "consent.version_outdated",
     "internal",
@@ -49,6 +50,12 @@
     "password.too_long",
     "password.too_short",
     "password.too_weak",
+    "patient.birth_date_locked",
+    "patient.limit_reached",
+    "patient.not_found",
+    "patient.not_owner",
+    "patient.read_only",
+    "patient.self_exists",
     "validation"
   ],
   "import_problems": [

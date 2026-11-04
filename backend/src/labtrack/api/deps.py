@@ -3,11 +3,13 @@
 import ipaddress
 from collections.abc import AsyncGenerator
 from typing import Annotated
+from uuid import UUID
 
 from fastapi import Depends, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from labtrack import consents
 from labtrack.api.errors import AppError
 from labtrack.auth.tokens import AccessClaims, InvalidTokenError, decode_access_token
 from labtrack.db.session import anonymous_transaction, get_sessionmaker
@@ -111,3 +113,47 @@ Claims = Annotated[AccessClaims, Depends(current_claims)]
 # and use it before the row that backs it is committed.
 AnonymousDb = Annotated[AsyncSession, Depends(anonymous_db, scope="function")]
 UserDb = Annotated[AsyncSession, Depends(user_db, scope="function")]
+
+
+async def phi_db(db: UserDb) -> AsyncSession:
+    """A user transaction for health-data routes: refused until the user holds the required
+    consents for the text version currently shown (docs/04 §5). Every route outside /auth, /me
+    and /admin takes this; a generic API test fails any route that does not."""
+    await consents.require(consents.REQUIRED)(db)
+    return db
+
+
+PhiDb = Annotated[AsyncSession, Depends(phi_db)]
+
+
+async def _patient_gate(db: AsyncSession, patient_id: UUID, *, write: bool) -> AsyncSession:
+    # Access first, so nothing below tells a stranger anything about the profile (404 for
+    # "no such profile" and "not shared with you" alike).
+    access = (
+        await db.execute(
+            bound_text("select can_read_patient(:p) as r, can_write_patient(:p) as w"),
+            {"p": patient_id},
+        )
+    ).one()
+    if not access.r:
+        raise AppError(404, "patient.not_found")
+    if write and not access.w:
+        raise AppError(403, "patient.read_only")
+    await consents.require_for_patient(db, patient_id)
+    return db
+
+
+async def patient_read_db(patient_id: UUID, db: PhiDb) -> AsyncSession:
+    """Routes under /patients/{patient_id}: the profile is readable by the user and, for a
+    minor's profile, its owner's consents for it are in force (withdrawn = closed)."""
+    return await _patient_gate(db, patient_id, write=False)
+
+
+async def patient_write_db(patient_id: UUID, db: PhiDb) -> AsyncSession:
+    """As patient_read_db, and the user may write (owner or caregiver)."""
+    return await _patient_gate(db, patient_id, write=True)
+
+
+# Every route with a {patient_id} takes one of these (a generic test checks it).
+PatientReadDb = Annotated[AsyncSession, Depends(patient_read_db)]
+PatientWriteDb = Annotated[AsyncSession, Depends(patient_write_db)]

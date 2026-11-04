@@ -285,7 +285,7 @@ async def test_an_empty_birth_date_cannot_be_filled_with_a_minor_date(
         "insert into consents (user_id, patient_id, kind, version, granted)"
         " values (:u, :p, 'cross_border', '1', true)"
     )
-    with pytest.raises(DBAPIError, match="birth date cannot be changed"):
+    with pytest.raises(DBAPIError, match="invalid birth date"):
         async with as_user(app_engine, owner) as conn:
             await conn.execute(
                 bound_text("update patients set birth_date = :d where id = :p"),
@@ -340,3 +340,50 @@ async def test_audit_rows_cannot_be_attached_to_a_foreign_patient(
         count = bound_text("select count(*) from audit_logs where actor_id = :a")
         assert await scalar(conn, count, {"a": stranger}) == 0
         assert await scalar(conn, count, {"a": owner}) == 1
+
+
+async def test_create_patient_allows_one_own_profile_and_minor_children_only(
+    app_engine: AsyncEngine, owner_engine: AsyncEngine
+) -> None:
+    """0013: the database enforces what the API validates (a bypassed API changes nothing)."""
+    user = await make_user(owner_engine)
+    create = bound_text("select create_patient(:n, :r, :b, 'unknown'::sex)")
+    adult_born = date(datetime.now(UTC).date().year - 30, 1, 1)
+    await make_patient(app_engine, user)
+    for name, rel, born, message in (
+        ("Second self", "self", None, "own profile exists"),
+        ("Parent", "parent", None, "invalid profile"),
+        ("Grown child", "child", adult_born, "invalid profile"),
+        ("Undated child", "child", None, "invalid profile"),
+        ("Minor self", "self", date(datetime.now(UTC).date().year - 5, 1, 1), "invalid profile"),
+        ("Ancient", "self", date(1850, 1, 1), "invalid profile"),
+        ("   ", "child", date(datetime.now(UTC).date().year - 5, 1, 1), "invalid profile"),
+    ):
+        with pytest.raises(DBAPIError, match=message):
+            async with as_user(app_engine, user) as conn:
+                await conn.execute(create, {"n": name, "r": rel, "b": born})
+    for _ in range(9):
+        await make_patient(app_engine, user, minor=True)
+    with pytest.raises(DBAPIError, match="too many profiles"):
+        await make_patient(app_engine, user, minor=True)
+    with pytest.raises(DBAPIError, match="no user context"):
+        async with as_user(app_engine, None) as conn:
+            await conn.execute(create, {"n": "X", "r": "self", "b": None})
+
+
+async def test_minor_status_is_no_oracle_and_relation_is_fixed(
+    app_engine: AsyncEngine, owner_engine: AsyncEngine
+) -> None:
+    """0013: is_minor_patient answers only for readable profiles; relation cannot be edited."""
+    owner, stranger = await make_user(owner_engine), await make_user(owner_engine)
+    child = await make_patient(app_engine, owner, minor=True)
+    is_minor = bound_text("select is_minor_patient(:p)")
+    async with as_user(app_engine, owner) as conn:
+        assert await scalar(conn, is_minor, {"p": child}) is True
+    async with as_user(app_engine, stranger) as conn:
+        assert await scalar(conn, is_minor, {"p": child}) is False
+    with pytest.raises(DBAPIError, match="permission denied"):
+        async with as_user(app_engine, owner) as conn:
+            await conn.execute(
+                bound_text("update patients set relation = 'self' where id = :p"), {"p": child}
+            )

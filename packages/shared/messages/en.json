@@ -326,7 +326,8 @@
     "consent": {
       "not_allowed": "You cannot give consent for this profile.",
       "required": "Give the required consents to continue.",
-      "version_outdated": "The consent text was updated. Read the new text and consent again."
+      "version_outdated": "The consent text was updated. Read the new text and consent again.",
+      "profile_required": "To add information to this child's profile, the parent who owns it must first give the consents on the child's behalf."
     },
     "internal": "Something went wrong. Try again; if it keeps happening, contact the system administrator.",
     "me": {
@@ -342,7 +343,15 @@
       "too_short": "The password needs at least 10 characters.",
       "too_weak": "The password is too easy to guess. Use a longer phrase of several words."
     },
-    "validation": "Check what you entered."
+    "validation": "Check what you entered.",
+    "patient": {
+      "birth_date_locked": "The date of birth is already set and cannot be changed. Contact an administrator if it is wrong.",
+      "limit_reached": "You have reached the maximum number of profiles (10).",
+      "not_found": "Profile not found.",
+      "not_owner": "Only the profile's owner can edit this.",
+      "self_exists": "Your own profile already exists.",
+      "read_only": "You can only view this profile, not add to it."
+    }
   },
   "import": {
     "problem": {

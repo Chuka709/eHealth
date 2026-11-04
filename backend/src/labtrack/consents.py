@@ -54,7 +54,8 @@ async def states(db: AsyncSession, patient_id: object = None) -> list[ConsentSta
     rows = await db.execute(
         bound_text(
             "select distinct on (kind) kind, version, granted, created_at from consents"
-            " where patient_id is not distinct from :p order by kind, id desc"
+            " where user_id = app_user_id() and patient_id is not distinct from :p"
+            " order by kind, id desc"
         ),
         {"p": patient_id},
     )
@@ -75,8 +76,10 @@ async def states(db: AsyncSession, patient_id: object = None) -> list[ConsentSta
     return result
 
 
-async def missing(db: AsyncSession, needed: frozenset[Kind]) -> set[Kind]:
-    return {s.kind for s in await states(db) if s.kind in needed and not s.granted}
+async def missing(
+    db: AsyncSession, needed: frozenset[Kind], patient_id: object = None
+) -> set[Kind]:
+    return {s.kind for s in await states(db, patient_id) if s.kind in needed and not s.granted}
 
 
 def require(needed: frozenset[Kind]) -> Callable[[AsyncSession], Awaitable[None]]:
@@ -93,3 +96,19 @@ def require(needed: frozenset[Kind]) -> Callable[[AsyncSession], Awaitable[None]
             raise AppError(403, "consent.required")
 
     return check
+
+
+async def require_for_patient(db: AsyncSession, patient_id: object) -> None:
+    """For a profile the user can already read (api.deps checks access first): a minor's
+    profile also needs the consents its owner gave for it (Q9), checked now - at 18 (the
+    Ulaanbaatar date) the parent's consent stops counting and the profile is no longer a
+    minor's. The profile's consents are readable only by the user who gave them, so anyone else
+    on a minor's profile (a caregiver) is refused - fail closed until a caregiver flow exists.
+    """
+    from labtrack.api.errors import AppError  # noqa: PLC0415 - api depends on this module
+
+    minor = (
+        await db.execute(bound_text("select is_minor_patient(:p)"), {"p": patient_id})
+    ).scalar_one()
+    if minor and await missing(db, REQUIRED, patient_id):
+        raise AppError(403, "consent.profile_required")

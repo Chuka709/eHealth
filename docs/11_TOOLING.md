@@ -20,7 +20,7 @@
 ### 1.2 Шийдэгдсэн (2026.10.28 — дэлгэрэнгүй `OPEN_QUESTIONS.md`); хэрэгжилт тухайн Phase-д
 | # | Асуудал | Санал | Хэзээ |
 |---|---|---|---|
-| A | **iOS 64 локал мэдэгдлийн хязгаар:** 5 эм × өдөрт 2 × 7 хоног = 70 > 64 | Хуваарьлах хугацааг тунгийн тоогоор тооцох: `days = min(7, floor(60 / өдрийн_тун))`, 4-ийг товлол/системд үлдээх; hypothesis тест | Phase 2 |
+| A | **iOS 64 локал мэдэгдлийн хязгаар:** 5 эм × өдөрт 2 × 7 хоног = 70 > 64 | Хуваарьлах хугацааг тунгийн тоогоор тооцох: `days = min(7, floor(56 / өдрийн_мэдэгдэл))`, 8 слотыг товлол/"10 мин дараа"-д үлдээх (OPEN_QUESTIONS); hypothesis тест | Phase 2 |
 | B | `medication_intakes`, `vitals` — offline + мэдэгдлийн "Уусан" товч давхар бичигдэж болно | `client_id uuid unique` + `unique(medication_id, scheduled_at)`; idempotent upsert | Phase 2 |
 | C | `share_links` PIN brute-force түгжээ (04-т бий) хүснэгтэд талбаргүй | `pin_failed_count`, `locked_until` | Phase 7 |
 | D | `audit_logs`, `notifications`, `consents`-ийн RLS тодорхойгүй (patient_id/user_id агуулна) | `user_id = app_user_id()` policy; audit — зөвхөн өөрт хамаарах админы үйлдэл | Phase 1 |
