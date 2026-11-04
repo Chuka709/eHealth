@@ -88,7 +88,7 @@ async def test_phone_reveal_and_lockout_clear_are_rationed(client_from: ClientFa
 
 
 class _FailingSender(ConsoleSmsSender):
-    async def send(self, **_: object) -> None:  # type: ignore[override]
+    async def send(self, **_: object) -> None:
         raise RuntimeError("gateway down")
 
 

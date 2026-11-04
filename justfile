@@ -78,7 +78,7 @@ test-rls:
 lint-api:
     cd backend; uv run ruff format --check .
     cd backend; uv run ruff check .
-    cd backend; uv run mypy src
+    cd backend; uv run mypy src tests alembic
 
 # --- JS ---
 lint-js:

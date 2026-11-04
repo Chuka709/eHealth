@@ -35,12 +35,12 @@ def _step() -> int:
 async def _as_admin(admin_engine: AsyncEngine, session: str, sql: str, **p: Any) -> Any:
     async with admin_engine.connect() as conn, conn.begin():
         await set_admin_context(conn, session)
-        return (await conn.execute(bound_text(sql), p)).all()  # type: ignore[arg-type]
+        return (await conn.execute(bound_text(sql), p)).all()
 
 
 async def _owner(owner_engine: AsyncEngine, sql: str, **p: Any) -> None:
     async with owner_engine.connect() as conn, conn.begin():
-        await conn.execute(bound_text(sql), p)  # type: ignore[arg-type]
+        await conn.execute(bound_text(sql), p)
 
 
 async def _new_admin(owner_engine: AsyncEngine, role: str = "super_admin") -> UUID:
@@ -268,7 +268,7 @@ async def test_admin_api_role_cannot_sign_in_by_itself(
     admin = await _new_admin(owner_engine)
     with pytest.raises(DBAPIError, match="permission denied"):
         async with as_user(admin_engine, admin) as conn:
-            await conn.execute(bound_text(sql), {"h": _hash()})  # type: ignore[arg-type]
+            await conn.execute(bound_text(sql), {"h": _hash()})
 
 
 @pytest.mark.parametrize(
@@ -283,7 +283,7 @@ async def test_admin_api_role_cannot_sign_in_by_itself(
 async def test_sign_in_role_can_do_nothing_else(admin_login_engine: AsyncEngine, sql: str) -> None:
     with pytest.raises(DBAPIError, match="permission denied"):
         async with admin_login_engine.connect() as conn, conn.begin():
-            await conn.execute(bound_text(sql))  # type: ignore[arg-type]
+            await conn.execute(bound_text(sql))
 
 
 @pytest.mark.parametrize(
@@ -301,7 +301,7 @@ async def test_admin_role_has_no_direct_access_to_admin_secrets(
     admin = await _new_admin(owner_engine)
     with pytest.raises(DBAPIError, match="permission denied"):
         async with as_user(admin_engine, admin) as conn:
-            await conn.execute(bound_text(sql))  # type: ignore[arg-type]
+            await conn.execute(bound_text(sql))
 
 
 async def test_admin_accounts_never_hold_user_sessions(
@@ -356,7 +356,7 @@ async def test_app_role_cannot_use_admin_sign_in(
     me = await make_user(owner_engine)
     with pytest.raises(DBAPIError, match="permission denied"):
         async with as_user(app_engine, me) as conn:
-            await conn.execute(bound_text(sql))  # type: ignore[arg-type]
+            await conn.execute(bound_text(sql))
 
 
 # --- reasons, identity enrolment, lockout ------------------------------------------------------

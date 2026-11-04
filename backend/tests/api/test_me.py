@@ -64,9 +64,13 @@ async def test_consents_are_appended_and_versioned(
         ).status_code == 204
 
         def ai(processing: bool | None, cross_border: bool | None) -> list[dict[str, object]]:
+            pairs: tuple[tuple[consents.Kind, bool | None], ...] = (
+                ("ai_processing", processing),
+                ("cross_border", cross_border),
+            )
             return [
                 {"kind": kind, "version": consents.VERSIONS[kind], "granted": granted}
-                for kind, granted in (("ai_processing", processing), ("cross_border", cross_border))
+                for kind, granted in pairs
                 if granted is not None
             ]
 
