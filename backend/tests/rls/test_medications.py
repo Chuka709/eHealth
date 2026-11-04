@@ -30,14 +30,27 @@ _MEDICATION = bound_text(
 )
 _REGIMEN = bound_text(
     "insert into medication_regimens (patient_id, medication_id, client_id, effective_from,"
-    " dose_amount, dose_unit, schedule) values (:p, :m, :c, :d, :a, 'мг', cast(:s as jsonb))"
+    " dose_unit, schedule) values (:p, :m, :c, :d, 'mg', jsonb_build_object('type', 'daily',"
+    " 'times', jsonb_build_array("
+    " jsonb_build_object('at', '08:00', 'amount', cast(cast(:a as numeric) as text)),"
+    " jsonb_build_object('at', '20:00', 'amount', cast(cast(:a as numeric) as text)))))"
     " returning id"
+)
+_REGIMEN_RAW = bound_text(
+    "insert into medication_regimens (patient_id, medication_id, client_id, effective_from,"
+    " dose_amount, dose_unit, dose_unit_text, schedule)"
+    " values (:p, :m, gen_random_uuid(), :d, :a, :u, :ut, cast(:s as jsonb))"
 )
 _INTAKE = bound_text(
     "insert into medication_intakes (patient_id, medication_id, client_id, scheduled_at,"
     " taken_at, status) values (:p, :m, :c, :at, :at, 'taken') returning id"
 )
 _DAILY = json.dumps({"type": "daily", "times": ["08:00", "20:00"]})
+
+
+def _minute() -> datetime:
+    """Now, as a whole minute (0015: scheduled doses are HH:MM)."""
+    return datetime.now(UTC).replace(second=0, microsecond=0)
 
 
 def _cid() -> UUID:
@@ -192,7 +205,7 @@ async def test_rows_cannot_point_at_another_patients_rows(
         ),
         (
             _INTAKE,
-            {"p": child, "m": ids["medications"], "c": _cid(), "at": datetime.now(UTC)},
+            {"p": child, "m": ids["medications"], "c": _cid(), "at": _minute()},
         ),
     ]
     for sql, params in attempts:
@@ -288,7 +301,7 @@ async def test_readers_cannot_write(
                     "p": patient,
                     "m": ids["medications"],
                     "c": _cid(),
-                    "at": datetime.now(UTC),
+                    "at": _minute(),
                 },
             )
 
@@ -416,12 +429,13 @@ async def test_regimens_in_one_transaction_keep_their_order(
         current = await scalar(
             conn,
             bound_text(
-                "select dose_amount from medication_regimens where medication_id = :m"
+                "select schedule->'times'->0->>'amount' from medication_regimens"
+                " where medication_id = :m"
                 " and effective_from <= :d order by effective_from desc, seq desc limit 1"
             ),
             {"m": ids["medications"], "d": day},
         )
-    assert current == Decimal("2.5")
+    assert current == "2.5"
 
 
 async def test_stranger_ids_reveal_nothing(
@@ -456,19 +470,155 @@ async def test_stranger_ids_reveal_nothing(
                 )
 
 
+_TIMES = [{"at": "08:00", "amount": "2"}, {"at": "20:00", "amount": "1.5"}]
+
+
 @pytest.mark.parametrize(
-    ("schedule", "amount"),
+    ("schedule", "unit", "amount"),
     [
-        ({"type": "daily"}, "1"),  # no times: the reminder would never fire (H6)
-        ({"type": "daily", "times": []}, "1"),
-        ({"type": "weekly", "times": ["09:00"]}, "1"),  # no days
-        ({"type": "hourly", "times": ["09:00"]}, "1"),
-        ({"type": "daily", "times": ["08:00"]}, "0.00001"),  # beyond 4 decimals
-        ({"type": "daily", "times": ["08:00"]}, "0"),
+        ({"type": "daily"}, None, None),  # no times: the reminder would never fire (H6)
+        ({"type": "daily", "times": []}, None, None),
+        ({"type": "daily", "times": ["08:00"]}, None, None),  # the old shape
+        ({"type": "weekly", "times": [{"at": "09:00"}]}, None, None),  # no days
+        ({"type": "weekly", "times": [{"at": "09:00"}], "days": [0]}, None, None),
+        ({"type": "hourly", "times": [{"at": "09:00"}]}, None, None),
+        ({"type": "daily", "times": [{"at": "25:00"}]}, None, None),
+        ({"type": "daily", "times": [{"at": "08:00", "amount": "0.00001"}]}, "mg", None),
+        ({"type": "daily", "times": [{"at": "08:00", "amount": "1,000"}]}, "mg", None),
+        ({"type": "daily", "times": [{"at": "08:00", "amount": "0"}]}, "mg", None),
+        ({"type": "daily", "times": [{"at": "08:00"}, {"at": "08:00"}]}, None, None),
+        ({"type": "weekly", "times": [{"at": "08:00"}], "days": [1, 1]}, None, None),
+        ({"type": "daily", "times": [{"at": "08:00", "x": 1}]}, None, None),
+        ({"type": "daily", "times": [{"at": "08:00"}], "note": "x"}, None, None),
+        ({"type": "daily", "times": [{"at": "08:00"}], "days": [1]}, None, None),
+        ({"type": "daily", "times": [{"at": "08:00", "amount": "2"}, {"at": "20:00"}]}, "mg", None),
+        ({"type": "daily", "times": _TIMES}, None, None),  # amounts without a unit
+        ({"type": "daily", "times": _TIMES}, "мкг", None),  # not a unit code
+        ({"type": "daily", "times": [{"at": "08:00"}]}, "mg", None),  # a unit, no amount
+        ({"type": "daily", "times": _TIMES}, "mg", "2"),  # dose_amount is for prn only
+        ({"type": "prn"}, None, "2"),
+        ({"type": "prn", "times": [{"at": "08:00"}]}, None, None),
     ],
 )
 async def test_regimen_shape_is_checked(
-    app_engine: AsyncEngine, owner_engine: AsyncEngine, schedule: dict[str, Any], amount: str
+    app_engine: AsyncEngine,
+    owner_engine: AsyncEngine,
+    schedule: dict[str, Any],
+    unit: str | None,
+    amount: str | None,
+) -> None:
+    owner = await make_user(owner_engine)
+    patient = await make_patient(app_engine, owner)
+    ids = await _seed(app_engine, owner, patient)
+    params = {
+        "p": patient,
+        "m": ids["medications"],
+        "d": date(2026, 1, 1),
+        "a": Decimal(amount) if amount else None,
+        "u": unit,
+        "ut": None,
+        "s": json.dumps(schedule),
+    }
+    with pytest.raises(DBAPIError, match="check constraint"):
+        async with as_user(app_engine, owner) as conn:
+            await conn.execute(_REGIMEN_RAW, params)
+
+
+async def test_per_time_doses_and_other_units_are_stored(
+    app_engine: AsyncEngine, owner_engine: AsyncEngine
+) -> None:
+    owner = await make_user(owner_engine)
+    patient = await make_patient(app_engine, owner)
+    ids = await _seed(app_engine, owner, patient)
+    base = {"p": patient, "m": ids["medications"], "d": date(2026, 1, 1)}
+    async with as_user(app_engine, owner) as conn:
+        for unit, text, amount, schedule in (
+            ("mg", None, None, {"type": "daily", "times": _TIMES}),
+            (
+                "other",
+                "халбага",
+                None,
+                {"type": "daily", "times": [{"at": "08:00", "amount": "1"}]},
+            ),
+            ("iu", None, Decimal("50000"), {"type": "prn"}),
+            (None, None, None, {"type": "weekly", "times": [{"at": "09:00"}], "days": [1, 4]}),
+        ):
+            await conn.execute(
+                _REGIMEN_RAW,
+                {**base, "a": amount, "u": unit, "ut": text, "s": json.dumps(schedule)},
+            )
+    with pytest.raises(DBAPIError, match="check constraint"):  # "other" needs its text
+        async with as_user(app_engine, owner) as conn:
+            await conn.execute(
+                _REGIMEN_RAW,
+                {
+                    **base,
+                    "a": None,
+                    "u": "other",
+                    "ut": None,
+                    "s": json.dumps({"type": "daily", "times": [{"at": "08:00", "amount": "1"}]}),
+                },
+            )
+
+
+async def _future_regimen(app_engine: AsyncEngine, owner: UUID, patient: UUID, med: UUID) -> UUID:
+    async with as_user(app_engine, owner) as conn:
+        rid: UUID = await scalar(
+            conn,
+            _REGIMEN,
+            {"p": patient, "m": med, "c": _cid(), "d": date(2099, 1, 1), "a": Decimal("1")},
+        )
+    return rid
+
+
+async def test_a_future_dose_entered_by_mistake_is_voided_once(
+    app_engine: AsyncEngine, owner_engine: AsyncEngine
+) -> None:
+    owner, carer, viewer = [await make_user(owner_engine) for _ in range(3)]
+    patient = await make_patient(app_engine, owner)
+    ids = await _seed(app_engine, owner, patient)
+    await grant(app_engine, owner, patient, carer, "caregiver")
+    await grant(app_engine, owner, patient, viewer, "viewer")
+    future = await _future_regimen(app_engine, owner, patient, ids["medications"])
+    void = bound_text(
+        "update medication_regimens set voided_at = now(), void_reason = 'он буруу' where id = :i"
+    )
+    stranger = await make_user(owner_engine)
+    for reader in (viewer, stranger):
+        async with as_user(app_engine, reader) as conn:
+            assert (await conn.execute(void, {"i": future})).rowcount == 0
+    async with as_user(app_engine, carer) as conn:
+        assert (await conn.execute(void, {"i": future})).rowcount == 1
+        row = (
+            await conn.execute(
+                bound_text("select voided_by, void_reason from medication_regimens where id = :i"),
+                {"i": future},
+            )
+        ).one()
+    assert (row.voided_by, row.void_reason) == (carer, "он буруу")
+    with pytest.raises(DBAPIError, match="a voided dose stays voided"):
+        async with as_user(app_engine, owner) as conn:
+            await conn.execute(
+                bound_text("update medication_regimens set void_reason = 'x' where id = :i"),
+                {"i": future},
+            )
+    # a started dose is history: never voided
+    with pytest.raises(DBAPIError, match="a started dose is history"):
+        async with as_user(app_engine, owner) as conn:
+            await conn.execute(void, {"i": ids["medication_regimens"]})
+    # nothing else of a regimen changes
+    with pytest.raises(DBAPIError, match="permission denied"):
+        async with as_user(app_engine, owner) as conn:
+            await conn.execute(
+                bound_text(
+                    "update medication_regimens set effective_from = '2026-01-02' where id = :i"
+                ),
+                {"i": future},
+            )
+
+
+async def test_a_scheduled_dose_is_a_whole_minute(
+    app_engine: AsyncEngine, owner_engine: AsyncEngine
 ) -> None:
     owner = await make_user(owner_engine)
     patient = await make_patient(app_engine, owner)
@@ -476,14 +626,12 @@ async def test_regimen_shape_is_checked(
     with pytest.raises(DBAPIError, match="check constraint"):
         async with as_user(app_engine, owner) as conn:
             await conn.execute(
-                _REGIMEN,
+                _INTAKE,
                 {
                     "p": patient,
                     "m": ids["medications"],
                     "c": _cid(),
-                    "d": date(2026, 1, 1),
-                    "a": Decimal(amount),
-                    "s": json.dumps(schedule),
+                    "at": datetime(2026, 11, 1, 8, 0, 30, tzinfo=UTC),
                 },
             )
 
@@ -657,3 +805,52 @@ async def test_deleting_a_user_inside_a_user_context_keeps_rows(
             )
         ).one()
     assert (row.recorded_by, row.updated_by) == (None, None)
+
+
+async def test_purging_whoever_voided_a_dose_keeps_the_mark(
+    app_engine: AsyncEngine, owner_engine: AsyncEngine, maint_engine: AsyncEngine
+) -> None:
+    """The purge's FK set null on voided_by/recorded_by passes the void trigger; the row stays
+    voided (a voided mistake never comes back into force)."""
+    owner, carer = await make_user(owner_engine), await make_user(owner_engine)
+    patient = await make_patient(app_engine, owner)
+    ids = await _seed(app_engine, owner, patient)
+    await grant(app_engine, owner, patient, carer, "caregiver")
+    future = await _future_regimen(app_engine, carer, patient, ids["medications"])
+    async with as_user(app_engine, carer) as conn:
+        await conn.execute(
+            bound_text(
+                "update medication_regimens set voided_at = now(), void_reason = 'алдаа'"
+                " where id = :i"
+            ),
+            {"i": future},
+        )
+    await _request(app_engine, carer)
+    await _age(owner_engine, carer, 31)
+    assert carer in await _purge(maint_engine)
+    async with owner_engine.connect() as conn:
+        row = (
+            await conn.execute(
+                bound_text(
+                    "select recorded_by, voided_by, voided_at from medication_regimens"
+                    " where id = :i"
+                ),
+                {"i": future},
+            )
+        ).one()
+    assert (row.recorded_by, row.voided_by) == (None, None)
+    assert row.voided_at is not None
+
+
+async def test_even_the_owner_role_only_voids(
+    app_engine: AsyncEngine, owner_engine: AsyncEngine
+) -> None:
+    owner = await make_user(owner_engine)
+    patient = await make_patient(app_engine, owner)
+    ids = await _seed(app_engine, owner, patient)
+    with pytest.raises(DBAPIError, match="only voiding is allowed"):
+        async with owner_engine.connect() as conn, conn.begin():
+            await conn.execute(
+                bound_text("update medication_regimens set changed_by_note = 'x' where id = :i"),
+                {"i": ids["medication_regimens"]},
+            )

@@ -3,7 +3,7 @@ from collections.abc import Awaitable, Callable
 from fastapi import FastAPI, Request, Response
 
 from labtrack import __version__, consents
-from labtrack.api import admin, auth, health, me, patients
+from labtrack.api import admin, auth, health, me, patients, records
 from labtrack.api.errors import install_error_handlers
 from labtrack.config import get_settings
 from labtrack.logging import configure_logging
@@ -42,5 +42,7 @@ def create_app() -> FastAPI:
     app.include_router(auth.router, prefix=settings.api_prefix)
     app.include_router(me.router, prefix=settings.api_prefix)
     app.include_router(patients.router, prefix=settings.api_prefix)
+    app.include_router(records.router, prefix=settings.api_prefix)
+    app.include_router(records.catalog_router, prefix=settings.api_prefix)
     app.include_router(admin.router, prefix=settings.api_prefix)
     return app

@@ -41,6 +41,11 @@
 		respond 404
 	}
 	handle /api/* {
+		# JSON bodies are small (the CSV import is <= 1 MB; documents go straight to storage
+		# in Phase 3): a bigger body never reaches the API's parser.
+		request_body {
+			max_size 2MB
+		}
 		reverse_proxy api:8000
 	}
 	handle {

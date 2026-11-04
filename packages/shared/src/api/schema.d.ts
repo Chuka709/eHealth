@@ -339,6 +339,205 @@ export interface paths {
         patch: operations["update_patient_api_v1_patients__patient_id__patch"];
         trace?: never;
     };
+    "/api/v1/patients/{patient_id}/transplants": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Transplants */
+        get: operations["list_transplants_api_v1_patients__patient_id__transplants_get"];
+        put?: never;
+        /** Create Transplant */
+        post: operations["create_transplant_api_v1_patients__patient_id__transplants_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/patients/{patient_id}/transplants/{transplant_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Transplant */
+        get: operations["get_transplant_api_v1_patients__patient_id__transplants__transplant_id__get"];
+        /**
+         * Replace Transplant
+         * @description The whole record as edited (fields left out are cleared).
+         */
+        put: operations["replace_transplant_api_v1_patients__patient_id__transplants__transplant_id__put"];
+        post?: never;
+        /**
+         * Delete Transplant
+         * @description The profile's owner only (it is part of the record's history).
+         */
+        delete: operations["delete_transplant_api_v1_patients__patient_id__transplants__transplant_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/patients/{patient_id}/medications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Medications
+         * @description Current first (immunosuppressants first among them), then those stopped.
+         */
+        get: operations["list_medications_api_v1_patients__patient_id__medications_get"];
+        put?: never;
+        /** Create Medication */
+        post: operations["create_medication_api_v1_patients__patient_id__medications_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/patients/{patient_id}/medications/{medication_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Medication */
+        get: operations["get_medication_api_v1_patients__patient_id__medications__medication_id__get"];
+        /**
+         * Replace Medication
+         * @description Name, strength, dates ... - not the dose: a dose change is POST .../regimens.
+         */
+        put: operations["replace_medication_api_v1_patients__patient_id__medications__medication_id__put"];
+        post?: never;
+        /**
+         * Delete Medication
+         * @description Erases the medication with its dose history and intakes - the owner only.
+         */
+        delete: operations["delete_medication_api_v1_patients__patient_id__medications__medication_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/patients/{patient_id}/medications/{medication_id}/regimens": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Change Dose
+         * @description A new dose or schedule from `effective_from` on; the previous one stays in the history
+         *     (H8). The values are the doctor's instruction as the user enters it.
+         */
+        post: operations["change_dose_api_v1_patients__patient_id__medications__medication_id__regimens_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/patients/{patient_id}/medications/{medication_id}/regimens/{regimen_id}/void": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Void Dose Change
+         * @description Mark a scheduled change that has not started as entered by mistake. It stays in the
+         *     history, marked, and never comes into force. A started dose cannot be voided (409): enter
+         *     the correct one as a new change instead.
+         */
+        post: operations["void_dose_change_api_v1_patients__patient_id__medications__medication_id__regimens__regimen_id__void_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/patients/{patient_id}/intakes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Intakes
+         * @description Recorded doses in [from, to): at most 93 days and 2000 records per request (never cut
+         *     short silently: more is 422 `intake.too_many`, ask for a shorter range).
+         */
+        get: operations["list_intakes_api_v1_patients__patient_id__intakes_get"];
+        put?: never;
+        /**
+         * Record Intake
+         * @description Record a dose as taken, late or skipped. Idempotent by client_id; a second record of
+         *     the same scheduled dose merges - "taken" always wins (H20) - and answers with the stored
+         *     result (200).
+         */
+        post: operations["record_intake_api_v1_patients__patient_id__intakes_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/patients/{patient_id}/intakes/{intake_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete Intake
+         * @description Undo a record ("Буцаах"). A taken dose only by whoever recorded it, or the owner.
+         */
+        delete: operations["delete_intake_api_v1_patients__patient_id__intakes__intake_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/medication-catalog": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Search Catalog
+         * @description Medication names (Mongolian, English, brands) for the "add a medication" search.
+         */
+        get: operations["search_catalog_api_v1_medication_catalog_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/auth/login": {
         parameters: {
             query?: never;
@@ -684,6 +883,21 @@ export interface components {
              */
             reason: "user_request" | "suspected_compromise" | "other";
         };
+        /** CatalogItem */
+        CatalogItem: {
+            /** Code */
+            code: string;
+            /** Generic Mn */
+            generic_mn: string;
+            /** Generic En */
+            generic_en: string;
+            /** Brands */
+            brands: string[];
+            /** Category */
+            category: string;
+            /** Forms */
+            forms: string[];
+        };
         /** ChangePasswordRequest */
         ChangePasswordRequest: {
             /** Current Password */
@@ -770,6 +984,21 @@ export interface components {
              */
             scheduled_for: string;
         };
+        /**
+         * Elapsed
+         * @description Time since the transplant, never more than can be true (counted from the last possible
+         *     day of a month/year-only date); `approximate`: show "≈" or the year, not a day count.
+         */
+        Elapsed: {
+            /** Days */
+            days: number;
+            /** Months */
+            months: number;
+            /** Years */
+            years: number;
+            /** Approximate */
+            approximate: boolean;
+        };
         /** ErrorBody */
         ErrorBody: {
             /** Code */
@@ -831,6 +1060,58 @@ export interface components {
             /** Created */
             created: number;
         };
+        /** IntakeIn */
+        IntakeIn: {
+            /**
+             * Client Id
+             * Format: uuid
+             */
+            client_id: string;
+            /**
+             * Medication Id
+             * Format: uuid
+             */
+            medication_id: string;
+            /** Scheduled At */
+            scheduled_at?: string | null;
+            /** Taken At */
+            taken_at?: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "taken" | "late" | "skipped";
+            /** Note */
+            note?: string | null;
+        };
+        /** IntakeOut */
+        IntakeOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Medication Id
+             * Format: uuid
+             */
+            medication_id: string;
+            /** Scheduled At */
+            scheduled_at: string | null;
+            /** Taken At */
+            taken_at: string | null;
+            /** Status */
+            status: string;
+            /** Note */
+            note: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Updated At */
+            updated_at: string | null;
+        };
         /** LiveTokenOut */
         LiveTokenOut: {
             /** Purpose */
@@ -890,6 +1171,224 @@ export interface components {
             display_name?: string | null;
             /** Locale */
             locale?: ("mn" | "en") | null;
+        };
+        /** MedicationCreate */
+        MedicationCreate: {
+            /** Catalog Code */
+            catalog_code?: string | null;
+            /** Name */
+            name: string;
+            /** Brand */
+            brand?: string | null;
+            /** Form */
+            form?: string | null;
+            /** Strength */
+            strength?: string | null;
+            /**
+             * Route
+             * @default oral
+             */
+            route: string;
+            /** Purpose */
+            purpose?: string | null;
+            /** Prescribed By */
+            prescribed_by?: string | null;
+            /** Transplant Id */
+            transplant_id?: string | null;
+            /** Started On */
+            started_on?: string | null;
+            /** Stopped On */
+            stopped_on?: string | null;
+            /** Stop Reason */
+            stop_reason?: string | null;
+            /** Planned End On */
+            planned_end_on?: string | null;
+            /**
+             * Is Long Term
+             * @default true
+             */
+            is_long_term: boolean;
+            /**
+             * Reminders Enabled
+             * @default false
+             */
+            reminders_enabled: boolean;
+            /**
+             * Reminder Timezone Mode
+             * @default home
+             * @enum {string}
+             */
+            reminder_timezone_mode: "home" | "local";
+            /** Notes */
+            notes?: string | null;
+            /**
+             * Client Id
+             * Format: uuid
+             */
+            client_id: string;
+            regimen?: components["schemas"]["RegimenIn"] | null;
+        };
+        /** MedicationDetail */
+        MedicationDetail: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Catalog Code */
+            catalog_code: string | null;
+            /** Category */
+            category: string | null;
+            /** Name */
+            name: string;
+            /** Brand */
+            brand: string | null;
+            /** Form */
+            form: string | null;
+            /** Strength */
+            strength: string | null;
+            /** Route */
+            route: string;
+            /** Purpose */
+            purpose: string | null;
+            /** Prescribed By */
+            prescribed_by: string | null;
+            /** Transplant Id */
+            transplant_id: string | null;
+            /** Started On */
+            started_on: string | null;
+            /** Stopped On */
+            stopped_on: string | null;
+            /** Stop Reason */
+            stop_reason: string | null;
+            /** Planned End On */
+            planned_end_on: string | null;
+            /** Is Long Term */
+            is_long_term: boolean;
+            /** Reminders Enabled */
+            reminders_enabled: boolean;
+            /** Reminder Timezone Mode */
+            reminder_timezone_mode: string;
+            /** Notes */
+            notes: string | null;
+            /** Is Current */
+            is_current: boolean;
+            current_regimen: components["schemas"]["RegimenOut"] | null;
+            next_regimen: components["schemas"]["RegimenOut"] | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Updated At */
+            updated_at: string | null;
+            /** Regimens */
+            regimens: components["schemas"]["RegimenOut"][];
+        };
+        /** MedicationIn */
+        MedicationIn: {
+            /** Catalog Code */
+            catalog_code?: string | null;
+            /** Name */
+            name: string;
+            /** Brand */
+            brand?: string | null;
+            /** Form */
+            form?: string | null;
+            /** Strength */
+            strength?: string | null;
+            /**
+             * Route
+             * @default oral
+             */
+            route: string;
+            /** Purpose */
+            purpose?: string | null;
+            /** Prescribed By */
+            prescribed_by?: string | null;
+            /** Transplant Id */
+            transplant_id?: string | null;
+            /** Started On */
+            started_on?: string | null;
+            /** Stopped On */
+            stopped_on?: string | null;
+            /** Stop Reason */
+            stop_reason?: string | null;
+            /** Planned End On */
+            planned_end_on?: string | null;
+            /**
+             * Is Long Term
+             * @default true
+             */
+            is_long_term: boolean;
+            /**
+             * Reminders Enabled
+             * @default false
+             */
+            reminders_enabled: boolean;
+            /**
+             * Reminder Timezone Mode
+             * @default home
+             * @enum {string}
+             */
+            reminder_timezone_mode: "home" | "local";
+            /** Notes */
+            notes?: string | null;
+        };
+        /** MedicationOut */
+        MedicationOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Catalog Code */
+            catalog_code: string | null;
+            /** Category */
+            category: string | null;
+            /** Name */
+            name: string;
+            /** Brand */
+            brand: string | null;
+            /** Form */
+            form: string | null;
+            /** Strength */
+            strength: string | null;
+            /** Route */
+            route: string;
+            /** Purpose */
+            purpose: string | null;
+            /** Prescribed By */
+            prescribed_by: string | null;
+            /** Transplant Id */
+            transplant_id: string | null;
+            /** Started On */
+            started_on: string | null;
+            /** Stopped On */
+            stopped_on: string | null;
+            /** Stop Reason */
+            stop_reason: string | null;
+            /** Planned End On */
+            planned_end_on: string | null;
+            /** Is Long Term */
+            is_long_term: boolean;
+            /** Reminders Enabled */
+            reminders_enabled: boolean;
+            /** Reminder Timezone Mode */
+            reminder_timezone_mode: string;
+            /** Notes */
+            notes: string | null;
+            /** Is Current */
+            is_current: boolean;
+            current_regimen: components["schemas"]["RegimenOut"] | null;
+            next_regimen: components["schemas"]["RegimenOut"] | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Updated At */
+            updated_at: string | null;
         };
         /** NationalIdRequest */
         NationalIdRequest: {
@@ -997,6 +1496,76 @@ export interface components {
             /** Refresh Token */
             refresh_token: string;
         };
+        /**
+         * RegimenIn
+         * @description A dose and schedule from `effective_from` on, as the doctor instructed.
+         *
+         *     daily/weekly: amounts per time (`schedule.times[].amount`, e.g. 2 mg at 08:00 and 1.5 mg
+         *     at 20:00) with one `dose_unit`, or no amounts at all. prn: `dose_amount` + `dose_unit`
+         *     (or neither). `dose_unit` "other" needs `dose_unit_text`.
+         */
+        RegimenIn: {
+            /**
+             * Client Id
+             * Format: uuid
+             */
+            client_id: string;
+            /**
+             * Effective From
+             * Format: date
+             */
+            effective_from: string;
+            /** Dose Amount */
+            dose_amount?: number | string | null;
+            /** Dose Unit */
+            dose_unit?: ("mg" | "mcg" | "g" | "ml" | "iu" | "unit" | "tablet" | "capsule" | "drop" | "puff" | "sachet" | "patch" | "other") | null;
+            /** Dose Unit Text */
+            dose_unit_text?: string | null;
+            /** Schedule */
+            schedule: {
+                [key: string]: unknown;
+            };
+            /** Instructions */
+            instructions?: string | null;
+            /** Changed By Note */
+            changed_by_note?: string | null;
+        };
+        /** RegimenOut */
+        RegimenOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Effective From
+             * Format: date
+             */
+            effective_from: string;
+            /** Dose Amount */
+            dose_amount: string | null;
+            /** Dose Unit */
+            dose_unit: string | null;
+            /** Dose Unit Text */
+            dose_unit_text: string | null;
+            /** Schedule */
+            schedule: {
+                [key: string]: unknown;
+            };
+            /** Instructions */
+            instructions: string | null;
+            /** Changed By Note */
+            changed_by_note: string | null;
+            /** Voided At */
+            voided_at: string | null;
+            /** Void Reason */
+            void_reason: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
         /** SecurityEventOut */
         SecurityEventOut: {
             /** Id */
@@ -1100,6 +1669,246 @@ export interface components {
              */
             device_token?: string | null;
         };
+        /** TransplantCreate */
+        TransplantCreate: {
+            /**
+             * Organ
+             * @enum {string}
+             */
+            organ: "kidney" | "liver" | "heart" | "lung" | "pancreas" | "kidney_pancreas" | "intestine" | "cornea" | "hsct" | "other";
+            /** Organ Detail */
+            organ_detail?: string | null;
+            /**
+             * Transplant Date
+             * Format: date
+             */
+            transplant_date: string;
+            /**
+             * Date Precision
+             * @default day
+             * @enum {string}
+             */
+            date_precision: "day" | "month" | "year";
+            /** Country */
+            country: string;
+            /** City */
+            city?: string | null;
+            /** Hospital */
+            hospital: string;
+            /** Surgeon */
+            surgeon?: string | null;
+            /**
+             * Transplant Number
+             * @default 1
+             */
+            transplant_number: number;
+            /**
+             * Donor Type
+             * @default unknown
+             * @enum {string}
+             */
+            donor_type: "living_related" | "living_unrelated" | "deceased_dbd" | "deceased_dcd" | "unknown";
+            /** Donor Relation */
+            donor_relation?: string | null;
+            /** Recipient Blood Type */
+            recipient_blood_type?: ("O+" | "O-" | "A+" | "A-" | "B+" | "B-" | "AB+" | "AB-" | "unknown") | null;
+            /** Donor Blood Type */
+            donor_blood_type?: ("O+" | "O-" | "A+" | "A-" | "B+" | "B-" | "AB+" | "AB-" | "unknown") | null;
+            /** Abo Incompatible */
+            abo_incompatible?: boolean | null;
+            /** Cmv Donor */
+            cmv_donor?: ("pos" | "neg" | "unknown") | null;
+            /** Cmv Recipient */
+            cmv_recipient?: ("pos" | "neg" | "unknown") | null;
+            /** Ebv Donor */
+            ebv_donor?: ("pos" | "neg" | "unknown") | null;
+            /** Ebv Recipient */
+            ebv_recipient?: ("pos" | "neg" | "unknown") | null;
+            /** Hla Mismatch */
+            hla_mismatch?: string | null;
+            /** Primary Disease */
+            primary_disease?: string | null;
+            /** Pre Transplant Dialysis */
+            pre_transplant_dialysis?: string | null;
+            /** Induction Therapy */
+            induction_therapy?: string | null;
+            /**
+             * Graft Status
+             * @default functioning
+             * @enum {string}
+             */
+            graft_status: "functioning" | "failed" | "removed" | "unknown";
+            /** Graft Status Date */
+            graft_status_date?: string | null;
+            /** Graft Failure Reason */
+            graft_failure_reason?: string | null;
+            /** Follow Up Center */
+            follow_up_center?: string | null;
+            /** Follow Up Doctor */
+            follow_up_doctor?: string | null;
+            /** Notes */
+            notes?: string | null;
+            /**
+             * Client Id
+             * Format: uuid
+             */
+            client_id: string;
+        };
+        /** TransplantIn */
+        TransplantIn: {
+            /**
+             * Organ
+             * @enum {string}
+             */
+            organ: "kidney" | "liver" | "heart" | "lung" | "pancreas" | "kidney_pancreas" | "intestine" | "cornea" | "hsct" | "other";
+            /** Organ Detail */
+            organ_detail?: string | null;
+            /**
+             * Transplant Date
+             * Format: date
+             */
+            transplant_date: string;
+            /**
+             * Date Precision
+             * @default day
+             * @enum {string}
+             */
+            date_precision: "day" | "month" | "year";
+            /** Country */
+            country: string;
+            /** City */
+            city?: string | null;
+            /** Hospital */
+            hospital: string;
+            /** Surgeon */
+            surgeon?: string | null;
+            /**
+             * Transplant Number
+             * @default 1
+             */
+            transplant_number: number;
+            /**
+             * Donor Type
+             * @default unknown
+             * @enum {string}
+             */
+            donor_type: "living_related" | "living_unrelated" | "deceased_dbd" | "deceased_dcd" | "unknown";
+            /** Donor Relation */
+            donor_relation?: string | null;
+            /** Recipient Blood Type */
+            recipient_blood_type?: ("O+" | "O-" | "A+" | "A-" | "B+" | "B-" | "AB+" | "AB-" | "unknown") | null;
+            /** Donor Blood Type */
+            donor_blood_type?: ("O+" | "O-" | "A+" | "A-" | "B+" | "B-" | "AB+" | "AB-" | "unknown") | null;
+            /** Abo Incompatible */
+            abo_incompatible?: boolean | null;
+            /** Cmv Donor */
+            cmv_donor?: ("pos" | "neg" | "unknown") | null;
+            /** Cmv Recipient */
+            cmv_recipient?: ("pos" | "neg" | "unknown") | null;
+            /** Ebv Donor */
+            ebv_donor?: ("pos" | "neg" | "unknown") | null;
+            /** Ebv Recipient */
+            ebv_recipient?: ("pos" | "neg" | "unknown") | null;
+            /** Hla Mismatch */
+            hla_mismatch?: string | null;
+            /** Primary Disease */
+            primary_disease?: string | null;
+            /** Pre Transplant Dialysis */
+            pre_transplant_dialysis?: string | null;
+            /** Induction Therapy */
+            induction_therapy?: string | null;
+            /**
+             * Graft Status
+             * @default functioning
+             * @enum {string}
+             */
+            graft_status: "functioning" | "failed" | "removed" | "unknown";
+            /** Graft Status Date */
+            graft_status_date?: string | null;
+            /** Graft Failure Reason */
+            graft_failure_reason?: string | null;
+            /** Follow Up Center */
+            follow_up_center?: string | null;
+            /** Follow Up Doctor */
+            follow_up_doctor?: string | null;
+            /** Notes */
+            notes?: string | null;
+        };
+        /** TransplantOut */
+        TransplantOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Organ */
+            organ: string;
+            /** Organ Detail */
+            organ_detail: string | null;
+            /**
+             * Transplant Date
+             * Format: date
+             */
+            transplant_date: string;
+            /** Date Precision */
+            date_precision: string;
+            /** Country */
+            country: string;
+            /** City */
+            city: string | null;
+            /** Hospital */
+            hospital: string;
+            /** Surgeon */
+            surgeon: string | null;
+            /** Transplant Number */
+            transplant_number: number;
+            /** Donor Type */
+            donor_type: string;
+            /** Donor Relation */
+            donor_relation: string | null;
+            /** Recipient Blood Type */
+            recipient_blood_type: string | null;
+            /** Donor Blood Type */
+            donor_blood_type: string | null;
+            /** Abo Incompatible */
+            abo_incompatible: boolean | null;
+            /** Cmv Donor */
+            cmv_donor: string | null;
+            /** Cmv Recipient */
+            cmv_recipient: string | null;
+            /** Ebv Donor */
+            ebv_donor: string | null;
+            /** Ebv Recipient */
+            ebv_recipient: string | null;
+            /** Hla Mismatch */
+            hla_mismatch: string | null;
+            /** Primary Disease */
+            primary_disease: string | null;
+            /** Pre Transplant Dialysis */
+            pre_transplant_dialysis: string | null;
+            /** Induction Therapy */
+            induction_therapy: string | null;
+            /** Graft Status */
+            graft_status: string;
+            /** Graft Status Date */
+            graft_status_date: string | null;
+            /** Graft Failure Reason */
+            graft_failure_reason: string | null;
+            /** Follow Up Center */
+            follow_up_center: string | null;
+            /** Follow Up Doctor */
+            follow_up_doctor: string | null;
+            /** Notes */
+            notes: string | null;
+            elapsed: components["schemas"]["Elapsed"] | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Updated At */
+            updated_at: string | null;
+        };
         /** UserDetailOut */
         UserDetailOut: {
             /**
@@ -1174,6 +1983,11 @@ export interface components {
             input?: unknown;
             /** Context */
             ctx?: Record<string, never>;
+        };
+        /** VoidIn */
+        VoidIn: {
+            /** Reason */
+            reason: string;
         };
     };
     responses: never;
@@ -2433,6 +3247,1150 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PatientOut"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    list_transplants_api_v1_patients__patient_id__transplants_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                patient_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TransplantOut"][];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    create_transplant_api_v1_patients__patient_id__transplants_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                patient_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TransplantCreate"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TransplantOut"];
+                };
+            };
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TransplantOut"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    get_transplant_api_v1_patients__patient_id__transplants__transplant_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                patient_id: string;
+                transplant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TransplantOut"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    replace_transplant_api_v1_patients__patient_id__transplants__transplant_id__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                patient_id: string;
+                transplant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TransplantIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TransplantOut"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    delete_transplant_api_v1_patients__patient_id__transplants__transplant_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                patient_id: string;
+                transplant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    list_medications_api_v1_patients__patient_id__medications_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                patient_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MedicationOut"][];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    create_medication_api_v1_patients__patient_id__medications_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                patient_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MedicationCreate"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MedicationDetail"];
+                };
+            };
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MedicationDetail"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    get_medication_api_v1_patients__patient_id__medications__medication_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                patient_id: string;
+                medication_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MedicationDetail"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    replace_medication_api_v1_patients__patient_id__medications__medication_id__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                patient_id: string;
+                medication_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MedicationIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MedicationDetail"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    delete_medication_api_v1_patients__patient_id__medications__medication_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                patient_id: string;
+                medication_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    change_dose_api_v1_patients__patient_id__medications__medication_id__regimens_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                patient_id: string;
+                medication_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RegimenIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MedicationDetail"];
+                };
+            };
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MedicationDetail"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    void_dose_change_api_v1_patients__patient_id__medications__medication_id__regimens__regimen_id__void_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                patient_id: string;
+                medication_id: string;
+                regimen_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VoidIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MedicationDetail"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    list_intakes_api_v1_patients__patient_id__intakes_get: {
+        parameters: {
+            query: {
+                from: string;
+                to: string;
+                medication_id?: string | null;
+            };
+            header?: never;
+            path: {
+                patient_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IntakeOut"][];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    record_intake_api_v1_patients__patient_id__intakes_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                patient_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IntakeIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IntakeOut"];
+                };
+            };
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IntakeOut"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    delete_intake_api_v1_patients__patient_id__intakes__intake_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                patient_id: string;
+                intake_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    search_catalog_api_v1_medication_catalog_get: {
+        parameters: {
+            query?: {
+                q?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CatalogItem"][];
                 };
             };
             /** @description Unauthorized */

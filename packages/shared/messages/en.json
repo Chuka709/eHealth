@@ -351,6 +351,26 @@
       "not_owner": "Only the profile's owner can edit this.",
       "self_exists": "Your own profile already exists.",
       "read_only": "You can only view this profile, not add to it."
+    },
+    "intake": {
+      "not_found": "This record was not found.",
+      "delete_not_allowed": "Only whoever recorded this, or the profile's owner, can delete it.",
+      "too_many": "There are too many records in this period. Choose a shorter one."
+    },
+    "medication": {
+      "not_found": "Medication not found.",
+      "unknown_catalog_code": "The selected medication is not in the list. Type its name instead."
+    },
+    "record": {
+      "conflict": "This information changed meanwhile. Refresh and try again.",
+      "delete_not_allowed": "Only the profile's owner can delete this. If the doctor stopped a medication, you can mark it as stopped."
+    },
+    "transplant": {
+      "not_found": "Transplant record not found."
+    },
+    "regimen": {
+      "not_found": "Dose change not found.",
+      "not_voidable": "A dose that has started cannot be cancelled - it stays in the history. Enter the dose your doctor prescribed as a new change."
     }
   },
   "import": {
