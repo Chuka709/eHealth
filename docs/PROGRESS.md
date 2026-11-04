@@ -21,7 +21,7 @@
 - [ ] iOS: Apple Developer Program ($99/жил) + бодит iPhone-ийг `eas device:create`-ээр бүртгэх (Q1 — шийдэгдсэн)
 - [ ] Maestro (Android эмулятор; iOS E2E — GitHub Actions macOS)
 - [ ] Anthropic API key (Phase 4-өөс заавал; `.env`-д — Claude уншихгүй)
-- [ ] GitHub private репо үүсгэж push хийх (Q3 — та хийнэ)
+- [x] GitHub private репо (`Chuka709/eHealth`), push хийгдсэн (2026.11.04); `gh` CLI суусан
 - [ ] Phase 4-д зориулж нэрээ нууцалсан 30+ бөөр/элэгний хариу цуглуулж эхлэх (удаан ажил)
 - [ ] Админы хүн таних журам (бичгээр): эргэж залгах + РД HMAC — `04 §1`
 
@@ -34,7 +34,7 @@
 - [x] 0.4 `packages/shared`: openapi-fetch client (`just gen-client`, `just check-client`), mn/en (түлхүүр тэнцүү тест), design token (бүх өнгөний хос WCAG AA — тест)
 - [x] 0.5 Mobile: **Expo SDK 58** (RN 0.88), Expo Router, TanStack Query, use-intl (mn), `app.config.ts` (fingerprint runtime, env bundle ID, `allowBackup=false`), `eas.json` (development/preview/production), API төлөвийн дэлгэц (өнгө+дүрс+текст, 44pt/48dp), Jest + RNTL v14. Styling: token + StyleSheet + `@expo/ui` (Q14 шийдэгдсэн)
 - [x] 0.6 Web: **Next.js 16.4** (cache components, standalone), `lang=mn`, Noto Sans кирилл, security header, `/healthz`, төлөвийн хуудас, Vitest, Docker image. next-intl/shadcn/BFF — Phase 1 (админ самбартай хамт)
-- [~] 0.7 CI `.github/workflows/ci.yml` (ruff, mypy, контейнер pytest + alembic up/down/up, biome, tsc, jest, vitest, expo-doctor, stale client) — **GitHub дээр ажиллуулаагүй** (репо байхгүй)
+- [x] 0.7 CI `.github/workflows/ci.yml` (ruff, mypy, контейнер pytest + alembic up/down/up, biome, tsc, jest, vitest, expo-doctor, stale client) — GitHub дээр ногоон (2026.11.04). Анхны ажиллагаанд mypy (тестэд) ба expo-doctor (14 сан хуучирсан) унасан → засагдсан; локал `just lint-api` CI-тэй адил хүрээтэй болсон
 - [x] 0.8 `backend/CLAUDE.md`, `mobile/CLAUDE.md`, `web/CLAUDE.md`
 
 **Security review (security-reviewer, 2 High + 8 Medium + 8 Low) — засагдсан, ажиллаж буй stack дээр батлагдсан**
@@ -61,7 +61,7 @@
 - [x] Шалгалтууд: `just lint` 0 алдаа; `just test` — backend 23 (DB, migration up/down, эрхийн регресс орсон), shared 6, web 3, mobile 2 — бүгд ногоон; `just check-client` цэвэр; `expo-doctor` 20/20; Android JS bundle (`expo export`) амжилттай; `next build` амжилттай
 - [ ] Dev build **Android эмулятор** дээр API дуудна — AVD + `npx expo run:android` (эсвэл `eas build --profile development --platform android`) **таны машин дээр**
 - [ ] Dev build **бодит iPhone** — Apple Developer + Expo аккаунт, `eas device:create`, `eas build --profile development --platform ios` (**та**)
-- [ ] CI ногоон — GitHub репо үүсгэж push хийсний дараа (**та**)
+- [x] CI ногоон — run 41756163340 (`9e9a9aa`): backend 330, Jest 104, web 7, shared 11, expo-doctor 20/20, client хуучраагүй
 
 ## Phase 1 — Auth, супер админ, профайл
 - [x] 1.1 Migration (`0002`, 35 RLS тест): extensions, enum, `labtrack_owner/app/admin/maint` role, `REVOKE TEMPORARY/CREATE`; users (`account_status`, `token_version`, шифрлэлттэй утас, РД argon2 hash) + column-level эрх, activation_tokens, sessions (`revoked_reason`, `device_trusted`), auth_attempts (+индекс), patients, patient_access, consents (append-only), notifications, audit_logs (`target_user_id`, trigger, `REVOKE TRUNCATE`); definer функцууд (`search_path` хатуу): `can_read/can_write_patient`, `is_owner`, `create_self_profile`, `auth_*`, `audit_write`, `my_admin_actions`, `notify`, `lookup_user_for_share`; хүснэгт бүрт 4 үйлдлийн policy; ENABLE+FORCE RLS
