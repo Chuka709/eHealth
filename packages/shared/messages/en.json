@@ -702,7 +702,8 @@
     "record": {
       "conflict": "This information changed meanwhile. Refresh and try again.",
       "delete_not_allowed": "Only the profile's owner can delete this. If the doctor stopped a medication, you can mark it as stopped.",
-      "too_many": "There are too many records of this kind."
+      "too_many": "There are too many records of this kind.",
+      "edit_not_allowed": "Only whoever recorded this, or the profile's owner, can edit it."
     },
     "transplant": {
       "not_found": "Transplant record not found."

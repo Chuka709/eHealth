@@ -302,3 +302,19 @@ async def test_a_vitals_client_id_reused_for_another_reading_is_a_conflict(
     other = {**_reading(("pulse", "70")), "client_id": body["client_id"]}
     r = await client.post(f"{base}/vitals", json=other, headers=h)
     assert (r.status_code, r.json()["code"]) == (409, "record.conflict")
+
+
+async def test_a_caregiver_cannot_rewrite_the_owners_allergy(
+    client: AsyncClient, client_from: ClientFactory, owner_engine: AsyncEngine
+) -> None:
+    _, h, base = await _profile(client, owner_engine)
+    allergy = (await client.post(f"{base}/allergies", json=_body("allergies"), headers=h)).json()
+    async with client_from("203.0.113.34") as other:
+        uid, ch = await _signed_in(other, owner_engine)
+        await _grant(owner_engine, base, uid, "caregiver")
+        r = await other.put(
+            f"{base}/allergies/{allergy['id']}", json={"substance": "Ус"}, headers=ch
+        )
+        assert (r.status_code, r.json()["code"]) == (403, "record.edit_not_allowed")
+    stored = (await client.get(f"{base}/allergies", headers=h)).json()
+    assert stored[0]["substance"] == "Пенициллин"

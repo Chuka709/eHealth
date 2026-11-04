@@ -379,3 +379,22 @@ async def test_an_event_links_only_this_profiles_transplant(
                 bound_text("update clinical_events set transplant_id = :t where id = :i"),
                 {"t": theirs, "i": ids["clinical_events"]},
             )
+
+
+async def test_caregiver_cannot_rewrite_the_owners_history(
+    app_engine: AsyncEngine, owner_engine: AsyncEngine
+) -> None:
+    """Commit security review of 0018: rewriting an allergy's substance erases it as surely
+    as deleting it - edits follow the delete rule (0019)."""
+    owner, carer = await make_user(owner_engine), await make_user(owner_engine)
+    patient = await make_patient(app_engine, owner)
+    await grant(app_engine, owner, patient, carer, "caregiver")
+    ids = await _seed(app_engine, owner, patient)
+    mine = await _seed(app_engine, carer, patient)
+    async with as_user(app_engine, carer) as conn:
+        for t in ("clinical_events", "allergies", "emergency_contacts"):
+            sql = bound_text(_UPDATES[t])
+            assert (await conn.execute(sql, {"i": ids[t]})).rowcount == 0, t
+            assert (await conn.execute(sql, {"i": mine[t]})).rowcount == 1, t
+        for t in ("appointments", "doctor_questions"):
+            assert (await conn.execute(bound_text(_UPDATES[t]), {"i": ids[t]})).rowcount == 1, t

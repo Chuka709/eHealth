@@ -99,6 +99,9 @@ async def update(
     table, _, entity, missing = KINDS[kind]
     before = await repo.lock(db, table, patient_id, row_id)
     if before is None:
+        if await repo.exists(db, table, patient_id, row_id):
+            # history and the emergency card: only the owner or whoever wrote it edits it (0019)
+            raise AppError(403, "record.edit_not_allowed")
         raise AppError(404, missing)
     current = before._mapping
     changed = sorted(k for k, v in values.items() if current.get(k) != v)

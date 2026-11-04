@@ -69,6 +69,7 @@
     "question.not_found",
     "record.conflict",
     "record.delete_not_allowed",
+    "record.edit_not_allowed",
     "record.too_many",
     "regimen.not_found",
     "regimen.not_voidable",
