@@ -3,6 +3,12 @@
 # and dismiss the menu. Every step is conditional, so the flow also runs on a release build.
 appId: ${MAESTRO_APP_ID}
 ---
+# A slow emulator right after boot may show a system "… isn't responding" dialog over the app.
+- runFlow:
+    when:
+      visible: ".*isn.t responding"
+    commands:
+      - tapOn: "Wait"
 # The launcher renders a few seconds after launch; absent on a release build. Before it, Android
 # 17 asks for local network access ("nearby devices"): a dev build needs it to reach Metro and the
 # dev API on 10.0.2.2, so it is allowed here (a release build talks to a public https API).
@@ -36,4 +42,15 @@ appId: ${MAESTRO_APP_ID}
     when:
       visible: "TOOLS"
     commands:
-      - tapOn: "Close"
+      # On a slow emulator the sheet may still be animating: tap, wait for it to go, tap again.
+      # Never Back here - once the sheet is gone it would leave the app.
+      - tapOn:
+          text: "Close"
+          optional: true
+      - extendedWaitUntil:
+          notVisible: "TOOLS"
+          timeout: 10000
+          optional: true
+      - tapOn:
+          text: "Close"
+          optional: true
