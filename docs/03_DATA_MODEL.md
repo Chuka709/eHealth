@@ -300,9 +300,14 @@ create table medications (                   -- өвчтөний эм (одоо 
 );
 
 create table medication_regimens (           -- тун, хуваарийн түүх (тун өөрчлөгдөх бүрт шинэ мөр)
+  -- 0014: APPEND-ONLY (UPDATE/DELETE эрх, policy байхгүй; эмийг устгахад cascade). effective_to байхгүй:
+  -- тухайн өдрийн тун = effective_from <= өдөр мөрүүдээс (effective_from, seq)-аар хамгийн сүүлийнх
+  -- (seq — DB-ийн оруулсан дараалал, identity); алдаа засах = ижил огноотой шинэ мөр; recorded_by — DB.
   id uuid primary key default gen_random_uuid(),
-  medication_id uuid not null references medications on delete cascade,
-  effective_from date not null, effective_to date,
+  patient_id uuid not null references patients on delete cascade,   -- 0014: RLS-д
+  medication_id uuid not null,                 -- composite FK (medication_id, patient_id) → medications
+  client_id uuid not null,                     -- unique (patient_id, client_id)
+  effective_from date not null,
   dose_amount numeric, dose_unit text,     -- 2, 'мг' | 1, 'шахмал'
   schedule jsonb not null,                 -- {"type":"daily","times":["08:00","20:00"]} | {"type":"weekly","days":[1,4],"times":["09:00"]} | {"type":"prn"}
   instructions text,                       -- 'хоолноос 1 цагийн өмнө' (хэрэглэгч/эмчийн бичсэнээр)
@@ -547,6 +552,7 @@ $$;
 - Seed: `seed/lab_tests.json` → test_catalog, test_synonyms, unit_aliases, unit_conversions.
 
 ## Шилжүүлэн суулгалт ба эмийн тэмдэглэл
+- **0014-ийн хэрэгжилт (дээрх SQL-ээс зөрөх нь):** 4 хүснэгт бүгдэд `client_id uuid not null` + `unique (patient_id, client_id)` (давтан илгээлт хадгалсан мөрийг олно); `transplants`, `medications`-д `unique (id, patient_id)`; `medications.transplant_id` → composite FK `(transplant_id, patient_id)`, `on delete set null (transplant_id)`; чөлөөт текст `short_text` (≤ 200) / `long_text` (≤ 4000) domain; `blood_type`, `serostatus` domain (`ebv_*` ч `pos/neg/unknown`); `country` ISO-2; `date_precision` month/year үед огноо тухайн сар/жилийн 1-нд; `updated_at` trigger; `medication_intakes.recorded_by` — DB тохируулна (дуудагч заахгүй), `on delete set null`; `taken`/`late` үед `taken_at` заавал, `skipped` үед хоосон; `scheduled_at`-гүй (prn) зөвхөн `taken`. **Security review-ийн дараа:** INSERT ба UPDATE эрх баганаар (id, created_at, updated_at, seq, recorded_by/updated_by — зөвхөн DB; id, patient_id, client_id засагдахгүй); `medication_intakes.id` uuid; unique `(patient_id, medication_id, scheduled_at)` (харь өвчтөний тунг тандах боломжгүй); `taken`/`late` → `skipped` DB-ээр хориотой (H20; буцаах = устгах); `recorded_by` (анх бичсэн) + `updated_by` (сүүлд); регименд `recorded_by`; эм/шилжүүлэн суулгалтыг зөвхөн эзэн устгана (асран хамгаалагч `stopped_on`); `schedule` — daily/weekly-д `times` 1–12, weekly-д `days` 1–7; `dose_amount` ≤ 4 аравтын орон; огнооны доод хязгаар. Тестүүд: `tests/rls/test_medications.py`.
 - Бүх шинэ хүснэгт PHI → RLS (`can_read_patient`/`can_write_patient`) + тест.
 - Талбаруудын ихэнх нь **сонголттой** — хэрэглэгч мэдэхгүй зүйлээ хоосон орхино. Заавал: эрхтэн, огноо (нарийвчлалтай), улс, эмнэлэг.
 - Эмийн тун өөрчлөгдөхөд хуучин мөрийг засахгүй — `medication_regimens`-д шинэ мөр (түүх хадгалагдана, график дээр тун ↔ эмийн түвшин харьцуулна).
