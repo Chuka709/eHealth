@@ -113,6 +113,13 @@ async def update_transplant(
 
 # --- medications ------------------------------------------------------------------------------
 
+# Far above any real list (a transplant patient takes ~5-15 medicines; a taper adds a few dose
+# changes a month), low enough that the full list the phone caches stays small (security
+# review 2.5b): GET /medications returns every medication with its whole dose history.
+MAX_MEDICATIONS = 300
+MAX_REGIMENS = 200
+MAX_PROFILE_REGIMENS = 3000  # the whole list's history (security re-review 2.5b)
+
 
 async def create_medication(
     db: AsyncSession,
@@ -121,6 +128,9 @@ async def create_medication(
     values: Mapping[str, object],
     regimen: tuple[UUID, Mapping[str, object]] | None,
 ) -> Saved:
+    stored = await repo.id_by_client(db, "medications", patient_id, client_id)
+    if stored is None and await repo.count_medications(db, patient_id) >= MAX_MEDICATIONS:
+        raise AppError(409, "medication.too_many")
     new_id = await _guarded(db, lambda: repo.insert_medication(db, patient_id, client_id, values))
     saved = await _created_or_stored(db, "medications", patient_id, client_id, new_id)
     if saved.created:
@@ -151,6 +161,11 @@ async def add_regimen(
     values: Mapping[str, object],
 ) -> Saved:
     """A dose or schedule from `effective_from` on: always a new row (H8)."""
+    if await repo.regimen_by_client(db, patient_id, client_id) is None and (
+        await repo.count_regimens(db, patient_id, medication_id) >= MAX_REGIMENS
+        or await repo.count_regimens(db, patient_id, None) >= MAX_PROFILE_REGIMENS
+    ):
+        raise AppError(409, "medication.too_many")
     new_id = await _guarded(
         db, lambda: repo.insert_regimen(db, patient_id, medication_id, client_id, values)
     )

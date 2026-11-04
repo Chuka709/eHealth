@@ -5,6 +5,7 @@ import { Platform, StyleSheet, Text, View } from "react-native";
 import { useTranslations } from "use-intl";
 
 import { Button } from "@/components/button";
+import { Choices, SelectList } from "@/components/choices";
 import { TextField } from "@/components/text-field";
 import { formatDate } from "@/lib/dates";
 import { usePalette } from "@/theme/use-palette";
@@ -23,93 +24,6 @@ import {
 } from "./transplant-draft";
 
 type SectionProps = { draft: Draft; onChange: (patch: Partial<Draft>) => void };
-
-/**
- * One-of choices as buttons: announced as radio buttons, the chosen one marked ✓ (not colour
- * alone). The question stays a readable text on both platforms (a container's label alone is
- * not read by VoiceOver).
- */
-function Choices<T extends string | number>({
-  label,
-  options,
-  value,
-  labelOf,
-  onSelect,
-  columns = 1,
-}: {
-  label: string;
-  options: readonly T[];
-  value: T | null;
-  labelOf: (option: T) => string;
-  onSelect: (option: T) => void;
-  columns?: 1 | 2;
-}) {
-  const p = usePalette();
-  return (
-    <View style={styles.group} accessibilityRole="radiogroup" accessibilityLabel={label}>
-      <Text style={[styles.label, { color: p.text }]}>{label}</Text>
-      <View style={columns === 2 ? styles.grid : styles.choices}>
-        {options.map((option) => (
-          <View key={String(option)} style={columns === 2 ? styles.half : styles.full}>
-            <Button
-              label={labelOf(option)}
-              variant="secondary"
-              selected={value === option}
-              onPress={() => onSelect(option)}
-            />
-          </View>
-        ))}
-      </View>
-    </View>
-  );
-}
-
-/**
- * A choice from a longer list: one button saying the field and its value ("Улс: Монгол");
- * pressing it opens the options as radio buttons, choosing one closes them. No native picker:
- * those announce no field name to TalkBack / VoiceOver.
- */
-function SelectList<T extends string | number>({
-  label,
-  options,
-  value,
-  labelOf,
-  onSelect,
-  testID,
-}: {
-  label: string;
-  options: readonly T[];
-  value: T | null;
-  labelOf: (option: T) => string;
-  onSelect: (option: T) => void;
-  testID?: string;
-}) {
-  const t = useTranslations("app.transplant");
-  const [open, setOpen] = useState(false);
-  const shown = value === null ? t("extra.notSet") : labelOf(value);
-  return (
-    <View style={styles.group} testID={testID}>
-      <Button
-        label={t("place.choose", { label, value: shown })}
-        variant="secondary"
-        expanded={open}
-        onPress={() => setOpen(!open)}
-      />
-      {open && (
-        <Choices
-          label={label}
-          options={options}
-          value={value}
-          labelOf={labelOf}
-          onSelect={(option) => {
-            onSelect(option);
-            setOpen(false);
-          }}
-        />
-      )}
-    </View>
-  );
-}
 
 export function OrganSection({ draft, onChange }: SectionProps) {
   const t = useTranslations("app.transplant");

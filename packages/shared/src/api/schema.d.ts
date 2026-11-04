@@ -391,7 +391,9 @@ export interface paths {
         };
         /**
          * List Medications
-         * @description Current first (immunosuppressants first among them), then those stopped.
+         * @description Current first (immunosuppressants first among them), then those stopped - each with
+         *     its dose history: the phone plans reminders and today's doses from it offline (every
+         *     scheduled change, not only the next).
          */
         get: operations["list_medications_api_v1_patients__patient_id__medications_get"];
         put?: never;
@@ -1389,61 +1391,6 @@ export interface components {
             reminder_timezone_mode: "home" | "local";
             /** Notes */
             notes?: string | null;
-        };
-        /** MedicationOut */
-        MedicationOut: {
-            /**
-             * Id
-             * Format: uuid
-             */
-            id: string;
-            /** Catalog Code */
-            catalog_code: string | null;
-            /** Category */
-            category: string | null;
-            /** Name */
-            name: string;
-            /** Brand */
-            brand: string | null;
-            /** Form */
-            form: string | null;
-            /** Strength */
-            strength: string | null;
-            /** Route */
-            route: string;
-            /** Purpose */
-            purpose: string | null;
-            /** Prescribed By */
-            prescribed_by: string | null;
-            /** Transplant Id */
-            transplant_id: string | null;
-            /** Started On */
-            started_on: string | null;
-            /** Stopped On */
-            stopped_on: string | null;
-            /** Stop Reason */
-            stop_reason: string | null;
-            /** Planned End On */
-            planned_end_on: string | null;
-            /** Is Long Term */
-            is_long_term: boolean;
-            /** Reminders Enabled */
-            reminders_enabled: boolean;
-            /** Reminder Timezone Mode */
-            reminder_timezone_mode: string;
-            /** Notes */
-            notes: string | null;
-            /** Is Current */
-            is_current: boolean;
-            current_regimen: components["schemas"]["RegimenOut"] | null;
-            next_regimen: components["schemas"]["RegimenOut"] | null;
-            /**
-             * Created At
-             * Format: date-time
-             */
-            created_at: string;
-            /** Updated At */
-            updated_at: string | null;
         };
         /** MedicationSummaryOut */
         MedicationSummaryOut: {
@@ -3805,7 +3752,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["MedicationOut"][];
+                    "application/json": components["schemas"]["MedicationDetail"][];
                 };
             };
             /** @description Unauthorized */

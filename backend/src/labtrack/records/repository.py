@@ -301,6 +301,24 @@ _REGIMEN_VOID = bound_text(
 )
 
 
+_MEDICATION_COUNT = bound_text("select count(*) from medications where patient_id = :p")
+_REGIMEN_COUNT = bound_text(
+    "select count(*) from medication_regimens where patient_id = :p"
+    " and (cast(:m as uuid) is null or medication_id = :m)"
+)
+
+
+async def count_medications(db: AsyncSession, patient_id: UUID) -> int:
+    n: int = (await db.execute(_MEDICATION_COUNT, {"p": patient_id})).scalar_one()
+    return n
+
+
+async def count_regimens(db: AsyncSession, patient_id: UUID, medication_id: UUID | None) -> int:
+    """One medication's dose history rows, or the whole profile's (None)."""
+    n: int = (await db.execute(_REGIMEN_COUNT, {"p": patient_id, "m": medication_id})).scalar_one()
+    return n
+
+
 async def regimen_by_client(db: AsyncSession, patient_id: UUID, client_id: UUID) -> Row[Any] | None:
     return (await db.execute(_REGIMEN_BY_CLIENT, {"p": patient_id, "c": client_id})).one_or_none()
 

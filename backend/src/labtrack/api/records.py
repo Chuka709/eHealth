@@ -469,8 +469,11 @@ async def _medications(
     history = await repo.regimens(db, patient_id, [r.id for r in rows])
     today = _today()
     out = []
+    by_medication: dict[UUID, list[Any]] = {}
+    for r in history:
+        by_medication.setdefault(r.medication_id, []).append(r)
     for row in rows:
-        own = [r for r in history if r.medication_id == row.id]
+        own = by_medication.get(row.id, [])
         current = is_current(row.stopped_on, row.planned_end_on, today)
         in_force = regimen_on(own, today) if current else None
         upcoming = next_regimen(own, today) if current else None
@@ -503,9 +506,11 @@ def _regimen_values(body: RegimenIn) -> dict[str, object]:
     return body.model_dump(exclude={"client_id"})
 
 
-@router.get("/medications", response_model=list[MedicationOut], responses=_ERRORS)
+@router.get("/medications", response_model=list[MedicationDetail], responses=_ERRORS)
 async def list_medications(patient_id: UUID, db: PatientReadDb) -> list[MedicationDetail]:
-    """Current first (immunosuppressants first among them), then those stopped."""
+    """Current first (immunosuppressants first among them), then those stopped - each with
+    its dose history: the phone plans reminders and today's doses from it offline (every
+    scheduled change, not only the next)."""
     return await _medications(db, patient_id)
 
 

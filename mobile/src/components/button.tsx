@@ -19,6 +19,8 @@ interface ButtonProps {
   expanded?: boolean;
   /** For one-of choices: announced as selected and marked with ✓ (not colour alone). */
   selected?: boolean;
+  /** For several-of choices (week days): a checkbox, marked with ✓ when checked. */
+  checked?: boolean;
 }
 
 export function Button({
@@ -30,24 +32,28 @@ export function Button({
   accessibilityLabel,
   expanded,
   selected,
+  checked,
 }: ButtonProps) {
   const p = usePalette();
   const inactive = disabled || busy;
   const filled = variant === "primary";
   const tone = variant === "danger" ? p.danger : p.primary;
   const role =
-    selected !== undefined
-      ? "radio"
-      : variant === "link" && expanded === undefined
-        ? "link"
-        : "button";
+    checked !== undefined
+      ? "checkbox"
+      : selected !== undefined
+        ? "radio"
+        : variant === "link" && expanded === undefined
+          ? "link"
+          : "button";
+  const marked = selected ?? checked;
   return (
     <Pressable
       onPress={onPress}
       disabled={inactive}
       accessibilityRole={role}
       accessibilityLabel={accessibilityLabel ?? label}
-      accessibilityState={{ disabled: inactive, busy, expanded, selected, checked: selected }}
+      accessibilityState={{ disabled: inactive, busy, expanded, selected, checked: marked }}
       style={({ pressed }) => [
         styles.button,
         filled && { backgroundColor: p.primary },
@@ -61,7 +67,7 @@ export function Button({
     >
       {busy && <ActivityIndicator color={filled ? p.onPrimary : tone} />}
       <Text style={[styles.label, { color: filled ? p.onPrimary : tone }]}>
-        {selected ? `✓ ${label}` : label}
+        {marked ? `✓ ${label}` : label}
       </Text>
     </Pressable>
   );

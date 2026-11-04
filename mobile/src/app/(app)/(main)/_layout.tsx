@@ -14,8 +14,7 @@ export default function MainLayout() {
   useLocalData();
   return (
     <Stack screenOptions={{ headerBackTitle: t("common.back") }}>
-      <Stack.Screen name="home" options={{ title: t("name") }} />
-      <Stack.Screen name="settings/index" options={{ title: t("settings.title") }} />
+      <Stack.Screen name="(tabs)" options={{ headerShown: false, title: t("name") }} />
       <Stack.Screen name="settings/profile" options={{ title: t("profile.title") }} />
       <Stack.Screen name="settings/password" options={{ title: t("passwordChange.title") }} />
       <Stack.Screen name="settings/devices" options={{ title: t("devices.title") }} />
@@ -25,6 +24,9 @@ export default function MainLayout() {
       <Stack.Screen name="transplants/index" options={{ title: t("transplant.listTitle") }} />
       <Stack.Screen name="transplants/new" options={{ title: t("transplant.add") }} />
       <Stack.Screen name="transplants/[id]" options={{ title: t("transplant.editTitle") }} />
+      <Stack.Screen name="meds/new" options={{ title: t("meds.add") }} />
+      <Stack.Screen name="meds/[id]/index" options={{ title: t("meds.detail.title") }} />
+      <Stack.Screen name="meds/[id]/dose" options={{ title: t("meds.change.title") }} />
     </Stack>
   );
 }

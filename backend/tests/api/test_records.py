@@ -9,6 +9,7 @@ from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncEngine
 
 from labtrack.db.sql import bound_text
+from labtrack.records import service
 
 from .conftest import ClientFactory
 from .test_patients import _create, _signed_in
@@ -486,3 +487,47 @@ async def test_skipped_then_taken_becomes_taken_and_bad_records_are_refused(
         ):
             body = {**skipped, "client_id": str(uuid4()), **bad}
             assert (await c.post(f"{base}/intakes", json=body, headers=h)).status_code == 422, bad
+
+
+async def test_a_caregiver_cannot_delete_a_medication_and_its_history(
+    owner_engine: AsyncEngine, client_from: ClientFactory
+) -> None:
+    """Security review 2.5b L7: the full list and history are readable; erasing is the owner's."""
+    async with client_from() as c:
+        _, h, base = await _profile(c, owner_engine)
+        carer, carer_h = await _signed_in(c, owner_engine)
+        await _grant(owner_engine, base, carer, "caregiver")
+        med = (await c.post(f"{base}/medications", json=_medication(), headers=h)).json()
+        listed = (await c.get(f"{base}/medications", headers=carer_h)).json()
+        assert [len(m["regimens"]) for m in listed] == [1]  # the list carries the history
+        r = await c.delete(f"{base}/medications/{med['id']}", headers=carer_h)
+        assert (r.status_code, r.json()["code"]) == (403, "record.delete_not_allowed")
+        assert (await c.delete(f"{base}/medications/{med['id']}", headers=h)).status_code == 204
+
+
+async def test_medications_and_dose_changes_are_capped(
+    owner_engine: AsyncEngine, client_from: ClientFactory, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Security review 2.5b M2: the list the phone caches stays bounded; a retry still works."""
+    monkeypatch.setattr(service, "MAX_MEDICATIONS", 2)
+    monkeypatch.setattr(service, "MAX_REGIMENS", 2)
+    async with client_from() as c:
+        _, h, base = await _profile(c, owner_engine)
+        first = _medication()
+        med = (await c.post(f"{base}/medications", json=first, headers=h)).json()
+        assert (
+            await c.post(f"{base}/medications", json=_medication(), headers=h)
+        ).status_code == 201
+        r = await c.post(f"{base}/medications", json=_medication(), headers=h)
+        assert (r.status_code, r.json()["code"]) == (409, "medication.too_many")
+        assert (await c.post(f"{base}/medications", json=first, headers=h)).status_code == 200
+        change = _change(1, "2", "1,5")
+        url = f"{base}/medications/{med['id']}/regimens"
+        assert (await c.post(url, json=change, headers=h)).status_code == 201
+        r = await c.post(url, json=_change(2, "3", "1"), headers=h)
+        assert (r.status_code, r.json()["code"]) == (409, "medication.too_many")
+        assert (await c.post(url, json=change, headers=h)).status_code == 200
+        monkeypatch.setattr(service, "MAX_REGIMENS", 10)
+        monkeypatch.setattr(service, "MAX_PROFILE_REGIMENS", 3)  # 2 + 1 in the profile
+        r = await c.post(url, json=_change(3, "3", "1"), headers=h)
+        assert (r.status_code, r.json()["code"]) == (409, "medication.too_many")

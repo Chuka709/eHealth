@@ -51,14 +51,35 @@ export async function failedWrites(): Promise<FailedWrite[]> {
 }
 
 /** Queue a write; false when the queue is full (the caller tells the user to go online). */
-export async function enqueue(write: Omit<QueuedWrite, "createdAt">): Promise<boolean> {
+export async function enqueue(
+  write: Omit<QueuedWrite, "createdAt">,
+  epoch?: number,
+): Promise<boolean> {
   const store = await localStore();
+  // a tap of a session that has ended (signed out, or in as someone else while the store
+  // opened) never lands in the current account's queue
+  if (epoch !== undefined && !sessionIs(epoch)) throw new Error("session changed");
   const pending = read<QueuedWrite>(store.getString(PENDING));
   if (pending.some((p) => p.id === write.id)) return true; // already queued
   if (pending.length >= MAX_PENDING) return false;
   pending.push({ ...write, createdAt: Date.now() });
   store.set(PENDING, JSON.stringify(pending));
   return true;
+}
+
+/**
+ * The user undoes a queued write ("Буцаах"): "removed" when it was still waiting; "sending"
+ * when it is on its way right now (left alone - the caller waits for the flush and undoes the
+ * stored record); "absent" when it was sent already.
+ */
+export async function cancelPending(id: string): Promise<"removed" | "sending" | "absent"> {
+  if (sending === id) return "sending";
+  const store = await localStore();
+  const pending = read<QueuedWrite>(store.getString(PENDING));
+  const kept = pending.filter((p) => p.id !== id);
+  if (kept.length === pending.length) return "absent";
+  store.set(PENDING, JSON.stringify(kept));
+  return "removed";
 }
 
 /** The user has seen a refused write: forget it. */
@@ -84,6 +105,7 @@ const sessionIs = (epoch: number) =>
 const retryLater = (status: number) => status === 401 || status === 429 || status >= 500;
 
 let running: { epoch: number; done: Promise<number> } | null = null;
+let sending: string | null = null; // the write on its way now (cancelPending leaves it)
 
 /**
  * Send what is queued, oldest first, one at a time (a dose and its correction stay in order).
@@ -112,10 +134,13 @@ async function run(send: Send, epoch: number): Promise<number> {
     const [next] = read<QueuedWrite>(store.getString(PENDING));
     if (!next) return sent;
     let response: Response;
+    sending = next.id;
     try {
       response = await send(next);
     } catch {
       return sent; // offline: try again later
+    } finally {
+      sending = null;
     }
     if (!sessionIs(epoch)) return sent;
     if (retryLater(response.status)) return sent;

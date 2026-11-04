@@ -49,6 +49,7 @@
     "me.no_recent_admin_action",
     "me.notification_not_found",
     "medication.not_found",
+    "medication.too_many",
     "medication.unknown_catalog_code",
     "not_found",
     "password.contains_username",
