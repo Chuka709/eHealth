@@ -854,3 +854,46 @@ async def test_even_the_owner_role_only_voids(
                 bound_text("update medication_regimens set changed_by_note = 'x' where id = :i"),
                 {"i": ids["medication_regimens"]},
             )
+
+
+async def test_undoing_a_taken_dose_belongs_to_whoever_marked_it_taken(
+    app_engine: AsyncEngine, owner_engine: AsyncEngine
+) -> None:
+    """0016: a caregiver who first recorded "skipped" cannot delete the "taken" another
+    device merged into that row - taken_by, set by the database, decides (H20)."""
+    owner, first, second = [await make_user(owner_engine) for _ in range(3)]
+    patient = await make_patient(app_engine, owner)
+    ids = await _seed(app_engine, owner, patient)
+    for user in (first, second):
+        await grant(app_engine, owner, patient, user, "caregiver")
+    slot = datetime(2026, 11, 3, 8, 0, tzinfo=UTC)
+    async with as_user(app_engine, first) as conn:
+        intake = await scalar(
+            conn,
+            bound_text(
+                "insert into medication_intakes (patient_id, medication_id, client_id,"
+                " scheduled_at, status) values (:p, :m, gen_random_uuid(), :at, 'skipped')"
+                " returning id"
+            ),
+            {"p": patient, "m": ids["medications"], "at": slot},
+        )
+    async with as_user(app_engine, second) as conn:
+        await conn.execute(
+            bound_text(
+                "update medication_intakes set status = 'taken', taken_at = :at where id = :i"
+            ),
+            {"at": slot, "i": intake},
+        )
+    delete = bound_text("delete from medication_intakes where id = :i")
+    async with as_user(app_engine, first) as conn:
+        assert (await conn.execute(delete, {"i": intake})).rowcount == 0
+    async with owner_engine.connect() as conn:
+        row = (
+            await conn.execute(
+                bound_text("select recorded_by, taken_by from medication_intakes where id = :i"),
+                {"i": intake},
+            )
+        ).one()
+    assert (row.recorded_by, row.taken_by) == (first, second)
+    async with as_user(app_engine, second) as conn:
+        assert (await conn.execute(delete, {"i": intake})).rowcount == 1
