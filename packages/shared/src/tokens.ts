@@ -6,18 +6,27 @@
 
 export type Scheme = "light" | "dark";
 export type Flag = "normal" | "low" | "high" | "critical" | "abnormal" | "no_reference";
+export type Feedback = "error" | "warning" | "success";
 
 interface Palette {
   background: string;
   surface: string;
   text: string;
   textMuted: string;
+  /** Decorative dividers and card outlines. */
   border: string;
+  /** Text input outlines: the only boundary of the control, so ≥ 3:1 (WCAG 1.4.11). */
+  inputBorder: string;
   primary: string;
   onPrimary: string;
   /** Destructive actions (sign out, delete). Not a clinical flag colour. */
   danger: string;
   flag: Record<Flag, { fg: string; bg: string }>;
+  /**
+   * Form and action feedback (validation errors, notices). Deliberately not the clinical flag
+   * colours or glyphs, so a form error never looks like a critical lab value (docs/09).
+   */
+  feedback: Record<Feedback, { fg: string; bg: string }>;
 }
 
 export const colors: Record<Scheme, Palette> = {
@@ -27,6 +36,7 @@ export const colors: Record<Scheme, Palette> = {
     text: "#111827",
     textMuted: "#4B5563",
     border: "#D1D5DB",
+    inputBorder: "#6B7280",
     primary: "#0B5FA5",
     onPrimary: "#FFFFFF",
     danger: "#9F1239",
@@ -38,6 +48,11 @@ export const colors: Record<Scheme, Palette> = {
       abnormal: { fg: "#9A3412", bg: "#FFEDD5" },
       no_reference: { fg: "#374151", bg: "#E5E7EB" },
     },
+    feedback: {
+      error: { fg: "#9F1239", bg: "#FFE4E6" },
+      warning: { fg: "#854D0E", bg: "#FEF9C3" },
+      success: { fg: "#115E59", bg: "#CCFBF1" },
+    },
   },
   dark: {
     background: "#0B0F14",
@@ -45,6 +60,7 @@ export const colors: Record<Scheme, Palette> = {
     text: "#F3F4F6",
     textMuted: "#A1A1AA",
     border: "#30363D",
+    inputBorder: "#8B949E",
     primary: "#60A5FA",
     onPrimary: "#0B0F14",
     danger: "#FDA4AF",
@@ -55,6 +71,11 @@ export const colors: Record<Scheme, Palette> = {
       critical: { fg: "#FFFFFF", bg: "#B91C1C" },
       abnormal: { fg: "#FDBA74", bg: "#3B1D0B" },
       no_reference: { fg: "#D1D5DB", bg: "#262B33" },
+    },
+    feedback: {
+      error: { fg: "#FDA4AF", bg: "#3F0D1A" },
+      warning: { fg: "#FDE68A", bg: "#3A2A05" },
+      success: { fg: "#5EEAD4", bg: "#0B2E2B" },
     },
   },
 };
@@ -68,6 +89,9 @@ export const flagGlyph: Record<Flag, string> = {
   abnormal: "◆",
   no_reference: "○",
 };
+
+/** Glyph shown with every feedback colour; distinct from `flagGlyph` (no ⚠ outside lab values). */
+export const feedbackGlyph: Record<Feedback, string> = { error: "!", warning: "!", success: "✓" };
 
 /** 4-pt spacing scale. */
 export const space = { xs: 4, sm: 8, md: 12, lg: 16, xl: 24, xxl: 32 } as const;

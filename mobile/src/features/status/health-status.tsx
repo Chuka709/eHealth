@@ -1,4 +1,4 @@
-import { flagGlyph, fontSize, minTouchTarget, radius, space } from "@labtrack/shared";
+import { feedbackGlyph, fontSize, minTouchTarget, radius, space } from "@labtrack/shared";
 import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, View } from "react-native";
 import { useTranslations } from "use-intl";
 
@@ -20,7 +20,7 @@ export function HealthStatus() {
     );
   }
 
-  const flag = isError ? p.flag.critical : p.flag.normal;
+  const flag = isError ? p.feedback.error : p.feedback.success;
   const label = isError ? t("unreachable") : t("ok");
   return (
     <View style={{ gap: space.lg }}>
@@ -33,7 +33,7 @@ export function HealthStatus() {
       >
         {/* Colour + icon + text: status is never conveyed by colour alone. */}
         <Text style={[styles.glyph, { color: flag.fg }]} importantForAccessibility="no">
-          {isError ? flagGlyph.critical : flagGlyph.normal}
+          {isError ? feedbackGlyph.error : feedbackGlyph.success}
         </Text>
         <Text style={[styles.body, { color: flag.fg, flexShrink: 1 }]}>{label}</Text>
       </View>

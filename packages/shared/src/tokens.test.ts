@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { colors, type Flag, type Scheme } from "./tokens.ts";
+import { colors, type Feedback, type Flag, type Scheme } from "./tokens.ts";
 
 // WCAG 2.x relative luminance and contrast ratio.
 function luminance(hex: string): number {
@@ -18,6 +18,7 @@ function contrast(a: string, b: string): number {
 }
 
 const AA_TEXT = 4.5;
+const AA_NON_TEXT = 3;
 
 for (const scheme of ["light", "dark"] as Scheme[]) {
   const p = colors[scheme];
@@ -29,6 +30,25 @@ for (const scheme of ["light", "dark"] as Scheme[]) {
     assert.ok(contrast(p.onPrimary, p.primary) >= AA_TEXT);
     // Danger is used as text/outline on the background and surface.
     for (const bg of [p.background, p.surface]) assert.ok(contrast(p.danger, bg) >= AA_TEXT);
+  });
+
+  test(`${scheme}: input outlines meet the 3:1 non-text minimum`, () => {
+    for (const bg of [p.background, p.surface]) {
+      assert.ok(contrast(p.inputBorder, bg) >= AA_NON_TEXT);
+      // An invalid field is outlined in danger.
+      assert.ok(contrast(p.danger, bg) >= AA_NON_TEXT);
+    }
+  });
+
+  test(`${scheme}: every feedback notice meets AA and differs from the clinical flags`, () => {
+    const flagBgs = new Set(Object.values(p.flag).map((f) => f.bg));
+    for (const [kind, { fg, bg }] of Object.entries(p.feedback) as [
+      Feedback,
+      { fg: string; bg: string },
+    ][]) {
+      assert.ok(contrast(fg, bg) >= AA_TEXT, `${scheme}/${kind}: ${contrast(fg, bg).toFixed(2)}`);
+      assert.ok(!flagBgs.has(bg), `${scheme}/${kind} reuses a flag colour`);
+    }
   });
 
   test(`${scheme}: every flag badge meets AA`, () => {

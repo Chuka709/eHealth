@@ -1,4 +1,5 @@
 import type { ConfigContext, ExpoConfig } from "expo/config";
+import { type ConfigPlugin, withAndroidManifest, withInfoPlist } from "expo/config-plugins";
 
 // Bundle ID is decided before the first store build (docs/OPEN_QUESTIONS.md Q10); it cannot
 // change after release, so it comes from the environment instead of being hard-coded.
@@ -27,7 +28,40 @@ if (
 const faceIdText = "LabTrack MN-ийг Face ID-аар түгжиж, нээхэд ашиглана.";
 const cameraText = "Админы өгсөн идэвхжүүлэх QR кодыг уншихад камер ашиглана.";
 
-export default ({ config }: ConfigContext): ExpoConfig => ({
+// The dev client's plugins run even when expo-dev-client is left out of `plugins` (installed
+// packages are auto-applied): they register the dev launcher's `exp+<slug>` URL scheme and, on
+// iOS, Bonjour discovery with a local network prompt. A store build has no dev launcher, so these
+// are removed, and iOS App Transport Security is pinned to HTTPS only (rule: no cleartext API).
+const isDevScheme = (scheme: unknown) => typeof scheme === "string" && scheme.startsWith("exp+");
+const withStoreHardening: ConfigPlugin = (cfg) => {
+  const android = withAndroidManifest(cfg, (mod) => {
+    for (const activity of mod.modResults.manifest.application?.[0]?.activity ?? []) {
+      for (const filter of activity["intent-filter"] ?? []) {
+        filter.data = filter.data?.filter((d) => !isDevScheme(d.$?.["android:scheme"]));
+      }
+    }
+    return mod;
+  });
+  return withInfoPlist(android, (mod) => {
+    const plist = mod.modResults;
+    plist.CFBundleURLTypes = (plist.CFBundleURLTypes ?? [])
+      .map((type) => ({
+        ...type,
+        CFBundleURLSchemes: (type.CFBundleURLSchemes ?? []).filter((s) => !isDevScheme(s)),
+      }))
+      .filter((type) => type.CFBundleURLSchemes.length > 0);
+    delete plist.NSBonjourServices;
+    delete plist.NSLocalNetworkUsageDescription;
+    plist.NSAppTransportSecurity = { NSAllowsArbitraryLoads: false };
+    return mod;
+  });
+};
+
+// Registered before the `plugins` list is applied, so its mods run after theirs.
+export default (ctx: ConfigContext): ExpoConfig =>
+  isProd ? withStoreHardening(appConfig(ctx)) : appConfig(ctx);
+
+const appConfig = ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
   name: isProd ? "LabTrack MN" : `LabTrack MN (${variant})`,
   slug: "labtrack",
@@ -54,8 +88,21 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     // PHI must not end up in Android cloud backups.
     allowBackup: false,
     predictiveBackGestureEnabled: false,
-    // The camera only scans QR codes; never request the microphone.
-    blockedPermissions: ["android.permission.RECORD_AUDIO"],
+    // Least privilege (Play photo/video policy, Data safety). The camera only scans QR codes:
+    // no microphone. expo-screen-capture adds media/storage access for its screenshot listener,
+    // which we do not use (it checks the permission first); files stay in app storage. Its
+    // DETECT_SCREEN_CAPTURE (install-time "normal") must stay: on Android 14+ the module registers
+    // a screen-capture callback unconditionally at start, which throws without it.
+    // The overlay permission is for the dev menu only.
+    blockedPermissions: [
+      "android.permission.RECORD_AUDIO",
+      "android.permission.READ_MEDIA_IMAGES",
+      "android.permission.READ_MEDIA_VIDEO",
+      "android.permission.READ_MEDIA_VISUAL_USER_SELECTED",
+      "android.permission.READ_EXTERNAL_STORAGE",
+      "android.permission.WRITE_EXTERNAL_STORAGE",
+      ...(isProd ? ["android.permission.SYSTEM_ALERT_WINDOW"] : []),
+    ],
   },
   plugins: [
     "expo-router",

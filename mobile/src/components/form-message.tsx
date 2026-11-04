@@ -1,12 +1,13 @@
-import { flagGlyph, fontSize, radius, space } from "@labtrack/shared";
+import { feedbackGlyph, fontSize, radius, space } from "@labtrack/shared";
 import { useEffect } from "react";
-import { AccessibilityInfo, StyleSheet, Text, View } from "react-native";
+import { AccessibilityInfo, Platform, StyleSheet, Text, View } from "react-native";
 
 import { usePalette } from "@/theme/use-palette";
 
 /**
- * Error, warning or success notice: colour + glyph + text (never colour alone). Announced to
- * screen readers when it appears or changes (live regions alone do nothing on iOS).
+ * Error, warning or success notice: colour + glyph + text (never colour alone), in feedback
+ * colours, never the clinical flag ones. Announced once when it appears or changes: iOS needs an
+ * explicit announcement (live regions do nothing there), Android uses the live region.
  */
 export function FormMessage({
   kind,
@@ -16,23 +17,22 @@ export function FormMessage({
   text: string;
 }) {
   const p = usePalette();
-  const flag =
-    kind === "success" ? p.flag.normal : kind === "warning" ? p.flag.high : p.flag.critical;
-  const glyph = kind === "success" ? flagGlyph.normal : flagGlyph.critical;
+  const colours = p.feedback[kind];
   useEffect(() => {
-    AccessibilityInfo.announceForAccessibility(text);
+    if (Platform.OS === "ios") AccessibilityInfo.announceForAccessibility(text);
   }, [text]);
   return (
     <View
       accessible
       accessibilityRole={kind === "success" ? "text" : "alert"}
+      accessibilityLiveRegion={kind === "success" ? "polite" : "assertive"}
       accessibilityLabel={text}
-      style={[styles.box, { backgroundColor: flag.bg }]}
+      style={[styles.box, { backgroundColor: colours.bg }]}
     >
-      <Text importantForAccessibility="no" style={[styles.glyph, { color: flag.fg }]}>
-        {glyph}
+      <Text importantForAccessibility="no" style={[styles.glyph, { color: colours.fg }]}>
+        {feedbackGlyph[kind]}
       </Text>
-      <Text selectable style={[styles.text, { color: flag.fg }]}>
+      <Text selectable style={[styles.text, { color: colours.fg }]}>
         {text}
       </Text>
     </View>

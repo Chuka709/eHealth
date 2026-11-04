@@ -226,7 +226,9 @@ describe("sign-in", () => {
     await fireEvent.changeText(screen.getByLabelText("Хэрэглэгчийн нэр"), "bat");
     await fireEvent.changeText(screen.getByLabelText("Нууц үг"), "wrong");
     await fireEvent.press(screen.getByRole("button", { name: "Нэвтрэх" }));
-    expect(await screen.findByText("Нэр эсвэл нууц үг буруу байна.")).toBeOnTheScreen();
+    expect(
+      await screen.findByText("Хэрэглэгчийн нэр эсвэл нууц үг буруу байна."),
+    ).toBeOnTheScreen();
     expect(getStatus()).toBe("signedOut");
   });
 
@@ -253,7 +255,7 @@ test("after an admin reset the notice is the only screen until acknowledged", as
   await app("/");
   // Signed in from storage; the first authenticated request (the consents check) refreshes
   // and learns about the reset.
-  expect(await screen.findByText("Таны нууц үгийг админ шинэчилсэн байна")).toBeOnTheScreen();
+  expect(await screen.findByText("Админ нууц үг сэргээх код олгосон байна")).toBeOnTheScreen();
   expect(screen.getByText(/7011 0000 руу нэн даруй залгана уу/)).toBeOnTheScreen();
   expect(mockStore.has("lt.refresh")).toBe(false);
   expect(AccessibilityInfo.announceForAccessibility).toHaveBeenCalledWith(
@@ -269,7 +271,7 @@ test("after an admin reset the notice is the only screen until acknowledged", as
 test("the admin-reset notice survives an app restart until acknowledged", async () => {
   mockStore.set("lt.notice", JSON.stringify({ kind: "adminReset" }));
   await app("/");
-  expect(await screen.findByText("Таны нууц үгийг админ шинэчилсэн байна")).toBeOnTheScreen();
+  expect(await screen.findByText("Админ нууц үг сэргээх код олгосон байна")).toBeOnTheScreen();
   expect(screen).toHavePathname("/notice");
 });
 

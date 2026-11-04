@@ -36,7 +36,7 @@ export function AdminNoticeBanner() {
     (notice) => Date.now() - Date.parse(notice.created_at) < REPORT_WINDOW_MS,
   );
   return (
-    <View style={[styles.box, { borderColor: p.flag.high.fg, backgroundColor: p.surface }]}>
+    <View style={[styles.box, { borderColor: p.feedback.warning.fg, backgroundColor: p.surface }]}>
       <FormMessage kind="warning" text={t("notification.banner")} />
       {notices.data.map((notice) => (
         <Paragraph key={notice.id}>

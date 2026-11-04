@@ -46,14 +46,19 @@ export default function ConsentSettingsScreen() {
   const outdated = give.error instanceof ApiError && give.error.code === "consent.version_outdated";
 
   const withdraw = (kind: (typeof REQUIRED_KINDS)[number]) =>
-    Alert.alert(t("consentSettings.withdrawTitle"), t("consentSettings.withdrawBody"), [
-      { text: t("common.cancel"), style: "cancel" },
-      {
-        text: t("consentSettings.withdrawConfirm"),
-        style: "destructive",
-        onPress: () => give.mutate([item(kind, false)]),
-      },
-    ]);
+    Alert.alert(
+      t("consentSettings.withdrawTitle"),
+      t("consentSettings.withdrawBody"),
+      [
+        { text: t("common.cancel"), style: "cancel" },
+        {
+          text: t("consentSettings.withdrawConfirm"),
+          style: "destructive",
+          onPress: () => give.mutate([item(kind, false)]),
+        },
+      ],
+      { cancelable: true },
+    );
 
   return (
     <Screen>

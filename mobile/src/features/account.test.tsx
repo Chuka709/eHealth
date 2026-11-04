@@ -150,7 +150,7 @@ describe("admin changes on Home (docs/04 §1 step 5c)", () => {
     await open();
     expect(await screen.findByText(/Таны аккаунтад админ өөрчлөлт хийсэн/)).toBeOnTheScreen();
     expect(
-      screen.getByText("Админ таны нууц үгийг шинэчлэх код олгосон — 2026.11.02 12:15"),
+      screen.getByText("Админ таны нууц үгийг сэргээх код олгосон — 2026.11.02 12:15"),
     ).toBeOnTheScreen();
     await fireEvent.press(screen.getByRole("button", { name: "Энэ миний хүсэлтээр болсон" }));
     await waitFor(() => expect(screen.queryByText(/админ өөрчлөлт хийсэн/)).toBeNull());
@@ -193,7 +193,7 @@ describe("admin changes on Home (docs/04 §1 step 5c)", () => {
 test("admin history: what, when (UB time) and the role — never who", async () => {
   await openSettingsRow("settings-admin-history");
   expect(
-    await screen.findByText("Идэвхжүүлэх эсвэл нууц үг шинэчлэх код олгосон"),
+    await screen.findByText("Идэвхжүүлэх эсвэл нууц үг сэргээх код олгосон"),
   ).toBeOnTheScreen();
   expect(screen.getByText("2026.11.01 11:00 · Супер админ")).toBeOnTheScreen();
   expect(screen.getByText("Админы бусад үйлдэл")).toBeOnTheScreen(); // unknown action
@@ -296,7 +296,7 @@ test("an unreadable stored notice shows a neutral text, not a false admin reset"
   mockStore.set("lt.notice", "{not json");
   await open();
   expect(await screen.findByText("LabTrack MN-д тавтай морил")).toBeOnTheScreen();
-  expect(screen.queryByText(/админ шинэчилсэн/)).toBeNull();
+  expect(screen.queryByText(/сэргээх код олгосон байна/)).toBeNull();
 });
 
 test("the AI switch shows on while one part is still given, and off withdraws both", async () => {

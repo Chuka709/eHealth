@@ -1,4 +1,4 @@
-import { flagGlyph, fontSize, minTouchTarget, radius, space } from "@labtrack/shared";
+import { feedbackGlyph, fontSize, minTouchTarget, radius, space } from "@labtrack/shared";
 import type { ComponentRef, ReactNode, Ref } from "react";
 import { Platform, StyleSheet, Text, TextInput, type TextInputProps, View } from "react-native";
 
@@ -25,7 +25,7 @@ export function TextField({ label, error, hint, trailing, inputRef, ...input }: 
       <View
         style={[
           styles.field,
-          { borderColor: error ? p.flag.critical.bg : p.border, backgroundColor: p.surface },
+          { borderColor: error ? p.danger : p.inputBorder, backgroundColor: p.surface },
         ]}
       >
         <TextInput
@@ -41,7 +41,7 @@ export function TextField({ label, error, hint, trailing, inputRef, ...input }: 
       {hint && !error && <Text style={[styles.note, { color: p.textMuted }]}>{hint}</Text>}
       {error && (
         <Text accessibilityLiveRegion="polite" style={[styles.note, { color: p.text }]}>
-          {`${flagGlyph.critical} ${error}`}
+          {`${feedbackGlyph.error} ${error}`}
         </Text>
       )}
     </View>

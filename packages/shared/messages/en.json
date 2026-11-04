@@ -68,8 +68,8 @@
       "noPhone": "Contact your organisation's admin."
     },
     "adminReset": {
-      "title": "An admin reset your password",
-      "body": "An admin issued a code to set a new password for your account, so this device was signed out.",
+      "title": "An admin issued a password reset code",
+      "body": "An admin issued a password reset code for your account, so this device was signed out.",
       "ifNotYou": "If you did not ask for this, call {phone} right away.",
       "ifNotYouNoPhone": "If you did not ask for this, contact your organisation's admin right away.",
       "login": "Sign in with the new password"
@@ -177,7 +177,7 @@
       "unknownDevice": "Unknown device",
       "lastUsed": "Last used: {date}",
       "since": "Signed in: {date}",
-      "signOutDevice": "Sign out",
+      "signOutDevice": "Sign out device",
       "signOutDeviceLabel": "Sign out the device “{device}”",
       "confirmTitle": "Sign out this device?",
       "confirmBody": "The session on {device} ends now.",
@@ -286,7 +286,7 @@
     "admin": {
       "account_disabled": "The account is disabled, so this is not possible.",
       "address_required": "Your address could not be determined. Reload the page.",
-      "already_activated": "This account is already activated. If the password is forgotten, issue a reset token.",
+      "already_activated": "This account is already activated. If the password is forgotten, issue a reset code.",
       "forbidden": "You are not allowed to do this.",
       "identity_already_set": "This user's national ID is already enrolled.",
       "identity_check_limit": "Today's identity check limit is reached. Another admin can check, or try again tomorrow.",
@@ -303,7 +303,7 @@
       "reason_required": "Choose a reason.",
       "reset_needs_other_admin": "You enrolled this user's national ID, so another admin must do the reset.",
       "reset_required": "The account was locked for security reasons. It reopens only after an identity check and a password reset.",
-      "session_invalid": "Your session has ended. Sign in again.",
+      "session_invalid": "Your sign-in has ended. Sign in again.",
       "sms_failed": "The SMS could not be sent. The token is still valid — issue again or use the in-person QR.",
       "sms_unavailable": "SMS is not set up yet. Use the in-person QR.",
       "status_change_not_allowed": "This status change is not possible.",
@@ -312,13 +312,13 @@
     },
     "auth": {
       "activation_invalid": "The username or code is wrong, or the code has expired. Check the username on your sign-in card and try again. Too many wrong tries revoke the code — then ask your admin for a new one.",
-      "admin_reset": "An admin reset your account password, so this device was signed out.",
+      "admin_reset": "An admin issued a password reset code for your account, so this device was signed out.",
       "forbidden": "You don't have access to this.",
       "invalid_credentials": "Wrong username or password.",
       "locked": "Too many failed attempts. Wait a while and try again.",
       "rate_limited": "Too many requests. Wait a moment and try again.",
       "required": "Please sign in.",
-      "session_invalid": "Your session has ended. Sign in again.",
+      "session_invalid": "Your sign-in has ended. Sign in again.",
       "session_not_found": "Device not found.",
       "account_reported": "You reported “I didn't ask for this”, so the account was locked and signed out everywhere.",
       "deletion_pending": "Your account deletion request is pending, so it was signed out everywhere."

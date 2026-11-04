@@ -218,15 +218,14 @@ describe("devices", () => {
   test("lists this device first and signs out another after confirming", async () => {
     await openSettings();
     await fireEvent.press(screen.getByTestId("settings-devices"));
-    const names = await screen.findAllByRole("header");
-    expect(
-      names.map((n) => n.props.children).filter((c) => c !== "Нэвтэрсэн төхөөрөмжүүд"),
-    ).toEqual(["Pixel 8", "Galaxy A54"]);
-    expect(screen.getByText("● Энэ төхөөрөмж")).toBeOnTheScreen(); // badge: glyph + text
+    // Device names are card titles, not screen headings; returned in screen order.
+    const names = await screen.findAllByText(/^(Pixel 8|Galaxy A54)$/);
+    expect(names.map((n) => n.props.children)).toEqual(["Pixel 8", "Galaxy A54"]);
+    expect(screen.getByText("✓ Энэ төхөөрөмж")).toBeOnTheScreen(); // badge: glyph + text
 
     await fireEvent.press(screen.getByRole("button", { name: "«Galaxy A54» төхөөрөмжийг гаргах" }));
     expect(calls("DELETE /api/v1/auth/sessions/s-other")).toHaveLength(0); // asks first
-    confirm("Гаргах");
+    confirm("Төхөөрөмжийг гаргах");
     expect(await screen.findByText("«Galaxy A54» төхөөрөмжийг гаргалаа.")).toBeOnTheScreen();
     expect(calls("DELETE /api/v1/auth/sessions/s-other")).toHaveLength(1);
   });

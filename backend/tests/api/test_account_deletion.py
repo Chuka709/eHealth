@@ -95,6 +95,13 @@ async def test_cancellation_goes_through_a_reset(client_from: ClientFactory) -> 
         ).status_code == 204
         detail = (await c.get(f"/api/v1/admin/users/{uid}", headers=admin)).json()
         assert (detail["account_status"], detail["deletion_scheduled_for"]) == ("locked", None)
+    async with client_from(HOME) as phone:
+        # The old device no longer says deletion is pending (migration 0012): a plain sign-out.
+        refresh = await phone.post(
+            "/api/v1/auth/refresh", json={"refresh_token": _refresh_tokens[uid]}
+        )
+        assert (refresh.status_code, refresh.json()["code"]) == (401, "auth.session_invalid")
+    async with client_from(OFFICE) as c:
         r = await c.post(
             f"/api/v1/admin/users/{uid}/status",
             json={"status": "active", "reason": "user_request"},

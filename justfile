@@ -67,6 +67,11 @@ fuzz-api:
 e2e-mobile *flows:
     $env:UV_CACHE_DIR = "F:/.uv-cache"; $env:UV_TOOL_DIR = "F:/.uv-tools"; cd backend; uv run python scripts/e2e_mobile.py {{quote(flows)}}
 
+# Recreate the empty test database (as in infra/postgres/init/01-roles.sh). Downgrades do not
+# remove objects an older revision of a migration created, so tests could run on a stale schema.
+reset-test-db:
+    {{compose}} exec -T postgres psql -U postgres -d postgres -v ON_ERROR_STOP=1 -c "drop database if exists labtrack_test with (force)" -c "create database labtrack_test owner labtrack_owner" -c "revoke all on database labtrack_test from public" -c "grant connect on database labtrack_test to labtrack_app, labtrack_admin, labtrack_admin_login, labtrack_maint"
+
 test-rls:
     {{compose}} run --rm test pytest -q --no-header tests/rls
 

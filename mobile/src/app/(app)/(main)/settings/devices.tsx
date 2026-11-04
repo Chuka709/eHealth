@@ -1,4 +1,4 @@
-import { flagGlyph, fontSize, radius, space } from "@labtrack/shared";
+import { feedbackGlyph, fontSize, radius, space } from "@labtrack/shared";
 import { useState } from "react";
 import { Alert, StyleSheet, Text, View } from "react-native";
 import { useTranslations } from "use-intl";
@@ -32,22 +32,32 @@ export default function DevicesScreen() {
   const others = sessions.data.filter((s) => !s.current);
 
   const signOutThis = () =>
-    Alert.alert(t("settings.signOutConfirmTitle"), t("settings.signOutConfirmBody"), [
-      { text: t("common.cancel"), style: "cancel" },
-      { text: t("settings.signOut"), style: "destructive", onPress: () => void signOut() },
-    ]);
+    Alert.alert(
+      t("settings.signOutConfirmTitle"),
+      t("settings.signOutConfirmBody"),
+      [
+        { text: t("common.cancel"), style: "cancel" },
+        { text: t("settings.signOut"), style: "destructive", onPress: () => void signOut() },
+      ],
+      { cancelable: true },
+    );
   const signOutOther = (session: DeviceSession, name: string) =>
-    Alert.alert(t("devices.confirmTitle"), t("devices.confirmBody", { device: name }), [
-      { text: t("common.cancel"), style: "cancel" },
-      {
-        text: t("devices.signOutDevice"),
-        style: "destructive",
-        onPress: () => {
-          setRevoked(null);
-          revoke.mutate(session.id, { onSuccess: () => setRevoked(name) });
+    Alert.alert(
+      t("devices.confirmTitle"),
+      t("devices.confirmBody", { device: name }),
+      [
+        { text: t("common.cancel"), style: "cancel" },
+        {
+          text: t("devices.signOutDevice"),
+          style: "destructive",
+          onPress: () => {
+            setRevoked(null);
+            revoke.mutate(session.id, { onSuccess: () => setRevoked(name) });
+          },
         },
-      },
-    ]);
+      ],
+      { cancelable: true },
+    );
 
   return (
     <Screen>
@@ -93,13 +103,11 @@ function DeviceCard({
     <View style={[styles.card, { backgroundColor: p.surface, borderColor: p.border }]}>
       {/* One stop for screen readers: name and details together; the button stays separate. */}
       <View accessible accessibilityLabel={[name, ...details].join(". ")} style={styles.info}>
-        <Text accessibilityRole="header" style={[styles.name, { color: p.text }]}>
-          {name}
-        </Text>
+        <Text style={[styles.name, { color: p.text }]}>{name}</Text>
         {session.current && (
-          <View style={[styles.badge, { backgroundColor: p.flag.normal.bg }]}>
-            <Text style={[styles.badgeText, { color: p.flag.normal.fg }]}>
-              {`${flagGlyph.normal} ${t("thisDevice")}`}
+          <View style={[styles.badge, { backgroundColor: p.feedback.success.bg }]}>
+            <Text style={[styles.badgeText, { color: p.feedback.success.fg }]}>
+              {`${feedbackGlyph.success} ${t("thisDevice")}`}
             </Text>
           </View>
         )}

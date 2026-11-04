@@ -150,7 +150,11 @@ async def activate(body: ActivateRequest, request: Request, db: AnonymousDb) -> 
 
 @router.post("/password", status_code=status.HTTP_204_NO_CONTENT, responses=_ERRORS)
 async def change_password(body: ChangePasswordRequest, claims: Claims, db: UserDb) -> Response:
-    me_row = (await db.execute(bound_text("select username, display_name from users"))).one()
+    me_row = (
+        await db.execute(
+            bound_text("select username, display_name from users where id = app_user_id()")
+        )
+    ).one()
     await service.change_password(
         db,
         username=me_row.username,

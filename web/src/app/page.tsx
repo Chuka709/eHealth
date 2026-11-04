@@ -1,3 +1,4 @@
+import mn from "@labtrack/shared/messages/mn.json";
 import { Suspense } from "react";
 
 import { fetchReadiness, type StatusKey, statusKey } from "@/lib/status";
@@ -37,7 +38,7 @@ export default function Home() {
   return (
     <main className="mx-auto flex w-full max-w-xl flex-col gap-6 p-6">
       <h1 className="text-2xl font-bold">LabTrack MN</h1>
-      <Suspense fallback={<p role="status">Сервертэй холбогдож байна…</p>}>
+      <Suspense fallback={<p role="status">{mn.status.checking}</p>}>
         <ApiStatus />
       </Suspense>
     </main>

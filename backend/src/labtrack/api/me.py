@@ -107,6 +107,8 @@ async def _me(db: UserDb) -> MeOut:
             bound_text(
                 "select id, username::text as username, display_name, locale, role::text as role,"
                 " account_status, password_changed_at, created_at from users"
+                # Explicit, not RLS alone: later roles (doctors, caregivers) may see more users.
+                " where id = app_user_id()"
             )
         )
     ).one()
@@ -271,7 +273,9 @@ async def delete_account(body: DeleteRequest, db: UserDb) -> DeletionOut:
     """Delete the account (App Store / Play requirement). Signs out everywhere at once; the
     data is erased 30 days later. Until then an admin can restore it - as a locked account
     that needs an identity check and a new password."""
-    username = (await db.execute(bound_text("select username::text from users"))).scalar_one()
+    username = (
+        await db.execute(bound_text("select username::text from users where id = app_user_id()"))
+    ).scalar_one()
     await auth_service.reverify_password(db, username=username, password=body.password)
     try:
         scheduled = (await db.execute(bound_text("select request_account_deletion()"))).scalar_one()

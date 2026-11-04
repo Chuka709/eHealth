@@ -11,7 +11,7 @@ appId: ${MAESTRO_APP_ID}
 - runFlow: subflows/dev-client.yaml
 - extendedWaitUntil:
     visible: "Аккаунт идэвхжүүлэх"
-    timeout: 60000
+    timeout: 120000 # a cold Metro bundles for ~1 min
 
 # The admin's link (the same URL the QR holds). The token never reaches the router.
 - openLink: "labtrack://activate#${MAESTRO_ACTIVATION_TOKEN}"

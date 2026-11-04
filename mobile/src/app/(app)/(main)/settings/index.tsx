@@ -21,10 +21,15 @@ export default function SettingsScreen() {
   const biometric = useBiometricToggle(t("lock.prompt"), t("settings.biometricDisablePrompt"));
 
   const confirmSignOut = () =>
-    Alert.alert(t("settings.signOutConfirmTitle"), t("settings.signOutConfirmBody"), [
-      { text: t("common.cancel"), style: "cancel" },
-      { text: t("settings.signOut"), style: "destructive", onPress: () => void signOut() },
-    ]);
+    Alert.alert(
+      t("settings.signOutConfirmTitle"),
+      t("settings.signOutConfirmBody"),
+      [
+        { text: t("common.cancel"), style: "cancel" },
+        { text: t("settings.signOut"), style: "destructive", onPress: () => void signOut() },
+      ],
+      { cancelable: true },
+    );
 
   return (
     <Screen>
