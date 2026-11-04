@@ -956,6 +956,11 @@ export interface components {
             /** Is Minor */
             is_minor: boolean;
             /**
+             * Consent Required
+             * @default false
+             */
+            consent_required: boolean;
+            /**
              * Created At
              * Format: date-time
              */

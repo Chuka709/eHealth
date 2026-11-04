@@ -18,6 +18,7 @@ from pydantic import AfterValidator, BaseModel, ConfigDict, StringConstraints, m
 from sqlalchemy.exc import DBAPIError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from labtrack import consents
 from labtrack.api.deps import PatientReadDb, PatientWriteDb, PhiDb
 from labtrack.api.errors import AppError, ErrorBody
 from labtrack.core.text import valid_display_name
@@ -83,6 +84,8 @@ class PatientOut(BaseModel):
     sex: Sex
     access_level: Literal["owner", "caregiver", "doctor", "viewer"]
     is_minor: bool
+    # a minor's profile without its owner's consents in force: only enough to ask for them
+    consent_required: bool = False
     created_at: datetime
 
 
@@ -138,6 +141,19 @@ def _second_self(exc: DBAPIError) -> bool:
     )
 
 
+async def _shown(db: AsyncSession, patient: PatientOut) -> PatientOut | None:
+    """A minor's profile counts only while its owner's consents for it are in force (Q9), the
+    same rule as patient_read_db: without them the owner sees just what is needed to give them
+    again (no birth date or sex), anyone else does not see the profile at all."""
+    if not patient.is_minor or not await consents.missing(db, consents.REQUIRED, patient.id):
+        return patient
+    if patient.access_level != "owner":
+        return None
+    return patient.model_copy(
+        update={"birth_date": None, "sex": "unknown", "consent_required": True}
+    )
+
+
 async def _one(db: AsyncSession, patient_id: UUID) -> PatientOut:
     row = (
         await db.execute(bound_text(_SELECT + " and p.id = :p"), {"p": patient_id})
@@ -145,7 +161,10 @@ async def _one(db: AsyncSession, patient_id: UUID) -> PatientOut:
     if row is None:
         # not there and not shared with the user look the same
         raise AppError(404, "patient.not_found")
-    return PatientOut(**row._mapping)
+    shown = await _shown(db, PatientOut(**row._mapping))
+    if shown is None:
+        raise AppError(404, "patient.not_found")
+    return shown
 
 
 @router.get("", response_model=list[PatientOut], responses=_ERRORS)
@@ -153,7 +172,8 @@ async def list_patients(db: PhiDb) -> list[PatientOut]:
     rows = await db.execute(
         bound_text(_SELECT + " order by (p.relation = 'self') desc, p.created_at")
     )
-    return [PatientOut(**r._mapping) for r in rows]
+    shown = [await _shown(db, PatientOut(**r._mapping)) for r in rows]
+    return [p for p in shown if p is not None]
 
 
 @router.post("", response_model=PatientOut, status_code=status.HTTP_201_CREATED, responses=_ERRORS)

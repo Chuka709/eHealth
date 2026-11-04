@@ -4330,6 +4330,11 @@
             "type": "boolean",
             "title": "Is Minor"
           },
+          "consent_required": {
+            "type": "boolean",
+            "title": "Consent Required",
+            "default": false
+          },
           "created_at": {
             "type": "string",
             "format": "date-time",

@@ -293,9 +293,15 @@ async def test_a_minors_profile_needs_its_own_consents(
         body = {"items": [{**REQUIRED[0], "granted": False}], "patient_id": child["id"]}
         assert (await c.post("/api/v1/me/consents", json=body, headers=h)).status_code == 204
         assert await code(child_url, h) == "consent.profile_required"
-        # the list still shows it, so the app can ask for the consents again
+        # the list still shows it to the owner, with only what is needed to ask for the
+        # consents again; a caregiver does not see it at all
         listed = (await c.get("/api/v1/patients", headers=h)).json()
-        assert [p["is_minor"] for p in listed] == [False, True]
+        assert [(p["is_minor"], p["consent_required"]) for p in listed] == [
+            (False, False),
+            (True, True),
+        ]
+        assert (listed[1]["full_name"], listed[1]["birth_date"]) == ("Хүү", None)
+        assert (await c.get("/api/v1/patients", headers=carer_h)).json() == []
 
 
 async def test_ages_must_fit_the_relation(
