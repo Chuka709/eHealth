@@ -22,6 +22,9 @@ export default function MainLayout() {
       <Stack.Screen name="settings/consents" options={{ title: t("consentSettings.title") }} />
       <Stack.Screen name="settings/admin-history" options={{ title: t("adminHistory.title") }} />
       <Stack.Screen name="settings/delete-account" options={{ title: t("deleteAccount.title") }} />
+      <Stack.Screen name="transplants/index" options={{ title: t("transplant.listTitle") }} />
+      <Stack.Screen name="transplants/new" options={{ title: t("transplant.add") }} />
+      <Stack.Screen name="transplants/[id]" options={{ title: t("transplant.editTitle") }} />
     </Stack>
   );
 }

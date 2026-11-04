@@ -1,7 +1,7 @@
 import { createAsyncStoragePersister } from "@tanstack/query-async-storage-persister";
 import { persistQueryClient } from "@tanstack/react-query-persist-client";
 
-import { localStore } from "./local-store";
+import { localStore, openLocalStore } from "./local-store";
 import { queryClient } from "./query-client";
 
 /**
@@ -65,6 +65,15 @@ async function start(): Promise<void> {
     unsubscribe();
   };
   await restored;
+}
+
+/**
+ * Health data may no longer be kept (a required consent withdrawn): every persisted query
+ * leaves memory, and the saved cache leaves the encrypted store now (not at the next save).
+ */
+export function dropPersistedHealthData(): void {
+  queryClient.removeQueries({ predicate: (query) => query.meta?.persist === true });
+  openLocalStore()?.remove(CACHE_KEY);
 }
 
 /** Before a wipe: stop writing the cache (the wipe then clears the store). */

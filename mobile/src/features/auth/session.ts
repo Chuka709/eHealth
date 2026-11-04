@@ -1,6 +1,7 @@
 import type { components } from "@labtrack/shared";
 
 import { setBiometricOn, setLocked } from "@/features/lock/lock-store";
+import { setWizardActive } from "@/features/records/onboarding-store";
 import { publicApi } from "@/lib/api-base";
 import { setLocale } from "@/lib/i18n";
 import { wipeLocalStore } from "@/lib/local-store";
@@ -180,6 +181,7 @@ export async function wipeLocal(
   clearPendingActivationToken();
   setBiometricOn(false);
   setLocale("mn"); // the next user starts in the default language
+  setWizardActive(false); // an unfinished onboarding is not the next session's
   await queryClient.cancelQueries();
   stopCachePersistence(); // before clear(): the persister must not save the emptied cache
   queryClient.clear();

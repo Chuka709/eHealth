@@ -3,6 +3,8 @@ import { Stack } from "expo-router";
 import { LoadingView, RetryView } from "@/components/state-view";
 import { needsConsent, useConsents } from "@/features/consents/use-consents";
 import { useBiometricState } from "@/features/lock/biometric";
+import { useWizardActive } from "@/features/records/onboarding-store";
+import { ownProfile, usePatients } from "@/features/records/use-profile";
 import { useErrorText } from "@/lib/use-error-text";
 
 /**
@@ -15,6 +17,10 @@ export default function AppLayout() {
   const errorText = useErrorText();
   const consents = useConsents();
   const biometric = useBiometricState();
+  const consented = Boolean(consents.data) && !needsConsent(consents.data ?? []);
+  // health data (the profiles) only once the consents are given (server: 403 before)
+  const patients = usePatients({ enabled: consented });
+  const wizardActive = useWizardActive();
 
   if (consents.isPending || biometric.isPending) return <LoadingView />;
   // Fail closed without known consent state; a failed background refresh keeps the last one.
@@ -24,7 +30,15 @@ export default function AppLayout() {
   const mustConsent = needsConsent(consents.data);
   const offerBiometric =
     !mustConsent && biometric.data?.available === true && biometric.data.choice === null;
-  const ready = !mustConsent && !offerBiometric;
+  if (!mustConsent && !offerBiometric && !patients.data) {
+    if (patients.isPending) return <LoadingView />;
+    return <RetryView text={errorText(patients.error)} onRetry={() => void patients.refetch()} />;
+  }
+  // First sign-in: the transplant wizard until the own profile exists (it is created on the
+  // first save or on skipping), and until the wizard itself is finished.
+  const offerTransplant =
+    !mustConsent && !offerBiometric && (wizardActive || !ownProfile(patients.data));
+  const ready = !mustConsent && !offerBiometric && !offerTransplant;
 
   return (
     <Stack screenOptions={{ headerShown: false }}>
@@ -33,6 +47,9 @@ export default function AppLayout() {
       </Stack.Protected>
       <Stack.Protected guard={offerBiometric}>
         <Stack.Screen name="onboarding/biometric" />
+      </Stack.Protected>
+      <Stack.Protected guard={offerTransplant}>
+        <Stack.Screen name="onboarding/transplant" />
       </Stack.Protected>
       <Stack.Protected guard={ready}>
         <Stack.Screen name="(main)" />

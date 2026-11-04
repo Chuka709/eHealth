@@ -1,14 +1,26 @@
 import { space } from "@labtrack/shared";
-import type { ReactNode } from "react";
+import type { ComponentRef, ReactNode, Ref } from "react";
 import { ScrollView, StyleSheet } from "react-native";
 
 import { usePalette } from "@/theme/use-palette";
 
-/** Scrollable screen body: grows with Dynamic Type and stays usable with the keyboard open. */
-export function Screen({ children }: { children: ReactNode }) {
+export type ScreenScroll = ComponentRef<typeof ScrollView>;
+
+/**
+ * Scrollable screen body: grows with Dynamic Type and stays usable with the keyboard open.
+ * `scrollRef` lets a multi-step screen return to the top when the step changes.
+ */
+export function Screen({
+  children,
+  scrollRef,
+}: {
+  children: ReactNode;
+  scrollRef?: Ref<ScreenScroll>;
+}) {
   const p = usePalette();
   return (
     <ScrollView
+      ref={scrollRef}
       contentInsetAdjustmentBehavior="automatic"
       automaticallyAdjustKeyboardInsets
       keyboardShouldPersistTaps="handled"

@@ -4,6 +4,7 @@ import bundledVersions from "@labtrack/shared/consent-versions.json";
 import { useMutation, useQuery } from "@tanstack/react-query";
 
 import { api } from "@/lib/api";
+import { dropPersistedHealthData } from "@/lib/persist";
 import { queryClient } from "@/lib/query-client";
 import { apiError } from "@/lib/use-error-text";
 
@@ -68,6 +69,12 @@ export function useGiveConsents() {
     mutationFn: async (items: ConsentItem[]) => {
       const { error, response } = await api.POST("/api/v1/me/consents", { body: { items } });
       if (!response.ok) throw apiError(error);
+    },
+    onSuccess: (_, items) => {
+      // a required consent withdrawn: no health data may stay cached (memory or disk)
+      if (items.some((i) => (REQUIRED_KINDS as readonly string[]).includes(i.kind) && !i.granted)) {
+        dropPersistedHealthData();
+      }
     },
     // Success, or a version that changed meanwhile: either way show the server's state.
     onSettled: () => queryClient.invalidateQueries({ queryKey: consentsKey }),

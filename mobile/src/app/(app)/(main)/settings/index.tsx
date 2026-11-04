@@ -34,6 +34,12 @@ export default function SettingsScreen() {
   return (
     <Screen>
       <NavRow
+        label={t("transplant.open")}
+        hint={t("transplant.openHint")}
+        onPress={() => router.push("/transplants")}
+        testID="settings-transplants"
+      />
+      <NavRow
         label={t("settings.profile")}
         hint={t("settings.profileHint")}
         onPress={() => router.push("/settings/profile")}

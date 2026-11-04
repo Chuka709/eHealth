@@ -102,6 +102,20 @@ beforeEach(() => {
       });
     }
     if (path === "/api/v1/me/consents") return json(200, given);
+    if (path === "/api/v1/patients")
+      return json(200, [
+        {
+          id: "00000000-0000-4000-8000-000000000001",
+          relation: "self",
+          access_level: "owner",
+          full_name: "Бат",
+          birth_date: null,
+          sex: "unknown",
+          is_minor: false,
+          consent_required: false,
+          created_at: "2026-01-01T00:00:00Z",
+        },
+      ]);
     if (path === "/api/v1/me/notifications") return json(200, []);
     if (path === "/api/v1/auth/logout") return new Response(null, { status: 204 });
     return json(200, { status: "ok" });

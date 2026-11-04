@@ -1,8 +1,12 @@
 import { onlineManager } from "@tanstack/react-query";
 import { createMMKV } from "react-native-mmkv";
-
+import { setWizardActive, wizardActive } from "@/features/records/onboarding-store";
 import { localStore, openLocalStore, wipeLocalStore } from "@/lib/local-store";
-import { startCachePersistence, stopCachePersistence } from "@/lib/persist";
+import {
+  dropPersistedHealthData,
+  startCachePersistence,
+  stopCachePersistence,
+} from "@/lib/persist";
 import { queryClient } from "@/lib/query-client";
 
 import { currentEpoch, establishSession, refreshSession, wipeLocal } from "../auth/session";
@@ -316,5 +320,32 @@ describe("a sign-out in progress", () => {
     for (const account of [ALICE, BOB]) expect(tokenSubject(tokenFor(account))).toBe(account);
     expect(tokenSubject("not.a-token")).toBeNull();
     expect(tokenSubject(null)).toBeNull();
+  });
+});
+
+describe("when health data may no longer be kept", () => {
+  it("a withdrawn consent drops persisted health data from memory and the store", async () => {
+    await startCachePersistence();
+    const store = await localStore();
+    store.set("query-cache", "transplants of the user");
+    queryClient.setQueryData(["transplants", "p1"], [{ id: "t1" }]);
+    queryClient
+      .getQueryCache()
+      .find({ queryKey: ["transplants", "p1"] })
+      ?.setOptions({
+        queryKey: ["transplants", "p1"],
+        meta: { persist: true },
+      });
+    queryClient.setQueryData(["me"], { id: "u1" }); // not health data: stays
+    dropPersistedHealthData();
+    expect(queryClient.getQueryData(["transplants", "p1"])).toBeUndefined();
+    expect(queryClient.getQueryData(["me"])).toEqual({ id: "u1" });
+    expect(store.getString("query-cache")).toBeUndefined();
+  });
+
+  it("a sign-out ends an unfinished onboarding wizard", async () => {
+    setWizardActive(true);
+    await wipeLocal("signedOut");
+    expect(wizardActive()).toBe(false);
   });
 });

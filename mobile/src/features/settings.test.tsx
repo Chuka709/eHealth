@@ -89,6 +89,21 @@ function route(extra: Record<string, Handler> = {}) {
     "POST /api/v1/auth/refresh": () =>
       json(200, { access_token: "a1", token_type: "bearer", expires_in: 900, refresh_token: "r1" }),
     "GET /api/v1/me/consents": () => json(200, given),
+    // the own profile exists: no transplant wizard (Phase 2.4)
+    "GET /api/v1/patients": () =>
+      json(200, [
+        {
+          id: "00000000-0000-4000-8000-000000000001",
+          relation: "self",
+          access_level: "owner",
+          full_name: "Бат",
+          birth_date: null,
+          sex: "unknown",
+          is_minor: false,
+          consent_required: false,
+          created_at: "2026-01-01T00:00:00Z",
+        },
+      ]),
     "GET /api/v1/me": () => json(200, me),
     "PATCH /api/v1/me": async (request) => {
       me = { ...me, ...((await request.json()) as object) };

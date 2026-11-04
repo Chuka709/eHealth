@@ -70,6 +70,20 @@ function route(extra: Record<string, Handler> = {}) {
     "/api/v1/auth/refresh": tokens,
     "/api/v1/healthz": () => json(200, { status: "ok" }),
     "/api/v1/me": () => json(200, { locale: "mn" }),
+    "/api/v1/patients": () =>
+      json(200, [
+        {
+          id: "00000000-0000-4000-8000-000000000001",
+          relation: "self",
+          access_level: "owner",
+          full_name: "Бат",
+          birth_date: null,
+          sex: "unknown",
+          is_minor: false,
+          consent_required: false,
+          created_at: "2026-01-01T00:00:00Z",
+        },
+      ]),
     "/api/v1/me/notifications": () => json(200, []),
     "/api/v1/me/consents": async (request) => {
       if (request.method === "GET") return json(200, consentState);
@@ -247,6 +261,20 @@ describe("biometric offer", () => {
     route({
       "/api/v1/auth/logout": () => new Response(null, { status: 204 }),
       "/api/v1/me": () => json(200, { locale: "mn" }),
+      "/api/v1/patients": () =>
+        json(200, [
+          {
+            id: "00000000-0000-4000-8000-000000000001",
+            relation: "self",
+            access_level: "owner",
+            full_name: "Бат",
+            birth_date: null,
+            sex: "unknown",
+            is_minor: false,
+            consent_required: false,
+            created_at: "2026-01-01T00:00:00Z",
+          },
+        ]),
     });
     // Sign-out lives in Settings and asks first: confirm the dialog.
     const alert = jest.spyOn(Alert, "alert").mockImplementation((_t, _m, buttons) => {
