@@ -5,7 +5,12 @@ import { useTranslations } from "use-intl";
 import { Button } from "@/components/button";
 import { Screen } from "@/components/screen";
 import { Paragraph, Title } from "@/components/text";
-import { setShowNames, showNames } from "@/features/meds/notify";
+import {
+  setShowAppointmentDetails,
+  setShowNames,
+  showAppointmentDetails,
+  showNames,
+} from "@/features/meds/notify";
 import { useZones } from "@/features/meds/use-medications";
 import { enableExactAlarms, useReminderHealth } from "@/features/meds/use-reminder-health";
 import { requestReminderSync } from "@/features/meds/use-reminders";
@@ -19,6 +24,7 @@ export default function RemindersSettingsScreen() {
   const health = useReminderHealth();
   const [asking, setAsking] = useState(false);
   const [names, setNames] = useState<boolean | null>(null);
+  const [details, setDetails] = useState<boolean | null>(null);
   const patients = usePatients();
   const zones = useZones(ownProfile(patients.data)?.id);
 
@@ -26,6 +32,9 @@ export default function RemindersSettingsScreen() {
     void showNames()
       .then(setNames)
       .catch(() => setNames(false));
+    void showAppointmentDetails()
+      .then(setDetails)
+      .catch(() => setDetails(false));
   }, []);
 
   return (
@@ -43,6 +52,19 @@ export default function RemindersSettingsScreen() {
         />
       </Host>
       <Paragraph muted>{t("showNamesHint")}</Paragraph>
+      <Host matchContents={{ vertical: true }} style={styles.wide}>
+        <Switch
+          label={t("showDetails")}
+          value={details ?? false}
+          disabled={details === null}
+          onValueChange={(on) => {
+            setDetails(on);
+            void setShowAppointmentDetails(on).then(requestReminderSync);
+          }}
+          testID="reminders-show-details"
+        />
+      </Host>
+      <Paragraph muted>{t("showDetailsHint")}</Paragraph>
       {zones.data && <Paragraph>{t("zoneNow", { zone: zoneLabel(zones.data.current) })}</Paragraph>}
       <Paragraph muted>{t("zoneHome")}</Paragraph>
 

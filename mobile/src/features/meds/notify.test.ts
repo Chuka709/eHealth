@@ -101,3 +101,12 @@ test("reminders show while the app is open (H6)", () => {
   showRemindersInForeground();
   expect(Notifications.setNotificationHandler).toHaveBeenCalledTimes(1);
 });
+
+test("reminders of a kind whose list is not loaded are kept (security review 2.6c M3)", async () => {
+  const at = Date.now() + 3_600_000;
+  os.set(`appt.${at}.x`, { identifier: `appt.${at}.x`, content: {}, trigger: { date: at } });
+  os.set(`dose.${at}.y`, { identifier: `dose.${at}.y`, content: {}, trigger: { date: at } });
+  await syncReminders([], keepAll, always, (id) => id.startsWith("appt."));
+  expect(os.has(`appt.${at}.x`)).toBe(true);
+  expect(os.has(`dose.${at}.y`)).toBe(false);
+});

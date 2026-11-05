@@ -573,16 +573,20 @@
         "takenAll": "All taken",
         "snooze": "In 10 min",
         "renewTitle": "Time to renew your reminders",
-        "renewBody": "Open the app to renew your reminders."
+        "renewBody": "Open the app to renew your reminders.",
+        "apptTitle": "You have an appointment",
+        "ubTime": "{time} (Ulaanbaatar time)"
       },
       "reminders": {
-        "title": "Medicine reminders",
-        "open": "Medicine reminders",
+        "title": "Reminders",
+        "open": "Reminders",
         "openHint": "Lock screen, time zone",
         "showNames": "Show medicine names in reminders",
         "showNamesHint": "Off by default: reminders only say “Time for your medicine”. When on, anyone who sees your phone may see the medicine names.",
         "zoneNow": "Reminder time zone: {zone}",
-        "zoneHome": "Medicines set to “Ulaanbaatar time” always remind on Ulaanbaatar time."
+        "zoneHome": "Medicines set to “Ulaanbaatar time” always remind on Ulaanbaatar time.",
+        "showDetails": "Show the appointment's name and place in reminders",
+        "showDetailsHint": "Off by default: appointment reminders only say “You have an appointment” and the time. When on, anyone who sees your phone may see the appointment's name (for example a biopsy) and place."
       },
       "zone": {
         "askTitle": "Your time zone has changed",
@@ -717,7 +721,7 @@
           "done": "Done",
           "cancelled": "Cancelled"
         },
-        "remindSoon": "Appointment reminders start with the next update. For now, keep track of the appointment yourself."
+        "remindHint": "Reminders come on this phone. The lock screen does not show the appointment's name (Settings → Reminders)."
       },
       "question": {
         "new": "Add a question",

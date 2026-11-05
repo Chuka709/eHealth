@@ -431,7 +431,7 @@ export function AppointmentEditor({ id }: { id: string }) {
             multiline
             onChangeText={(notes) => set({ notes })}
           />
-          <Paragraph muted>{t("appointment.remindSoon")}</Paragraph>
+          <Paragraph muted>{t("appointment.remindHint")}</Paragraph>
           <MultiChoices
             label={t("appointment.remind")}
             options={OFFSETS}

@@ -236,3 +236,34 @@ test("an edit without a network says so at once and keeps the draft", async () =
     onlineManager.setOnline(true);
   }
 });
+
+test("an appointment is reminded a day and two hours before, without its name (H10)", async () => {
+  const os = (
+    jest.requireMock("expo-notifications") as {
+      __scheduled: Map<string, { identifier: string; content: { title: string; body: string } }>;
+    }
+  ).__scheduled;
+  os.clear();
+  const at = new Date(Date.now() + 3 * 86_400_000);
+  at.setSeconds(0, 0);
+  store.appointments = [
+    {
+      id: "11111111-1111-4111-8111-111111111111",
+      kind: "biopsy",
+      title: "Бөөрний биопси",
+      scheduled_at: at.toISOString(),
+      place: "Улсын нэгдүгээр төв эмнэлэг",
+      notes: null,
+      reminder_offsets_min: [1440, 120],
+      status: "planned",
+      created_at: "",
+      updated_at: null,
+    },
+  ];
+  await openProfile();
+  await waitFor(() => expect([...os.keys()].filter((k) => k.startsWith("appt."))).toHaveLength(2));
+  for (const n of [...os.values()].filter((v) => v.identifier.startsWith("appt."))) {
+    expect(n.content.title).toBe("Танд товлол байна");
+    expect(JSON.stringify(n.content)).not.toMatch(/биопси|эмнэлэг/i);
+  }
+});

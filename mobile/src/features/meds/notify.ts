@@ -1,6 +1,6 @@
 import * as Notifications from "expo-notifications";
 import { Platform } from "react-native";
-
+import type { PlannedAppointmentReminder } from "@/features/health/appointment-reminders";
 import { localStore } from "@/lib/local-store";
 
 import type { DoseItem, PlannedNotification } from "./reminders";
@@ -18,7 +18,7 @@ export const ACTION_TAKEN = "taken";
 export const ACTION_SNOOZE = "snooze";
 export const SNOOZE_MS = 10 * 60_000;
 
-const OURS = /^(dose|renew|snooze)\./;
+const OURS = /^(dose|renew|snooze|appt)\./;
 const NAMES_KEY = "prefs.reminder_names.v1";
 
 export type NotifyTexts = {
@@ -32,6 +32,17 @@ export type NotifyTexts = {
 /** Whether the user chose to show medicine names in reminders (off by default - H10). */
 export async function showNames(): Promise<boolean> {
   return (await localStore()).getBoolean(NAMES_KEY) ?? false;
+}
+
+const DETAILS_KEY = "prefs.appointment_details.v1";
+
+/** Whether appointment reminders show the title and place (off by default - H10). */
+export async function showAppointmentDetails(): Promise<boolean> {
+  return (await localStore()).getBoolean(DETAILS_KEY) ?? false;
+}
+
+export async function setShowAppointmentDetails(on: boolean): Promise<void> {
+  (await localStore()).set(DETAILS_KEY, on);
 }
 
 export async function setShowNames(on: boolean): Promise<void> {
@@ -82,13 +93,16 @@ export async function registerReminderKinds(texts: NotifyTexts): Promise<void> {
   );
 }
 
-function content(n: Pick<PlannedNotification, "title" | "body" | "data" | "kind">) {
+/** Everything this phone schedules: dose reminders, the renew notice, appointments (2.6c). */
+export type Planned = PlannedNotification | PlannedAppointmentReminder;
+
+function content(n: Pick<Planned, "title" | "body" | "data" | "kind">) {
   return {
     title: n.title,
     body: n.body,
     data: n.data,
     sound: true, // the system default sound (a string names a bundled custom file)
-    ...(n.kind === "dose"
+    ...(n.kind === "dose" && "d" in n.data
       ? { categoryIdentifier: n.data.d.length > 1 ? CATEGORY_MANY : CATEGORY_ONE }
       : {}),
   };
@@ -102,9 +116,11 @@ function content(n: Pick<PlannedNotification, "title" | "body" | "data" | "kind"
  * every OS call: a sign-out meanwhile stops the sync, and anything it scheduled is removed.
  */
 export async function syncReminders(
-  planned: readonly PlannedNotification[],
+  planned: readonly Planned[],
   keepSnooze: (items: DoseItem[], body: string) => boolean,
   valid: () => boolean,
+  /** an identifier not planned now but kept (its kind's data is not loaded) */
+  keepUnplanned: (id: string) => boolean = () => false,
 ): Promise<void> {
   const existing = await Notifications.getAllScheduledNotificationsAsync();
   const wanted = new Map(planned.map((n) => [n.id, n]));
@@ -120,7 +136,7 @@ export async function syncReminders(
     if (!OURS.test(n.identifier)) continue;
     const keep = n.identifier.startsWith("snooze.")
       ? keepSnooze(doseData(n.content.data)?.d ?? [], n.content.body ?? "")
-      : wanted.has(n.identifier);
+      : wanted.has(n.identifier) || keepUnplanned(n.identifier);
     if (keep) continue;
     await Notifications.cancelScheduledNotificationAsync(n.identifier);
     const at = Number(n.identifier.match(/^dose\.(\d+)\./)?.[1]);

@@ -6,9 +6,20 @@ import { useTranslations } from "use-intl";
 
 import { currentEpoch, isWiping } from "@/features/auth/session";
 import { getStatus } from "@/features/auth/session-store";
+import {
+  appointmentData,
+  LOCAL_APPOINTMENT_ID,
+  planAppointmentReminders,
+} from "@/features/health/appointment-reminders";
+import {
+  APPOINTMENTS,
+  type Appointment,
+  recordsKey,
+  useRecords,
+} from "@/features/health/use-health";
 import { ownProfile, type Patient, patientsKey, usePatients } from "@/features/records/use-profile";
+import { formatDateTime } from "@/lib/dates";
 import { queryClient } from "@/lib/query-client";
-
 import {
   ACTION_SNOOZE,
   ACTION_TAKEN,
@@ -16,6 +27,7 @@ import {
   doseData,
   LOCAL_DOSE_ID,
   registerReminderKinds,
+  showAppointmentDetails,
   showNames,
   snooze,
   syncReminders,
@@ -23,6 +35,7 @@ import {
 import { doseKey, doseStates, planOf } from "./plan";
 import { onReminderSync } from "./reminder-bus";
 import { planReminders, type ReminderMedicine } from "./reminders";
+import { HOME_TIMEZONE } from "./slots";
 import {
   type Medication,
   medicationsKey,
@@ -32,6 +45,7 @@ import {
   useZones,
 } from "./use-medications";
 import { localDay, usePendingDoses } from "./use-today";
+import { deviceZone } from "./use-zone-prompt";
 
 export { requestReminderSync } from "./reminder-bus";
 
@@ -71,13 +85,18 @@ export function useReminderSync(): void {
     new Date(day + 4 * DAY).toISOString(),
   );
   const pending = usePendingDoses(own?.id);
+  const appointments = useRecords(APPOINTMENTS, own?.id);
   const latest = useRef<() => Promise<void>>(async () => undefined);
   const running = useRef({ busy: false, again: false });
 
   latest.current = async () => {
-    if (!own || !meds.data || !zones.data) return;
+    if (!own) return;
     const valid = sessionGuard();
-    const medicines: ReminderMedicine[] = meds.data
+    const now = Date.now();
+    // each kind is re-planned only when its data is known; otherwise its scheduled reminders
+    // stay as they are (an unloaded list never cancels them - security review 2.6c M3)
+    const doseData = meds.data && zones.data ? { meds: meds.data, zones: zones.data } : null;
+    const medicines: ReminderMedicine[] = (doseData?.meds ?? [])
       .filter((m) => m.reminders_enabled && m.is_current)
       .map((m) => ({
         id: m.id,
@@ -85,9 +104,37 @@ export function useReminderSync(): void {
         unit: unitOf(m, (u) => t(`units.${u}` as "units.mg")),
         plan: planOf(m),
       }));
-    const recorded = new Set(doseStates(intakes.data ?? [], pending.data ?? []).keys());
+    const visitsKnown = appointments.data !== undefined;
+    const names = await showNames().catch(() => false);
+    const details = await showAppointmentDetails().catch(() => false);
+    const visits = visitsKnown
+      ? planAppointmentReminders(
+          {
+            patientId: own.id,
+            appointments: ((appointments.data ?? []) as Appointment[]).map((a) => ({
+              id: a.id,
+              title: a.title,
+              place: a.place,
+              scheduledAt: Date.parse(a.scheduled_at),
+              offsetsMin: a.reminder_offsets_min,
+              status: a.status,
+            })),
+            now,
+            showNames: details,
+          },
+          {
+            title: t("notify.apptTitle"),
+            when: (at) => {
+              const text = formatDateTime(new Date(at).toISOString());
+              return deviceZone() === HOME_TIMEZONE ? text : t("notify.ubTime", { time: text });
+            },
+            named: (title, when, place) => [title, when, place].filter(Boolean).join(" · "),
+          },
+        )
+      : [];
     let permission = await Notifications.getPermissionsAsync();
-    if (!permission.granted && medicines.length > 0 && permission.canAskAgain && valid()) {
+    const something = medicines.length + visits.length > 0;
+    if (!permission.granted && something && permission.canAskAgain && valid()) {
       permission = await Notifications.requestPermissionsAsync();
     }
     if (!permission.granted || !valid()) return; // the Home warning says reminders are off
@@ -98,32 +145,36 @@ export function useReminderSync(): void {
       snooze: t("notify.snooze"),
       placeholder: t("notify.title"),
     });
-    const names = await showNames();
-    const planned = planReminders(
-      {
-        patientId: own.id,
-        medicines,
-        zones: zones.data.switches,
-        now: Date.now(),
-        showNames: names,
-        recorded,
-      },
-      {
-        title: t("notify.title"),
-        count: (n) => t("notify.count", { n }),
-        item: (name, amount) => (amount ? t("notify.item", { name, amount }) : name),
-        renewTitle: t("notify.renewTitle"),
-        renewBody: t("notify.renewBody"),
-      },
-    );
+    const recorded = new Set(doseStates(intakes.data ?? [], pending.data ?? []).keys());
+    const planned = doseData
+      ? planReminders(
+          {
+            patientId: own.id,
+            medicines,
+            zones: doseData.zones.switches,
+            now,
+            showNames: names,
+            recorded,
+          },
+          {
+            title: t("notify.title"),
+            count: (n) => t("notify.count", { n }),
+            item: (name, amount) => (amount ? t("notify.item", { name, amount }) : name),
+            renewTitle: t("notify.renewTitle"),
+            renewBody: t("notify.renewBody"),
+          },
+        )
+      : [];
     const enabled = new Set(medicines.map((m) => m.id));
     // a "10 мин дараа" stays only for doses still to take, of medicines still reminded; its
     // text was copied when snoozed, so a change of the names setting drops it too
     const keepSnooze = (items: { m: string; at: number }[], body: string) =>
-      items.length > 0 &&
-      (names || body === t("notify.count", { n: items.length })) &&
-      items.every((x) => enabled.has(x.m) && !recorded.has(doseKey(x.m, x.at)));
-    await syncReminders(planned, keepSnooze, valid);
+      !doseData ||
+      (items.length > 0 &&
+        (names || body === t("notify.count", { n: items.length })) &&
+        items.every((x) => enabled.has(x.m) && !recorded.has(doseKey(x.m, x.at))));
+    const keepUnplanned = (id: string) => (id.startsWith("appt.") ? !visitsKnown : !doseData);
+    await syncReminders([...planned, ...visits], keepSnooze, valid, keepUnplanned);
   };
 
   const runRef = useRef<() => void>(() => undefined);
@@ -149,7 +200,7 @@ export function useReminderSync(): void {
   // biome-ignore lint/correctness/useExhaustiveDependencies: re-plan when the data changes
   useEffect(() => {
     runRef.current();
-  }, [meds.data, zones.data, intakes.data, pending.data, own?.id]);
+  }, [meds.data, zones.data, intakes.data, pending.data, appointments.data, own?.id]);
 
   useEffect(() => {
     const off = onReminderSync(() => runRef.current());
@@ -186,6 +237,18 @@ export function useReminderResponses(): void {
       const request = response.notification.request;
       Notifications.clearLastNotificationResponse();
       const trigger = request.trigger as { type?: string } | null;
+      if (LOCAL_APPOINTMENT_ID.test(request.identifier) && trigger?.type !== "push") {
+        // an appointment reminder opens that appointment - if it is the user's own, still there
+        const visit = appointmentData(request.content.data);
+        const profile = ownProfile(queryClient.getQueryData<Patient[]>(patientsKey));
+        const cached = profile
+          ? queryClient.getQueryData<Appointment[]>(recordsKey("appointments", profile.id))
+          : undefined;
+        const found =
+          visit && profile && visit.p === profile.id && cached?.some((a) => a.id === visit.a);
+        router.navigate(found && visit ? (`/appointments/${visit.a}` as never) : "/appointments");
+        return;
+      }
       // only this phone's own reminders (allowlist of our ids) ever record a dose - a push
       // message never does
       const local = LOCAL_DOSE_ID.test(request.identifier) && trigger?.type !== "push";
