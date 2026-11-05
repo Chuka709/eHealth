@@ -156,6 +156,19 @@ def next_regimen[R: Dated](rows: Iterable[R], day: date) -> R | None:
     return max((r for r in ahead if r.effective_from == first), key=lambda r: r.seq)
 
 
+def upcoming_regimens[R: Dated](rows: Iterable[R], day: date) -> list[R]:
+    """Every scheduled change after `day` (not voided), earliest first - one per starting day,
+    the latest entered (as regimen_on). A steroid taper has several steps: a card kept offline
+    shows them all instead of a dose that has silently gone out of date (H17)."""
+    by_day: dict[date, R] = {}
+    for r in rows:
+        if r.voided_at is None and r.effective_from > day:
+            kept = by_day.get(r.effective_from)
+            if kept is None or r.seq > kept.seq:
+                by_day[r.effective_from] = r
+    return [by_day[d] for d in sorted(by_day)]
+
+
 def is_current(stopped_on: date | None, planned_end_on: date | None, today: date) -> bool:
     """Still taken today: not stopped, and a planned course end (if any) not yet past."""
     return stopped_on is None and (planned_end_on is None or planned_end_on >= today)

@@ -6246,6 +6246,85 @@
         }
       }
     },
+    "/api/v1/patients/{patient_id}/emergency-card": {
+      "get": {
+        "tags": [
+          "emergency"
+        ],
+        "summary": "Get Emergency Card",
+        "description": "Everything the card shows, in its order. The phone keeps it (encrypted) to show offline\nand, if the user allows it, while the app is locked. A 404 or 403 here means the access is\ngone: the phone deletes its copy.",
+        "operationId": "get_emergency_card_api_v1_patients__patient_id__emergency_card_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "patient_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Patient Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmergencyCardOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/admin/auth/login": {
       "post": {
         "tags": [
@@ -8676,6 +8755,403 @@
         ],
         "title": "CancelDeletionRequest"
       },
+      "CardAllergy": {
+        "properties": {
+          "substance": {
+            "type": "string",
+            "title": "Substance"
+          },
+          "reaction": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reaction"
+          },
+          "severity": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Severity"
+          }
+        },
+        "type": "object",
+        "required": [
+          "substance",
+          "reaction",
+          "severity"
+        ],
+        "title": "CardAllergy"
+      },
+      "CardContact": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "relation": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Relation"
+          },
+          "phone": {
+            "type": "string",
+            "title": "Phone"
+          },
+          "is_transplant_center": {
+            "type": "boolean",
+            "title": "Is Transplant Center"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "relation",
+          "phone",
+          "is_transplant_center"
+        ],
+        "title": "CardContact"
+      },
+      "CardDose": {
+        "properties": {
+          "effective_from": {
+            "type": "string",
+            "format": "date",
+            "title": "Effective From"
+          },
+          "dose_amount": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dose Amount"
+          },
+          "dose_unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dose Unit"
+          },
+          "dose_unit_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dose Unit Text"
+          },
+          "schedule": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Schedule"
+          },
+          "instructions": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Instructions"
+          }
+        },
+        "type": "object",
+        "required": [
+          "effective_from",
+          "dose_amount",
+          "dose_unit",
+          "dose_unit_text",
+          "schedule",
+          "instructions"
+        ],
+        "title": "CardDose",
+        "description": "A regimen as the user recorded it from the doctor's instructions. A `schedule.type` of\n\"prn\" means as needed: the app must say so, not show it as a fixed dose."
+      },
+      "CardDosedMedication": {
+        "properties": {
+          "category": {
+            "type": "string",
+            "enum": [
+              "immunosuppressant",
+              "corticosteroid"
+            ],
+            "title": "Category"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "brand": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Brand"
+          },
+          "form": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Form"
+          },
+          "strength": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Strength"
+          },
+          "dose": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CardDose"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "upcoming_doses": {
+            "items": {
+              "$ref": "#/components/schemas/CardDose"
+            },
+            "type": "array",
+            "title": "Upcoming Doses"
+          },
+          "planned_end_on": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Planned End On"
+          }
+        },
+        "type": "object",
+        "required": [
+          "category",
+          "name",
+          "brand",
+          "form",
+          "strength",
+          "dose",
+          "upcoming_doses",
+          "planned_end_on"
+        ],
+        "title": "CardDosedMedication"
+      },
+      "CardMedication": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "brand": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Brand"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "brand"
+        ],
+        "title": "CardMedication"
+      },
+      "CardPatient": {
+        "properties": {
+          "full_name": {
+            "type": "string",
+            "title": "Full Name"
+          },
+          "birth_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Birth Date"
+          },
+          "sex": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sex"
+          }
+        },
+        "type": "object",
+        "required": [
+          "full_name",
+          "birth_date",
+          "sex"
+        ],
+        "title": "CardPatient"
+      },
+      "CardTransplant": {
+        "properties": {
+          "organ": {
+            "type": "string",
+            "title": "Organ"
+          },
+          "organ_detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Organ Detail"
+          },
+          "transplant_date": {
+            "type": "string",
+            "format": "date",
+            "title": "Transplant Date"
+          },
+          "date_precision": {
+            "type": "string",
+            "title": "Date Precision"
+          },
+          "elapsed": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Elapsed"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "transplant_number": {
+            "type": "integer",
+            "title": "Transplant Number"
+          },
+          "graft_status": {
+            "type": "string",
+            "title": "Graft Status"
+          },
+          "country": {
+            "type": "string",
+            "title": "Country"
+          },
+          "city": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "City"
+          },
+          "hospital": {
+            "type": "string",
+            "title": "Hospital"
+          },
+          "follow_up_center": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Follow Up Center"
+          },
+          "follow_up_doctor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Follow Up Doctor"
+          }
+        },
+        "type": "object",
+        "required": [
+          "organ",
+          "organ_detail",
+          "transplant_date",
+          "date_precision",
+          "elapsed",
+          "transplant_number",
+          "graft_status",
+          "country",
+          "city",
+          "hospital",
+          "follow_up_center",
+          "follow_up_doctor"
+        ],
+        "title": "CardTransplant"
+      },
       "CatalogItem": {
         "properties": {
           "code": {
@@ -9168,6 +9644,92 @@
         ],
         "title": "Elapsed",
         "description": "Time since the transplant, never more than can be true (counted from the last possible\nday of a month/year-only date); `approximate`: show \"≈\" or the year, not a day count."
+      },
+      "EmergencyCardOut": {
+        "properties": {
+          "patient": {
+            "$ref": "#/components/schemas/CardPatient"
+          },
+          "blood_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Blood Type"
+          },
+          "blood_type_withheld": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "conflict",
+                  "hsct"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Blood Type Withheld"
+          },
+          "transplants": {
+            "items": {
+              "$ref": "#/components/schemas/CardTransplant"
+            },
+            "type": "array",
+            "title": "Transplants"
+          },
+          "dosed_medications": {
+            "items": {
+              "$ref": "#/components/schemas/CardDosedMedication"
+            },
+            "type": "array",
+            "title": "Dosed Medications"
+          },
+          "other_medications": {
+            "items": {
+              "$ref": "#/components/schemas/CardMedication"
+            },
+            "type": "array",
+            "title": "Other Medications"
+          },
+          "allergies": {
+            "items": {
+              "$ref": "#/components/schemas/CardAllergy"
+            },
+            "type": "array",
+            "title": "Allergies"
+          },
+          "contacts": {
+            "items": {
+              "$ref": "#/components/schemas/CardContact"
+            },
+            "type": "array",
+            "title": "Contacts"
+          },
+          "generated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Generated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "patient",
+          "blood_type",
+          "blood_type_withheld",
+          "transplants",
+          "dosed_medications",
+          "other_medications",
+          "allergies",
+          "contacts",
+          "generated_at"
+        ],
+        "title": "EmergencyCardOut"
       },
       "ErrorBody": {
         "properties": {

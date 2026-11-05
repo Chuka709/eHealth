@@ -838,6 +838,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/patients/{patient_id}/emergency-card": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Emergency Card
+         * @description Everything the card shows, in its order. The phone keeps it (encrypted) to show offline
+         *     and, if the user allows it, while the app is locked. A 404 or 403 here means the access is
+         *     gone: the phone deletes its copy.
+         */
+        get: operations["get_emergency_card_api_v1_patients__patient_id__emergency_card_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/auth/login": {
         parameters: {
             query?: never;
@@ -1332,6 +1354,116 @@ export interface components {
              */
             reason: "user_request" | "suspected_compromise" | "other";
         };
+        /** CardAllergy */
+        CardAllergy: {
+            /** Substance */
+            substance: string;
+            /** Reaction */
+            reaction: string | null;
+            /** Severity */
+            severity: string | null;
+        };
+        /** CardContact */
+        CardContact: {
+            /** Name */
+            name: string;
+            /** Relation */
+            relation: string | null;
+            /** Phone */
+            phone: string;
+            /** Is Transplant Center */
+            is_transplant_center: boolean;
+        };
+        /**
+         * CardDose
+         * @description A regimen as the user recorded it from the doctor's instructions. A `schedule.type` of
+         *     "prn" means as needed: the app must say so, not show it as a fixed dose.
+         */
+        CardDose: {
+            /**
+             * Effective From
+             * Format: date
+             */
+            effective_from: string;
+            /** Dose Amount */
+            dose_amount: string | null;
+            /** Dose Unit */
+            dose_unit: string | null;
+            /** Dose Unit Text */
+            dose_unit_text: string | null;
+            /** Schedule */
+            schedule: {
+                [key: string]: unknown;
+            };
+            /** Instructions */
+            instructions: string | null;
+        };
+        /** CardDosedMedication */
+        CardDosedMedication: {
+            /**
+             * Category
+             * @enum {string}
+             */
+            category: "immunosuppressant" | "corticosteroid";
+            /** Name */
+            name: string;
+            /** Brand */
+            brand: string | null;
+            /** Form */
+            form: string | null;
+            /** Strength */
+            strength: string | null;
+            dose: components["schemas"]["CardDose"] | null;
+            /** Upcoming Doses */
+            upcoming_doses: components["schemas"]["CardDose"][];
+            /** Planned End On */
+            planned_end_on: string | null;
+        };
+        /** CardMedication */
+        CardMedication: {
+            /** Name */
+            name: string;
+            /** Brand */
+            brand: string | null;
+        };
+        /** CardPatient */
+        CardPatient: {
+            /** Full Name */
+            full_name: string;
+            /** Birth Date */
+            birth_date: string | null;
+            /** Sex */
+            sex: string | null;
+        };
+        /** CardTransplant */
+        CardTransplant: {
+            /** Organ */
+            organ: string;
+            /** Organ Detail */
+            organ_detail: string | null;
+            /**
+             * Transplant Date
+             * Format: date
+             */
+            transplant_date: string;
+            /** Date Precision */
+            date_precision: string;
+            elapsed: components["schemas"]["Elapsed"] | null;
+            /** Transplant Number */
+            transplant_number: number;
+            /** Graft Status */
+            graft_status: string;
+            /** Country */
+            country: string;
+            /** City */
+            city: string | null;
+            /** Hospital */
+            hospital: string;
+            /** Follow Up Center */
+            follow_up_center: string | null;
+            /** Follow Up Doctor */
+            follow_up_doctor: string | null;
+        };
         /** CatalogItem */
         CatalogItem: {
             /** Code */
@@ -1515,6 +1647,29 @@ export interface components {
             years: number;
             /** Approximate */
             approximate: boolean;
+        };
+        /** EmergencyCardOut */
+        EmergencyCardOut: {
+            patient: components["schemas"]["CardPatient"];
+            /** Blood Type */
+            blood_type: string | null;
+            /** Blood Type Withheld */
+            blood_type_withheld: ("conflict" | "hsct") | null;
+            /** Transplants */
+            transplants: components["schemas"]["CardTransplant"][];
+            /** Dosed Medications */
+            dosed_medications: components["schemas"]["CardDosedMedication"][];
+            /** Other Medications */
+            other_medications: components["schemas"]["CardMedication"][];
+            /** Allergies */
+            allergies: components["schemas"]["CardAllergy"][];
+            /** Contacts */
+            contacts: components["schemas"]["CardContact"][];
+            /**
+             * Generated At
+             * Format: date-time
+             */
+            generated_at: string;
         };
         /** ErrorBody */
         ErrorBody: {
@@ -7342,6 +7497,64 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    get_emergency_card_api_v1_patients__patient_id__emergency_card_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                patient_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EmergencyCardOut"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
