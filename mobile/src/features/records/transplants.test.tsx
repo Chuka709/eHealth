@@ -136,8 +136,8 @@ beforeEach(() => {
 
 async function openTransplants() {
   await renderRouter("./src/app", { initialUrl: "/" });
-  await fireEvent.press(await screen.findByRole("button", { name: "Тохиргоо" }));
-  await fireEvent.press(await screen.findByTestId("settings-transplants"));
+  await fireEvent.press(await screen.findByRole("button", { name: /Профайл/ }));
+  await fireEvent.press(await screen.findByTestId("profile-transplants"));
 }
 
 const press = async (name: string | RegExp) =>

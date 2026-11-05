@@ -53,6 +53,14 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
+        name="profile"
+        options={{
+          title: t("health.title"),
+          tabBarLabel: t("tabs.profile"),
+          tabBarIcon: ({ color }) => <TabIcon glyph="♥" color={color} />,
+        }}
+      />
+      <Tabs.Screen
         name="settings"
         options={{
           title: t("settings.title"),

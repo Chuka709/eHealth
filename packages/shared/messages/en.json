@@ -408,7 +408,8 @@
     "tabs": {
       "home": "Home",
       "meds": "Medicines",
-      "settings": "Settings"
+      "settings": "Settings",
+      "profile": "Profile"
     },
     "meds": {
       "title": "Medicines",
@@ -607,6 +608,183 @@
         "batteryOther": "Other phones: Settings → Apps → LabTrack → Battery → unrestricted.",
         "openSettings": "Open the app's settings"
       }
+    },
+    "health": {
+      "title": "Profile",
+      "transplants": "Transplants",
+      "appointments": "Appointments",
+      "vitals": "Vitals",
+      "events": "Treatments and events",
+      "allergies": "Allergies",
+      "contacts": "Emergency contacts",
+      "questions": "Questions for the doctor",
+      "nextAppointment": "Next appointment: {when}",
+      "noAppointment": "No appointments",
+      "noAllergy": "No allergies recorded",
+      "contactCount": "{n, plural, one {# person} other {# people}}",
+      "openQuestions": "{n, plural, =0 {No open questions} one {# question not asked yet} other {# questions not asked yet}}",
+      "add": "Add",
+      "save": "Save",
+      "delete": "Delete",
+      "deleteConfirm": "Delete this record? This cannot be undone.",
+      "deleteYes": "Yes, delete",
+      "empty": "Nothing recorded yet.",
+      "notFound": "Record not found.",
+      "required": "Fill in this field.",
+      "summary": "Please correct the marked fields.",
+      "event": {
+        "new": "Add an event",
+        "edit": "Event",
+        "kind": "Kind",
+        "kinds": {
+          "biopsy": "Biopsy",
+          "rejection": "Rejection",
+          "infection": "Infection",
+          "hospitalization": "Hospital stay",
+          "dialysis": "Dialysis",
+          "plasmapheresis": "Plasmapheresis",
+          "ivig": "IVIG",
+          "surgery": "Surgery",
+          "procedure": "Procedure",
+          "vaccination": "Vaccination",
+          "complication": "Complication",
+          "other": "Other"
+        },
+        "title": "Title",
+        "titleHint": "For example “Kidney biopsy”",
+        "startedOn": "Started on",
+        "endedOn": "Ended on (optional)",
+        "place": "Place (optional)",
+        "description": "Description (optional)",
+        "outcome": "Outcome (as your doctor said, optional)"
+      },
+      "allergy": {
+        "new": "Add an allergy",
+        "edit": "Allergy",
+        "substance": "Allergic to",
+        "substanceHint": "A medicine, food or substance — for example penicillin",
+        "reaction": "Reaction (optional)",
+        "severity": "Severity (optional)",
+        "severities": {
+          "mild": "Mild",
+          "moderate": "Moderate",
+          "severe": "Severe",
+          "unknown": "Unknown"
+        },
+        "notedOn": "Noted on (optional)"
+      },
+      "contact": {
+        "new": "Add a contact",
+        "edit": "Contact",
+        "name": "Name",
+        "relation": "Who they are (optional)",
+        "relationHint": "For example brother, wife",
+        "phone": "Phone",
+        "phoneHint": "For example +976 9911 2233",
+        "phoneInvalid": "Not a valid phone number.",
+        "center": "Transplant centre",
+        "call": "Call {name}",
+        "centerMark": "Transplant centre",
+        "callFailed": "Could not call. The number: {phone}"
+      },
+      "appointment": {
+        "new": "Add an appointment",
+        "edit": "Appointment",
+        "kind": "Kind",
+        "kinds": {
+          "lab": "Lab test",
+          "clinic_visit": "Clinic visit",
+          "biopsy": "Biopsy",
+          "imaging": "Imaging",
+          "other": "Other"
+        },
+        "title": "Title",
+        "titleHint": "For example “Tacrolimus level”",
+        "date": "Date",
+        "time": "Time",
+        "place": "Place (optional)",
+        "notes": "Notes (optional)",
+        "remind": "Remind me",
+        "offsets": {
+          "1440": "1 day before",
+          "120": "2 hours before",
+          "60": "1 hour before",
+          "0": "At the time"
+        },
+        "status": "Status",
+        "statuses": {
+          "planned": "Planned",
+          "done": "Done",
+          "cancelled": "Cancelled"
+        },
+        "remindSoon": "Appointment reminders start with the next update. For now, keep track of the appointment yourself."
+      },
+      "question": {
+        "new": "Add a question",
+        "edit": "Question",
+        "text": "Question",
+        "answer": "Answer (as your doctor said, optional)",
+        "appointment": "Which appointment (optional)",
+        "noAppointment": "No appointment",
+        "status": "Status",
+        "statuses": {
+          "open": "Not asked yet",
+          "answered": "Answered",
+          "dropped": "No longer needed"
+        }
+      },
+      "vital": {
+        "title": "Vitals",
+        "latest": "Latest values",
+        "recent": "Last 90 days",
+        "add": "Add a reading",
+        "choose": "What did you measure?",
+        "kinds": {
+          "bp": "Blood pressure",
+          "bp_systolic": "Upper pressure",
+          "bp_diastolic": "Lower pressure",
+          "pulse": "Pulse",
+          "weight": "Weight",
+          "temperature": "Body temperature",
+          "glucose": "Blood glucose",
+          "spo2": "Oxygen (SpO2)",
+          "urine_output": "Urine (this time)",
+          "fluid_intake": "Fluid drunk (this time)"
+        },
+        "units": {
+          "mmHg": "mmHg",
+          "bpm": "bpm",
+          "kg": "kg",
+          "C": "°C",
+          "mmol_L": "mmol/L",
+          "percent": "%",
+          "ml": "ml"
+        },
+        "value": "{kind} ({unit})",
+        "systolic": "Upper pressure (mmHg)",
+        "diastolic": "Lower pressure (mmHg)",
+        "pulseOptional": "Pulse (bpm, optional)",
+        "note": "Note (optional)",
+        "save": "Save",
+        "queueFull": "Offline for too long: there is no room to keep more. Connect and try again.",
+        "reading": "{value} {unit}",
+        "bpReading": "{sys}/{dia} mmHg",
+        "glucoseAsk": "Which unit does your glucose meter show?",
+        "glucoseMmol": "mmol/L (for example 5.6)",
+        "glucoseMgdl": "mg/dL (for example 100)",
+        "glucoseMgdlNote": "This app keeps glucose in mmol/L only. A value shown in mg/dL is not entered here. Ask your doctor about setting your meter to mmol/L.",
+        "noValue": "No value entered",
+        "deleteReading": "Delete — {what}",
+        "plausibleOnly": "The app does not judge values; it only checks for typos.",
+        "refused": "A reading entered offline was not accepted by the server ({what}) — it may have been mistyped. Enter it again.",
+        "refusedDismiss": "Got it",
+        "glucoseUnitIs": "You noted that your meter shows mmol/L.",
+        "glucoseChange": "Change the unit",
+        "pendingSome": "{n, plural, one {# reading} other {# readings}} will be sent once connected.",
+        "waiting": "Waiting to be sent"
+      },
+      "loadFailed": "Could not load",
+      "deleteTitle": "Delete “{name}”?"
     }
   },
   "status": {
@@ -734,6 +912,9 @@
       "too_many": "There are too many readings in this period. Choose a shorter one.",
       "glucose_unit": "Enter glucose in mmol/L (e.g. 5.6). If your meter shows mg/dL, do not enter that number here.",
       "bp_order": "The upper pressure must be higher than the lower one. Check whether the fields are swapped."
+    },
+    "health": {
+      "delete_not_allowed": "Only whoever recorded this, or the profile's owner, can delete it."
     }
   },
   "import": {

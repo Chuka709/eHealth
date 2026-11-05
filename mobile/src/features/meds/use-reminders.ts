@@ -126,7 +126,7 @@ export function useReminderSync(): void {
     await syncReminders(planned, keepSnooze, valid);
   };
 
-  const runRef = useRef(() => undefined as void);
+  const runRef = useRef<() => void>(() => undefined);
   runRef.current = () => {
     const state = running.current;
     if (state.busy) {

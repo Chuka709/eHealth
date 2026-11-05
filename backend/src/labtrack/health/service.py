@@ -115,7 +115,7 @@ async def delete(db: AsyncSession, kind: str, patient_id: UUID, row_id: UUID) ->
     if not await repo.delete(db, table, patient_id, row_id):
         if await repo.exists(db, table, patient_id, row_id):
             # history and the emergency card: only the owner or whoever wrote it erases it
-            raise AppError(403, "record.delete_not_allowed")
+            raise AppError(403, "health.delete_not_allowed")
         raise AppError(404, missing)
     await audit(db, f"{_action(missing)}.delete", entity, row_id, patient_id)
 
@@ -168,6 +168,6 @@ async def record_vitals(
 async def delete_vital(db: AsyncSession, patient_id: UUID, vital_id: UUID) -> None:
     if not await repo.delete_vital(db, patient_id, vital_id):
         if await repo.vital_exists(db, patient_id, vital_id):
-            raise AppError(403, "record.delete_not_allowed")
+            raise AppError(403, "health.delete_not_allowed")
         raise AppError(404, "vital.not_found")
     await audit(db, "vital.delete", "vital", vital_id, patient_id)

@@ -288,7 +288,7 @@ async def test_a_caregiver_cannot_delete_the_owners_allergy(
         uid, ch = await _signed_in(other, owner_engine)
         await _grant(owner_engine, base, uid, "caregiver")
         r = await other.delete(f"{base}/allergies/{allergy['id']}", headers=ch)
-        assert (r.status_code, r.json()["code"]) == (403, "record.delete_not_allowed")
+        assert (r.status_code, r.json()["code"]) == (403, "health.delete_not_allowed")
         own = (await other.post(f"{base}/allergies", json=_body("allergies"), headers=ch)).json()
         assert (await other.delete(f"{base}/allergies/{own['id']}", headers=ch)).status_code == 204
 

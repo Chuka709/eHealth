@@ -31,6 +31,18 @@ export default function MainLayout() {
       <Stack.Screen name="transplants/new" options={{ title: t("transplant.add") }} />
       <Stack.Screen name="transplants/[id]" options={{ title: t("transplant.editTitle") }} />
       <Stack.Screen name="meds/new" options={{ title: t("meds.add") }} />
+      <Stack.Screen name="events/index" options={{ title: t("health.events") }} />
+      <Stack.Screen name="events/[id]" options={{ title: t("health.event.edit") }} />
+      <Stack.Screen name="allergies/index" options={{ title: t("health.allergies") }} />
+      <Stack.Screen name="allergies/[id]" options={{ title: t("health.allergy.edit") }} />
+      <Stack.Screen name="contacts/index" options={{ title: t("health.contacts") }} />
+      <Stack.Screen name="contacts/[id]" options={{ title: t("health.contact.edit") }} />
+      <Stack.Screen name="appointments/index" options={{ title: t("health.appointments") }} />
+      <Stack.Screen name="appointments/[id]" options={{ title: t("health.appointment.edit") }} />
+      <Stack.Screen name="questions/index" options={{ title: t("health.questions") }} />
+      <Stack.Screen name="questions/[id]" options={{ title: t("health.question.edit") }} />
+      <Stack.Screen name="vitals/index" options={{ title: t("health.vitals") }} />
+      <Stack.Screen name="vitals/new" options={{ title: t("health.vital.add") }} />
       <Stack.Screen name="settings/reminders" options={{ title: t("meds.reminders.title") }} />
       <Stack.Screen name="meds/[id]/index" options={{ title: t("meds.detail.title") }} />
       <Stack.Screen name="meds/[id]/dose" options={{ title: t("meds.change.title") }} />

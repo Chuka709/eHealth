@@ -6,6 +6,7 @@ import { AppState } from "react-native";
 import { authFetch } from "@/lib/api";
 import { apiBaseUrl } from "@/lib/api-base";
 import { startCachePersistence } from "@/lib/persist";
+import { queryClient } from "@/lib/query-client";
 
 import { flush, type QueuedWrite } from "./queue";
 
@@ -33,7 +34,16 @@ export function useLocalData(): void {
   useEffect(() => {
     let active = true;
     const send = () => {
-      if (active) void flush(sendQueued).catch(() => undefined);
+      if (!active) return;
+      void flush(sendQueued)
+        .then((sent) => {
+          if (sent > 0) {
+            void queryClient.invalidateQueries({ queryKey: ["vitals"] });
+            void queryClient.invalidateQueries({ queryKey: ["intakes"] });
+          }
+        })
+        .catch(() => undefined)
+        .finally(() => void queryClient.invalidateQueries({ queryKey: ["queue"] }));
     };
     void startCachePersistence()
       .catch(() => undefined) // the app works without the offline cache

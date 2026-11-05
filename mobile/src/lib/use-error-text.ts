@@ -17,7 +17,7 @@ export function apiError(body: unknown): ApiError {
 }
 
 /** fetch() rejects with a TypeError when the network is unreachable (RN and browsers). */
-function isNetworkError(error: unknown): boolean {
+export function isNetworkError(error: unknown): boolean {
   return (
     error instanceof TypeError && /network request failed|failed to fetch/i.test(error.message)
   );

@@ -44,6 +44,7 @@
     "consent.version_outdated",
     "contact.not_found",
     "event.not_found",
+    "health.delete_not_allowed",
     "intake.delete_not_allowed",
     "intake.not_found",
     "intake.too_many",
