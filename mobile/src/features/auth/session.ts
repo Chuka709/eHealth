@@ -1,6 +1,6 @@
 import type { components } from "@labtrack/shared";
 
-import { clearExports } from "@/features/emergency/export-files";
+import { clearExports } from "@/features/emergency/export-cleanup";
 import { setBiometricOn, setLocked } from "@/features/lock/lock-store";
 import { setWizardActive } from "@/features/records/onboarding-store";
 import { publicApi } from "@/lib/api-base";

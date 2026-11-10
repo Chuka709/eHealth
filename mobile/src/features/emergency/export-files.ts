@@ -1,7 +1,11 @@
-import { Directory, File, Paths } from "expo-file-system";
+import { type Directory, File } from "expo-file-system";
 import * as Sharing from "expo-sharing";
 
 import { currentEpoch, isWiping } from "@/features/auth/session";
+
+import { clearExports, clearPrintFolder, exportFolder, removeQuietly } from "./export-cleanup";
+
+export { clearExports } from "./export-cleanup";
 
 /**
  * Files made from the emergency card (wallet PDF, wallpaper image) leave the app only through
@@ -15,24 +19,6 @@ import { currentEpoch, isWiping } from "@/features/auth/session";
  * An export started before a sign-out (or another sign-in) is dropped: no file is kept and no
  * share sheet opens for an account that is gone.
  */
-
-const folder = () => new Directory(Paths.cache, "emergency-export");
-const printFolder = () => new Directory(Paths.cache, "Print"); // expo-print writes here first
-
-const remove = (item: () => { exists: boolean; delete: () => void }) => {
-  try {
-    const found = item();
-    if (found.exists) found.delete();
-  } catch {
-    // already gone, or the system cleared the cache itself
-  }
-};
-
-/** Removes every file made earlier (sign-out, a new export, a fresh signed-in start). */
-export function clearExports(): void {
-  remove(folder);
-  remove(printFolder);
-}
 
 let clearedThisRun = false;
 /** Once per app process: unlocking again must not delete a file a share is still reading. */
@@ -51,9 +37,10 @@ export function startExport(): ExportTicket {
 
 const stillValid = (ticket: ExportTicket) => ticket.epoch === currentEpoch() && !isWiping();
 
+// Only the export folder: expo-print's folder still holds the file about to be moved.
 function freshFolder(): Directory {
-  clearExports();
-  const dir = folder();
+  removeQuietly(exportFolder);
+  const dir = exportFolder();
   dir.create({ idempotent: true, intermediates: true });
   return dir;
 }
@@ -66,16 +53,17 @@ export async function keepForSharing(
 ): Promise<File | null> {
   const source = new File(uri);
   if (!stillValid(ticket)) {
-    remove(() => source);
+    removeQuietly(() => source);
     return null;
   }
   try {
     const file = source;
     await file.move(freshFolder());
     file.rename(name);
+    clearPrintFolder(); // anything else expo-print left behind
     return file;
   } catch (error) {
-    remove(() => source);
+    removeQuietly(() => source);
     throw error;
   }
 }

@@ -1,12 +1,22 @@
 # Phase 2.7: the emergency card. Runs after medication.yaml (a tacrolimus from the catalogue
-# exists). Opens the card with one tap from Home, checks what an emergency team reads first,
+# exists). Opens the card (through Settings, see below), checks what an emergency team reads first,
 # switches it to English, and makes the wallet PDF and the wallpaper. Both leave only through
 # the share sheet. The lock-screen card needs biometrics, so it is not run on the emulator.
 appId: ${MAESTRO_APP_ID}
 ---
-- tapOn: "Нүүр"
+# The 🆘 button sits under the dev client's floating Tools button (top right, development
+# builds only), so a tap there opens the dev menu. The card is opened through Settings here;
+# the one-tap path from Home is covered by the Jest tests.
+- tapOn: "Тохиргоо"
 - tapOn:
-    id: "emergency-open"
+    id: "settings-emergency"
+- extendedWaitUntil:
+    visible: "Түгжээтэй үед яаралтай картыг нээх"
+    timeout: 15000
+- scrollUntilVisible:
+    element: "Яаралтай картыг харах"
+    timeout: 20000
+- tapOn: "Яаралтай картыг харах"
 - extendedWaitUntil:
     visible: "Тогтмол уудаг эм"
     timeout: 15000

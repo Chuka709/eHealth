@@ -59,6 +59,8 @@ jest.mock("expo-file-system", () => {
     async write() {}
     async move(dir: { uri: string }) {
       if (mockFs.failMove) throw new Error("move failed");
+      // a file inside a folder that was deleted is gone (as on the device)
+      if (mockFs.removed.some((d) => this.uri.startsWith(`${d}/`))) throw new Error("no such file");
       this.uri = `${dir.uri}/${this.uri.split("/").pop()}`;
     }
     rename(name: string) {
