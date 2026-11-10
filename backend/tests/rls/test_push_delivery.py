@@ -363,3 +363,77 @@ async def test_a_dose_alert_waits_for_nobody_who_is_no_longer_the_caregiver(
     await send_pending(maint_engine, expo)
     # the invitation's own notice still goes out; the dose alert does not
     assert [m["data"]["kind"] for m in expo.to(token)] == ["share_invite"]
+
+
+async def test_a_profile_notice_is_pushed_only_while_access_lasts(
+    app_engine: AsyncEngine, owner_engine: AsyncEngine, maint_engine: AsyncEngine
+) -> None:
+    """Commit review of 0023: every kind about a profile, not only dose alerts."""
+    _, carer, patient = await _caregiver(app_engine, owner_engine)
+    _, token = await _with_token(app_engine, owner_engine, carer)
+    async with owner_engine.connect() as conn, conn.begin():
+        for kind in ("review_ready", "critical_pending"):
+            await conn.execute(
+                bound_text(
+                    "insert into notifications (user_id, kind, patient_id, entity_id, title_key)"
+                    " values (:u, :k, :p, :e, 'notification.x')"
+                ),
+                {"u": carer, "k": kind, "p": patient, "e": str(uuid4())},
+            )
+        await conn.execute(
+            bound_text(
+                "update patient_access set revoked_at = now()"
+                " where patient_id = :p and user_id = :u"
+            ),
+            {"p": patient, "u": carer},
+        )
+    expo = FakeExpo()
+    await send_pending(maint_engine, expo)
+    assert [m["data"]["kind"] for m in expo.to(token)] == ["share_invite"]
+
+
+async def test_a_moved_token_still_reaches_the_phone_an_admin_reset_signed_out(
+    app_engine: AsyncEngine, owner_engine: AsyncEngine
+) -> None:
+    """Commit review of 0023 (H12): taking over a victim's token after a reset does not silence
+    the reset notice; every move between accounts is audited."""
+    victim, other, thief = (
+        await make_user(owner_engine),
+        await make_user(owner_engine),
+        await make_user(owner_engine),
+    )
+    reset_session, token = await _with_token(app_engine, owner_engine, victim)
+    other_session = await _session(owner_engine, other)
+    async with owner_engine.connect() as conn, conn.begin():
+        await conn.execute(
+            bound_text(
+                "update sessions set revoked_at = now(), revoked_reason = 'admin_reset'"
+                " where id = :s"
+            ),
+            {"s": reset_session},
+        )
+        # arranged: another account's live session holds the same token too
+        await conn.execute(
+            bound_text("update sessions set push_token = :t where id = :s"),
+            {"t": token, "s": other_session},
+        )
+    thief_session, _ = await _with_token(app_engine, owner_engine, thief)
+    async with as_user(app_engine, thief) as conn:
+        await conn.execute(
+            bound_text("select set_session_push_token(:s, :t)"), {"s": thief_session, "t": token}
+        )
+    assert await _session_token(owner_engine, reset_session) == token
+    assert await _session_token(owner_engine, other_session) is None
+    async with owner_engine.connect() as conn:
+        moves = (
+            await conn.execute(
+                bound_text(
+                    "select actor_id, entity_id, diff from audit_logs"
+                    " where action = 'session.push_token_moved' and actor_id = :t"
+                ),
+                {"t": thief},
+            )
+        ).all()
+    assert [(m.actor_id, m.entity_id, m.diff) for m in moves] == [
+        (thief, str(thief_session), {"sessions": 1})
+    ]
