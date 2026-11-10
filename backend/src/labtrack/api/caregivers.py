@@ -92,6 +92,9 @@ class AlertsOut(BaseModel):
     critical_result: bool
     owner_paused: bool
     chosen: bool  # false until the caregiver picks (the app then offers 30 minutes)
+    # current medications with reminders on - the only ones alerts watch (2.8e): the app says
+    # so, and that alerts are off for the rest, so no silence is read as "taken"
+    watched_medications: int
 
 
 class MyInvitationOut(BaseModel):
@@ -219,7 +222,15 @@ async def pause(patient_id: UUID, user_id: UUID, body: PauseIn, db: PatientWrite
 # --- the caregiver -----------------------------------------------------------------------
 
 
+_WATCHED = bound_text(
+    "select count(*) from medications where patient_id = :p and reminders_enabled"
+    " and (stopped_on is null or stopped_on >= local_today())"
+    " and (planned_end_on is null or planned_end_on >= local_today())"
+)
+
+
 async def _alerts(db: AsyncSession, patient_id: UUID) -> AlertsOut:
+    watched = int((await db.execute(_WATCHED, {"p": patient_id})).scalar_one())
     row = (
         await db.execute(
             bound_text(
@@ -232,11 +243,15 @@ async def _alerts(db: AsyncSession, patient_id: UUID) -> AlertsOut:
     ).one_or_none()
     if row is None:
         return AlertsOut(
-            missed_dose_after_min=None, critical_result=False, owner_paused=False, chosen=False
+            missed_dose_after_min=None,
+            critical_result=False,
+            owner_paused=False,
+            chosen=False,
+            watched_medications=watched,
         )
     # a pause before any choice leaves a row with nothing chosen (0020)
     chosen = row.missed_dose_after_min is not None or row.critical_result
-    return AlertsOut(**row._mapping, chosen=chosen)
+    return AlertsOut(**row._mapping, chosen=chosen, watched_medications=watched)
 
 
 async def _caregiver_only(db: AsyncSession, patient_id: UUID) -> None:

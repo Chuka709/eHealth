@@ -35,6 +35,12 @@ app.conf.update(
             "task": "labtrack.maintenance.daily",
             "schedule": crontab(hour=19, minute=0),
         },
+        # caregivers' dose alerts (2.8e): every 5 minutes, alerts are due within an hour
+        "missed-doses": {
+            "task": "labtrack.maintenance.missed_doses",
+            "schedule": 300.0,
+            "options": {"expires": 290},
+        },
         # a late run is dropped, not queued up behind the next one
         "push-send": {"task": "labtrack.push.send", "schedule": 30.0, "options": {"expires": 25}},
         "push-receipts": {
@@ -66,7 +72,9 @@ def ping() -> str:
     return "pong"
 
 
-@app.task(name="labtrack.maintenance.daily")  # type: ignore[untyped-decorator]
+# Bounded, so a slow purge never holds the queue for long (the maint worker runs two at a time,
+# so caregivers' dose alerts keep running beside it - security review M3).
+@app.task(name="labtrack.maintenance.daily", soft_time_limit=1200, time_limit=1500)  # type: ignore[untyped-decorator]
 def maintenance_daily() -> dict[str, int]:
     from labtrack.worker.maintenance import run_daily_sync  # noqa: PLC0415
 
@@ -75,6 +83,20 @@ def maintenance_daily() -> dict[str, int]:
         "purged_accounts": result.purged_accounts,
         "auth_attempts_removed": result.auth_attempts_removed,
         "push_receipts_removed": result.push_receipts_removed,
+    }
+
+
+@app.task(name="labtrack.maintenance.missed_doses", soft_time_limit=240, time_limit=280)  # type: ignore[untyped-decorator]
+def missed_doses() -> dict[str, int]:
+    from labtrack.worker.missed_doses import run_sync  # noqa: PLC0415
+
+    result = run_sync(_maint_url(), str(get_settings().database_url))
+    return {
+        "targets": result.targets,
+        "alerts": result.alerts,
+        "notices": result.notices,
+        "failed": result.failed,
+        "skipped": result.skipped,
     }
 
 

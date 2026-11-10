@@ -122,14 +122,15 @@ services:
       migrate: { condition: service_completed_successfully }
       valkey: { condition: service_healthy }
 
-  # Daily maintenance only (queue "maintenance"): the one process with labtrack_maint
-  # credentials; no uploads, no internet.
+  # Maintenance (queue "maintenance"): the daily purge and caregivers' dose alerts (2.8e);
+  # labtrack_maint and app credentials, no uploads, no internet.
   maint-worker:
     <<: *backend
     environment:
       <<: *backend-env
       MAINT_DATABASE_URL: postgresql+asyncpg://labtrack_maint:${LABTRACK_MAINT_PASSWORD:?run just init}@postgres:5432/labtrack
-    command: ["celery", "-A", "labtrack.worker.celery_app", "worker", "--loglevel=INFO", "--concurrency=1",
+    # two at a time: the daily purge never holds back the 5-minute dose alerts (2.8e)
+    command: ["celery", "-A", "labtrack.worker.celery_app", "worker", "--loglevel=INFO", "--concurrency=2",
               "--queues=maintenance", "--hostname=maint@%h"]
     networks: [backend]
     depends_on:

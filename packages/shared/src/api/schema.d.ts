@@ -1411,6 +1411,8 @@ export interface components {
             owner_paused: boolean;
             /** Chosen */
             chosen: boolean;
+            /** Watched Medications */
+            watched_medications: number;
         };
         /** AllergyCreate */
         AllergyCreate: {

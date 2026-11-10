@@ -9501,6 +9501,10 @@
           "chosen": {
             "type": "boolean",
             "title": "Chosen"
+          },
+          "watched_medications": {
+            "type": "integer",
+            "title": "Watched Medications"
           }
         },
         "type": "object",
@@ -9508,7 +9512,8 @@
           "missed_dose_after_min",
           "critical_result",
           "owner_paused",
-          "chosen"
+          "chosen",
+          "watched_medications"
         ],
         "title": "AlertsOut"
       },
