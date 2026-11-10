@@ -4,6 +4,7 @@ import { useTranslations } from "use-intl";
 import { Screen } from "@/components/screen";
 import { LoadingView, RetryView } from "@/components/state-view";
 import { EmergencyCardPanel } from "@/features/emergency/card-panel";
+import { EmergencyExports } from "@/features/emergency/export-actions";
 import { useEmergencyCard } from "@/features/emergency/use-emergency-card";
 import { useOwnProfile } from "@/features/health/record-screens";
 import { isNetworkError, useErrorText } from "@/lib/use-error-text";
@@ -33,6 +34,8 @@ export default function EmergencyScreen() {
   return (
     <Screen>
       <EmergencyCardPanel card={card} copy={offline ? "offline" : "live"} top={<CardTitle />} />
+      {/* for when the app cannot be opened: wallet card, wallpaper, Medical ID */}
+      <EmergencyExports card={card} />
     </Screen>
   );
 }

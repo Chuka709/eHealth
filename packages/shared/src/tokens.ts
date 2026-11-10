@@ -103,3 +103,13 @@ export const fontSize = { caption: 13, body: 16, bodyLarge: 18, title: 22, displ
 export const minTouchTarget = { ios: 44, android: 48 } as const;
 
 export const radius = { sm: 6, md: 10, lg: 16 } as const;
+
+/**
+ * The emergency-card wallpaper (docs/08): one fixed look whatever the app theme, light text on
+ * a dark ground so the phone's clock stays readable above it (both colours well above AA 4.5:1).
+ */
+export const emergencyWallpaper = {
+  background: "#111827",
+  text: "#FFFFFF",
+  accent: "#FCA5A5",
+} as const;

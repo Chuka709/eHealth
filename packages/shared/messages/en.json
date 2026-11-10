@@ -851,7 +851,49 @@
         "offerLater": "You can change this later in Settings → Emergency card."
       },
       "lockOpen": "🆘 Emergency",
-      "lockOpenLabel": "Open the emergency card"
+      "lockOpenLabel": "Open the emergency card",
+      "export": {
+        "wallet": "Wallet card (PDF)",
+        "walletLabel": "Make the wallet card as a PDF to print or save",
+        "wallpaper": "Lock screen wallpaper",
+        "wallpaperHint": "Visible even while the phone is locked",
+        "medicalId": "iPhone Medical ID, Android emergency information",
+        "medicalIdHint": "How to add it by hand to the phone's own emergency information",
+        "failed": "Could not make the file. Please try again.",
+        "unavailable": "Sharing is not available on this phone."
+      },
+      "wallpaper": {
+        "warning": "As a lock screen wallpaper, this image shows anyone holding the phone, without unlocking it, your medicines, allergies, transplant and your contacts' names and phone numbers.",
+        "intro": "The image below is exactly what will be saved. Your name and date of birth are left out by default.",
+        "showName": "Include my name",
+        "showBirthDate": "Include my date of birth",
+        "inEnglish": "Show the image in English",
+        "inMongolian": "Show the image in Mongolian",
+        "tooLong": "Not everything fits on the image: the bottom is cut off. The wallet card and the card in the app show the rest.",
+        "share": "Share and save the image",
+        "howTo": "In the share sheet choose “Save Image” on iPhone, or “Save to Photos” / “Save to Files” on Android, then set it as the lock screen in the phone's Settings → Wallpaper. The app saves nothing to your photos itself. Make a new image when your medicines or allergies change.",
+        "failed": "Could not make the image. Please try again.",
+        "unavailable": "Sharing is not available on this phone.",
+        "previewLabel": "Preview of the lock screen image",
+        "shareNote": "Before sharing: this image will be visible on the locked screen. Saved to your photos, it may sync to iCloud or Google Photos."
+      },
+      "medicalId": {
+        "intro": "The phone's own emergency information opens from the lock screen. No app can write there itself, so copy the text below by hand.",
+        "iosTitle": "iPhone — Medical ID",
+        "ios1": "1. Open the Health app and, on the “Summary” tab, tap your picture at the top right.",
+        "ios2": "2. Choose “Medical ID” → “Edit”.",
+        "ios3": "3. Copy the text below into Medical Conditions, Medications, Allergies & Reactions and Blood Type. Add people under Emergency Contacts from your contacts.",
+        "ios4": "4. Turn on “Show When Locked” and “Share During Emergency Call”, then tap “Done”.",
+        "androidTitle": "Android — Emergency information",
+        "android1": "1. Open Settings → “Safety & emergency” (Samsung: “Safety and emergency” → “Medical info”) → “Medical information”. The names differ between phone makers and languages.",
+        "android2": "2. Copy the text below into medicines, allergies, blood type and notes. Add your emergency contacts.",
+        "android3": "3. Turn on showing it from the lock screen (or the emergency call screen). The name depends on the phone.",
+        "copyTitle": "Text to copy",
+        "noCard": "The card is not saved yet. Connect to the internet and open this again.",
+        "keepCurrent": "The phone does not update this by itself: change it by hand when your medicines or allergies change. After copying, you may want to clear your clipboard.",
+        "inEnglish": "Show the text in English",
+        "inMongolian": "Show the text in Mongolian"
+      }
     }
   },
   "status": {

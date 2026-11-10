@@ -8,6 +8,8 @@ import { FormMessage } from "@/components/form-message";
 import { Screen } from "@/components/screen";
 import { LoadingView } from "@/components/state-view";
 import { Paragraph } from "@/components/text";
+import { EmergencyExports } from "@/features/emergency/export-actions";
+import { useEmergencyCard } from "@/features/emergency/use-emergency-card";
 import { useSetCardUnlocked, useUnlockedProfiles } from "@/features/emergency/use-unlocked-card";
 import { useOwnProfile } from "@/features/health/record-screens";
 import { useBiometricState } from "@/features/lock/biometric";
@@ -24,6 +26,7 @@ export default function EmergencySettingsScreen() {
   const unlocked = useUnlockedProfiles();
   const setUnlocked = useSetCardUnlocked();
   const biometric = useBiometricState();
+  const { card } = useEmergencyCard(own?.id);
   if (patients.isPending || unlocked.isPending) return <LoadingView />;
   const on = Boolean(own && unlocked.data?.includes(own.id));
   return (
@@ -47,6 +50,7 @@ export default function EmergencySettingsScreen() {
       {biometric.data?.choice !== "on" && <Paragraph muted>{e("noLock")}</Paragraph>}
       <Paragraph muted>{e("phoneLock")}</Paragraph>
       <Button variant="secondary" label={e("view")} onPress={() => router.push("/emergency")} />
+      {card && <EmergencyExports card={card} />}
     </Screen>
   );
 }

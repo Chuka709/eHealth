@@ -3,6 +3,7 @@ import { useEffect } from "react";
 import { useOwnProfile } from "@/features/health/record-screens";
 import { queryClient } from "@/lib/query-client";
 
+import { clearExportsOnce } from "./export-files";
 import { emergencyCardKey, useEmergencyCard } from "./use-emergency-card";
 
 /**
@@ -16,6 +17,8 @@ export function useEmergencyCardSync(): void {
   const { own } = useOwnProfile();
   useEmergencyCard(own?.id);
   const id = own?.id;
+  // files exported in an earlier run (the share sheet is long closed); once per process
+  useEffect(() => clearExportsOnce(), []);
   useEffect(() => {
     if (!id) return;
     return queryClient.getMutationCache().subscribe((event) => {

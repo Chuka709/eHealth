@@ -26,6 +26,14 @@ export default function MainLayout() {
       <Stack.Screen name="(tabs)" options={{ headerShown: false, title: t("name") }} />
       <Stack.Screen name="emergency" options={{ title: t("emergency.title") }} />
       <Stack.Screen name="settings/emergency" options={{ title: t("emergency.title") }} />
+      <Stack.Screen
+        name="settings/emergency-wallpaper"
+        options={{ title: t("emergency.export.wallpaper") }}
+      />
+      <Stack.Screen
+        name="settings/medical-id"
+        options={{ title: t("emergency.export.medicalId") }}
+      />
       <Stack.Screen name="settings/profile" options={{ title: t("profile.title") }} />
       <Stack.Screen name="settings/password" options={{ title: t("passwordChange.title") }} />
       <Stack.Screen name="settings/devices" options={{ title: t("devices.title") }} />

@@ -1,5 +1,6 @@
 import type { components } from "@labtrack/shared";
 
+import { clearExports } from "@/features/emergency/export-files";
 import { setBiometricOn, setLocked } from "@/features/lock/lock-store";
 import { setWizardActive } from "@/features/records/onboarding-store";
 import { publicApi } from "@/lib/api-base";
@@ -199,7 +200,12 @@ export async function wipeLocal(
     await deleteSecure(...(forgetDevice ? [...keys, secureKeys.device] : keys));
   } finally {
     // Each part on its own: one failing never keeps the others (or the sign-out) from running.
-    await Promise.allSettled([wipeLocalStore(), clearLocalNotifications()]);
+    // the emergency card's exported files (wallet PDF, wallpaper) leave the cache too
+    await Promise.allSettled([
+      wipeLocalStore(),
+      clearLocalNotifications(),
+      Promise.resolve().then(clearExports),
+    ]);
     // N2: a cache restore that was already reading may have hydrated after clear() above
     queryClient.clear();
     // anything started during the wipe belongs to no session
