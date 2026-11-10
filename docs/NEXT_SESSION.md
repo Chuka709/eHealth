@@ -1,51 +1,65 @@
-# Дараагийн session-д өгөх промпт (Phase 2.7-оос)
+# Дараагийн session-д өгөх промпт (Phase 2.8b-ээс)
 
 > Шинэ Claude Code session нээгээд **Plan mode** (Shift+Tab) асаагаад доорх блокыг бүтнээр нь буулгана.
 > Session бүрийн төгсгөлд энэ файлыг (төлөв, сургамж) шинэчилнэ.
 
 ```
-LabTrack MN төслийн Phase 2.7-г эхлүүлнэ: яаралтай тусламжийн карт.
+LabTrack MN төслийн Phase 2.8b-г эхлүүлнэ: push суурь (token API + Celery илгээгч).
 Надтай монголоор харилц.
 
 ## Эхлээд унш (зөвхөн эдгээрийг — токен хэмнэ)
-- CLAUDE.md, backend/CLAUDE.md, mobile/CLAUDE.md (автоматаар ачаалагдана)
-- docs/PROGRESS.md — Phase 2 хэсэг (2.0–2.6c хийгдсэн, батлагдсан төлөвлөгөө, үлдсэн зүйлс)
-- docs/01_PLAN.md — Phase 2 №5 (яаралтай карт)
-- docs/08_MOBILE.md — "Яаралтай тусламжийн карт", "Аюулгүй байдал (төхөөрөмж дээр)"
-- docs/09_CLINICAL_SAFETY.md — H10, H17, H22, H26, H27
-- docs/OPEN_QUESTIONS.md — шийдэгдсэнийг дахин бүү маргалд
-- API: packages/shared/openapi.json — /patients/{id}/transplants, /medications,
-  /allergies, /contacts (backend/src/labtrack/api/records.py, api/health_records.py)
+- CLAUDE.md, backend/CLAUDE.md (автоматаар ачаалагдана)
+- docs/PROGRESS.md — Phase 2 хэсэг: 2.8 төлөвлөгөө + шийдвэр (a)(b)(c), 2.8a мөр (хийгдсэн, үлдсэн M4/L3)
+- docs/08_MOBILE.md — "Мэдэгдэл", "Асран хамгаалагч (opt-in)"
+- docs/04_RBAC_SECURITY.md — push payload-д PHI байхгүй (§ checklist)
+- docs/09_CLINICAL_SAFETY.md — H12, H16
+- docs/OPEN_QUESTIONS.md — шийдэгдсэнийг дахин бүү маргалд; Q8 (push), Q42 (нээлттэй)
+- backend/alembic/versions/0020_caregivers_and_push.py, 0021_one_notice_per_entity.py —
+  `set_session_push_token`, `maint_push_queue`, `maint_mark_pushed`, `maint_forget_push_token`,
+  `push_receipts` (зөвхөн labtrack_maint), notify() дүрмүүд
+- backend/src/labtrack/worker/celery_app.py, worker/maintenance.py (labtrack_maint холболт, beat)
+- backend/src/labtrack/api/me.py (/me router), api/deps.py (claims — JWT-ийн `sid`)
+- backend/src/labtrack/admin/users.py — admin_reset урсгал (notifications мөр үүсдэг эсэхийг шалга)
 
-## Одоогийн төлөв (2026.11.05, салбар phase-2, сүүлийн commit c5db1ba)
+## Одоогийн төлөв (2026.11.10, салбар phase-2, сүүлийн commit c760d5f)
 - Phase 2 нэг PR-аар: https://github.com/Chuka709/eHealth/pull/1 (draft, base main).
   Алхам бүрийн дараа `git push origin phase-2` (зөвшөөрөгдсөн); main руу шууд push, force push
   хориотой (.claude/settings.json deny + .githooks/pre-push). PR-д Auto-fix асаалттай — CI-г бүү poll хий.
-- Хийгдсэн:
-  - 2.5 эм, тунгийн түүх, локал сануулга (дараалал, «Уусан»/«10 мин дараа», цагийн бүсийн
-    түүх 0017, сарын хураангуй, exact alarm, Maestro урсгал эмулятор дээр давсан);
-  - 2.6a migration 0018 (clinical_events, vitals, allergies, emergency_contacts, appointments,
-    doctor_questions) + 0019 (үйл явдал/харшил/холбоог зөвхөн эзэн эсвэл бичсэн хүн засна,
-    устгана), core/vitals.py (боломжит хязгаар, сахар ммоль/л);
-  - 2.6b «Профайл» tab (Нүүр · Эм · Профайл · Тохиргоо), features/health/* дэлгэцүүд;
-  - 2.6c товлолын локал сануулга (нэг sync эмийн сануулгатай, 5 слот, нэр/газар — тусдаа
-    тохиргоо).
-- Тест: backend ~630 (`just test-api`, контейнер), Jest 186, `just lint` цэвэр.
+- Хийгдсэн: 2.0–2.7 (эм, сануулга, эрүүл мэндийн бичлэг, Профайл tab, товлол, яаралтай карт +
+  түгжээтэй үед нээх + түрийвчний PDF + wallpaper + Medical ID; Maestro activation→эм→карт
+  эмулятор дээр давсан). 2.8a: migration 0020 (урилга, caregiver_alert_settings, dose_alerts,
+  push_receipts, push token setter, maint push queue) + 0021 (нэг урилга/тунд нэг мэдэгдэл).
+  Security review (1 High, 6 Medium) засагдсан.
+- Тест: backend бүгд давсан (`just test-api`, контейнер; ~690), Jest 215, `just lint` цэвэр.
+- Dev DB 0021 хүртэл migrate хийгдсэн. Эмулятор/Metro/Docker stack өмнөх session-д асаалттай байсан.
 
-## 2.7-ийн хүрээ (батлагдсан төлөвлөгөө — 01_PLAN Phase 2 №5, 08_MOBILE)
-- Яаралтай карт: эрхтэн, шилжүүлэн суулгасан огноо, төв + утас, одоогийн дархлаа
-  дарангуйлагч эмүүд (тун нь эмчийн зааврын дагуу — санал болгохгүй), цусны бүлэг, харшил,
-  яаралтай холбоо барих хүн. Өгөгдөл одоо байгаа API-аас (шинэ хүснэгт хэрэгтэй эсэхийг шалга).
-- Апп-ын эхэнд нэг товшилтоор (Нүүрний дээд буланд 🆘); **түгжээгүй нээх — анхдагч OFF**
-  (хэрэглэгчийн шийдвэр 10e; PROGRESS шийдвэр (3): тохиргоо төхөөрөмж дээр, серверт биш),
-  onboarding/Тохиргоонд тайлбартайгаар санал болгоно (H17).
-- Түрийвчний карт PDF (mn/en) — утсан дээр үүсгэх эсэх, эсвэл backend WeasyPrint (Phase 7-той
-  уялдуулах) — төлөвлөгөөнд санал болго.
-- Түгжээтэй дэлгэцийн зураг (wallpaper) — галерейд хадгалахгүй байх дүрэм (8) ба
-  хэрэглэгч өөрөө хадгалах хоорондын зөрчлийг AskUserQuestion-оор шийдүүл.
-- iPhone Medical ID-д апп бичих боломжгүй — гараар нэмэх заавар.
-- Офлайнд ажиллана (кэшлэгдсэн өгөгдлөөс), PHI-г лог/URL/мэдэгдэлд оруулахгүй (3).
-- Hazard log H17, H22 шинэчлэх; тестээр нотлох (10c).
+## Шийдэгдсэн (PROGRESS 2.8, хэрэглэгч 2026.11.10)
+- (a) Тун хоцорсныг **сервер** илрүүлнэ (2.8e: Celery beat + core/slots.py), текст «шалгана уу».
+- (b) Профайл сонгогч 2.8f-д.
+- (c) Expo/FCM/APNs credential одоогоор **байхгүй** — Expo push API-г тестэд mock-лоно; credential
+  байхгүй үед илгээгч no-op (мэдэгдлийг "илгээсэн" гэж тэмдэглэхгүй), бодит push бетагийн өмнө.
+
+## 2.8b-ийн хүрээ (төлөвлөгөө → миний зөвшөөрөл → хэрэгжүүлэх)
+- **Эхлээд Q42-ыг надаас AskUserQuestion-оор асуу** (зөвшөөрөл татахад одоо байгаа асран
+  хамгаалагчийн эрх: хэвээр / автоматаар цуцлах) — шийдвэрийг OPEN_QUESTIONS-д тэмдэглэ.
+- `PUT /me/push-token` {token | null} — одоогийн сесс (JWT `sid`) → `set_session_push_token`;
+  `DELETE` ижил. Rate limit; token-ыг хэзээ ч логлохгүй; буруу хэлбэр → 422.
+- `exponent-server-sdk` нэмэх (`uv add`, лиценз MIT эсэхийг шалга — AGPL/SSPL хориотой, дүрэм 11).
+- Celery task (labtrack_maint, beat ~30–60 сек): `maint_push_queue` → Expo руу багцаар (≤100)
+  илгээх → `push_receipts`-д ticket → `maint_mark_pushed`. Receipt task (~15 мин дараа):
+  `DeviceNotRegistered` → `maint_forget_push_token`; бусад алдааг зөвхөн код (`error` ^[A-Za-z]+$).
+  Celery аргументэд зөвхөн ID (дүрэм 3). Давтан ажиллахад давхар push явуулахгүй (idempotent).
+- **Payload (security review L3):** харагдах текст ерөнхий, нэргүй, эмгүй, утгагүй (жишээ нь
+  «LabTrack: танд шинэ мэдэгдэл байна» / dose_overdue «Эмээ уусан эсэхийг шалгана уу» — эмийн нэр,
+  өвчтөний нэр хэзээ ч үгүй); `data`-д зөвхөн `notification_id` + `kind` (patient_id ч хэрэггүй —
+  апп нэвтэрсний дараа API-аас авна). Хэрэглэгчийн хэлийг (users.locale) хэрхэн авахыг төлөвлө
+  (maint функц өргөтгөх migration 0022 хэрэгтэй эсэх).
+- admin_reset (H12): `maint_push_queue` цуцлагдсан төхөөрөмжид ч өгдөг — admin_reset үед
+  notifications мөр үүсдэг эсэхийг шалгаж, байхгүй бол нэм (2.8c-тэй нэгтгэж болно — санал болго).
+- Тест: Expo client-ийг mock-лох (сүлжээ рүү хэзээ ч гарахгүй), багц, receipt, DeviceNotRegistered,
+  credential байхгүй үед no-op, payload-д PHI байхгүй (нэр/эмийн нэр/patient_id орохгүйг шалгах),
+  token API (өөрийн сесс, буруу хэлбэр, гарсан сесс).
+- Hazard log H12, H16 шинэчлэх; 10c.
 
 ## Ажлын хэв маяг
 - Алхам бүр: төлөвлөгөө → миний зөвшөөрөл → хэрэгжүүлэх → security-reviewer (+UI-д ui-reviewer,
@@ -57,18 +71,22 @@ LabTrack MN төслийн Phase 2.7-г эхлүүлнэ: яаралтай ту�
 ## Windows-ийн урхи ба сургамж
 - uv/just: %LOCALAPPDATA%\Microsoft\WinGet\Links; UV_PYTHON_DOWNLOADS=never.
   Backend тест: `just test-api` (контейнер). Шинэ migration-ий дараа dev DB-д `just migrate`.
-- **Bash heredoc-д зарим ишлэлтэй агуулга эвдэрдэг:** олон мөрийн засварыг Python скрипт
-  болгож scratchpad-д Write хэрэгслээр бичээд `python -I script.py "$(pwd)"`-ээр ажиллуул.
-  Formatter (hook) файлыг өөрчилдөг тул скриптийн anchor таарахгүй бол файлыг дахин унш.
+  Хэрэгжсэн migration-ийг засвал тестийн DB-д `just reset-test-db`.
+- **Bash heredoc-д ишлэл/апостроф эвдэрдэг:** олон мөрийн засварыг Python скрипт болгож
+  scratchpad-д Write хэрэгслээр бичээд `python -I script.py "$(pwd)"`-ээр ажиллуул (эсвэл Edit).
+  Formatter (hook) файлыг өөрчилдөг тул anchor таарахгүй бол файлыг дахин унш.
+- Shell-д `cmd; echo exit=$?` гэвэл бүтэлгүйтэл нуугдана — exit code-оо заавал дамжуул.
 - **`backend/src/labtrack/api/health.py` бол /healthz router** — тэр нэрээр файл бүү үүсгэ.
-- Аудитын action `^[a-z]+[.][a-z_]+$` (эхний хэсэгт доогуур зураасгүй).
-- RNTL v14: `fireEvent.changeText` async — заавал `await`, эс бөгөөс act() давхцаж төлөв алдагдана.
-  TextField-ийн алдааны текст тэмдэгттэй эхэлдэг — тестэд regex хэрэглэ.
-- Typed routes: шинэ route нэмсний дараа `CI=1 timeout 90 npx expo start --offline --port 8099`.
-- expo-notifications: `sound: true` (`"default"` нь Android-д тусгай файл гэж уншигдаж алдаа гаргана).
-- Эмулятор: build хийхдээ emulator унтраалттай; prebuild `local.properties`-ийг устгавал
-  `sdk.dir`/`cmake.dir` (4.1.2)-ийг дахин бич; дэлгэцийн зураг хар гардаг (screen-capture
-  хамгаалалт) — `MSYS_NO_PATHCONV=1 adb shell uiautomator dump`; `just e2e-mobile`-д JAVA_HOME
-  (E:/Android/Android Studio/jbr); 8081 дээр хуучин Metro үлдвэл `Stop-Process` + `--clear`;
-  API контейнер ENOMEM-ээр унавал `docker restart labtrack-api-1`.
+- Аудитын action `^[a-z]+[.][a-z_]+$`. Definer функц нэмбэл `tests/rls/test_function_hardening.py`
+  EXECUTE_MATRIX-ийг шинэчил. RLS тестэд алдаа гаргах дуудлагыг тусдаа `as_user` transaction-д
+  (abort нь өмнөх бичилтийг rollback хийнэ). caregiver эрхийг `grant()` helper хүлээн авсан урилгаар
+  (owner role) үүсгэдэг; шууд оролдлогыг `direct=True`.
+- Docker: өөр төслийн контейнерууд (supabase_*) автоматаар асаж RAM эзэлдэг — энэ төслийн
+  ажилд `docker stop`-оор зогсоохыг хэрэглэгч зөвшөөрсөн (устгахгүй). Docker engine 500 өгвөл
+  `docker desktop restart`. Docker + эмулятор асаалттай Gradle → clang out-of-memory: эмуляторыг
+  унтрааж `assembleDebug -PreactNativeArchitectures=x86_64 --max-workers=3`.
+- Эмулятор: prebuild `local.properties`-ийг устгавал `sdk.dir`/`cmake.dir` (4.1.2)-ийг дахин бич;
+  `just e2e-mobile`-д JAVA_HOME (E:/Android/Android Studio/jbr), Metro-г тусад нь асаана;
+  dev build-ийн хөвөгч Tools товч header-ийн баруун буланг таглана; Maestro debug гаралт
+  (`E2E_KEEP_DEBUG=1`) түр нууц үгтэй — уншсаны дараа устга.
 ```
