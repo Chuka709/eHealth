@@ -53,6 +53,7 @@
     "me.deletion_not_allowed",
     "me.no_recent_admin_action",
     "me.notification_not_found",
+    "me.push_token_invalid",
     "medication.not_found",
     "medication.too_many",
     "medication.unknown_catalog_code",

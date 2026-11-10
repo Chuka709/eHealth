@@ -3,6 +3,7 @@
 - Erase accounts deleted more than 30 days ago (maint_purge_deleted_users: owned profiles and
   their health data, the account, the user's key - crypto-shredding).
 - Drop login/lockout records older than 90 days (auth_attempts retention).
+- Drop push receipts older than 7 days (Phase 2.8b).
 
 No task arguments; logs carry counts only.
 """
@@ -20,12 +21,14 @@ log = structlog.get_logger(__name__)
 
 PURGE_BATCH: Final = 50  # short transactions: each batch cascades whole profiles
 AUTH_ATTEMPT_RETENTION_DAYS: Final = 90
+PUSH_RECEIPT_RETENTION_DAYS: Final = 7
 
 
 @dataclass(frozen=True)
 class MaintenanceResult:
     purged_accounts: int
     auth_attempts_removed: int
+    push_receipts_removed: int = 0
 
 
 async def _purge(engine: AsyncEngine) -> int:
@@ -63,12 +66,26 @@ async def _retention(engine: AsyncEngine) -> int:
     return int(removed or 0)
 
 
+async def _receipt_retention(engine: AsyncEngine) -> int:
+    # push receipts are only needed until Expo has answered (a day); a week leaves room to look
+    async with engine.connect() as conn, conn.begin():
+        removed = (
+            await conn.execute(
+                bound_text(
+                    "delete from push_receipts where created_at < now() - make_interval(days => :d)"
+                ),
+                {"d": PUSH_RECEIPT_RETENTION_DAYS},
+            )
+        ).rowcount
+    return int(removed or 0)
+
+
 async def run_daily(maint_url: str) -> MaintenanceResult:
     """Both jobs run even if the other fails; a failure is logged (IDs/counts only) and raised
     so the task shows as failed."""
     engine = create_async_engine(maint_url, hide_parameters=True)
     failures: list[BaseException] = []
-    purged = removed = 0
+    purged = removed = receipts = 0
     try:
         try:
             purged = await _purge(engine)
@@ -81,13 +98,19 @@ async def run_daily(maint_url: str) -> MaintenanceResult:
         except Exception as exc:
             log.error("maintenance_retention_failed", error=type(exc).__name__)  # noqa: TRY400
             failures.append(exc)
+        try:
+            receipts = await _receipt_retention(engine)
+        except Exception as exc:
+            log.error("maintenance_receipts_failed", error=type(exc).__name__)  # noqa: TRY400
+            failures.append(exc)
     finally:
         await engine.dispose()
-    result = MaintenanceResult(purged, removed)
+    result = MaintenanceResult(purged, removed, receipts)
     log.info(
         "maintenance_done",
         purged_accounts=result.purged_accounts,
         auth_attempts_removed=result.auth_attempts_removed,
+        push_receipts_removed=result.push_receipts_removed,
     )
     if failures:
         raise failures[0]

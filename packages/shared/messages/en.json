@@ -955,7 +955,8 @@
       "no_recent_admin_action": "No admin action on your account in the last 30 days.",
       "notification_not_found": "Notification not found.",
       "account_not_active": "Your account is not active, so this is not possible. Contact an admin.",
-      "deletion_not_allowed": "The account cannot be deleted right now. Contact an admin."
+      "deletion_not_allowed": "The account cannot be deleted right now. Contact an admin.",
+      "push_token_invalid": "Notifications could not be set up. Update the app and try again."
     },
     "not_found": "Not found.",
     "password": {

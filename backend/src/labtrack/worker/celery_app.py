@@ -24,14 +24,35 @@ app.conf.update(
     # 03:00 Asia/Ulaanbaatar (UTC+8): account purge and auth_attempts retention.
     # Maintenance runs only on the maint worker, the only process with the maint credentials
     # (the default worker parses untrusted uploads).
-    task_routes={"labtrack.maintenance.*": {"queue": "maintenance"}},
+    # Push delivery runs on the push worker: maint credentials too, plus the one outbound route
+    # it needs (Expo), so the daily maintenance worker stays without internet.
+    task_routes={
+        "labtrack.maintenance.*": {"queue": "maintenance"},
+        "labtrack.push.*": {"queue": "push"},
+    },
     beat_schedule={
         "maintenance-daily": {
             "task": "labtrack.maintenance.daily",
             "schedule": crontab(hour=19, minute=0),
-        }
+        },
+        # a late run is dropped, not queued up behind the next one
+        "push-send": {"task": "labtrack.push.send", "schedule": 30.0, "options": {"expires": 25}},
+        "push-receipts": {
+            "task": "labtrack.push.receipts",
+            "schedule": 300.0,
+            "options": {"expires": 290},
+        },
     },
 )
+
+_PUSH_LOCK_SECONDS = 120
+
+
+def _maint_url() -> str:
+    url = get_settings().maint_database_url
+    if url is None:
+        raise RuntimeError("MAINT_DATABASE_URL is not set (role labtrack_maint)")
+    return str(url)
 
 
 @signals.setup_logging.connect  # type: ignore[untyped-decorator]
@@ -49,11 +70,24 @@ def ping() -> str:
 def maintenance_daily() -> dict[str, int]:
     from labtrack.worker.maintenance import run_daily_sync  # noqa: PLC0415
 
-    url = get_settings().maint_database_url
-    if url is None:
-        raise RuntimeError("MAINT_DATABASE_URL is not set (role labtrack_maint)")
-    result = run_daily_sync(str(url))
+    result = run_daily_sync(_maint_url())
     return {
         "purged_accounts": result.purged_accounts,
         "auth_attempts_removed": result.auth_attempts_removed,
+        "push_receipts_removed": result.push_receipts_removed,
     }
+
+
+# Both end well before the run lock expires (120 s), so a stuck run never overlaps the next.
+@app.task(name="labtrack.push.send", soft_time_limit=90, time_limit=110)  # type: ignore[untyped-decorator]
+def push_send() -> dict[str, int]:
+    from labtrack.worker.push_tasks import run_push  # noqa: PLC0415
+
+    return run_push("send", _maint_url(), _PUSH_LOCK_SECONDS)
+
+
+@app.task(name="labtrack.push.receipts", soft_time_limit=90, time_limit=110)  # type: ignore[untyped-decorator]
+def push_receipts() -> dict[str, int]:
+    from labtrack.worker.push_tasks import run_push  # noqa: PLC0415
+
+    return run_push("receipts", _maint_url(), _PUSH_LOCK_SECONDS)

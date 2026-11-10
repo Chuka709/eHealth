@@ -29,6 +29,14 @@ class Settings(BaseSettings):
     rate_login_per_minute: int = 20
     rate_refresh_per_minute: int = 60
     rate_activate_per_minute: int = 10
+    # Per account (api/ratelimit.py per_user): the app registers its push token on start-up,
+    # foreground and refresh, a few times an hour at most.
+    rate_push_token_per_minute: int = 10
+
+    # Expo push (worker/push.py). Off until the Expo/FCM/APNs credentials exist (PROGRESS 2.8
+    # decision (c)): the worker then sends nothing and marks nothing as sent.
+    push_enabled: bool = False
+    expo_access_token: SecretStr | None = None
 
     # Field encryption (keys.py): dev/test KEK; production uses OpenBao transit.
     dev_kek: SecretStr | None = Field(default=None, validation_alias="LABTRACK_DEV_KEK")
@@ -57,6 +65,7 @@ class Settings(BaseSettings):
         "admin_login_database_url",
         "maint_database_url",
         "admin_allowed_networks",
+        "expo_access_token",
         mode="before",
     )
     @classmethod

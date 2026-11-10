@@ -16,6 +16,7 @@ from fastapi import Request
 from redis.asyncio import Redis
 from redis.exceptions import RedisError
 
+from labtrack.api.deps import Claims
 from labtrack.api.errors import AppError
 from labtrack.auth.service import client_network
 from labtrack.config import get_settings
@@ -30,21 +31,34 @@ def _redis() -> Redis:
     return client
 
 
+async def _count(name: str, subject: str, limit: int) -> None:
+    window = int(time.time()) // WINDOW_SECONDS
+    key = f"rl:{name}:{subject}:{window}"
+    try:
+        pipe = _redis().pipeline()
+        pipe.incr(key)
+        pipe.expire(key, WINDOW_SECONDS * 2)
+        count, _ = await pipe.execute()
+    except RedisError:
+        log.warning("rate_limit_unavailable", limiter=name)
+        return
+    if int(count) > limit:
+        retry = WINDOW_SECONDS - int(time.time()) % WINDOW_SECONDS
+        raise AppError(429, "auth.rate_limited", retry_after=timedelta(seconds=max(1, retry)))
+
+
 def per_ip(name: str, limit: Callable[[], int]) -> Callable[[Request], Awaitable[None]]:
     async def dependency(request: Request) -> None:
         net = client_network(request.client.host if request.client else None) or "unknown"
-        window = int(time.time()) // WINDOW_SECONDS
-        key = f"rl:{name}:{net}:{window}"
-        try:
-            pipe = _redis().pipeline()
-            pipe.incr(key)
-            pipe.expire(key, WINDOW_SECONDS * 2)
-            count, _ = await pipe.execute()
-        except RedisError:
-            log.warning("rate_limit_unavailable", limiter=name)
-            return
-        if int(count) > limit():
-            retry = WINDOW_SECONDS - int(time.time()) % WINDOW_SECONDS
-            raise AppError(429, "auth.rate_limited", retry_after=timedelta(seconds=max(1, retry)))
+        await _count(name, net, limit())
+
+    return dependency
+
+
+def per_user(name: str, limit: Callable[[], int]) -> Callable[[Claims], Awaitable[None]]:
+    """For signed-in routes: counted per account (its id, never a name), not per address."""
+
+    async def dependency(claims: Claims) -> None:
+        await _count(name, str(claims.user_id), limit())
 
     return dependency

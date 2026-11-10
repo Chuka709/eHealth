@@ -87,6 +87,7 @@ EXECUTE_MATRIX: dict[str, set[str]] = {
     "labtrack_maint": {
         "maint_caregiver_alert_targets()",
         "maint_forget_push_token(text)",
+        "maint_forget_receipt_token(bigint)",
         "maint_mark_pushed(bigint[])",
         "maint_purge_deleted_users(integer)",
         "maint_push_queue(integer)",

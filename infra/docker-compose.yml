@@ -3,7 +3,7 @@ name: labtrack
 # Networks (least reachability):
 #   edge    - caddy, web, api            (the only network with published entry points)
 #   backend - api, worker, migrate, test, postgres, valkey, seaweedfs   (internal: no egress)
-#   egress  - api, worker                (outbound: Claude API, Sentry, Expo push)
+#   egress  - api, worker, push-worker   (outbound: Claude API, Sentry, Expo push)
 # web cannot reach postgres, valkey or seaweedfs; the data stores cannot reach the internet.
 
 x-backend: &backend
@@ -136,7 +136,31 @@ services:
       migrate: { condition: service_completed_successfully }
       valkey: { condition: service_healthy }
 
-  # Schedules the daily maintenance task (runs on maint-worker). One instance only.
+  # Push delivery only (queue "push", Phase 2.8b): labtrack_maint credentials for the push queue
+  # and its one outbound route, Expo. Off (sends and marks nothing) until PUSH_ENABLED=true.
+  # It has internet, so it gets only what it needs: no field-encryption key, no pepper, no app
+  # role (DATABASE_URL is required by the settings and is the maint URL here too).
+  push-worker:
+    <<: *backend
+    environment:
+      ENVIRONMENT: ${ENVIRONMENT:-dev}
+      DATABASE_URL: postgresql+asyncpg://labtrack_maint:${LABTRACK_MAINT_PASSWORD:?run just init}@postgres:5432/labtrack
+      REDIS_URL: redis://:${VALKEY_PASSWORD:?run just init}@valkey:6379/0
+      SENTRY_DSN: ${SENTRY_DSN:-}
+      MAINT_DATABASE_URL: postgresql+asyncpg://labtrack_maint:${LABTRACK_MAINT_PASSWORD:?run just init}@postgres:5432/labtrack
+      PUSH_ENABLED: ${PUSH_ENABLED:-false}
+      EXPO_ACCESS_TOKEN: ${EXPO_ACCESS_TOKEN:-}
+    volumes:
+      - ../backend/src:/app/src:ro
+    command: ["celery", "-A", "labtrack.worker.celery_app", "worker", "--loglevel=INFO", "--concurrency=1",
+              "--queues=push", "--hostname=push@%h"]
+    networks: [backend, egress]
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+      valkey: { condition: service_healthy }
+
+  # Schedules the daily maintenance task (runs on maint-worker) and push delivery (push-worker).
+  # One instance only.
   beat:
     <<: *backend
     command: ["celery", "-A", "labtrack.worker.celery_app", "beat", "--loglevel=INFO",
@@ -145,6 +169,7 @@ services:
     depends_on:
       valkey: { condition: service_healthy }
       maint-worker: { condition: service_started }
+      push-worker: { condition: service_started }
 
   web:
     build:

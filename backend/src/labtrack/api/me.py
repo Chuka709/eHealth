@@ -6,14 +6,16 @@ from datetime import datetime
 from typing import Annotated, Literal
 from uuid import UUID
 
-from fastapi import APIRouter, Path, Query, Response, status
+from fastapi import APIRouter, Depends, Path, Query, Response, status
 from pydantic import AfterValidator, BaseModel, ConfigDict, Field, StringConstraints
 from sqlalchemy.exc import DBAPIError
 
 from labtrack import consents
-from labtrack.api.deps import UserDb
+from labtrack.api.deps import Claims, UserDb
 from labtrack.api.errors import AppError, ErrorBody
+from labtrack.api.ratelimit import per_user
 from labtrack.auth import service as auth_service
+from labtrack.config import get_settings
 from labtrack.core.text import valid_display_name
 from labtrack.db.sql import bound_text
 
@@ -232,6 +234,60 @@ async def mark_read(
     if done is None:
         raise AppError(404, "me.notification_not_found")
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+class PushTokenIn(_Strict):
+    # Same shape as set_session_push_token() checks (0020); null clears it.
+    token: (
+        Annotated[
+            str,
+            StringConstraints(pattern=r"^Expo(nent)?PushToken\[[A-Za-z0-9_-]{10,100}\]$"),
+        ]
+        | None
+    )
+
+
+_PUSH_LIMIT = Depends(per_user("push_token", lambda: get_settings().rate_push_token_per_minute))
+
+
+async def _set_push_token(db: UserDb, claims: Claims, token: str | None) -> Response:
+    # The token goes on this request's own session (JWT sid) and is never logged or returned.
+    try:
+        done = (
+            await db.execute(
+                bound_text("select set_session_push_token(:s, :t)"),
+                {"s": claims.session_id, "t": token},
+            )
+        ).scalar_one()
+    except DBAPIError as exc:
+        if _sqlstate(exc) != "22023":
+            raise
+        raise AppError(422, "me.push_token_invalid") from None
+    if not done:  # the session ended after the request was authenticated
+        raise AppError(401, "auth.session_invalid")
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.put(
+    "/push-token",
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses={**_ERRORS, 429: {"model": ErrorBody}},
+    dependencies=[_PUSH_LIMIT],
+)
+async def put_push_token(body: PushTokenIn, db: UserDb, claims: Claims) -> Response:
+    """This device's Expo push token, for this session only. A token another session (account)
+    had on the same phone leaves that session (0020)."""
+    return await _set_push_token(db, claims, body.token)
+
+
+@router.delete(
+    "/push-token",
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses={**_ERRORS, 429: {"model": ErrorBody}},
+    dependencies=[_PUSH_LIMIT],
+)
+async def delete_push_token(db: UserDb, claims: Claims) -> Response:
+    return await _set_push_token(db, claims, None)
 
 
 @router.post(

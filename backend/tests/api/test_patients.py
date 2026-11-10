@@ -29,6 +29,8 @@ _ACCOUNT_PATHS = {
     "/api/v1/me/notifications/{notification_id}/read",
     "/api/v1/me/report-unwanted-admin-action",
     "/api/v1/me/delete",
+    # the device, not health data: an admin reset must reach it without any consent (H12)
+    "/api/v1/me/push-token",
 }
 REQUIRED = [
     {"kind": k, "version": consents.VERSIONS[k], "granted": True} for k in consents.REQUIRED

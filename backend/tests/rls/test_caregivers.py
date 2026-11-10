@@ -515,6 +515,7 @@ async def test_the_push_queue_has_keys_and_tokens_only_and_reaches_reset_devices
         "patient_id",
         "session_id",
         "push_token",
+        "locale",  # 0023: the text is in the user's language, the user's row is not read
     }
     async with maint_engine.connect() as conn, conn.begin():
         assert (
