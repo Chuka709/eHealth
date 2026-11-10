@@ -422,10 +422,53 @@ create table emergency_contacts (
 create table caregiver_alert_settings (
   patient_id uuid references patients on delete cascade,
   caregiver_user_id uuid references users on delete cascade,
-  missed_dose_after_min int default 30,        -- анхдагч 30 мин; null = унтраалттай
+  missed_dose_after_min int default 30,        -- анхдагч 30 мин (15–240); null = унтраалттай
   critical_result boolean not null default true,
+  owner_paused boolean not null default false, -- эзэн түр зогсооно; зөвхөн эзэн сэргээнэ
+  updated_at timestamptz not null default now(),
   primary key (patient_id, caregiver_user_id)
 );
+-- 0020 (Phase 2.8a): бичих бүх үйлдэл definer функцээр (`set_caregiver_alerts`,
+-- `pause_caregiver_alerts`); app-д зөвхөн SELECT (асран хамгаалагч өөрийнхөө, эзэн бүгдийг).
+
+create table caregiver_invitations (            -- хэрэглэгчийн нэрээр урина, хүлээн авсны дараа л эрх
+  id uuid primary key default gen_random_uuid(),
+  patient_id uuid not null references patients on delete cascade,
+  invited_user_id uuid not null references users on delete cascade,
+  invited_by uuid not null references users on delete cascade,
+  status text not null default 'pending',     -- pending | accepted | declined | revoked
+  created_at timestamptz not null default now(),
+  expires_at timestamptz not null default now() + interval '14 days',
+  responded_at timestamptz
+);
+-- `invite_caregiver` (caregiver_sharing зөвшөөрлийн дараа, байхгүй нэр/өөрөө/аль хэдийн
+-- хуваалцсан бол null — ялгаа харагдахгүй), `respond_caregiver_invitation`,
+-- `revoke_caregiver_invitation`, `leave_patient`, `my_caregiver_invitations()`.
+-- patient_access: эзэн 'caregiver' түвшинг шууд олгохгүй (access_insert), цуцлагдсан эрхийг
+-- update-ээр сэргээхгүй (`patient_access_app_rules` trigger) — шинэ урилга.
+
+create table dose_alerts (                      -- тунд, асран хамгаалагчид нэг мэдэгдэл (H16)
+  id bigserial primary key,
+  patient_id uuid not null references patients on delete cascade,
+  medication_id uuid not null,                  -- (medication_id, patient_id) → medications
+  slot_at timestamptz not null,
+  alerted_user_id uuid not null references users on delete cascade,
+  created_at timestamptz not null default now(),
+  unique (patient_id, medication_id, slot_at, alerted_user_id)
+);
+-- worker: `maint_caregiver_alert_targets()` (зөвхөн id, минут) → асран хамгаалагчийн нэрээр
+-- RLS дор уншиж бичнэ; INSERT зөвхөн `caregiver_alerts_on(patient_id)` үед.
+
+create table push_receipts (                    -- Expo ticket → receipt (зөвхөн labtrack_maint)
+  id bigserial primary key,
+  notification_id bigint not null references notifications on delete cascade,
+  session_id uuid not null references sessions on delete cascade,
+  ticket_id text, status text not null default 'sent',  -- sent | ok | error
+  error text, created_at timestamptz not null default now(), checked_at timestamptz
+);
+-- sessions.push_token: `set_session_push_token` (өөрийн сесс; утас өөр аккаунтад шилжвэл
+-- хуучин сессээс арилна); `maint_push_queue` / `maint_mark_pushed` / `maint_forget_push_token`
+-- (id, түлхүүр, token л); admin_reset нь саяхан цуцлагдсан төхөөрөмжид ч хүрнэ.
 
 -- ============ ЗӨВШӨӨРӨЛ ============
 create table consents (

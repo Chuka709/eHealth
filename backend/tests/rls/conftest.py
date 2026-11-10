@@ -133,7 +133,26 @@ async def grant(
     *,
     expires: datetime | None = None,
     revoked: bool = False,
+    direct: bool = False,
 ) -> None:
+    """The owner shares the profile. A caregiver accepts an invitation (0020): the owner cannot
+    grant that level directly, so it is arranged as an accepted invitation would leave it
+    (unless `direct`, to test that the direct grant is refused)."""
+    if level == "caregiver" and not direct:
+        engine = create_async_engine(os.environ["MIGRATION_DATABASE_URL"])
+        try:
+            async with engine.connect() as conn, conn.begin():
+                await conn.execute(
+                    bound_text(
+                        "insert into patient_access (patient_id, user_id, level, granted_by,"
+                        " expires_at, revoked_at) values (:p, :g, 'caregiver', :o, :exp,"
+                        " case when :rev then now() end)"
+                    ),
+                    {"p": patient, "g": grantee, "o": owner, "exp": expires, "rev": revoked},
+                )
+        finally:
+            await engine.dispose()
+        return
     async with as_user(app_engine, owner) as conn:
         await conn.execute(
             bound_text(

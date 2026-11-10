@@ -107,7 +107,7 @@ async def test_nobody_grants_access_to_themselves(
     owner, attacker = await make_user(owner_engine), await make_user(owner_engine)
     patient = await make_patient(app_engine, owner)
     with pytest.raises(DBAPIError, match="row-level security"):
-        await grant(app_engine, attacker, patient, attacker, "caregiver")
+        await grant(app_engine, attacker, patient, attacker, "caregiver", direct=True)
 
 
 async def test_owner_cannot_create_a_second_owner(
@@ -199,8 +199,18 @@ async def test_notifications_are_private_and_only_read_at_is_writable(
     patient = await make_patient(app_engine, alice)
     async with as_user(app_engine, alice) as conn:
         await conn.execute(
-            bound_text("select notify(:u, 'share_invite', :p, null, 'share.invite')"),
-            {"u": bob, "p": patient},
+            bound_text(
+                "insert into consents (user_id, kind, version, granted)"
+                " values (app_user_id(), 'caregiver_sharing', '1', true)"
+            )
+        )
+    async with owner_engine.connect() as conn:
+        bob_name = await scalar(
+            conn, bound_text("select username::text from users where id = :u"), {"u": bob}
+        )
+    async with as_user(app_engine, alice) as conn:  # the invitation sends Bob its notice
+        await conn.execute(
+            bound_text("select invite_caregiver(:p, :n)"), {"p": patient, "n": bob_name}
         )
     async with as_user(app_engine, alice) as conn:
         assert await scalar(conn, bound_text("select count(*) from notifications")) == 0
