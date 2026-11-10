@@ -885,3 +885,32 @@ async def test_at_most_three_invitations_between_two_people_in_30_days(
             )
             == 3
         )
+
+
+async def test_an_invitation_or_a_dose_alert_is_announced_only_once(
+    app_engine: AsyncEngine, owner_engine: AsyncEngine
+) -> None:
+    owner, carer, patient, name = await _family(app_engine, owner_engine)
+    invitation = await _invite(app_engine, owner, patient, name)  # its notice went out
+    async with as_user(app_engine, owner) as conn:
+        with pytest.raises(DBAPIError, match="notification not allowed"):
+            await conn.execute(
+                bound_text(
+                    "select notify(:u, 'share_invite', :p, :e, 'notification.caregiver_invite')"
+                ),
+                {"u": carer, "p": patient, "e": str(invitation)},
+            )
+    await _respond(app_engine, carer, invitation, True)
+    medication = await _medication(app_engine, owner, patient)
+    async with as_user(app_engine, carer) as conn:
+        await conn.execute(bound_text("select set_caregiver_alerts(:p, 30, true)"), {"p": patient})
+        alert = await scalar(conn, _ALERT, {"p": patient, "m": medication})
+    notice = bound_text(
+        "select notify(app_user_id(), 'dose_overdue', :p, :e, 'notification.dose_overdue')"
+    )
+    async with as_user(app_engine, carer) as conn:
+        await conn.execute(notice, {"p": patient, "e": str(alert)})
+    for entity in (str(alert), "12345"):  # again, or a dose alert that is not theirs
+        async with as_user(app_engine, carer) as conn:
+            with pytest.raises(DBAPIError, match="notification not allowed"):
+                await conn.execute(notice, {"p": patient, "e": entity})
