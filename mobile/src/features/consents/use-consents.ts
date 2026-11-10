@@ -73,7 +73,7 @@ export function useGiveConsents() {
     onSuccess: (_, items) => {
       // a required consent withdrawn: no health data may stay cached (memory or disk)
       if (items.some((i) => (REQUIRED_KINDS as readonly string[]).includes(i.kind) && !i.granted)) {
-        dropPersistedHealthData();
+        void dropPersistedHealthData();
       }
     },
     // Success, or a version that changed meanwhile: either way show the server's state.

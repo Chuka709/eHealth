@@ -337,10 +337,11 @@ describe("when health data may no longer be kept", () => {
         meta: { persist: true },
       });
     queryClient.setQueryData(["me"], { id: "u1" }); // not health data: stays
-    dropPersistedHealthData();
+    await dropPersistedHealthData();
     expect(queryClient.getQueryData(["transplants", "p1"])).toBeUndefined();
     expect(queryClient.getQueryData(["me"])).toEqual({ id: "u1" });
-    expect(store.getString("query-cache")).toBeUndefined();
+    // the running persister may save the now empty cache again: never the dropped data
+    expect(store.getString("query-cache") ?? "").not.toContain("transplants");
   });
 
   it("a sign-out ends an unfinished onboarding wizard", async () => {

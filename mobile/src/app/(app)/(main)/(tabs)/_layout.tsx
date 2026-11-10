@@ -3,6 +3,7 @@ import { Tabs } from "expo-router";
 import { type ColorValue, Text } from "react-native";
 import { useTranslations } from "use-intl";
 
+import { EmergencyButton } from "@/features/emergency/emergency-button";
 import { usePalette } from "@/theme/use-palette";
 
 /**
@@ -41,6 +42,8 @@ export default function TabsLayout() {
         options={{
           title: t("name"),
           tabBarLabel: t("tabs.home"),
+          // one tap from the app's first screen (docs/08, H17)
+          headerRight: () => <EmergencyButton />,
           tabBarIcon: ({ color }) => <TabIcon glyph="⌂" color={color} />,
         }}
       />

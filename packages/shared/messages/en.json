@@ -789,6 +789,50 @@
       },
       "loadFailed": "Could not load",
       "deleteTitle": "Delete “{name}”?"
+    },
+    "emergency": {
+      "title": "Emergency card",
+      "open": "🆘 Emergency",
+      "openLabel": "Open the emergency card",
+      "switchTo": "Монгол",
+      "switchToLabel": "Картыг монголоор харуулах",
+      "introTransplant": "I have had a transplant.",
+      "name": "Name",
+      "birthDate": "Date of birth",
+      "transplants": "Transplants",
+      "graft": {
+        "functioning": "Functioning",
+        "unknown": "Status not recorded",
+        "failed": "No longer functioning",
+        "removed": "Removed (graftectomy)"
+      },
+      "followUp": "Follow-up: {value}",
+      "bloodType": "Blood type",
+      "bloodNote": "As recorded by the user. Confirm by laboratory testing before any transfusion.",
+      "bloodConflict": "Not shown: the records disagree. Determine by laboratory testing.",
+      "bloodHsct": "Not shown: the blood type may have changed after a stem cell transplant. Determine by laboratory testing.",
+      "meds": "Regular medicines",
+      "category": {
+        "immunosuppressant": "Immunosuppressant",
+        "corticosteroid": "Corticosteroid"
+      },
+      "doseNote": "Doses as entered by the user from their doctor's instructions; may differ from the current prescription.",
+      "noDose": "No dose recorded",
+      "upcoming": "Planned from {date}: {dose}",
+      "endsOn": "Planned end: {date}",
+      "noDosed": "No immunosuppressant or corticosteroid recorded in the app — this does not mean none are taken.",
+      "otherMeds": "Other medicines",
+      "allergies": "Allergies",
+      "noAllergy": "No allergy information entered — this does not mean no allergies.",
+      "contacts": "Contacts",
+      "notRecorded": "Not recorded.",
+      "updated": "Updated: {when}",
+      "offline": "Could not reach the server. Showing the copy saved on this phone ({when}) — it may be out of date.",
+      "noCopy": "The card is not saved on this phone yet. Connect to the internet and try again.",
+      "disclaimer": "Entered by the user, not verified by a doctor. Not a diagnosis or treatment advice.",
+      "introImmunosuppressed": "I take immunosuppressant medicines regularly.",
+      "graftLabel": "Graft: {status}",
+      "noProfile": "Your health profile has not been created yet. The card appears once your transplant details are entered."
     }
   },
   "status": {

@@ -21,6 +21,7 @@ export default function MainLayout() {
   return (
     <Stack screenOptions={{ headerBackTitle: t("common.back") }}>
       <Stack.Screen name="(tabs)" options={{ headerShown: false, title: t("name") }} />
+      <Stack.Screen name="emergency" options={{ title: t("emergency.title") }} />
       <Stack.Screen name="settings/profile" options={{ title: t("profile.title") }} />
       <Stack.Screen name="settings/password" options={{ title: t("passwordChange.title") }} />
       <Stack.Screen name="settings/devices" options={{ title: t("devices.title") }} />

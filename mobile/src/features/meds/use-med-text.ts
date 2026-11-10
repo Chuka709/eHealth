@@ -4,7 +4,10 @@ import { scheduleText } from "./med-draft";
 import type { Regimen } from "./use-medications";
 
 /** A regimen as words: "08:00 · 2 мг, 20:00 · 1,5 мг" (the schedule as the user entered it). */
-export function useRegimenText(): (regimen: Regimen | null | undefined) => string {
+/** What a dose text needs: a full regimen, or the emergency card's copy of one. */
+export type DoseShape = Pick<Regimen, "dose_amount" | "dose_unit" | "dose_unit_text" | "schedule">;
+
+export function useRegimenText(): (regimen: DoseShape | null | undefined) => string {
   const t = useTranslations("app.meds");
   return (regimen) => {
     if (!regimen) return t("noDose");

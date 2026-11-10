@@ -68,12 +68,33 @@ async function start(): Promise<void> {
 }
 
 /**
- * Health data may no longer be kept (a required consent withdrawn): every persisted query
- * leaves memory, and the saved cache leaves the encrypted store now (not at the next save).
+ * Health data kept outside the query cache, one key per item, under this prefix (the emergency
+ * card's offline copy). Every such key is dropped with the cache.
  */
-export function dropPersistedHealthData(): void {
-  queryClient.removeQueries({ predicate: (query) => query.meta?.persist === true });
-  openLocalStore()?.remove(CACHE_KEY);
+export const SNAPSHOT_PREFIX = "snapshot.";
+
+let drops = 0;
+/** Changes on every drop: a snapshot fetched before it must not be written after it. */
+export function healthDropCount(): number {
+  return drops;
+}
+
+/**
+ * Health data may no longer be kept (a required consent withdrawn): every persisted query and
+ * every snapshot query (`meta.snapshot`) leaves memory. The saved cache and every snapshot
+ * leave the encrypted store now, not at the next save. The store is opened if it is not open
+ * yet, so a drop never leaves health data on disk.
+ */
+export async function dropPersistedHealthData(): Promise<void> {
+  drops += 1;
+  queryClient.removeQueries({
+    predicate: (query) => query.meta?.persist === true || query.meta?.snapshot === true,
+  });
+  const store = openLocalStore() ?? (await localStore().catch(() => null));
+  store?.remove(CACHE_KEY);
+  for (const key of store?.getAllKeys() ?? []) {
+    if (key.startsWith(SNAPSHOT_PREFIX)) store?.remove(key);
+  }
 }
 
 /** Before a wipe: stop writing the cache (the wipe then clears the store). */
