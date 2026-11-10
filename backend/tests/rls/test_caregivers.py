@@ -914,3 +914,20 @@ async def test_an_invitation_or_a_dose_alert_is_announced_only_once(
         async with as_user(app_engine, carer) as conn:
             with pytest.raises(DBAPIError, match="notification not allowed"):
                 await conn.execute(notice, {"p": patient, "e": entity})
+
+
+async def test_the_database_itself_keeps_one_notice_per_entity(
+    app_engine: AsyncEngine, owner_engine: AsyncEngine
+) -> None:
+    owner, carer, patient, name = await _family(app_engine, owner_engine)
+    invitation = await _invite(app_engine, owner, patient, name)
+    # as two concurrent calls would leave it, past notify()'s own check
+    async with owner_engine.connect() as conn:
+        with pytest.raises(DBAPIError, match="notifications_entity"):
+            await conn.execute(
+                bound_text(
+                    "insert into notifications (user_id, kind, patient_id, entity_id, title_key)"
+                    " values (:u, 'share_invite', :p, :e, 'notification.caregiver_invite')"
+                ),
+                {"u": carer, "p": patient, "e": str(invitation)},
+            )

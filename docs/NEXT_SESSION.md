@@ -14,24 +14,24 @@ LabTrack MN төслийн Phase 2.8b-г эхлүүлнэ: push суурь (toke
 - docs/04_RBAC_SECURITY.md — push payload-д PHI байхгүй (§ checklist)
 - docs/09_CLINICAL_SAFETY.md — H12, H16
 - docs/OPEN_QUESTIONS.md — шийдэгдсэнийг дахин бүү маргалд; Q8 (push), Q42 (нээлттэй)
-- backend/alembic/versions/0020_caregivers_and_push.py, 0021_one_notice_per_entity.py —
+- backend/alembic/versions/0020_caregivers_and_push.py, 0021_one_notice_per_entity.py, 0022_unique_notice_per_entity.py —
   `set_session_push_token`, `maint_push_queue`, `maint_mark_pushed`, `maint_forget_push_token`,
   `push_receipts` (зөвхөн labtrack_maint), notify() дүрмүүд
 - backend/src/labtrack/worker/celery_app.py, worker/maintenance.py (labtrack_maint холболт, beat)
 - backend/src/labtrack/api/me.py (/me router), api/deps.py (claims — JWT-ийн `sid`)
 - backend/src/labtrack/admin/users.py — admin_reset урсгал (notifications мөр үүсдэг эсэхийг шалга)
 
-## Одоогийн төлөв (2026.11.10, салбар phase-2, сүүлийн commit c760d5f)
+## Одоогийн төлөв (2026.11.10, салбар phase-2, сүүлийн commit — `git log -1`)
 - Phase 2 нэг PR-аар: https://github.com/Chuka709/eHealth/pull/1 (draft, base main).
   Алхам бүрийн дараа `git push origin phase-2` (зөвшөөрөгдсөн); main руу шууд push, force push
   хориотой (.claude/settings.json deny + .githooks/pre-push). PR-д Auto-fix асаалттай — CI-г бүү poll хий.
 - Хийгдсэн: 2.0–2.7 (эм, сануулга, эрүүл мэндийн бичлэг, Профайл tab, товлол, яаралтай карт +
   түгжээтэй үед нээх + түрийвчний PDF + wallpaper + Medical ID; Maestro activation→эм→карт
   эмулятор дээр давсан). 2.8a: migration 0020 (урилга, caregiver_alert_settings, dose_alerts,
-  push_receipts, push token setter, maint push queue) + 0021 (нэг урилга/тунд нэг мэдэгдэл).
+  push_receipts, push token setter, maint push queue) + 0021/0022 (нэг урилга/тунд нэг мэдэгдэл, DB-ийн unique index-ээр).
   Security review (1 High, 6 Medium) засагдсан.
 - Тест: backend бүгд давсан (`just test-api`, контейнер; ~690), Jest 215, `just lint` цэвэр.
-- Dev DB 0021 хүртэл migrate хийгдсэн. Эмулятор/Metro/Docker stack өмнөх session-д асаалттай байсан.
+- Dev DB 0022 хүртэл migrate хийгдсэн. Эмулятор/Metro/Docker stack өмнөх session-д асаалттай байсан.
 
 ## Шийдэгдсэн (PROGRESS 2.8, хэрэглэгч 2026.11.10)
 - (a) Тун хоцорсныг **сервер** илрүүлнэ (2.8e: Celery beat + core/slots.py), текст «шалгана уу».
