@@ -111,6 +111,11 @@
         "summary": "Photos and PDFs of your results are sent to an AI service in the USA (Anthropic Claude) to read the values automatically. Without this, you enter values by hand.",
         "body": "This consent has two parts: (1) processing documents with AI, and (2) transferring data outside Mongolia (to the USA). Values read by the AI are stored as a draft; they appear in charts and summaries only after you check and confirm them (a value that may need urgent attention is flagged before that). How long the provider keeps sent documents is set out in the privacy policy. You can withdraw at any time; from then on no document is sent abroad, but documents already sent cannot be recalled."
       },
+      "caregiver": {
+        "title": "Sharing with caregivers",
+        "summary": "Someone you invite (a caregiver) can see your profile, add records and be notified when a dose has not been logged yet.",
+        "body": "You invite a caregiver by username; they can access your profile only after they accept the invitation. A caregiver can see your lab results, medicines, transplant and emergency card information and add records; they cannot share or delete. They are notified when a dose has not been logged yet. You can pause a caregiver's notifications or end their access at any time. Withdrawing this consent ends every caregiver's access and every pending invitation at once; to share again, you invite anew. What a caregiver has already seen or copied cannot be taken back."
+      },
       "missingOne": "Required — not given yet.",
       "appOutdated": "The terms have a new version, so please update the app. After updating, read the new text and accept it."
     },
@@ -943,6 +948,15 @@
       "session_not_found": "Device not found.",
       "account_reported": "You reported “I didn't ask for this”, so the account was locked and signed out everywhere.",
       "deletion_pending": "Your account deletion request is pending, so it was signed out everywhere."
+    },
+    "caregiver": {
+      "consent_required": "Before inviting, give the “Sharing with caregivers” consent.",
+      "minor_profile": "Caregivers cannot be invited to a child's profile yet.",
+      "too_many": "Too many invitations. Wait a little and try again.",
+      "owner_only": "Only the profile's owner manages its caregivers. Ask the owner to make the change.",
+      "not_caregiver": "You are not a caregiver of this profile. Ask the profile's owner for an invitation.",
+      "not_found": "Caregiver not found. Refresh the list and try again.",
+      "invitation_not_found": "The invitation was not found or is no longer valid. Ask the profile's owner to send a new one."
     },
     "consent": {
       "not_allowed": "You cannot give consent for this profile.",

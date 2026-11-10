@@ -79,7 +79,7 @@ class ConsentItem(_Strict):
 
 
 class ConsentRequest(_Strict):
-    items: Annotated[list[ConsentItem], Field(min_length=1, max_length=5)]
+    items: Annotated[list[ConsentItem], Field(min_length=1, max_length=len(consents.VERSIONS))]
     # a minor's profile the user owns (Q9); omitted = the user's own consents
     patient_id: UUID | None = None
 
@@ -160,6 +160,9 @@ async def give_consents(body: ConsentRequest, db: UserDb) -> Response:
     if any(i.granted for i in ai) and (
         len(ai) != len(consents.AI_EXTRACTION) or not all(i.granted for i in ai)
     ):
+        raise AppError(422, "validation")
+    # sharing with caregivers is the user's own choice, never one given for a profile (0023)
+    if body.patient_id is not None and any(i.kind == "caregiver_sharing" for i in body.items):
         raise AppError(422, "validation")
     if any(i.granted and i.version != consents.VERSIONS[i.kind] for i in body.items):
         raise AppError(409, "consent.version_outdated")

@@ -95,7 +95,8 @@ async def test_invite_accept_gives_access_only_after_the_answer(
         seen = (await conn.execute(bound_text("select * from my_caregiver_invitations()"))).all()
         kinds = (await conn.execute(bound_text("select kind, entity_id from notifications"))).all()
     assert [r.id for r in seen] == [invitation]
-    assert (seen[0].inviter_name, seen[0].patient_name) == ("Test", "Test Patient")
+    assert seen[0].inviter_name == "Test"
+    assert "patient_name" not in seen[0]._mapping  # only after accepting (0025, Q45)
     assert [(k.kind, k.entity_id) for k in kinds] == [("share_invite", str(invitation))]
 
     assert await _respond(app_engine, carer, invitation, True) is True
@@ -413,6 +414,9 @@ async def test_the_worker_gets_only_active_targets_as_ids(
         await conn.execute(
             bound_text("select pause_caregiver_alerts(:p, :c, false)"), {"p": patient, "c": carer}
         )
+    # only the access ends (arranged as the schema owner; the app goes through revoke_caregiver,
+    # which also drops the settings - 0025): the settings alone send nothing
+    async with owner_engine.connect() as conn, conn.begin():
         await conn.execute(
             bound_text(
                 "update patient_access set revoked_at = now()"
@@ -870,15 +874,15 @@ async def test_at_most_three_invitations_between_two_people_in_30_days(
     app_engine: AsyncEngine, owner_engine: AsyncEngine
 ) -> None:
     owner, carer, patient, name = await _family(app_engine, owner_engine)
-    child = await make_patient(app_engine, owner, minor=True)
-    for target in (patient, child, patient):
-        invitation = await _invite(app_engine, owner, target, name)
+    # (over all of the owner's profiles; a child's profile gets no caregivers since 0025)
+    for _ in range(3):
+        invitation = await _invite(app_engine, owner, patient, name)
         assert invitation is not None
         async with as_user(app_engine, owner) as conn:
             await conn.execute(
                 bound_text("select revoke_caregiver_invitation(:i)"), {"i": invitation}
             )
-    assert await _invite(app_engine, owner, child, name) is None
+    assert await _invite(app_engine, owner, patient, name) is None
     async with as_user(app_engine, carer) as conn:
         assert (
             await scalar(

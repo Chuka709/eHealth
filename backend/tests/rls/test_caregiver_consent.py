@@ -28,10 +28,10 @@ async def test_withdrawing_the_consent_lets_every_caregiver_out(
     app_engine: AsyncEngine, owner_engine: AsyncEngine
 ) -> None:
     owner, carer, patient = await _caregiver(app_engine, owner_engine)
-    # a second profile of the same owner, with another caregiver
-    child = await make_patient(app_engine, owner, minor=True)
+    # a second caregiver of the same profile, who is also an owner elsewhere
+    # (a child's profile gets no caregivers - 0025 - so one adult profile is all there is)
     _, other_carer, other_patient = await _caregiver(app_engine, owner_engine)
-    second = await _invite(app_engine, owner, child, await _username(owner_engine, other_carer))
+    second = await _invite(app_engine, owner, patient, await _username(owner_engine, other_carer))
     assert await _respond(app_engine, other_carer, second, True)
     async with as_user(app_engine, carer) as conn:
         await conn.execute(bound_text("select set_caregiver_alerts(:p, 30, true)"), {"p": patient})
@@ -40,7 +40,7 @@ async def test_withdrawing_the_consent_lets_every_caregiver_out(
     await _consent(app_engine, owner, granted=False)
 
     assert not await _reads(app_engine, carer, patient)
-    assert not await _reads(app_engine, other_carer, child)
+    assert not await _reads(app_engine, other_carer, patient)
     assert await _alerts(owner_engine, patient) == 0
     # someone else's profile (the other caregiver's own family) is not touched
     assert await _reads(app_engine, other_carer, other_patient)
@@ -57,7 +57,7 @@ async def test_withdrawing_the_consent_lets_every_caregiver_out(
         ).all()
     assert {(r.entity_id, r.patient_id) for r in rows} == {
         (str(carer), patient),
-        (str(other_carer), child),
+        (str(other_carer), patient),
     }
     assert all(r.diff is None for r in rows)  # ids only
 

@@ -17,7 +17,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from labtrack.db.sql import bound_text
 
-Kind = Literal["terms", "privacy", "sensitive_data", "ai_processing", "cross_border"]
+Kind = Literal[
+    "terms", "privacy", "sensitive_data", "ai_processing", "cross_border", "caregiver_sharing"
+]
 
 # Text version shown to the user; bump when the text changes (mn.json/en.json app.consent.*),
 # then `just gen-client` so the app bundles the new version with the new text.
@@ -27,6 +29,8 @@ VERSIONS: Final[dict[Kind, str]] = {
     "sensitive_data": "draft-2026-10",
     "ai_processing": "draft-2026-10",
     "cross_border": "draft-2026-10",
+    # the user lets caregivers they invite see and keep their profiles (Phase 2.8d; Q42)
+    "caregiver_sharing": "draft-2026-11",
 }
 # Without these the app cannot be used (health data cannot be processed at all).
 REQUIRED: Final[frozenset[Kind]] = frozenset({"terms", "privacy", "sensitive_data"})

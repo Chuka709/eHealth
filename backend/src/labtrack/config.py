@@ -32,6 +32,8 @@ class Settings(BaseSettings):
     # Per account (api/ratelimit.py per_user): the app registers its push token on start-up,
     # foreground and refresh, a few times an hour at most.
     rate_push_token_per_minute: int = 10
+    # Caregiver invitations per account (the database also caps lookups at 30 an hour).
+    rate_caregiver_invite_per_minute: int = 10
 
     # Expo push (worker/push.py). Off until the Expo/FCM/APNs credentials exist (PROGRESS 2.8
     # decision (c)): the worker then sends nothing and marks nothing as sent.
