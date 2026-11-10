@@ -4,6 +4,7 @@ import { useTranslations } from "use-intl";
 import { Button } from "@/components/button";
 import { Screen } from "@/components/screen";
 import { Title } from "@/components/text";
+import { EmergencyCardOffer } from "@/features/emergency/card-offer";
 import { AdminNoticeBanner } from "@/features/me/admin-notice-banner";
 import { useMe } from "@/features/me/use-me";
 import { ReminderWarnings } from "@/features/meds/reminder-warnings";
@@ -20,6 +21,7 @@ export default function HomeScreen() {
       <ReminderWarnings />
       <Title>{t("status.title")}</Title>
       <HealthStatus />
+      <EmergencyCardOffer />
       <Button
         variant="secondary"
         label={t("app.settings.open")}

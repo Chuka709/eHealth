@@ -21,6 +21,10 @@ export function dialable(phone: string): string | null {
   return rest ? `${plus}${rest}` : null;
 }
 
+/** Where the card shown comes from: the server now; the saved copy because the server could
+ * not be reached; or the saved copy by design (the locked app never asks the server). */
+export type CardCopy = "live" | "offline" | "saved";
+
 /**
  * The emergency card as an emergency team reads it (docs/08, H17): large text, nothing judged.
  * The order follows what a team needs first: who, allergies, medicines, blood type,
@@ -31,7 +35,7 @@ export function dialable(phone: string): string | null {
  * in 2.7c, by the locked app. It reads no API and opens no other screen; it can only place a
  * call.
  */
-export function EmergencyCardView({ card, offline }: { card: EmergencyCard; offline: boolean }) {
+export function EmergencyCardView({ card, copy }: { card: EmergencyCard; copy: CardCopy }) {
   const t = useTranslations("app");
   const e = useTranslations("app.emergency");
   const tt = useTranslations("app.transplant");
@@ -65,10 +69,14 @@ export function EmergencyCardView({ card, offline }: { card: EmergencyCard; offl
 
   return (
     <View style={styles.card}>
-      {offline ? (
-        <FormMessage kind="warning" text={e("offline", { when })} quiet />
-      ) : (
+      {copy === "live" ? (
         line(e("updated", { when }), true)
+      ) : (
+        <FormMessage
+          kind="warning"
+          text={e(copy === "offline" ? "offline" : "saved", { when })}
+          quiet
+        />
       )}
       {card.transplants.length > 0 && (
         <Text accessibilityLanguage={lang} style={[styles.lead, { color: p.text }]}>

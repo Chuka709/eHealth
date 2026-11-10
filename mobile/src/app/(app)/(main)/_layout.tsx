@@ -1,6 +1,7 @@
 import { Stack } from "expo-router";
 import { useTranslations } from "use-intl";
 
+import { useEmergencyCardSync } from "@/features/emergency/use-card-sync";
 import { useReminderResponses, useReminderSync } from "@/features/meds/use-reminders";
 import { useZonePrompt } from "@/features/meds/use-zone-prompt";
 import { useLocalData } from "@/features/offline/use-local-data";
@@ -18,10 +19,13 @@ export default function MainLayout() {
   useReminderSync();
   useReminderResponses();
   useZonePrompt();
+  // the saved emergency card follows every change (the locked app and an offline phone show it)
+  useEmergencyCardSync();
   return (
     <Stack screenOptions={{ headerBackTitle: t("common.back") }}>
       <Stack.Screen name="(tabs)" options={{ headerShown: false, title: t("name") }} />
       <Stack.Screen name="emergency" options={{ title: t("emergency.title") }} />
+      <Stack.Screen name="settings/emergency" options={{ title: t("emergency.title") }} />
       <Stack.Screen name="settings/profile" options={{ title: t("profile.title") }} />
       <Stack.Screen name="settings/password" options={{ title: t("passwordChange.title") }} />
       <Stack.Screen name="settings/devices" options={{ title: t("devices.title") }} />

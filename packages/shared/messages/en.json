@@ -832,7 +832,26 @@
       "disclaimer": "Entered by the user, not verified by a doctor. Not a diagnosis or treatment advice.",
       "introImmunosuppressed": "I take immunosuppressant medicines regularly.",
       "graftLabel": "Graft: {status}",
-      "noProfile": "Your health profile has not been created yet. The card appears once your transplant details are entered."
+      "noProfile": "Your health profile has not been created yet. The card appears once your transplant details are entered.",
+      "backToLock": "Back to the lock screen",
+      "saved": "Copy saved on this phone ({when}) — it may be out of date.",
+      "unlocked": {
+        "openHint": "Whether the card opens while the app is locked",
+        "body": "When on, the app's lock screen shows a “🆘 Emergency” button that opens the emergency card saved on this phone without unlocking the app. It is only reachable after the phone's own lock (PIN, fingerprint) is passed. You can turn it off at any time.",
+        "risk": "Note: anyone who can unlock your phone (a family member, someone who finds a lost phone) will be able to see this card: your name, date of birth, medicines, allergies, transplants and your contacts' phone numbers. The rest of the app stays locked.",
+        "switch": "Open the emergency card while locked",
+        "noProfile": "You can set this once your health profile exists.",
+        "failed": "Could not save the setting. Please try again.",
+        "noLock": "The biometric lock is off, so the card already opens with the “🆘 Emergency” button on Home.",
+        "phoneLock": "No app can show anything on the phone's own lock screen. For that, you can add your details by hand to Medical ID on iPhone or Emergency information on Android.",
+        "view": "View the emergency card",
+        "offerTitle": "Make your card available in an emergency?",
+        "offerYes": "Turn on",
+        "offerNo": "Not now",
+        "offerLater": "You can change this later in Settings → Emergency card."
+      },
+      "lockOpen": "🆘 Emergency",
+      "lockOpenLabel": "Open the emergency card"
     }
   },
   "status": {
