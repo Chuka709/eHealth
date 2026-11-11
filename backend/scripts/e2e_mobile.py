@@ -25,6 +25,14 @@ APP_ID = os.environ.get("APP_ID", "mn.labtrack.app.development")
 def _run(flows: list[str]) -> int:
     with httpx.Client(base_url=BASE, timeout=30) as c:
         user, token = provision_user(c)
+        # Phase 2.8f: a second person, invited as caregiver by the first in the flow. Activated
+        # here: an invitation reaches only an active account (the answer is the same either way)
+        carer, carer_token = provision_user(c)
+        carer_password = f"Maestro {secrets.token_urlsafe(12)} lake"
+        c.post(
+            "/api/v1/auth/activate",
+            json={"token": carer_token, "username": carer, "new_password": carer_password},
+        ).raise_for_status()
     env = {
         **os.environ,
         # Windows JVMs default to cp1252, which turns the flows' Cyrillic text into "?".
@@ -37,13 +45,26 @@ def _run(flows: list[str]) -> int:
         # ASCII only: Android text input from Maestro cannot type Cyrillic reliably.
         "MAESTRO_PASSWORD": f"Maestro {secrets.token_urlsafe(12)} river",
         "MAESTRO_ACTIVATION_TOKEN": token,
+        "MAESTRO_CAREGIVER_USERNAME": carer,
+        "MAESTRO_CAREGIVER_PASSWORD": carer_password,
     }
     debug = tempfile.mkdtemp(prefix="maestro-")
-    cmd = [MAESTRO, "test", "--debug-output", debug, "--flatten-debug-output",
-           *(flows or [str(ROOT / "mobile" / ".maestro")])]  # fmt: skip
+
+    def maestro(paths: list[str]) -> int:
+        cmd = [MAESTRO, "test", "--debug-output", debug, "--flatten-debug-output", *paths]
+        return subprocess.run(cmd, cwd=ROOT, env=env, check=False).returncode  # noqa: S603
+
+    flows_dir = ROOT / "mobile" / ".maestro"
     try:
-        code = subprocess.run(cmd, cwd=ROOT, env=env, check=False).returncode  # noqa: S603
-        return code or _reminders_scheduled()
+        if flows:
+            return maestro(flows)
+        # 1. activation, a medicine, the emergency card: the medicine's reminders are scheduled
+        code = maestro([str(flows_dir / "activation.yaml")]) or _reminders(expect_some=True)
+        if code:
+            return code
+        # 2. the caregiver flow on the same app state: the owner's sign-out takes their
+        #    reminders off the phone (rule 8) - none left at the end
+        return maestro([str(flows_dir / "caregiver.yaml")]) or _reminders(expect_some=False)
     finally:
         if os.environ.get("E2E_KEEP_DEBUG") == "1":
             sys.stderr.write(f"e2e-mobile: Maestro debug output kept in {debug}\n")
@@ -51,9 +72,10 @@ def _run(flows: list[str]) -> int:
             shutil.rmtree(debug, ignore_errors=True)
 
 
-def _reminders_scheduled() -> int:
+def _reminders(*, expect_some: bool) -> int:
     """Phase 2.5 DoD: after the flow added a medicine, its reminders are on the OS schedule
-    (the app's alarms in AlarmManager). Reads counts only, never notification text."""
+    (the app's alarms in AlarmManager); Phase 2.8f: after that user signed out, none are left.
+    Reads counts only, never notification text."""
     adb = shutil.which("adb") or "adb"
     serial = os.environ.get("ANDROID_SERIAL")
     target = ["-s", serial] if serial else []
@@ -62,7 +84,7 @@ def _reminders_scheduled() -> int:
     ).stdout
     count = sum(1 for line in out.splitlines() if APP_ID in line and "RTC" in line)
     sys.stderr.write(f"e2e-mobile: {count} alarm entries for {APP_ID}\n")
-    return 0 if count > 0 else 1
+    return 0 if (count > 0) == expect_some else 1
 
 
 def main() -> int:

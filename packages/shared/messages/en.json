@@ -995,7 +995,7 @@
         "checkTitle": "Check the username",
         "checkBody": "“{username}” — is this right? A wrong one could send your name to someone else as an invitation.",
         "send": "Send",
-        "sent": "Sent. If the username is right, the invitation shows in the list below.",
+        "sent": "Sent. If the username is right, the invitation shows in the list above.",
         "needsConsent": "Before inviting, give the “Sharing with caregivers” consent.",
         "openConsents": "Go to consents"
       },

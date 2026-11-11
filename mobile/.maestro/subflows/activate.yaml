@@ -1,0 +1,32 @@
+# A registered user activates with the admin's link (the same URL the QR holds), sets their own
+# password, signs in, gives the three required consents and reaches Home (docs/08 "Анх нэвтрэх").
+# Parameters (env): USERNAME, PASSWORD, TOKEN - passed by the calling flow from MAESTRO_*.
+appId: ${MAESTRO_APP_ID}
+---
+- extendedWaitUntil:
+    visible: "Аккаунт идэвхжүүлэх"
+    timeout: 120000 # a cold Metro bundles for ~1 min
+# The token never reaches the router.
+- openLink: "labtrack://activate#${TOKEN}"
+- assertVisible: "Идэвхжүүлэх код уншигдлаа.*"
+# Fields are filled through the keyboard's next/done actions, as a user would: tapping a label
+# does not focus its input, and hideKeyboard presses Back on Android (leaving the app).
+- tapOn: "Хэрэглэгчийн нэр"
+- inputText: ${USERNAME}
+- pressKey: Enter
+- inputText: ${PASSWORD}
+- pressKey: Enter
+- inputText: ${PASSWORD}
+- pressKey: Enter
+- extendedWaitUntil:
+    visible: "Аккаунт идэвхжлээ.*"
+    timeout: 15000
+
+# Sign in with the password only the user knows.
+- tapOn: "Хэрэглэгчийн нэр"
+- inputText: ${USERNAME}
+- pressKey: Enter
+- inputText: ${PASSWORD}
+- pressKey: Enter # the password field's "go" action signs in
+
+- runFlow: onboarding.yaml
