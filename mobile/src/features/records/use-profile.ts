@@ -1,5 +1,7 @@
 import type { components } from "@labtrack/shared";
 import { useMutation, useQuery } from "@tanstack/react-query";
+import { deleteSnapshot, dropSnapshotsExcept } from "@/features/emergency/snapshot";
+import { keepUnlockedOnly, setCardUnlocked } from "@/features/emergency/unlocked";
 
 import { api } from "@/lib/api";
 import { queryClient } from "@/lib/query-client";
@@ -19,10 +21,14 @@ const PROFILE_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12
  */
 export function dropProfileData(patientId: string): void {
   queryClient.removeQueries({ predicate: (q) => q.queryKey[1] === patientId });
+  // and its saved emergency card / lock-screen opening, should any exist (never for another's
+  // profile today - defence in depth)
+  void deleteSnapshot(patientId).catch(() => undefined);
+  void setCardUnlocked(patientId, false).catch(() => undefined);
 }
 
 /** After the list is read: drop what is cached for any profile not in it any more. */
-export function dropMissingProfiles(patients: readonly { id: string }[]): void {
+export async function dropMissingProfiles(patients: readonly { id: string }[]): Promise<void> {
   const known = new Set(patients.map((p) => p.id));
   queryClient.removeQueries({
     predicate: (q) => {
@@ -30,6 +36,7 @@ export function dropMissingProfiles(patients: readonly { id: string }[]): void {
       return typeof id === "string" && PROFILE_ID.test(id) && !known.has(id);
     },
   });
+  await Promise.allSettled([dropSnapshotsExcept(known), keepUnlockedOnly(known)]);
 }
 
 /** The health profiles the user can open: their own first (GET /patients). */
@@ -41,7 +48,7 @@ export function usePatients({ enabled = true }: { enabled?: boolean } = {}) {
     queryFn: async () => {
       const { data, error } = await api.GET("/api/v1/patients");
       if (!data) throw apiError(error);
-      dropMissingProfiles(data);
+      void dropMissingProfiles(data);
       return data;
     },
   });

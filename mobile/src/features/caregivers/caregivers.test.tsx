@@ -2,9 +2,12 @@ import { fireEvent, renderRouter, screen, waitFor } from "expo-router/testing-li
 import { Alert } from "react-native";
 
 import { clearAccessToken, setStatus } from "@/features/auth/session-store";
+import { setCardUnlocked, unlockedProfiles } from "@/features/emergency/unlocked";
 import { resetActiveProfile, setActiveProfile } from "@/features/records/active-profile";
 import { dropMissingProfiles } from "@/features/records/use-profile";
 import { apiBaseUrl } from "@/lib/api-base";
+import { localStore } from "@/lib/local-store";
+import { SNAPSHOT_PREFIX } from "@/lib/persist";
 import { queryClient } from "@/lib/query-client";
 
 import { alertingCaregivers } from "./use-caregivers";
@@ -314,8 +317,22 @@ test("a profile gone from the list leaves the cache too (access ended, Q42)", ()
   queryClient.setQueryData(["records", MOTHER.id, "allergies"], [{ id: "a" }]);
   queryClient.setQueryData(["records", OWN.id, "allergies"], [{ id: "b" }]);
   queryClient.setQueryData(["me", "notifications"], []);
-  dropMissingProfiles([OWN]);
+  void dropMissingProfiles([OWN]);
   expect(queryClient.getQueryData(["records", MOTHER.id, "allergies"])).toBeUndefined();
   expect(queryClient.getQueryData(["records", OWN.id, "allergies"])).toEqual([{ id: "b" }]);
   expect(queryClient.getQueryData(["me", "notifications"])).toEqual([]);
+});
+
+test("a profile gone from the list leaves no saved emergency card or lock-screen opening", async () => {
+  setStatus("signedIn"); // the encrypted store opens for a signed-in account only
+  const store = await localStore();
+  const card = (id: string) => `${SNAPSHOT_PREFIX}emergency-card.v1.${id}`;
+  store.set(card(OWN.id), "{}");
+  store.set(card(MOTHER.id), "{}");
+  await setCardUnlocked(OWN.id, true);
+  await setCardUnlocked(MOTHER.id, true);
+  await dropMissingProfiles([OWN]);
+  expect(await unlockedProfiles()).toEqual([OWN.id]);
+  expect(store.getString(card(MOTHER.id))).toBeUndefined();
+  expect(store.getString(card(OWN.id))).toBe("{}");
 });

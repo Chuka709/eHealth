@@ -38,6 +38,14 @@ export async function unlockedProfiles(): Promise<string[]> {
   }
 }
 
+/** Only cards of profiles still in `known` may open on the locked phone. */
+export async function keepUnlockedOnly(known: ReadonlySet<string>): Promise<void> {
+  const store = await localStore();
+  const current = ids(store.getString(UNLOCKED_KEY));
+  const kept = current.filter((id) => known.has(id));
+  if (kept.length !== current.length) store.set(UNLOCKED_KEY, JSON.stringify(kept));
+}
+
 export async function setCardUnlocked(patientId: string, on: boolean): Promise<void> {
   const store = await localStore();
   const current = ids(store.getString(UNLOCKED_KEY)).filter((id) => id !== patientId);

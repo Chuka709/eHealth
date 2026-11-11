@@ -82,6 +82,19 @@ export function saveSnapshot(ticket: SaveTicket, patientId: string, card: Emerge
   return true;
 }
 
+/** Saved cards of profiles not in `known` leave the phone (access ended - 2.8f-3 review). */
+export async function dropSnapshotsExcept(known: ReadonlySet<string>): Promise<void> {
+  try {
+    const store = await localStore();
+    const prefix = `${SNAPSHOT_PREFIX}emergency-card.${VERSION}.`;
+    for (const k of store.getAllKeys()) {
+      if (k.startsWith(prefix) && !known.has(k.slice(prefix.length))) store.remove(k);
+    }
+  } catch {
+    // signed out: the store and its key are already gone
+  }
+}
+
 /** Access to the profile ended (or its consents): its copy leaves the phone. */
 export async function deleteSnapshot(patientId: string): Promise<void> {
   try {
