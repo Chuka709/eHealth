@@ -3,13 +3,15 @@ import { Stack, useRouter } from "expo-router";
 import { type ReactNode, useRef, useState } from "react";
 import { Alert, View } from "react-native";
 import { useTranslations } from "use-intl";
-
 import { Button } from "@/components/button";
 import { FormMessage } from "@/components/form-message";
 import { NavRow } from "@/components/nav-row";
 import { Screen, type ScreenScroll } from "@/components/screen";
 import { LoadingView, RetryView } from "@/components/state-view";
 import { Paragraph } from "@/components/text";
+import { useActiveProfile, usePinnedProfile } from "@/features/records/active-profile";
+import { ProfileBanner } from "@/features/records/profile-banner";
+import { ProfileChanged } from "@/features/records/profile-changed";
 import { ownProfile, usePatients } from "@/features/records/use-profile";
 import { newClientId } from "@/lib/random";
 import { useErrorText } from "@/lib/use-error-text";
@@ -18,10 +20,17 @@ import { useDeleteRecord, useRecords, useSaveRecord } from "./use-health";
 
 type KindArg = Parameters<typeof useRecords>[0];
 
-/** The user's own profile (health records hang on it). */
+/** The user's own profile - always (the emergency card, its saved copy and lock-screen card,
+ * wallpaper and Medical ID never show anyone else: decisions 1 and 2, 2.8f-2 review). */
 export function useOwnProfile() {
   const patients = usePatients();
   return { patients, own: ownProfile(patients.data) };
+}
+
+/** The profile the record screens show: the user's own, or the one chosen (2.8f-2). */
+export function useRecordProfile() {
+  const patients = usePatients();
+  return { patients, own: useActiveProfile(patients.data) };
 }
 
 /** A list of one record kind: rows open the editor, "Нэмэх" opens a new one. */
@@ -43,7 +52,7 @@ export function RecordList<T extends { id: string }>({
   const t = useTranslations("app.health");
   const router = useRouter();
   const errorText = useErrorText();
-  const { patients, own } = useOwnProfile();
+  const { patients, own } = useRecordProfile();
   const list = useRecords(kind, own?.id);
   if (patients.isPending || (own && list.isPending)) return <LoadingView />;
   if (!own || !list.data) {
@@ -57,6 +66,7 @@ export function RecordList<T extends { id: string }>({
   const items = (sort ? sort(list.data as T[]) : (list.data as T[])) ?? [];
   return (
     <Screen>
+      <ProfileBanner />
       {header}
       {items.length === 0 && <Paragraph>{t("empty")}</Paragraph>}
       {items.map((item) => {
@@ -110,11 +120,14 @@ export function RecordEditor<T extends { id: string }, D>({
   const t = useTranslations("app.health");
   const router = useRouter();
   const errorText = useErrorText();
-  const { patients, own } = useOwnProfile();
+  const { patients, own: active } = useRecordProfile();
+  // pinned to the profile it was opened on: a switch (or lost access) never moves an entry
+  const { pinned: own, changed } = usePinnedProfile(active);
   const list = useRecords(kind, own?.id, { fresh: true });
   const isNew = id === "new";
   const item = isNew ? undefined : (list.data as T[] | undefined)?.find((x) => x.id === id);
 
+  if (changed) return <ProfileChanged />;
   if (patients.isPending || (own && list.isPending)) return <LoadingView />;
   if (!own || (!isNew && !item)) {
     return (
@@ -208,6 +221,7 @@ function EditorForm<T extends { id: string }, D>({
 
   return (
     <Screen scrollRef={scroll}>
+      <ProfileBanner />
       {tried && invalid && <FormMessage kind="error" text={t("summary")} />}
       {failure && <FormMessage kind="error" text={errorText(failure)} />}
       {children({ draft, set, errors: tried ? errors : {} })}

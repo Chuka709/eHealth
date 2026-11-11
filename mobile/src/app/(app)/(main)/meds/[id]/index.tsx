@@ -3,7 +3,6 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useState } from "react";
 import { Alert, StyleSheet, Text, View } from "react-native";
 import { useTranslations } from "use-intl";
-
 import { Button } from "@/components/button";
 import { PickerField } from "@/components/date-field";
 import { FormMessage } from "@/components/form-message";
@@ -20,7 +19,9 @@ import {
   useUpdateMedication,
   useVoidDose,
 } from "@/features/meds/use-medications";
-import { ownProfile, usePatients } from "@/features/records/use-profile";
+import { useActiveProfile } from "@/features/records/active-profile";
+import { ProfileBanner } from "@/features/records/profile-banner";
+import { usePatients } from "@/features/records/use-profile";
 import { formatDate } from "@/lib/dates";
 import { useErrorText } from "@/lib/use-error-text";
 import { usePalette } from "@/theme/use-palette";
@@ -60,7 +61,7 @@ export default function MedicationScreen() {
   const regimenText = useRegimenText();
   const { id } = useLocalSearchParams<{ id: string }>();
   const patients = usePatients();
-  const own = ownProfile(patients.data);
+  const own = useActiveProfile(patients.data);
   const meds = useMedications(own?.id, { fresh: true });
   const update = useUpdateMedication(own?.id ?? "", id);
   const voidDose = useVoidDose(own?.id ?? "", id);
@@ -99,6 +100,7 @@ export default function MedicationScreen() {
 
   return (
     <Screen>
+      <ProfileBanner />
       <Title>{med.strength ? `${med.name} ${med.strength}` : med.name}</Title>
       {med.form && <Paragraph muted>{med.form}</Paragraph>}
       {med.stopped_on && (

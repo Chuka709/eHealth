@@ -1,13 +1,14 @@
 import { useRouter } from "expo-router";
 import { useTranslations } from "use-intl";
-
 import { Button } from "@/components/button";
 import { NavRow } from "@/components/nav-row";
 import { Screen } from "@/components/screen";
 import { LoadingView, RetryView } from "@/components/state-view";
 import { Paragraph } from "@/components/text";
+import { useActiveProfile } from "@/features/records/active-profile";
 import { elapsedText, transplantDateText } from "@/features/records/elapsed";
-import { ownProfile, usePatients } from "@/features/records/use-profile";
+import { ProfileSwitcher } from "@/features/records/profile-switcher";
+import { usePatients } from "@/features/records/use-profile";
 import { useTransplants } from "@/features/records/use-transplants";
 import { useErrorText } from "@/lib/use-error-text";
 
@@ -16,7 +17,7 @@ export default function TransplantsScreen() {
   const router = useRouter();
   const errorText = useErrorText();
   const patients = usePatients();
-  const own = ownProfile(patients.data);
+  const own = useActiveProfile(patients.data);
   const transplants = useTransplants(own?.id);
 
   if (patients.isPending || (own && transplants.isPending)) return <LoadingView />;
@@ -33,6 +34,7 @@ export default function TransplantsScreen() {
 
   return (
     <Screen>
+      <ProfileSwitcher />
       {list.length === 0 && <Paragraph>{t("empty")}</Paragraph>}
       {list.map((item) => {
         const since = elapsedText(t, item);

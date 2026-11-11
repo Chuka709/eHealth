@@ -1,9 +1,8 @@
 import { useRouter } from "expo-router";
 import { useTranslations } from "use-intl";
-
 import { NavRow } from "@/components/nav-row";
 import { Screen } from "@/components/screen";
-import { useOwnProfile } from "@/features/health/record-screens";
+import { useRecordProfile } from "@/features/health/record-screens";
 import {
   ALLERGIES,
   type Allergy,
@@ -15,13 +14,14 @@ import {
   type Question,
   useRecords,
 } from "@/features/health/use-health";
+import { ProfileSwitcher } from "@/features/records/profile-switcher";
 import { formatDateTime } from "@/lib/dates";
 
 /** The health profile: one place for everything the user keeps about their care. */
 export default function ProfileScreen() {
   const t = useTranslations("app.health");
   const router = useRouter();
-  const { own } = useOwnProfile();
+  const { own } = useRecordProfile();
   const appointments = useRecords(APPOINTMENTS, own?.id);
   const allergies = useRecords(ALLERGIES, own?.id);
   const contacts = useRecords(CONTACTS, own?.id);
@@ -38,6 +38,7 @@ export default function ProfileScreen() {
     q.data ? text() : q.isError ? t("loadFailed") : undefined;
   return (
     <Screen>
+      <ProfileSwitcher />
       <NavRow
         label={t("appointments")}
         hint={known(appointments, () =>

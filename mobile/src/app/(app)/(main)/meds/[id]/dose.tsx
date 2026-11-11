@@ -3,7 +3,6 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useRef, useState } from "react";
 import { StyleSheet, Text } from "react-native";
 import { useTranslations } from "use-intl";
-
 import { Button } from "@/components/button";
 import { PickerField } from "@/components/date-field";
 import { FormMessage } from "@/components/form-message";
@@ -19,7 +18,9 @@ import {
 } from "@/features/meds/med-draft";
 import { ScheduleEditor } from "@/features/meds/schedule-editor";
 import { useChangeDose, useMedications } from "@/features/meds/use-medications";
-import { ownProfile, usePatients } from "@/features/records/use-profile";
+import { useActiveProfile } from "@/features/records/active-profile";
+import { ProfileBanner } from "@/features/records/profile-banner";
+import { usePatients } from "@/features/records/use-profile";
 import { newClientId } from "@/lib/random";
 import { useErrorText } from "@/lib/use-error-text";
 import { usePalette } from "@/theme/use-palette";
@@ -36,7 +37,7 @@ export default function ChangeDoseScreen() {
   const errorText = useErrorText();
   const { id } = useLocalSearchParams<{ id: string }>();
   const patients = usePatients();
-  const own = ownProfile(patients.data);
+  const own = useActiveProfile(patients.data);
   const meds = useMedications(own?.id);
   const med = meds.data?.find((m) => m.id === id);
 
@@ -111,6 +112,7 @@ function DoseForm({
 
   return (
     <Screen scrollRef={scroll}>
+      <ProfileBanner />
       <Text style={[styles.note, { color: p.text }]}>{t("change.latest")}</Text>
       <Text style={[styles.note, { color: p.textMuted }]}>{t("form.disclaimer")}</Text>
       {showErrors && invalid && <FormMessage kind="error" text={t("form.errors.summary")} />}

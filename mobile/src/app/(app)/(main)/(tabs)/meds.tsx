@@ -11,7 +11,9 @@ import { TodayList } from "@/features/meds/today-list";
 import { useRegimenText } from "@/features/meds/use-med-text";
 import { useNow } from "@/features/meds/use-now";
 import { useTodayDoses } from "@/features/meds/use-today";
-import { ownProfile, usePatients } from "@/features/records/use-profile";
+import { isOthers, useActiveProfile } from "@/features/records/active-profile";
+import { ProfileSwitcher } from "@/features/records/profile-switcher";
+import { usePatients } from "@/features/records/use-profile";
 import { useErrorText } from "@/lib/use-error-text";
 
 export default function MedsScreen() {
@@ -21,7 +23,7 @@ export default function MedsScreen() {
   const regimenText = useRegimenText();
   const now = useNow();
   const patients = usePatients();
-  const own = ownProfile(patients.data);
+  const own = useActiveProfile(patients.data);
   const { doses, meds } = useTodayDoses(own?.id, now);
 
   if (patients.isPending || (own && meds.isPending)) return <LoadingView />;
@@ -38,7 +40,8 @@ export default function MedsScreen() {
 
   return (
     <Screen>
-      <ReminderWarnings late />
+      <ProfileSwitcher />
+      {!isOthers(own, patients.data) && <ReminderWarnings late />}
       <Title>{t("today")}</Title>
       <TodayList patientId={own.id} doses={doses} now={now.getTime()} />
       <MonthSummary patientId={own.id} now={now} />

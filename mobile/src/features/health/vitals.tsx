@@ -3,7 +3,6 @@ import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import { Alert, StyleSheet, Text, View } from "react-native";
 import { useTranslations } from "use-intl";
-
 import { Button } from "@/components/button";
 import { Choices } from "@/components/choices";
 import { FormMessage } from "@/components/form-message";
@@ -12,12 +11,15 @@ import { LoadingView, RetryView } from "@/components/state-view";
 import { Paragraph, Title } from "@/components/text";
 import { TextField } from "@/components/text-field";
 import { currentEpoch } from "@/features/auth/session";
+import { usePinnedProfile } from "@/features/records/active-profile";
+import { ProfileBanner } from "@/features/records/profile-banner";
+import { ProfileChanged } from "@/features/records/profile-changed";
 import { formatDateTime } from "@/lib/dates";
 import { localStore } from "@/lib/local-store";
 import { useErrorText } from "@/lib/use-error-text";
 import { usePalette } from "@/theme/use-palette";
 
-import { useOwnProfile } from "./record-screens";
+import { useRecordProfile } from "./record-screens";
 import {
   dismissFailedVital,
   recordVitals,
@@ -68,7 +70,7 @@ export function VitalsScreen() {
   const router = useRouter();
   const errorText = useErrorText();
   const text = useVitalText();
-  const { patients, own } = useOwnProfile();
+  const { patients, own } = useRecordProfile();
   const vitals = useVitals(own?.id);
   const remove = useDeleteVital(own?.id ?? "");
   const failed = useFailedVitals(own?.id);
@@ -113,6 +115,7 @@ export function VitalsScreen() {
   const waiting = pending.data ?? [];
   return (
     <Screen>
+      <ProfileBanner />
       <Paragraph muted>{t("plausibleOnly")}</Paragraph>
       <Button label={t("add")} onPress={() => router.push("/vitals/new")} />
       {remove.error && <FormMessage kind="error" text={errorText(remove.error)} />}
@@ -214,7 +217,8 @@ export function VitalEntry() {
   const t = useTranslations("app.health.vital");
   const router = useRouter();
   const errorText = useErrorText();
-  const { patients, own } = useOwnProfile();
+  const { patients, own: active } = useRecordProfile();
+  const { pinned: own, changed } = usePinnedProfile(active);
   const [kind, setKind] = useState<EntryKind | null>(null);
   const [values, setValues] = useState<Record<string, string>>({});
   const [note, setNote] = useState("");
@@ -222,12 +226,16 @@ export function VitalEntry() {
   const [failure, setFailure] = useState<unknown>(null);
   const [glucoseUnit, setGlucoseUnit] = useState<"unknown" | "mmol" | "mgdl" | null>(null);
 
+  // asked per profile: someone cared for may have a meter in mg/dL (H1, H26)
+  const glucoseKey = own ? `${GLUCOSE_ASKED}.${own.id}` : null;
   useEffect(() => {
+    if (!glucoseKey) return;
     void localStore()
-      .then((s) => setGlucoseUnit((s.getString(GLUCOSE_ASKED) as "mmol" | undefined) ?? "unknown"))
+      .then((s) => setGlucoseUnit((s.getString(glucoseKey) as "mmol" | undefined) ?? "unknown"))
       .catch(() => setGlucoseUnit("unknown"));
-  }, []);
+  }, [glucoseKey]);
 
+  if (changed) return <ProfileChanged />;
   if (patients.isPending) return <LoadingView />;
   if (!own)
     return <RetryView text={errorText(patients.error)} onRetry={() => void patients.refetch()} />;
@@ -271,6 +279,7 @@ export function VitalEntry() {
 
   return (
     <Screen>
+      <ProfileBanner />
       <Choices
         label={t("choose")}
         options={ENTRY_KINDS}
@@ -306,7 +315,8 @@ export function VitalEntry() {
             labelOf={(u) => t(u === "mmol" ? "glucoseMmol" : "glucoseMgdl")}
             onSelect={(u) => {
               setGlucoseUnit(u);
-              if (u === "mmol") void localStore().then((s) => s.set(GLUCOSE_ASKED, "mmol"));
+              if (u === "mmol" && glucoseKey)
+                void localStore().then((s) => s.set(glucoseKey, "mmol"));
             }}
           />
           {glucoseUnit === "mgdl" && <FormMessage kind="warning" text={t("glucoseMgdlNote")} />}

@@ -2,13 +2,14 @@ import { useLocalSearchParams, usePreventRemove, useRouter } from "expo-router";
 import { useState } from "react";
 import { AccessibilityInfo, Alert } from "react-native";
 import { useTranslations } from "use-intl";
-
 import { Button } from "@/components/button";
 import { FormMessage } from "@/components/form-message";
 import { Screen } from "@/components/screen";
 import { LoadingView, RetryView } from "@/components/state-view";
 import { Paragraph } from "@/components/text";
+import { useActiveProfile } from "@/features/records/active-profile";
 import { elapsedText } from "@/features/records/elapsed";
+import { ProfileBanner } from "@/features/records/profile-banner";
 import { type Draft, draftFrom, stepComplete, toFields } from "@/features/records/transplant-draft";
 import {
   DateSection,
@@ -17,7 +18,7 @@ import {
   OrganSection,
   PlaceSection,
 } from "@/features/records/transplant-sections";
-import { ownProfile, usePatients } from "@/features/records/use-profile";
+import { usePatients } from "@/features/records/use-profile";
 import {
   type Transplant,
   useDeleteTransplant,
@@ -30,7 +31,7 @@ export default function TransplantScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const errorText = useErrorText();
   const patients = usePatients();
-  const own = ownProfile(patients.data);
+  const own = useActiveProfile(patients.data);
   const transplants = useTransplants(own?.id, { fresh: true });
   const transplant = transplants.data?.find((x) => x.id === id);
 
@@ -112,6 +113,7 @@ function TransplantForm({ patientId, transplant }: { patientId: string; transpla
 
   return (
     <Screen>
+      <ProfileBanner />
       {since && <Paragraph muted>{since}</Paragraph>}
       <OrganSection draft={draft} onChange={change} />
       {tried && !stepComplete("organ", draft) && (

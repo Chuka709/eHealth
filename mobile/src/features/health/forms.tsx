@@ -7,7 +7,7 @@ import { dayOf, PickerField } from "@/components/date-field";
 import { Paragraph } from "@/components/text";
 import { TextField } from "@/components/text-field";
 import { formatDate, formatDateTime } from "@/lib/dates";
-import { RecordEditor, useOwnProfile } from "./record-screens";
+import { RecordEditor, useRecordProfile } from "./record-screens";
 import {
   ALLERGIES,
   type Allergy,
@@ -481,7 +481,7 @@ type QuestionDraft = {
 
 export function QuestionEditor({ id }: { id: string }) {
   const t = useTranslations("app.health");
-  const { own } = useOwnProfile();
+  const { own } = useRecordProfile();
   const appointments = useRecords(APPOINTMENTS as never, own?.id);
   const all = (appointments.data ?? []) as Appointment[];
   const now = Date.now();

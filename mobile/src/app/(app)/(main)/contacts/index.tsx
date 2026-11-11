@@ -10,7 +10,7 @@ import { NavRow } from "@/components/nav-row";
 import { Screen } from "@/components/screen";
 import { LoadingView, RetryView } from "@/components/state-view";
 import { Paragraph } from "@/components/text";
-import { useOwnProfile } from "@/features/health/record-screens";
+import { useRecordProfile } from "@/features/health/record-screens";
 import { CONTACTS, type Contact, useRecords } from "@/features/health/use-health";
 import { useErrorText } from "@/lib/use-error-text";
 
@@ -19,7 +19,7 @@ export default function ContactsScreen() {
   const t = useTranslations("app.health");
   const router = useRouter();
   const errorText = useErrorText();
-  const { patients, own } = useOwnProfile();
+  const { patients, own } = useRecordProfile();
   const [failed, setFailed] = useState<string | null>(null);
   const list = useRecords(CONTACTS as never, own?.id);
   if (patients.isPending || (own && list.isPending)) return <LoadingView />;

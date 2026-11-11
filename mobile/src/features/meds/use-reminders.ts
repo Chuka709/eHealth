@@ -3,7 +3,6 @@ import { useRouter } from "expo-router";
 import { useEffect, useRef } from "react";
 import { Alert, AppState } from "react-native";
 import { useTranslations } from "use-intl";
-
 import { currentEpoch, isWiping } from "@/features/auth/session";
 import { getStatus } from "@/features/auth/session-store";
 import {
@@ -19,6 +18,7 @@ import {
 } from "@/features/health/use-health";
 import { pushData, pushRoute } from "@/features/notices/push-route";
 import { refreshNotices } from "@/features/notices/use-notifications";
+import { setActiveProfile } from "@/features/records/active-profile";
 import { ownProfile, type Patient, patientsKey, usePatients } from "@/features/records/use-profile";
 import { formatDateTime } from "@/lib/dates";
 import { queryClient } from "@/lib/query-client";
@@ -245,6 +245,9 @@ export function useReminderResponses(): void {
         router.navigate(pushRoute(pushData(request.content.data)) as never);
         return;
       }
+      // this phone's reminders are the user's own: their own profile opens, never the one
+      // chosen for someone else (a dose logged there would be logged for them)
+      setActiveProfile(null);
       if (LOCAL_APPOINTMENT_ID.test(request.identifier) && trigger?.type !== "push") {
         // an appointment reminder opens that appointment - if it is the user's own, still there
         const visit = appointmentData(request.content.data);

@@ -3,13 +3,13 @@ import { fontSize, space } from "@labtrack/shared";
 import { useRef, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { useTranslations } from "use-intl";
-
 import { Button } from "@/components/button";
 import { Choices } from "@/components/choices";
 import { dayOf, PickerField } from "@/components/date-field";
 import { FormMessage } from "@/components/form-message";
 import { Screen, type ScreenScroll } from "@/components/screen";
 import { TextField } from "@/components/text-field";
+import { ProfileBanner } from "@/features/records/profile-banner";
 import { newClientId } from "@/lib/random";
 import { useErrorText } from "@/lib/use-error-text";
 import { usePalette } from "@/theme/use-palette";
@@ -72,6 +72,7 @@ export function MedicationForm({ patientId, onDone }: { patientId: string; onDon
 
   return (
     <Screen scrollRef={scroll}>
+      <ProfileBanner />
       <Text style={[styles.note, { color: p.textMuted }]}>{t("form.disclaimer")}</Text>
       {showErrors && invalid && <FormMessage kind="error" text={t("form.errors.summary")} />}
       {create.error && <FormMessage kind="error" text={errorText(create.error)} />}

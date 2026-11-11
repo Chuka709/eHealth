@@ -2,6 +2,7 @@ import type { components } from "@labtrack/shared";
 import { clearExports } from "@/features/emergency/export-cleanup";
 import { setBiometricOn, setLocked } from "@/features/lock/lock-store";
 import { resetPushThrottle } from "@/features/push/push-token";
+import { resetActiveProfile } from "@/features/records/active-profile";
 import { setWizardActive } from "@/features/records/onboarding-store";
 import { publicApi } from "@/lib/api-base";
 import { setLocale } from "@/lib/i18n";
@@ -193,6 +194,7 @@ export async function wipeLocal(
   setLocale("mn"); // the next user starts in the default language
   setWizardActive(false); // an unfinished onboarding is not the next session's
   resetPushThrottle(); // the next account sends its token at once
+  resetActiveProfile(); // the next account starts on its own profile
   await queryClient.cancelQueries();
   stopCachePersistence(); // before clear(): the persister must not save the emptied cache
   queryClient.clear();
@@ -218,6 +220,8 @@ export async function wipeLocal(
     ]);
     // N2: a cache restore that was already reading may have hydrated after clear() above
     queryClient.clear();
+    // read again from the (now wiped) store: nothing of this account carries over (L6)
+    resetActiveProfile();
     // anything started during the wipe belongs to no session
     epoch += 1;
     wiping = false;

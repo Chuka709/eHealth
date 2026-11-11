@@ -930,6 +930,27 @@
         "profileUnknown": "Profile: —"
       },
       "unreadSpoken": "New"
+    },
+    "profiles": {
+      "title": "Choose a profile",
+      "intro": "The medicines, transplant and health record screens show the profile you choose.",
+      "current": "Profile: {name}",
+      "switch": "Switch profile",
+      "forOther": "You are viewing and logging on their behalf.",
+      "ownOnly": "Medicine reminders and the emergency card work for your own profile only.",
+      "level": {
+        "owner": "my profile",
+        "caregiver": "caregiver",
+        "doctor": "doctor",
+        "viewer": "view only"
+      },
+      "bannerOther": "Viewing profile: {name}. Everything entered here is saved to this profile.",
+      "switched": "Profile switched: {name}",
+      "relation": {
+        "child": "child"
+      },
+      "changed": "The profile changed after this form was opened, so nothing was saved. Go back and enter it again on the right profile.",
+      "changedBack": "Back"
     }
   },
   "status": {
