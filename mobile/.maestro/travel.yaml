@@ -5,6 +5,10 @@
 appId: ${MAESTRO_APP_ID}
 ---
 - launchApp
+# a slow (software-rendered) emulator brings the app back after a while
+- extendedWaitUntil:
+    visible: "Өнөөдрийн тунгууд"
+    timeout: 60000
 - tapOn: "Эм"
 - extendedWaitUntil:
     visible: "Өнөөдрийн тунгууд"

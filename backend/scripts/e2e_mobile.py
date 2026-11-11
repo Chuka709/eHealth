@@ -22,7 +22,7 @@ import httpx
 from fuzz_api import BASE, ROOT, cleanup, provision_user, require_local_target
 
 MAESTRO = os.environ.get("MAESTRO_BIN", "F:/tools/maestro/bin/maestro.bat")
-APP_ID = os.environ.get("APP_ID", "mn.labtrack.app.development")
+APP_ID = os.environ.get("APP_ID", "mn.munkhly.labtrack.development")
 
 
 def _run(flows: list[str]) -> int:

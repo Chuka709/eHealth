@@ -8,9 +8,9 @@ import {
   withInfoPlist,
 } from "expo/config-plugins";
 
-// Bundle ID is decided before the first store build (docs/OPEN_QUESTIONS.md Q10); it cannot
+// Bundle ID decided in 2.11 (docs/OPEN_QUESTIONS.md Q10: mn.munkhly.labtrack); it cannot
 // change after release, so it comes from the environment instead of being hard-coded.
-const bundleId = process.env.APP_BUNDLE_ID ?? "mn.labtrack.app";
+const bundleId = process.env.APP_BUNDLE_ID ?? "mn.munkhly.labtrack";
 const variant = process.env.APP_VARIANT ?? "development";
 const isProd = variant === "production";
 
