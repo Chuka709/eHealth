@@ -657,6 +657,12 @@ class IntakeIn(_Strict):
         return self
 
 
+class IntakeExtraOut(BaseModel):
+    status: str
+    taken_at: datetime
+    by: Literal["you", "owner", "caregiver"] | None
+
+
 class IntakeOut(BaseModel):
     id: UUID
     medication_id: UUID
@@ -666,6 +672,21 @@ class IntakeOut(BaseModel):
     note: str | None
     created_at: datetime
     updated_at: datetime | None
+    # Q24: who recorded the dose as taken (relative to the caller, never a name) and any
+    # other "taken" record of the same dose - facts only
+    recorded_by: Literal["you", "owner", "caregiver"] | None = None
+    also_recorded: list[IntakeExtraOut] = []
+
+
+def _intake_out(row: Any, extras: dict[UUID, list[Any]]) -> IntakeOut:
+    return IntakeOut(
+        **{k: v for k, v in row._mapping.items() if k not in {"taken_by", "recorded_by_role"}},
+        recorded_by=row.recorded_by_role,
+        also_recorded=[
+            IntakeExtraOut(status=x.status, taken_at=x.taken_at, by=x.by_role)
+            for x in extras.get(row.id, [])
+        ],
+    )
 
 
 @router.get("/intakes", response_model=list[IntakeOut], responses=_ERRORS)
@@ -683,7 +704,8 @@ async def list_intakes(
     rows = await repo.intakes(db, patient_id, since, until, medication_id)
     if len(rows) > repo.INTAKE_PAGE:
         raise AppError(422, "intake.too_many")
-    return [IntakeOut.model_validate(r._mapping) for r in rows]
+    extras = await repo.intake_extras(db, patient_id, [r.id for r in rows])
+    return [_intake_out(r, extras) for r in rows]
 
 
 @router.post(
@@ -706,7 +728,18 @@ async def record_intake(
     row = await repo.intake(db, patient_id, saved.id)
     if row is None:
         raise AppError(404, "intake.not_found")
-    return IntakeOut.model_validate(row._mapping)
+    return _intake_out(row, await repo.intake_extras(db, patient_id, [row.id]))
+
+
+@router.delete(
+    "/intakes/{intake_id}/mine", status_code=status.HTTP_204_NO_CONTENT, responses=_ERRORS
+)
+async def delete_my_extra_intake(patient_id: UUID, intake_id: UUID, db: PatientWriteDb) -> Response:
+    """Undo one's own extra "taken" record of a dose someone else logged first (Q24)."""
+    if not await repo.delete_my_extras(db, patient_id, intake_id):
+        raise AppError(404, "intake.not_found")
+    await repo.audit(db, "intake.extra_delete", "medication_intake", intake_id, patient_id)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.delete("/intakes/{intake_id}", status_code=status.HTTP_204_NO_CONTENT, responses=_ERRORS)

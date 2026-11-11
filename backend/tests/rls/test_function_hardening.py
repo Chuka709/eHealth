@@ -39,6 +39,8 @@ EXECUTE_MATRIX: dict[str, set[str]] = {
         "caregiver_alerts_on(uuid)",
         "create_patient(text,text,date,sex)",
         "device_is_trusted(text,text)",
+        "extra_recorder_role(uuid)",
+        "intake_recorder_role(uuid)",
         "invite_caregiver(uuid,text)",
         "is_minor_patient(uuid)",
         "is_owner(uuid)",

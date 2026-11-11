@@ -442,7 +442,20 @@
         "undoLabel": "Undo — {time} {name}",
         "upcoming": "Not yet due",
         "saveFailed": "The record was not saved. Try again.",
-        "undoFailed": "Could not undo. Try again when connected."
+        "undoFailed": "Could not undo. Try again when connected.",
+        "stateTakenBy": "Taken — {who}, {time}",
+        "alsoRecorded": "Also logged: {who}, {time}",
+        "alreadyTitle": "This dose is already logged",
+        "alreadyBody": "{who} logged it as taken at {time}. Log it too? Your entry is kept separately.",
+        "alreadyCancel": "Cancel",
+        "alreadyRecord": "Log it too",
+        "who": {
+          "you": "you",
+          "owner": "the profile's owner",
+          "caregiver": "a caregiver",
+          "someone": "someone else"
+        },
+        "alreadyBodyYou": "You already logged this dose as taken at {time}. Log it again? The new entry is kept separately."
       },
       "summary": {
         "title": "This month's records",
@@ -1132,7 +1145,8 @@
     "intake": {
       "not_found": "This record was not found.",
       "delete_not_allowed": "Only whoever recorded this, or the profile's owner, can delete it.",
-      "too_many": "There are too many records in this period. Choose a shorter one."
+      "too_many": "There are too many records in this period. Choose a shorter one.",
+      "has_other_records": "Someone else logged this dose too, so it cannot be undone."
     },
     "medication": {
       "not_found": "Medication not found.",

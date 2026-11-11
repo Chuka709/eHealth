@@ -30,6 +30,7 @@ from labtrack.core.slots import (
     month_window,
     summarize,
 )
+from labtrack.db.sql import bound_text
 from labtrack.records import repository as repo
 
 MAX_INTAKE_WINDOW = timedelta(days=93)
@@ -231,7 +232,22 @@ async def record_intake(
     )
     if stored is None:
         raise AppError(409, "record.conflict")
+    me = (await db.execute(bound_text("select app_user_id()"))).scalar_one()
     current = IntakeRecord(stored.status, stored.taken_at)
+    if current.status != "skipped" and values["status"] != "skipped":
+        # Q24: the dose was already taken - by someone, at some time. The first record stays
+        # as it is (who, when, who may undo it - H20) and this one is kept beside it as a fact
+        # (no judgement, rule 10b); the same person's same time again is a repeat, not a record
+        repeat = stored.taken_by == me and stored.taken_at == values["taken_at"]
+        kept = not repeat and await _guarded(
+            db,
+            lambda: repo.insert_intake_extra(
+                db, patient_id, stored.id, values["status"], values["taken_at"]
+            ),
+        )
+        if kept:
+            await repo.audit(db, "intake.extra", "medication_intake", stored.id, patient_id)
+        return Saved(stored.id, created=False)
     merged = merge_intake(current, IntakeRecord(values["status"], values["taken_at"]))
     note = values.get("note") if stored.note is None else None
     changed = [
@@ -398,6 +414,9 @@ async def delete(
     refused: AppError,
 ) -> None:
     action, entity = _DELETES[table]
+    if table == "medication_intakes" and (await repo.intake_extras(db, patient_id, [row_id])):
+        # others logged this dose too: undoing it would erase their records (2.8g, H20)
+        raise AppError(409, "intake.has_other_records")
     if await repo.delete_row(db, table, patient_id, row_id):
         await repo.audit(db, action, entity, row_id, patient_id)
         return

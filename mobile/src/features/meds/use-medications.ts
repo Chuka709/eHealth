@@ -204,7 +204,8 @@ export type DoseRecord = {
   status: IntakeStatus;
 };
 
-const settle = (patientId: string) => {
+/** The lists that follow a recorded (or undone) dose are read again. */
+export const settle = (patientId: string) => {
   requestReminderSync(); // a recorded dose is not reminded (and an undone one is again)
   void queryClient.invalidateQueries({ queryKey: ["queue", "doses", patientId] });
   void queryClient.invalidateQueries({ queryKey: ["queue", "failed", patientId] });
@@ -246,6 +247,33 @@ export async function recordDose(
 const MINUTE = 60_000;
 
 /**
+ * Q24: before "Уусан", what the server has for this dose right now (another person may have
+ * recorded it since the list was read). Null when nothing is recorded, or offline - then the
+ * tap is recorded as usual and kept beside an earlier one.
+ */
+export async function currentRecord(
+  patientId: string,
+  medicationId: string,
+  scheduledAt: number,
+): Promise<Intake | null> {
+  try {
+    const { data } = await api.GET("/api/v1/patients/{patient_id}/intakes", {
+      params: {
+        path: { patient_id: patientId },
+        query: {
+          from: new Date(scheduledAt).toISOString(),
+          to: new Date(scheduledAt + MINUTE).toISOString(),
+          medication_id: medicationId,
+        },
+      },
+    });
+    return data?.find((i) => i.status !== "skipped") ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * "Буцаах": records still waiting in the queue are taken out; a stored record of this dose is
  * deleted on the server (a taken dose only by whoever marked it taken, or the owner - H20).
  * The stored row is found as the server keeps it - one per (medication, minute) - not by
@@ -284,10 +312,17 @@ export async function undoDose(
         Math.floor(Date.parse(r.scheduled_at) / MINUTE) * MINUTE === dose.scheduledAt,
     );
     if (!row) throw new Error("not found");
-    const { error: refused, response } = await api.DELETE(
-      "/api/v1/patients/{patient_id}/intakes/{intake_id}",
-      { params: { path: { patient_id: patientId, intake_id: row.id } } },
-    );
+    // Q24: if someone else logged it first and this user logged it too, only this user's
+    // own record is undone - never the other person's
+    const mineIsExtra =
+      row.recorded_by !== "you" && (row.also_recorded ?? []).some((x) => x.by === "you");
+    const { error: refused, response } = mineIsExtra
+      ? await api.DELETE("/api/v1/patients/{patient_id}/intakes/{intake_id}/mine", {
+          params: { path: { patient_id: patientId, intake_id: row.id } },
+        })
+      : await api.DELETE("/api/v1/patients/{patient_id}/intakes/{intake_id}", {
+          params: { path: { patient_id: patientId, intake_id: row.id } },
+        });
     if (!response.ok && response.status !== 404) throw apiError(refused);
   } finally {
     settle(patientId);

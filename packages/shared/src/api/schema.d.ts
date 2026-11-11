@@ -522,6 +522,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/patients/{patient_id}/intakes/{intake_id}/mine": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete My Extra Intake
+         * @description Undo one's own extra "taken" record of a dose someone else logged first (Q24).
+         */
+        delete: operations["delete_my_extra_intake_api_v1_patients__patient_id__intakes__intake_id__mine_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/patients/{patient_id}/intakes/{intake_id}": {
         parameters: {
             query?: never;
@@ -2096,6 +2116,18 @@ export interface components {
             /** Created */
             created: number;
         };
+        /** IntakeExtraOut */
+        IntakeExtraOut: {
+            /** Status */
+            status: string;
+            /**
+             * Taken At
+             * Format: date-time
+             */
+            taken_at: string;
+            /** By */
+            by: ("you" | "owner" | "caregiver") | null;
+        };
         /** IntakeIn */
         IntakeIn: {
             /**
@@ -2147,6 +2179,13 @@ export interface components {
             created_at: string;
             /** Updated At */
             updated_at: string | null;
+            /** Recorded By */
+            recorded_by?: ("you" | "owner" | "caregiver") | null;
+            /**
+             * Also Recorded
+             * @default []
+             */
+            also_recorded: components["schemas"]["IntakeExtraOut"][];
         };
         /** InviteIn */
         InviteIn: {
@@ -5660,6 +5699,72 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["IntakeOut"];
                 };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    delete_my_extra_intake_api_v1_patients__patient_id__intakes__intake_id__mine_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                patient_id: string;
+                intake_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Unauthorized */
             401: {

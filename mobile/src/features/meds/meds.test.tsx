@@ -1,4 +1,5 @@
 import { fireEvent, renderRouter, screen, waitFor } from "expo-router/testing-library";
+import { Alert } from "react-native";
 
 import { clearAccessToken, setStatus } from "@/features/auth/session-store";
 import { apiBaseUrl } from "@/lib/api-base";
@@ -437,4 +438,58 @@ test("Android without exact alarms: Medicines says reminders may be late, Home d
     rn.Platform.OS = os;
     mocked.getExactAlarmPermissionsAsync.mockResolvedValue({ granted: true, status: "granted" });
   }
+});
+
+// 08:00 in Ulaanbaatar today (UTC+8): midnight UTC of the Ulaanbaatar date
+const morningDose = () => {
+  const ubDate = new Date(Date.now() + 8 * 3_600_000).toISOString().slice(0, 10);
+  return `${ubDate}T00:00:00.000Z`;
+};
+
+test("Q24: who logged a dose, and another log of it, show as facts", async () => {
+  posts.push({
+    key: "intake",
+    body: {
+      client_id: "11111111-1111-4111-8111-111111111111",
+      medication_id: MED_ID,
+      scheduled_at: morningDose(),
+      taken_at: morningDose(),
+      status: "taken",
+      recorded_by: "caregiver",
+      also_recorded: [{ by: "you", status: "taken", taken_at: morningDose() }],
+    },
+  });
+  await openMeds();
+  expect(await screen.findByText(/^Уусан — асран хамгаалагч, /)).toBeOnTheScreen();
+  expect(screen.getByText(/^Мөн тэмдэглэсэн: та, /)).toBeOnTheScreen();
+  // a fact, never a judgement
+  expect(screen.queryByText(/давхар|хэтэрсэн|аюул/)).toBeNull();
+});
+
+test("Q24: logging a dose someone logged meanwhile asks first, then keeps both", async () => {
+  const asked: string[] = [];
+  jest.spyOn(Alert, "alert").mockImplementation((title, message, buttons) => {
+    asked.push(`${title}|${message ?? ""}`);
+    buttons?.find((b) => b.style !== "cancel")?.onPress?.();
+  });
+  await openMeds();
+  await screen.findByTestId(`dose-${MED_ID}-08:00`);
+  // another phone logs the morning dose after this list was read
+  posts.push({
+    key: "intake",
+    body: {
+      client_id: "33333333-3333-4333-8333-333333333333",
+      medication_id: MED_ID,
+      scheduled_at: morningDose(),
+      taken_at: morningDose(),
+      status: "taken",
+      recorded_by: "owner",
+    },
+  });
+  const [taken] = screen.getAllByRole("button", { name: /^Уусан — / });
+  await fireEvent.press(taken);
+  await waitFor(() => expect(asked).toHaveLength(1));
+  expect(asked[0]).toMatch(/профайлын эзэн «уусан» гэж тэмдэглэсэн байна/);
+  await waitFor(() => expect(posts.filter((p) => p.key === "intake")).toHaveLength(2));
+  jest.restoreAllMocks();
 });

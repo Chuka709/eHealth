@@ -3248,6 +3248,98 @@
         }
       }
     },
+    "/api/v1/patients/{patient_id}/intakes/{intake_id}/mine": {
+      "delete": {
+        "tags": [
+          "records"
+        ],
+        "summary": "Delete My Extra Intake",
+        "description": "Undo one's own extra \"taken\" record of a dose someone else logged first (Q24).",
+        "operationId": "delete_my_extra_intake_api_v1_patients__patient_id__intakes__intake_id__mine_delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "patient_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Patient Id"
+            }
+          },
+          {
+            "name": "intake_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Intake Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        }
+      }
+    },
     "/api/v1/patients/{patient_id}/intakes/{intake_id}": {
       "delete": {
         "tags": [
@@ -11680,6 +11772,42 @@
         ],
         "title": "ImportResultOut"
       },
+      "IntakeExtraOut": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "taken_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Taken At"
+          },
+          "by": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "you",
+                  "owner",
+                  "caregiver"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "By"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "taken_at",
+          "by"
+        ],
+        "title": "IntakeExtraOut"
+      },
       "IntakeIn": {
         "properties": {
           "client_id": {
@@ -11815,6 +11943,30 @@
               }
             ],
             "title": "Updated At"
+          },
+          "recorded_by": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "you",
+                  "owner",
+                  "caregiver"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recorded By"
+          },
+          "also_recorded": {
+            "items": {
+              "$ref": "#/components/schemas/IntakeExtraOut"
+            },
+            "type": "array",
+            "title": "Also Recorded",
+            "default": []
           }
         },
         "type": "object",

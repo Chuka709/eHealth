@@ -427,20 +427,47 @@ async def test_taken_always_wins_and_retries_are_safe(
         skipped = {**taken, "client_id": str(uuid4()), "status": "skipped", "taken_at": None}
         r = await c.post(f"{base}/intakes", json=skipped, headers=carer_h)
         assert (r.status_code, r.json()["status"], r.json()["id"]) == (200, "taken", first["id"])
-        # an earlier "taken" from another device keeps the earliest time
+        # Q24: a second "taken" (another person, another time) is kept beside the first, which
+        # stays as it was - who, when; each side sees who in relative terms, never a name
         earlier = {**taken, "client_id": str(uuid4()), "taken_at": dose.isoformat()}
         r = await c.post(f"{base}/intakes", json=earlier, headers=carer_h)
-        assert datetime.fromisoformat(r.json()["taken_at"]) == dose
+        body = r.json()
+        assert (r.status_code, body["id"], body["recorded_by"]) == (200, first["id"], "owner")
+        assert datetime.fromisoformat(body["taken_at"]) == dose + timedelta(minutes=4)
+        assert [
+            (x["by"], datetime.fromisoformat(x["taken_at"])) for x in body["also_recorded"]
+        ] == [("you", dose)]
+        assert first["recorded_by"] == "you"
+        assert first["also_recorded"] == []
+        # the same request again adds nothing
+        r = await c.post(f"{base}/intakes", json=earlier, headers=carer_h)
+        assert len(r.json()["also_recorded"]) == 1
+        # more than the database keeps is never an error (the first ten stay)
+        for n in range(12):
+            more = {
+                **taken,
+                "client_id": str(uuid4()),
+                "taken_at": (dose + timedelta(minutes=10 + n)).isoformat(),
+            }
+            assert (await c.post(f"{base}/intakes", json=more, headers=carer_h)).status_code == 200
+        r = await c.post(f"{base}/intakes", json=earlier, headers=carer_h)
+        assert len(r.json()["also_recorded"]) == 10
 
         since = (dose - timedelta(days=1)).isoformat()
         until = (dose + timedelta(days=1)).isoformat()
         listed = await c.get(f"{base}/intakes", params={"from": since, "to": until}, headers=h)
         assert [i["id"] for i in listed.json()] == [first["id"]]
+        assert [x["by"] for x in listed.json()[0]["also_recorded"]] == ["caregiver"] * 10
         too_long = {"from": (dose - timedelta(days=100)).isoformat(), "to": until}
         assert (await c.get(f"{base}/intakes", params=too_long, headers=h)).status_code == 422
 
-        # undo: a taken dose only by whoever recorded it (the owner here) or the owner
+        # undo: a dose others logged too cannot be undone (their records would go with it);
+        # each removes only their own extra record, then the recorder (or the owner) may undo
         url = f"{base}/intakes/{first['id']}"
+        r = await c.delete(url, headers=h)
+        assert (r.status_code, r.json()["code"]) == (409, "intake.has_other_records")
+        assert (await c.delete(f"{url}/mine", headers=h)).status_code == 404  # none of the owner's
+        assert (await c.delete(f"{url}/mine", headers=carer_h)).status_code == 204
         r = await c.delete(url, headers=carer_h)
         assert (r.status_code, r.json()["code"]) == (403, "intake.delete_not_allowed")
         assert (await c.delete(url, headers=h)).status_code == 204

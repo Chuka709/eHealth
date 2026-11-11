@@ -1,6 +1,6 @@
 import { fontSize, radius, space } from "@labtrack/shared";
 import { useRef, useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { Alert, StyleSheet, Text, View } from "react-native";
 import { useTranslations } from "use-intl";
 
 import { Button } from "@/components/button";
@@ -9,9 +9,11 @@ import { usePalette } from "@/theme/use-palette";
 
 import type { TodayDose } from "./plan";
 import {
+  currentRecord,
   dismissFailedDose,
   type IntakeStatus,
   recordDose,
+  settle,
   undoDose,
   useFailedDoses,
 } from "./use-medications";
@@ -74,7 +76,7 @@ export function TodayList({
       setTimeout(() => setSettling((k) => (k === key ? null : k)), 1000);
     }
   };
-  const mark = (dose: TodayDose, key: string, status: IntakeStatus) =>
+  const save = (dose: TodayDose, key: string, status: IntakeStatus) =>
     run(key, async () => {
       try {
         const result = await recordDose(patientId, {
@@ -87,6 +89,34 @@ export function TodayList({
         return "saveFailed";
       }
     });
+  // Q24: someone may already have recorded this dose taken - said before, never judged
+  const mark = async (dose: TodayDose, key: string, status: IntakeStatus) => {
+    if (status !== "taken" || inFlight.current.has(key)) return save(dose, key, status);
+    // held while asking the server: a second tap meanwhile does nothing
+    const checking = `${key}#check`;
+    if (inFlight.current.has(checking)) return;
+    inFlight.current.add(checking);
+    let stored: Awaited<ReturnType<typeof currentRecord>>;
+    try {
+      stored = await currentRecord(patientId, dose.medication.id, dose.slot.scheduledAt);
+    } finally {
+      inFlight.current.delete(checking);
+    }
+    if (!stored?.taken_at) return save(dose, key, status);
+    const who = t(`dose.who.${stored.recorded_by ?? "someone"}` as "dose.who.you");
+    const time = clockIn(Date.parse(stored.taken_at), dose.zone);
+    Alert.alert(
+      t("dose.alreadyTitle"),
+      stored.recorded_by === "you"
+        ? t("dose.alreadyBodyYou", { time })
+        : t("dose.alreadyBody", { time, who }),
+      [
+        { text: t("dose.alreadyCancel"), style: "cancel", onPress: () => settle(patientId) },
+        { text: t("dose.alreadyRecord"), onPress: () => void save(dose, key, status) },
+      ],
+      { cancelable: true },
+    );
+  };
   const undo = (dose: TodayDose, key: string) =>
     run(key, async () => {
       if (!dose.recorded) return "undoFailed";
@@ -161,9 +191,17 @@ function DoseRow({
     : "";
   const amount = dose.slot.amount ? `${dose.slot.amount} ${unit}`.trim() : null;
   const name = dose.medication.name;
+  const who = (by: string | null | undefined) => t(`dose.who.${by ?? "someone"}` as "dose.who.you");
+  const at = (iso: string) => clockIn(Date.parse(iso), dose.zone);
   const state =
     dose.state === "taken"
-      ? t("dose.stateTaken")
+      ? dose.recorded?.takenAt &&
+        (dose.recorded.by === "owner" ||
+          dose.recorded.by === "caregiver" ||
+          // with other records beside it, the first one's time matters too
+          (dose.recorded.by === "you" && (dose.recorded.also?.length ?? 0) > 0))
+        ? t("dose.stateTakenBy", { who: who(dose.recorded.by), time: at(dose.recorded.takenAt) })
+        : t("dose.stateTaken")
       : dose.state === "skipped"
         ? t("dose.stateSkipped")
         : due
@@ -185,6 +223,11 @@ function DoseRow({
       >
         {state}
       </Text>
+      {(dose.recorded?.also ?? []).map((x) => (
+        <Text key={`${x.by}@${x.takenAt}`} style={[styles.body, { color: p.text }]}>
+          {t("dose.alsoRecorded", { who: who(x.by), time: at(x.takenAt) })}
+        </Text>
+      ))}
       {dose.state === null ? (
         <View style={styles.actions}>
           <View style={styles.action}>

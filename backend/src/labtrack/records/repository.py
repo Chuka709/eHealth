@@ -357,8 +357,10 @@ async def insert_regimen(
 # --- intakes ----------------------------------------------------------------------------------
 
 _INTAKE_COLUMNS = (
-    "select id, medication_id, scheduled_at, taken_at, status, note, created_at, updated_at"
-    " from medication_intakes where patient_id = :p"
+    "select id, medication_id, scheduled_at, taken_at, status, note, created_at, updated_at,"
+    # who recorded the dose as taken, relative to the caller - never a name (Q24)
+    " taken_by, intake_recorder_role(id)"
+    " as recorded_by_role from medication_intakes where patient_id = :p"
 )
 _INTAKES_RANGE = bound_text(
     _INTAKE_COLUMNS + " and coalesce(scheduled_at, taken_at) >= :since"
@@ -382,6 +384,58 @@ _INTAKE_MERGE = bound_text(
     "update medication_intakes set status = :status, taken_at = :taken_at,"
     " note = coalesce(note, :note) where patient_id = :p and id = :i"
 )
+
+
+_EXTRAS = bound_text(
+    "select intake_id, status, taken_at, extra_recorder_role(id) as by_role"
+    " from medication_intake_extra where patient_id = :p and intake_id = any(cast(:ids as uuid[]))"
+    " order by taken_at, created_at"
+)
+_EXTRA_COUNT = bound_text(
+    "select count(*) from medication_intake_extra where patient_id = :p and intake_id = :i"
+)
+EXTRA_MAX = 10  # as the database caps it (0027)
+_EXTRA_INSERT = bound_text(
+    "insert into medication_intake_extra (patient_id, intake_id, status, taken_at)"
+    " values (:p, :i, :status, :taken_at) on conflict do nothing"
+)
+
+
+async def intake_extras(
+    db: AsyncSession, patient_id: UUID, intake_ids: Sequence[UUID]
+) -> dict[UUID, list[Row[Any]]]:
+    """The other "taken" records of these doses (Q24), by dose."""
+    if not intake_ids:
+        return {}
+    out: dict[UUID, list[Row[Any]]] = {}
+    for row in await db.execute(_EXTRAS, {"p": patient_id, "ids": list(intake_ids)}):
+        out.setdefault(row.intake_id, []).append(row)
+    return out
+
+
+_EXTRA_DELETE_MINE = bound_text(
+    "delete from medication_intake_extra where patient_id = :p and intake_id = :i"
+    " and recorded_by = app_user_id()"
+)
+
+
+async def delete_my_extras(db: AsyncSession, patient_id: UUID, intake_id: UUID) -> int:
+    result = await db.execute(_EXTRA_DELETE_MINE, {"p": patient_id, "i": intake_id})
+    return int(result.rowcount or 0)  # type: ignore[attr-defined]
+
+
+async def insert_intake_extra(
+    db: AsyncSession, patient_id: UUID, intake_id: UUID, status: str, taken_at: object
+) -> bool:
+    """Kept unless the dose already has the most records kept (then the earlier ones stay)."""
+    if (
+        await db.execute(_EXTRA_COUNT, {"p": patient_id, "i": intake_id})
+    ).scalar_one() >= EXTRA_MAX:
+        return False
+    result = await db.execute(
+        _EXTRA_INSERT, {"p": patient_id, "i": intake_id, "status": status, "taken_at": taken_at}
+    )
+    return bool(result.rowcount)  # type: ignore[attr-defined]
 
 
 async def intakes(
