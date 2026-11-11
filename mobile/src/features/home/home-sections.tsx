@@ -12,6 +12,7 @@ import { useTodayDoses } from "@/features/meds/use-today";
 import { elapsedText, transplantDateText } from "@/features/records/elapsed";
 import { useTransplants } from "@/features/records/use-transplants";
 import { formatDateTime } from "@/lib/dates";
+import { loading, OFFLINE_ERROR as OFFLINE } from "@/lib/query-state";
 import { useErrorText } from "@/lib/use-error-text";
 
 import { doseCounts, latestTransplant, nextAppointment, useHomeDoses } from "./home-data";
@@ -61,12 +62,12 @@ export function TransplantSection({ patientId }: { patientId: string }) {
   return (
     <>
       <Title>{t("transplant.title")}</Title>
-      {transplants.isPending ? (
+      {loading(transplants) ? (
         <Loading />
       ) : !list ? (
         <Failed
           section={t("transplant.title")}
-          error={transplants.error}
+          error={transplants.error ?? OFFLINE}
           onRetry={() => void transplants.refetch()}
         />
       ) : !item ? (
@@ -112,21 +113,27 @@ export function TransplantSection({ patientId }: { patientId: string }) {
 export function TodaySection({ patientId, now }: { patientId: string; now: Date }) {
   const t = useTranslations("app");
   const router = useRouter();
-  const { doses, meds, intakes } = useTodayDoses(patientId, now);
+  const { doses, meds, intakes, zones, waitingForZone } = useTodayDoses(patientId, now);
   const shown = useHomeDoses(doses, now.getTime());
   const { recorded, total } = doseCounts(doses);
   return (
     <>
       <Title>{t("meds.today")}</Title>
-      {meds.isPending || (!intakes.data && intakes.fetchStatus === "fetching") ? (
+      {loading(meds) ||
+      (!intakes.data && intakes.fetchStatus === "fetching") ||
+      (!zones.data && zones.fetchStatus === "fetching") ? (
         <Loading />
       ) : !meds.data ? (
-        <Failed section={t("meds.today")} error={meds.error} onRetry={() => void meds.refetch()} />
-      ) : total === 0 ? (
+        <Failed
+          section={t("meds.today")}
+          error={meds.error ?? OFFLINE}
+          onRetry={() => void meds.refetch()}
+        />
+      ) : total === 0 && waitingForZone.length === 0 ? (
         <Paragraph>{t("meds.todayEmpty")}</Paragraph>
       ) : (
         <>
-          {intakes.data ? (
+          {total === 0 ? null : intakes.data ? (
             <Paragraph>{t("home.dosesRecorded", { recorded, total })}</Paragraph>
           ) : (
             // offline on a new day, or the server failed: no count that could be wrong, and
@@ -141,8 +148,13 @@ export function TodaySection({ patientId, now }: { patientId: string; now: Date 
               />
             </>
           )}
-          {shown.length > 0 ? (
-            <TodayList patientId={patientId} doses={shown} now={now.getTime()} />
+          {shown.length > 0 || waitingForZone.length > 0 ? (
+            <TodayList
+              patientId={patientId}
+              doses={shown}
+              now={now.getTime()}
+              waiting={waitingForZone}
+            />
           ) : (
             <Paragraph>{t("home.dosesAllRecorded")}</Paragraph>
           )}
@@ -163,12 +175,12 @@ export function AppointmentSection({ patientId, now }: { patientId: string; now:
   return (
     <>
       <Title>{t("home.nextAppointment")}</Title>
-      {appointments.isPending ? (
+      {loading(appointments) ? (
         <Loading />
       ) : !list ? (
         <Failed
           section={t("home.nextAppointment")}
-          error={appointments.error}
+          error={appointments.error ?? OFFLINE}
           onRetry={() => void appointments.refetch()}
         />
       ) : next ? (

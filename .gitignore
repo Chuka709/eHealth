@@ -72,3 +72,6 @@ web/test-results/
 # schemathesis reports (just fuzz-api)
 backend/.fuzz-reports/
 .schemathesis/
+
+# PHI — sample lab reports kept on this machine only
+test samples/

@@ -213,7 +213,9 @@ test("today's doses come from the dose history; a tap records one through the qu
   expect(screen.getAllByText(/^(Тэмдэглээгүй|Цаг нь болоогүй)$/)).toHaveLength(2);
   // the monthly counts: plain numbers, nothing called missed
   expect(
-    await screen.findByText("Уусан гэж тэмдэглэсэн: 6 / товлосон тун: 8 (85%)."),
+    await screen.findByText(
+      "Уусан гэж тэмдэглэсэн: 6 / товлосон тун: 8. Тэмдэглэсэн эсвэл тэмдэглэх хугацаа нь дууссан 7 тунгийн 85% нь «уусан».",
+    ),
   ).toBeOnTheScreen();
   expect(screen.queryByText(/алдсан|мартсан/)).toBeNull();
 
@@ -331,7 +333,7 @@ test("reminders are scheduled on the phone, without the medicine's name (H10)", 
   for (const n of doses) {
     expect(n.trigger.date).toBeGreaterThan(Date.now());
     expect(n.trigger.channelId).toBe("doses");
-    expect(n.content.title).toBe("Эм уух цаг боллоо");
+    expect(n.content.title).toMatch(/^(08|20):00-ийн эмийн сануулга$/);
     expect(JSON.stringify(n.content)).not.toContain("Такролимус");
     expect(n.content.data.d).toEqual([{ m: MED_ID, at: n.trigger.date }]);
   }
@@ -430,9 +432,9 @@ test("Android without exact alarms: Medicines says reminders may be late, Home d
   try {
     await renderRouter("./src/app", { initialUrl: "/" });
     await screen.findByText("Системийн төлөв");
-    expect(screen.queryByText(/хэдэн минут хоцорч/)).toBeNull();
+    expect(screen.queryByText(/нэг цаг, заримдаа түүнээс ч их/)).toBeNull();
     await fireEvent.press(await screen.findByRole("button", { name: /^Эм/ }));
-    expect(await screen.findByText(/хэдэн минут хоцорч/)).toBeOnTheScreen();
+    expect(await screen.findByText(/нэг цаг, заримдаа түүнээс ч их/)).toBeOnTheScreen();
     expect(screen.getByRole("button", { name: "Тайлбар ба тохиргоо" })).toBeOnTheScreen();
   } finally {
     rn.Platform.OS = os;

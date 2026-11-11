@@ -3,6 +3,7 @@ import fc from "fast-check";
 import {
   DOSE_BUDGET,
   daysFor,
+  GRACE,
   MAX_DAYS,
   planReminders,
   type ReminderMedicine,
@@ -12,6 +13,7 @@ import type { MedicationPlan } from "./slots";
 
 const texts: ReminderTexts = {
   title: "Эм уух цаг боллоо",
+  timedTitle: (time) => `${time}-ийн эмийн сануулга`,
   count: (n) => `${n} тун`,
   item: (name, amount) => (amount ? `${name} ${amount}` : name),
   renewTitle: "Сануулгаа сэргээнэ үү",
@@ -65,7 +67,8 @@ describe("reminder planning", () => {
 
   it("names nothing on the lock screen unless the user chose so (H10)", () => {
     const [first] = planReminders(input([med("a", ["20:00"])]), texts);
-    expect(first.title).toBe("Эм уух цаг боллоо");
+    // the scheduled time, never a name: a reminder held back still says which dose (H18)
+    expect(first.title).toBe("20:00-ийн эмийн сануулга");
     expect(first.body).toBe("1 тун");
     expect(JSON.stringify(first)).not.toContain("Эм a");
     expect(first.data).toEqual({ kind: "dose", p: "p1", d: [{ m: "a", at: first.at }] });
@@ -115,7 +118,7 @@ describe("reminder planning", () => {
         expect(doses.length).toBeLessThanOrEqual(DOSE_BUDGET);
         expect(list.length).toBeLessThanOrEqual(DOSE_BUDGET + 1);
         for (const n of list) {
-          expect(n.at).toBeGreaterThanOrEqual(NOW - 30 * 60_000);
+          expect(n.at).toBeGreaterThanOrEqual(NOW - GRACE);
           expect(n.at).toBeLessThan(NOW + MAX_DAYS * DAY + 1);
         }
         const times = doses.map((n) => n.at);
@@ -150,7 +153,13 @@ describe("doses already recorded and late alarms (medical review 2.5c)", () => {
     const at = Date.parse("2026-11-04T12:00:00Z"); // 20:00 Ulaanbaatar
     const late = planReminders({ ...input([med("a", ["20:00"])]), now: at + 5 * 60_000 }, texts);
     expect(late[0]).toMatchObject({ at, due: true });
-    const gone = planReminders({ ...input([med("a", ["20:00"])]), now: at + 31 * 60_000 }, texts);
+    // an inexact alarm may be held back up to an hour (H18): still kept then
+    const held = planReminders({ ...input([med("a", ["20:00"])]), now: at + 59 * 60_000 }, texts);
+    expect(held[0]).toMatchObject({ at, due: true });
+    const gone = planReminders(
+      { ...input([med("a", ["20:00"])]), now: at + GRACE + 60_000 },
+      texts,
+    );
     expect(gone[0].at).toBeGreaterThan(at);
   });
 

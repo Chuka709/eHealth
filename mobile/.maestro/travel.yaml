@@ -1,0 +1,14 @@
+# Phase 2 DoD "a time-zone change works" (2.10d, H7): `just e2e-mobile` moves the emulator to
+# Asia/Seoul before this flow. The activation flow's medicine is in "home" mode, so its doses
+# stay at 08:00 Ulaanbaatar time - shown as such - and the script checks that the scheduled
+# reminder instants did not move.
+appId: ${MAESTRO_APP_ID}
+---
+- launchApp
+- tapOn: "Эм"
+- extendedWaitUntil:
+    visible: "Өнөөдрийн тунгууд"
+    timeout: 15000
+# the dose keeps its Ulaanbaatar minute, never 08:00 Seoul time
+- assertVisible: "08:00 · Такролимус"
+- tapOn: "Нүүр"

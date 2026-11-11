@@ -27,8 +27,10 @@ import {
   ACTION_TAKEN,
   cancelSnoozeOf,
   doseData,
+  exactAlarmState,
   LOCAL_DOSE_ID,
   registerReminderKinds,
+  rememberExactAlarm,
   showAppointmentDetails,
   showNames,
   snooze,
@@ -160,6 +162,7 @@ export function useReminderSync(): void {
           },
           {
             title: t("notify.title"),
+            timedTitle: (time) => t("notify.timedTitle", { time }),
             count: (n) => t("notify.count", { n }),
             item: (name, amount) => (amount ? t("notify.item", { name, amount }) : name),
             renewTitle: t("notify.renewTitle"),
@@ -176,7 +179,12 @@ export function useReminderSync(): void {
         (names || body === t("notify.count", { n: items.length })) &&
         items.every((x) => enabled.has(x.m) && !recorded.has(doseKey(x.m, x.at))));
     const keepUnplanned = (id: string) => (id.startsWith("appt.") ? !visitsKnown : !doseData);
-    await syncReminders([...planned, ...visits], keepSnooze, valid, keepUnplanned);
+    // renewed only once every kind is known: one left unplanned keeps its alarms as they
+    // were set, and the change would be remembered with them never renewed
+    const exact = await exactAlarmState().catch(() => null);
+    const renew = (exact?.changed ?? false) && doseData !== null && visitsKnown;
+    await syncReminders([...planned, ...visits], keepSnooze, valid, keepUnplanned, renew);
+    if (renew && exact && valid()) await rememberExactAlarm(exact.granted).catch(() => undefined);
   };
 
   const runRef = useRef<() => void>(() => undefined);

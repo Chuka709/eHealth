@@ -339,3 +339,20 @@ test("Home: today's records not loaded - no count that could be wrong, doses sti
     handlers[`GET /api/v1/patients/${OWN.id}/intakes`] = intakes;
   }
 });
+
+test("H20: a local-time medicine waits for the zones - never placed in Ulaanbaatar time", async () => {
+  medications = [{ ...TACROLIMUS, reminder_timezone_mode: "local" }];
+  const zones = handlers[`GET /api/v1/patients/${OWN.id}/timezone`];
+  handlers[`GET /api/v1/patients/${OWN.id}/timezone`] = () =>
+    json(500, { code: "internal", message_key: "error.internal" });
+  try {
+    await openHome();
+    expect(
+      await screen.findByText(/^Такролимус — тухайн газрын цагаар уудаг эм/),
+    ).toBeOnTheScreen();
+    expect(screen.queryByRole("button", { name: /^Уусан — / })).toBeNull();
+    expect(screen.queryByText("Өнөөдөр товлосон тун алга.")).toBeNull();
+  } finally {
+    handlers[`GET /api/v1/patients/${OWN.id}/timezone`] = zones;
+  }
+});

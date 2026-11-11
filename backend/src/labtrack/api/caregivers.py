@@ -225,7 +225,7 @@ async def pause(patient_id: UUID, user_id: UUID, body: PauseIn, db: PatientWrite
 
 _WATCHED = bound_text(
     "select count(*) from medications where patient_id = :p and reminders_enabled"
-    " and (stopped_on is null or stopped_on >= local_today())"
+    " and (stopped_on is null or stopped_on > local_today())"
     " and (planned_end_on is null or planned_end_on >= local_today())"
 )
 

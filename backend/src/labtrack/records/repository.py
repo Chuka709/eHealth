@@ -213,7 +213,7 @@ _MEDICATION_SELECT = bound_text(
     " left join medication_catalog c on c.code = m.catalog_code"
     " where m.patient_id = :p and (cast(:i as uuid) is null or m.id = :i)"
     # current first, immunosuppressants first among them (docs/08 "Эм")
-    " order by coalesce(m.stopped_on is not null or m.planned_end_on < local_today(), false),"
+    " order by coalesce(m.stopped_on <= local_today() or m.planned_end_on < local_today(), false),"
     " (c.category = 'immunosuppressant') desc nulls last,"
     " m.name, m.created_at"
 )

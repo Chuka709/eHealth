@@ -39,12 +39,12 @@ appId: ${MAESTRO_APP_ID}
 # Android 14+ denies exact alarms by default: reminders still come, Medicines says they may be
 # late and leads to the explanation (docs/08, H18).
 - extendedWaitUntil:
-    visible: "Эмийн сануулга хэдэн минут хоцорч.*"
+    visible: "Эмийн сануулга хоцорч.*"
     timeout: 15000
     optional: true # granted on Android 12-13 images
 - runFlow:
     when:
-      visible: "Эмийн сануулга хэдэн минут хоцорч.*"
+      visible: "Эмийн сануулга хоцорч.*"
     commands:
       - tapOn: "Тайлбар ба тохиргоо"
       - assertVisible: "Сануулга яг цагтаа ирэх"

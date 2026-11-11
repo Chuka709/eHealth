@@ -8,6 +8,7 @@ import { FormMessage } from "@/components/form-message";
 import { usePalette } from "@/theme/use-palette";
 
 import type { TodayDose } from "./plan";
+import type { Medication } from "./use-medications";
 import {
   currentRecord,
   dismissFailedDose,
@@ -49,10 +50,13 @@ export function TodayList({
   patientId,
   doses,
   now,
+  waiting = [],
 }: {
   patientId: string;
   doses: TodayDose[];
   now: number;
+  /** "local" medicines whose doses wait for the profile's zones (see useTodayDoses) */
+  waiting?: readonly Medication[];
 }) {
   const t = useTranslations("app.meds");
   const p = usePalette();
@@ -168,7 +172,13 @@ export function TodayList({
           text={t(notice === "full" ? "dose.queueFull" : `dose.${notice}`)}
         />
       )}
-      {doses.length === 0 && (
+      {waiting.length > 0 && (
+        <FormMessage
+          kind="warning"
+          text={t("zoneWait", { names: waiting.map((m) => m.name).join(", ") })}
+        />
+      )}
+      {doses.length === 0 && waiting.length === 0 && (
         <Text style={[styles.body, { color: p.text }]}>{t("todayEmpty")}</Text>
       )}
       {doses.map((dose) => {

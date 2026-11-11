@@ -40,6 +40,8 @@ export function MonthSummary({ patientId, now }: { patientId: string; now: Date 
             : t("body", {
                 planned: total.planned,
                 taken: total.taken,
+                // the percent's own base (core/slots percent_taken): doses still open are out
+                due: total.planned - total.open,
                 percent: total.percent_taken,
               }),
           t("skipped", { n: total.skipped }),

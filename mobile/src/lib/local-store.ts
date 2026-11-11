@@ -1,4 +1,4 @@
-import { createMMKV, type MMKV } from "react-native-mmkv";
+import { createMMKV, deleteMMKV, type MMKV } from "react-native-mmkv";
 
 import { deleteSecure, readSecure, secureKeys, writeSecure } from "@/features/auth/secure-tokens";
 
@@ -13,7 +13,8 @@ import { randomSecret } from "./random";
  * MMKV with AES-256; its id and key live in the Keychain/Keystore (secure-store, readable
  * only while the phone is unlocked, never backed up). Each new key gets a new store id, so a
  * store whose key was lost is never opened with another key. Signing out clears the store
- * and deletes the key: anything that survives on disk can no longer be decrypted.
+ * and deletes the key and the store's files: anything that survived on disk could no longer
+ * be decrypted, and nothing is left to.
  */
 
 type Keyring = { id: string; key: string; account: string };
@@ -21,6 +22,7 @@ type Keyring = { id: string; key: string; account: string };
 let store: MMKV | null = null;
 let opening: Promise<MMKV> | null = null;
 let generation = 0; // a wipe while a store is opening must win
+let wiping: Promise<void> | null = null; // an open waits for a wipe still deleting the old store
 
 function isKeyring(value: unknown): value is Keyring {
   return (
@@ -50,6 +52,7 @@ async function keyring(account: string, started: number): Promise<Keyring> {
         encryptionKey: parsed.key,
         encryptionType: "AES-256",
       }).clearAll();
+      if (parsed.id.startsWith("lt.local.")) dropFiles(parsed.id);
     }
   }
   if (started !== generation) throw new Error("local store wiped while opening");
@@ -72,6 +75,9 @@ export function localStore(): Promise<MMKV> {
   if (!opening) {
     const started = generation;
     opening = (async () => {
+      // never read a keyring a sign-out is still deleting (it would reopen a store being removed)
+      if (wiping) await wiping;
+      if (started !== generation) throw new Error("local store wiped while opening");
       if (getStatus() !== "signedIn") throw new Error("not signed in");
       let account = await readSecure(secureKeys.account);
       if (!account) {
@@ -99,13 +105,45 @@ export function openLocalStore(): MMKV | null {
   return store;
 }
 
-/** Sign-out: everything in the store, then its key (crypto-shredding). */
+/** A store's files on disk (its data is cleared first; a failure only leaves ciphertext). */
+function dropFiles(id: string): void {
+  try {
+    deleteMMKV(id);
+  } catch {
+    // still open elsewhere or already gone: the key is deleted anyway
+  }
+}
+
+/** Sign-out: everything in the store, its files, then its key (crypto-shredding). */
 export async function wipeLocalStore(): Promise<void> {
   generation += 1;
   const current = store;
   store = null;
+  const previous = wiping;
+  const run = (async () => {
+    await previous?.catch(() => undefined); // a failed wipe never stops this one
+    await removeStore(current);
+  })();
+  wiping = run;
+  try {
+    await run;
+  } finally {
+    if (wiping === run) wiping = null;
+  }
+}
+
+async function removeStore(current: MMKV | null): Promise<void> {
   try {
     current?.clearAll();
+    // the store this phone keeps for the account, also when it was never opened this run
+    const saved = await readSecure(secureKeys.localStore);
+    let id: unknown = null;
+    try {
+      id = saved ? (JSON.parse(saved) as { id?: unknown }).id : null;
+    } catch {
+      // unreadable keyring: nothing to name
+    }
+    if (typeof id === "string" && id.startsWith("lt.local.")) dropFiles(id);
   } finally {
     await deleteSecure(secureKeys.localStore);
   }

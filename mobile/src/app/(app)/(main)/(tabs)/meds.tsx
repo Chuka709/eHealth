@@ -14,6 +14,7 @@ import { useTodayDoses } from "@/features/meds/use-today";
 import { isOthers, useActiveProfile } from "@/features/records/active-profile";
 import { ProfileSwitcher } from "@/features/records/profile-switcher";
 import { usePatients } from "@/features/records/use-profile";
+import { loading, OFFLINE_ERROR } from "@/lib/query-state";
 import { useErrorText } from "@/lib/use-error-text";
 
 export default function MedsScreen() {
@@ -24,13 +25,16 @@ export default function MedsScreen() {
   const now = useNow();
   const patients = usePatients();
   const own = useActiveProfile(patients.data);
-  const { doses, meds } = useTodayDoses(own?.id, now);
+  const { doses, meds, zones, waitingForZone } = useTodayDoses(own?.id, now);
 
-  if (patients.isPending || (own && meds.isPending)) return <LoadingView />;
+  // offline with nothing kept the queries wait ("paused"): say so instead of loading forever
+  // zones too: until they come, a "local" medicine's doses are held back (H20)
+  if (loading(patients) || (own && (loading(meds) || loading(zones)))) return <LoadingView />;
   if (!own || !meds.data) {
+    const paused = patients.fetchStatus === "paused" || meds.fetchStatus === "paused";
     return (
       <RetryView
-        text={errorText(patients.error ?? meds.error)}
+        text={errorText(patients.error ?? meds.error ?? (paused ? OFFLINE_ERROR : null))}
         onRetry={() => void (patients.data ? meds.refetch() : patients.refetch())}
       />
     );
@@ -43,7 +47,7 @@ export default function MedsScreen() {
       <ProfileSwitcher />
       {!isOthers(own, patients.data) && <ReminderWarnings late />}
       <Title>{t("today")}</Title>
-      <TodayList patientId={own.id} doses={doses} now={now.getTime()} />
+      <TodayList patientId={own.id} doses={doses} now={now.getTime()} waiting={waitingForZone} />
       <MonthSummary patientId={own.id} now={now} />
 
       <Title>{t("current")}</Title>

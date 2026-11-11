@@ -14,7 +14,19 @@ export function elapsedText(t: T, transplant: Dated): string | null {
   if (transplant.date_precision === "year") {
     return t("summary.sinceYearOnly", { year: transplant.transplant_date.slice(0, 4) });
   }
-  if (e.years === 0) return t("summary.sinceMonths", { months: e.months });
+  if (e.years === 0) {
+    // the first weeks and months matter most (H24): an exact count only from an exact date
+    if (e.months === 0) {
+      // a month-only date counts from the month's end: "under a month" could be untrue, so the
+      // month itself is shown, as a year-only date shows the year
+      if (!e.approximate) return t("summary.sinceDays", { days: e.days });
+      const [year, month] = transplant.transplant_date.split("-");
+      return t("summary.sinceMonthOnly", { year, month: Number(month) });
+    }
+    return e.approximate
+      ? t("summary.sinceMonthsApprox", { months: e.months })
+      : t("summary.sinceMonths", { months: e.months });
+  }
   const values = { years: e.years, months: e.months % 12 };
   return e.approximate ? t("summary.since", values) : t("summary.sinceExact", values);
 }

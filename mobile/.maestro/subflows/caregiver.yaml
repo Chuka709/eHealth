@@ -89,7 +89,9 @@ appId: ${MAESTRO_APP_ID}
 - tapOn: "Хэрэглэгчийн нэр"
 - inputText: ${CAREGIVER_USERNAME}
 - pressKey: Enter
-- inputText: ${CAREGIVER_PASSWORD}
+- inputText:
+    text: ${CAREGIVER_PASSWORD}
+    label: "password"
 - pressKey: Enter
 - runFlow: onboarding.yaml
 - tapOn: "Тохиргоо"

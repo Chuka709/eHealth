@@ -14,9 +14,13 @@ appId: ${MAESTRO_APP_ID}
 - tapOn: "Хэрэглэгчийн нэр"
 - inputText: ${USERNAME}
 - pressKey: Enter
-- inputText: ${PASSWORD}
+- inputText:
+    text: ${PASSWORD}
+    label: "password"
 - pressKey: Enter
-- inputText: ${PASSWORD}
+- inputText:
+    text: ${PASSWORD}
+    label: "password"
 - pressKey: Enter
 - extendedWaitUntil:
     visible: "Аккаунт идэвхжлээ.*"
@@ -26,7 +30,9 @@ appId: ${MAESTRO_APP_ID}
 - tapOn: "Хэрэглэгчийн нэр"
 - inputText: ${USERNAME}
 - pressKey: Enter
-- inputText: ${PASSWORD}
+- inputText:
+    text: ${PASSWORD}
+    label: "password"
 - pressKey: Enter # the password field's "go" action signs in
 
 - runFlow: onboarding.yaml

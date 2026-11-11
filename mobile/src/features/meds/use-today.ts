@@ -47,12 +47,25 @@ export function useTodayDoses(patientId: string | undefined, now: Date) {
   const intakes = useIntakes(patientId, new Date(start).toISOString(), new Date(end).toISOString());
   const pending = usePendingDoses(patientId);
 
+  // A "local" medicine's minutes depend on the profile's zone history: without it they would
+  // be placed in Ulaanbaatar time - another minute than the stored dose, so a record of it
+  // would not meet the one already kept (H20). Such medicines wait for the zones instead.
+  // Named only once the zones could not come (an error, or offline with none kept) - not while
+  // they are loading. The same medicines as those left out below.
+  const zonesMissing = !zones.data && zones.fetchStatus !== "fetching";
+  const waitingForZone = useMemo(
+    () =>
+      zonesMissing ? (meds.data ?? []).filter((m) => m.reminder_timezone_mode === "local") : [],
+    [meds.data, zonesMissing],
+  );
+
   const doses = useMemo<TodayDose[]>(() => {
     if (!meds.data) return [];
     const states = doseStates(intakes.data ?? [], pending.data ?? []);
     const switches = zones.data?.switches ?? [];
     const local = zones.data?.current ?? HOME_TIMEZONE;
     return meds.data
+      .filter((medication) => zones.data || medication.reminder_timezone_mode !== "local")
       .flatMap((medication) =>
         doseSlots(planOf(medication), switches, start, end).map((slot) => {
           const recorded = states.get(doseKey(medication.id, slot.scheduledAt)) ?? null;
@@ -68,5 +81,5 @@ export function useTodayDoses(patientId: string | undefined, now: Date) {
       .sort((a, b) => a.slot.scheduledAt - b.slot.scheduledAt);
   }, [meds.data, zones.data, intakes.data, pending.data, start, end]);
 
-  return { doses, meds, zones, intakes };
+  return { doses, meds, zones, intakes, waitingForZone };
 }

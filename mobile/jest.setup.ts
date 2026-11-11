@@ -32,6 +32,8 @@ jest.mock("react-native-mmkv", () => {
         clearAll: () => data.clear(),
       };
     },
+    existsMMKV: (id: string) => stores.has(id),
+    deleteMMKV: (id: string) => stores.delete(id),
   };
 });
 jest.mock("@react-native-community/netinfo", () =>

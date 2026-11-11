@@ -170,8 +170,12 @@ def upcoming_regimens[R: Dated](rows: Iterable[R], day: date) -> list[R]:
 
 
 def is_current(stopped_on: date | None, planned_end_on: date | None, today: date) -> bool:
-    """Still taken today: not stopped, and a planned course end (if any) not yet past."""
-    return stopped_on is None and (planned_end_on is None or planned_end_on >= today)
+    """Still taken today: `stopped_on` (the first day no longer taken - Q21, as in
+    `slots.taken_on`) not reached yet, and a planned course end (if any) not yet past. A stop
+    entered ahead (the API takes none today; kept for safety) keeps it current (H17)."""
+    return (stopped_on is None or stopped_on > today) and (
+        planned_end_on is None or planned_end_on >= today
+    )
 
 
 @dataclass(frozen=True)

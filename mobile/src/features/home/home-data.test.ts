@@ -1,5 +1,7 @@
 import type { TodayDose } from "@/features/meds/plan";
 
+import { loading } from "@/lib/query-state";
+
 import { doseCounts, doseRowKey, homeDoses } from "./home-data";
 
 const dose = (at: string, scheduledAt: number, state: TodayDose["state"] = null): TodayDose =>
@@ -37,4 +39,10 @@ test("a row shown once stays after it is recorded (its undo stays reachable)", (
 
 test("counts are plain numbers of records, skipped included", () => {
   expect(doseCounts([...day, dose("23:00", 2300, "skipped")])).toEqual({ recorded: 2, total: 7 });
+});
+
+test("a query paused offline with nothing kept is not loading - the section says why", () => {
+  expect(loading({ isPending: true, fetchStatus: "fetching" })).toBe(true);
+  expect(loading({ isPending: true, fetchStatus: "paused" })).toBe(false);
+  expect(loading({ isPending: false, fetchStatus: "idle" })).toBe(false);
 });

@@ -79,11 +79,34 @@ describe("encrypted local store", () => {
     expect(keyring.id).toMatch(/^lt\.local\./);
     first.set("x", "1");
 
+    const { existsMMKV } = jest.requireMock<{ existsMMKV: (id: string) => boolean }>(
+      "react-native-mmkv",
+    );
+    expect(existsMMKV(keyring.id)).toBe(true);
     await wipeLocalStore();
     expect(mockStore.has("lt.local_store")).toBe(false); // the key is gone: crypto-shredded
+    expect(existsMMKV(keyring.id)).toBe(false); // and the store's files
     expect(openLocalStore()).toBeNull();
     const next = await localStore();
     expect(JSON.parse(mockStore.get("lt.local_store") ?? "{}").id).not.toBe(keyring.id);
+    expect(next.getString("x")).toBeUndefined();
+  });
+
+  it("a store opened while a sign-out still wipes is a new one, never the store being removed", async () => {
+    const old = await localStore();
+    old.set("x", "1");
+    const oldId = JSON.parse(mockStore.get("lt.local_store") ?? "{}").id;
+    const wipe = wipeLocalStore();
+    const reopened = localStore(); // a quick sign-in again, before the wipe has finished
+    await wipe;
+    const next = await reopened;
+    const { existsMMKV } = jest.requireMock<{ existsMMKV: (id: string) => boolean }>(
+      "react-native-mmkv",
+    );
+    const nextId = JSON.parse(mockStore.get("lt.local_store") ?? "{}").id;
+    expect(nextId).not.toBe(oldId);
+    expect(existsMMKV(oldId)).toBe(false);
+    expect(existsMMKV(nextId)).toBe(true);
     expect(next.getString("x")).toBeUndefined();
   });
 

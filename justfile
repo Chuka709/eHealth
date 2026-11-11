@@ -61,6 +61,16 @@ test-api *args:
 fuzz-api:
     $env:UV_CACHE_DIR = "F:/.uv-cache"; $env:UV_TOOL_DIR = "F:/.uv-tools"; cd backend; uv run python scripts/fuzz_api.py
 
+# Persistent demo accounts and records on the dev stack (backend/scripts/seed_demo.py);
+# credentials in .env.demo (git-ignored). `just seed-demo --reset` retires and seeds them anew.
+seed-demo *args:
+    $env:UV_CACHE_DIR = "F:/.uv-cache"; $env:UV_TOOL_DIR = "F:/.uv-tools"; cd backend; uv run python scripts/seed_demo.py {{args}}
+
+# The 2.10d device checks on the seeded demo accounts (no activation): `just e2e-mobile-fast`
+# runs reminders, wizard, travel and offline; name stages to run only those.
+e2e-mobile-fast *stages:
+    $env:UV_CACHE_DIR = "F:/.uv-cache"; $env:UV_TOOL_DIR = "F:/.uv-tools"; cd backend; uv run python scripts/e2e_mobile.py --fast {{quote(stages)}}
+
 # Maestro flows (mobile/.maestro, or the given files) against the dev build on the running
 # Android emulator; a throwaway user is provisioned and disabled afterwards. Maestro needs Java:
 # JAVA_HOME (Android Studio's jbr). See backend/scripts/e2e_mobile.py

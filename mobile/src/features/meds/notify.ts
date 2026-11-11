@@ -121,6 +121,9 @@ export async function syncReminders(
   valid: () => boolean,
   /** an identifier not planned now but kept (its kind's data is not loaded) */
   keepUnplanned: (id: string) => boolean = () => false,
+  /** schedule every reminder still to come anew (the exact-alarm permission changed: the
+   * OS keeps an alarm as exact or inexact as it was set - H18) */
+  renewAll = false,
 ): Promise<void> {
   const existing = await Notifications.getAllScheduledNotificationsAsync();
   const wanted = new Map(planned.map((n) => [n.id, n]));
@@ -130,6 +133,7 @@ export async function syncReminders(
   };
   // minutes of late alarms (still pending after their time) cancelled for a new content
   const lateReplaced = new Set<number>();
+  const renewed = new Set<string>();
   const now = Date.now();
   for (const n of existing) {
     if (!valid()) return stop();
@@ -137,12 +141,22 @@ export async function syncReminders(
     const keep = n.identifier.startsWith("snooze.")
       ? keepSnooze(doseData(n.content.data)?.d ?? [], n.content.body ?? "")
       : wanted.has(n.identifier) || keepUnplanned(n.identifier);
-    if (keep) continue;
+    const plan = wanted.get(n.identifier);
+    // renewed: a planned one is set again under the new permission. A due one fires at once:
+    // Android drops exact alarms when the permission is taken away, and a held-back inexact
+    // one is late already (H18)
+    const renew = renewAll && keep && plan !== undefined;
+    if (keep && !renew) continue;
     await Notifications.cancelScheduledNotificationAsync(n.identifier);
+    if (renew) {
+      renewed.add(n.identifier);
+      if (plan.due) lateReplaced.add(plan.at);
+      continue;
+    }
     const at = Number(n.identifier.match(/^dose\.(\d+)\./)?.[1]);
     if (Number.isFinite(at) && at <= now) lateReplaced.add(at);
   }
-  const have = new Set(existing.map((n) => n.identifier));
+  const have = new Set(existing.map((n) => n.identifier).filter((id) => !renewed.has(id)));
   for (const n of planned) {
     if (have.has(n.id)) continue;
     // a due one is scheduled only to replace a late alarm whose content changed (one dose of
@@ -211,4 +225,34 @@ export function doseData(raw: unknown): { kind: "dose"; p: string; d: DoseItem[]
       (x as DoseItem).at % 60_000 === 0,
   );
   return items.length ? { kind, p, d: items } : null;
+}
+
+const EXACT_KEY = "reminders.exact_alarm.v1";
+/** set anew once in this app process (see `exactAlarmState`) */
+let renewedInProcess = false;
+
+/**
+ * Android: whether reminders must be set anew because the exact-alarm permission may not be
+ * what it was when they were scheduled. Granted on the explanation screen while the app runs:
+ * the remembered state (encrypted local store) differs. Taken away: Android stops the app and
+ * drops its exact alarms - given back before the app starts again, the state reads the same,
+ * so every app start renews once too (2.10d, emulator).
+ */
+export async function exactAlarmState(): Promise<{ granted: boolean; changed: boolean } | null> {
+  if (Platform.OS !== "android") return null;
+  let granted: boolean;
+  try {
+    granted = (await Notifications.getExactAlarmPermissionsAsync()).granted;
+  } catch {
+    return null;
+  }
+  const before = (await localStore()).getBoolean(EXACT_KEY);
+  // never recorded: the reminders already on the phone may have been set without it
+  const changed = before === undefined ? granted : before !== granted;
+  return { granted, changed: changed || !renewedInProcess };
+}
+
+export async function rememberExactAlarm(granted: boolean): Promise<void> {
+  (await localStore()).set(EXACT_KEY, granted);
+  renewedInProcess = true;
 }

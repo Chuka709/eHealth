@@ -400,8 +400,11 @@
         "since": "About {years} y {months} mo ago",
         "sinceExact": "{years} y {months} mo ago",
         "sinceYearOnly": "in {year}",
-        "sinceMonths": "{months} months ago",
-        "number": "Transplant no. {number}"
+        "sinceMonths": "{months, plural, one {# month} other {# months}} ago",
+        "number": "Transplant no. {number}",
+        "sinceMonthsApprox": "About {months, plural, one {# month} other {# months}} ago",
+        "sinceDays": "{days, plural, one {# day} other {# days}} ago",
+        "sinceMonthOnly": "In {month}/{year}"
       },
       "saveNow": "Save",
       "addMore": "Add more details",
@@ -461,7 +464,7 @@
       },
       "summary": {
         "title": "This month's records",
-        "body": "Recorded as taken: {taken} / planned doses: {planned} ({percent}%).",
+        "body": "Recorded as taken: {taken} / planned doses: {planned}. {percent}% of the {due} doses already recorded or whose recording time has ended are \"taken\".",
         "bodyNoPercent": "Recorded as taken: {taken} / planned doses: {planned}.",
         "skipped": "Recorded as skipped: {n}",
         "unrecorded": "Not recorded: {n}",
@@ -590,6 +593,7 @@
       "notify": {
         "channel": "Medicine reminders",
         "title": "Time for your medicine",
+        "timedTitle": "{time} medicine reminder",
         "count": "{n, plural, one {# dose} other {# doses}}",
         "item": "{name} {amount}",
         "taken": "Taken",
@@ -621,10 +625,10 @@
       "health": {
         "notificationsOff": "Medicine reminders are not working: notifications are off for the app. Keep taking your medicines on your schedule.",
         "notificationsOn": "Turn on notifications",
-        "exactOff": "Medicine reminders may come a few minutes late: the “Alarms & reminders” permission is not given.",
+        "exactOff": "Medicine reminders may come late - by an hour, sometimes more: the “Alarms & reminders” permission is not given.",
         "exactMore": "Explanation and settings",
         "exactTitle": "Reminders on time",
-        "exactBody": "For medicine reminders to come exactly on time, Android needs the “Alarms & reminders” permission. Without it reminders still come, but up to 10 minutes late.",
+        "exactBody": "For medicine reminders to come on time, Android needs the “Alarms & reminders” permission. Without it reminders still come, but Android may delay them by an hour or more.",
         "exactAllow": "Give permission",
         "exactOk": "✓ Reminders come on time.",
         "batteryTitle": "Battery saving",
@@ -634,7 +638,8 @@
         "batteryOppo": "Oppo / Realme: Settings → Apps → App management → LabTrack → Battery usage → “Allow background activity”.",
         "batteryOther": "Other phones: Settings → Apps → LabTrack → Battery → unrestricted.",
         "openSettings": "Open the app's settings"
-      }
+      },
+      "zoneWait": "{names}: taken by local time. Today's doses show here once the time zone is loaded."
     },
     "health": {
       "title": "Profile",

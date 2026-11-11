@@ -14,10 +14,12 @@
  * - A dose already recorded (taken early, skipped ahead, by a caregiver) is not reminded:
  *   a reminder after "Уусан" invites a second dose (medical review 2.5c H-1). Of a shared
  *   minute only the unrecorded doses stay.
- * - A reminder whose time has just passed (an inexact Android alarm runs up to ~10 min late -
- *   H18) is kept for GRACE, never cancelled by a re-plan before it fires.
+ * - A reminder whose time has just passed is kept for GRACE, never cancelled by a re-plan
+ *   before it fires: without the exact-alarm permission Android may hold it back by up to an
+ *   hour (window +1h, measured on the emulator in 2.10d - H18).
  * - Lock screen (H10): by default no medicine name anywhere in the notification - only "Эм уух
- *   цаг боллоо"; names only when the user chose so. `data` carries ids and instants only.
+ *   цаг боллоо" with the scheduled time ("08:00-ийн эмийн сануулга"); names only when the user
+ *   chose so. `data` carries ids and instants only.
  */
 
 import type { MedicationPlan, Slot, ZoneSwitch } from "./slots";
@@ -25,7 +27,7 @@ import { doseSlots } from "./slots";
 
 export const DOSE_BUDGET = 56;
 export const MAX_DAYS = 7;
-export const GRACE = 30 * 60_000;
+export const GRACE = 75 * 60_000; // the +1h inexact window, with a margin
 const DAY = 24 * 60 * 60_000;
 
 export type ReminderMedicine = {
@@ -46,7 +48,10 @@ export type ReminderInput = {
 };
 
 export type ReminderTexts = {
-  title: string; // "Эм уух цаг боллоо"
+  title: string; // "Эм уух цаг боллоо" (the "open the app" one, iOS preview placeholder)
+  /** a dose reminder's title with its scheduled time: "08:00-ийн эмийн сануулга" - a reminder
+   * held back (inexact alarm, up to an hour or more) still says which dose it is (H18) */
+  timedTitle: (time: string) => string;
   count: (n: number) => string; // "2 тун" (no names)
   item: (name: string, amount: string | null) => string; // "Такролимус 2 мг"
   renewTitle: string;
@@ -115,12 +120,14 @@ export function planReminders(input: ReminderInput, texts: ReminderTexts): Plann
           )
           .join(", ")
       : texts.count(g.items.length);
-    const content = `${input.showNames ? "n" : "a"}|${body}|${d.map((x) => x.m).join(",")}`;
+    // the time as written on the regimen (two times of one minute after a zone switch: both)
+    const title = texts.timedTitle([...new Set(g.items.map(({ slot }) => slot.at))].join(" / "));
+    const content = `${input.showNames ? "n" : "a"}|${title}|${body}|${d.map((x) => x.m).join(",")}`;
     return {
       // no profile id in the OS's own (unencrypted) store of identifiers
       id: `dose.${g.at}.${hash(`${input.patientId}|${content}`)}`,
       at: g.at,
-      title: texts.title,
+      title,
       body,
       kind: "dose",
       data: { kind: "dose", p: input.patientId, d },

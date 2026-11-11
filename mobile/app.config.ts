@@ -1,5 +1,12 @@
+import { mkdirSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 import type { ConfigContext, ExpoConfig } from "expo/config";
-import { type ConfigPlugin, withAndroidManifest, withInfoPlist } from "expo/config-plugins";
+import {
+  type ConfigPlugin,
+  withAndroidManifest,
+  withDangerousMod,
+  withInfoPlist,
+} from "expo/config-plugins";
 
 // Bundle ID is decided before the first store build (docs/OPEN_QUESTIONS.md Q10); it cannot
 // change after release, so it comes from the environment instead of being hard-coded.
@@ -57,9 +64,55 @@ const withStoreHardening: ConfigPlugin = (cfg) => {
   });
 };
 
+// Android 12+ ignores allowBackup="false" for device-to-device transfer: without rules the
+// encrypted local store (MMKV) would be copied to a new phone. It could not be read there (its
+// key stays in this phone's Keystore), but nothing of it should leave: every domain is
+// excluded from both cloud backup and device transfer. Replaces expo-secure-store's rules,
+// which exclude only its own preferences.
+// device_* are the device-protected (direct boot) storage: none written today, excluded anyway
+const excludeAll = [
+  "root",
+  "file",
+  "database",
+  "sharedpref",
+  "external",
+  "device_root",
+  "device_file",
+  "device_database",
+  "device_sharedpref",
+]
+  .map((domain) => `    <exclude domain="${domain}" path="." />`)
+  .join("\n");
+const NO_BACKUP_RULES = [
+  '<?xml version="1.0" encoding="utf-8"?>',
+  "<data-extraction-rules>",
+  `  <cloud-backup>\n${excludeAll}\n  </cloud-backup>`,
+  `  <device-transfer>\n${excludeAll}\n  </device-transfer>`,
+  "</data-extraction-rules>",
+  "",
+].join("\n");
+const withNoDataExtraction: ConfigPlugin = (cfg) => {
+  const files = withDangerousMod(cfg, [
+    "android",
+    (mod) => {
+      const dir = join(mod.modRequest.platformProjectRoot, "app/src/main/res/xml");
+      mkdirSync(dir, { recursive: true });
+      writeFileSync(join(dir, "labtrack_data_extraction_rules.xml"), NO_BACKUP_RULES);
+      return mod;
+    },
+  ]);
+  return withAndroidManifest(files, (mod) => {
+    const app = mod.modResults.manifest.application?.[0];
+    if (app) app.$["android:dataExtractionRules"] = "@xml/labtrack_data_extraction_rules";
+    return mod;
+  });
+};
+
 // Registered before the `plugins` list is applied, so its mods run after theirs.
-export default (ctx: ConfigContext): ExpoConfig =>
-  isProd ? withStoreHardening(appConfig(ctx)) : appConfig(ctx);
+export default (ctx: ConfigContext): ExpoConfig => {
+  const config = withNoDataExtraction(appConfig(ctx));
+  return isProd ? withStoreHardening(config) : config;
+};
 
 const appConfig = ({ config }: ConfigContext): ExpoConfig => ({
   ...config,

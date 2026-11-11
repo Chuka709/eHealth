@@ -224,7 +224,10 @@ def test_stopped_and_finished_courses_are_not_current() -> None:
     assert is_current(None, None, today)
     assert is_current(None, today, today)  # the course's last day
     assert not is_current(None, today - timedelta(days=1), today)
-    assert not is_current(today, None, today)
+    assert not is_current(today, None, today)  # stopped today: the first day not taken (Q21)
+    assert not is_current(today - timedelta(days=3), None, today)
+    # a stop entered ahead: still taken today, as the reminders and the summary count it
+    assert is_current(today + timedelta(days=1), None, today)
 
 
 # --- intakes (H20) ------------------------------------------------------------------------------
