@@ -15,5 +15,19 @@ export function parseSupportPhone(
 
 const phone = parseSupportPhone(process.env.EXPO_PUBLIC_SUPPORT_PHONE);
 
+/** The privacy policy page (store listing and Settings → About): https only, else hidden. */
+export function parsePrivacyUrl(raw: string | undefined): string | null {
+  const url = raw?.trim() ?? "";
+  try {
+    const u = new URL(url);
+    const ok = u.protocol === "https:" && !u.username && !u.password && u.hostname.includes(".");
+    return ok ? url : null;
+  } catch {
+    return null;
+  }
+}
+
+export const privacyPolicyUrl: string | null = parsePrivacyUrl(process.env.EXPO_PUBLIC_PRIVACY_URL);
+
 export const supportPhone: string | null = phone?.display ?? null;
 export const supportPhoneUrl: string | null = phone?.url ?? null;

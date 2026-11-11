@@ -108,6 +108,7 @@ cd "F:\My Projects\eHealth\mobile"; npx expo run:android
   `.\gradlew.bat app:assembleDebug -PreactNativeArchitectures=x86_64 --no-parallel --max-workers=2 -Pkotlin.compiler.execution.strategy=in-process`
   (`mobile/android`-аас), дараа нь `adb install -r app\build\outputs\apk\debug\app-debug.apk`.
 - Emulator snapshot-оос сэргэхэд adb `offline` хэвээр үлдвэл: `emulator -avd Pixel_API36 -no-snapshot` (cold boot, ~3 мин).
+- **GPU уналт (2026.11.11):** цонхтой горимд NVIDIA (Vulkan/OpenGL) дээр «Failed to import memory to ColorBufferGl» гээд crashdialog гарвал (adb төхөөрөмж харахгүй) — цонхгүй: `emulator -avd Pixel_API36 -no-snapshot -no-window -gpu swiftshader_indirect -feature -Vulkan`. Удаан тул «System UI isn't responding» гарвал «Wait». Цонхтой горимыг Windows дахин асаасны дараа шалгана.
 
 ## 6. C: дискийг чөлөөлөх (сонголттой, бүгд ажилласны дараа)
 - Flutter-ийг шинэ SDK руу заах: `flutter config --android-sdk E:\Android\Sdk`

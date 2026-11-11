@@ -1067,6 +1067,23 @@
       "allAppointments": "All appointments",
       "dosesUnknown": "Today's records could not be loaded, so which doses are recorded cannot be shown now. Doses you record are sent once online.",
       "retry": "Try again"
+    },
+    "about": {
+      "title": "About the app",
+      "open": "About the app",
+      "hint": "Purpose, privacy policy, help",
+      "purposeTitle": "What this app is for",
+      "purpose": "LabTrack MN helps people who have had an organ transplant keep their health information in order, store and follow it, get the medicine reminders they set themselves, record the doses they take, keep an emergency card and share with a caregiver they choose.",
+      "notTitle": "What this app does not do",
+      "not": "It does not diagnose, does not suggest treatment or medicine doses, and does not check medicine interactions. It does not replace your doctor's advice. Talk to your doctor before you change or stop a medicine.",
+      "reliability": "Medicine reminders can come late or not at all because of phone settings or battery saving. Caregiver notifications are not guaranteed either. Take your medicines on time as your doctor told you.",
+      "emergency": "If you suddenly feel much worse, call 103 or go to the nearest hospital. The app's reminders and notifications do not replace emergency care.",
+      "call103": "Call 103",
+      "privacyTitle": "Privacy",
+      "privacy": "Privacy policy",
+      "privacyFailed": "The link could not be opened. Check your internet connection and try again.",
+      "support": "Help",
+      "version": "Version {version}"
     }
   },
   "status": {

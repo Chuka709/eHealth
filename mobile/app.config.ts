@@ -12,6 +12,7 @@ import {
 // change after release, so it comes from the environment instead of being hard-coded.
 const bundleId = process.env.APP_BUNDLE_ID ?? "mn.munkhly.labtrack";
 const variant = process.env.APP_VARIANT ?? "development";
+const easProjectId = process.env.EAS_PROJECT_ID?.trim() || undefined;
 const isProd = variant === "production";
 
 // Release builds must never talk to the API over cleartext HTTP.
@@ -28,6 +29,14 @@ if (
   !(/^\+?[0-9 ()-]+$/.test(supportPhone) && supportDigits >= 7 && supportDigits <= 15)
 ) {
   throw new Error(`EXPO_PUBLIC_SUPPORT_PHONE must be set for the ${variant} build`);
+}
+
+// The store listing and Settings -> About link the privacy policy (docs/08 "Дэлгүүрт гаргах").
+if (
+  isProd &&
+  !/^https:\/\/[^\s/]+\.[^\s]+$/.test(process.env.EXPO_PUBLIC_PRIVACY_URL?.trim() ?? "")
+) {
+  throw new Error("EXPO_PUBLIC_PRIVACY_URL must be an https:// URL for the production build");
 }
 
 // Native permission prompts are shown before the JS bundle (and use-intl) loads, so they live
@@ -148,7 +157,7 @@ const appConfig = ({ config }: ConfigContext): ExpoConfig => ({
     // a screen-capture callback unconditionally at start, which throws without it.
     // The overlay permission is for the dev menu only.
     // Medicine reminders on time (docs/08, H18): the user grants it on the explanation screen;
-    // without it reminders still come, up to ~10 min late (inexact), and Home says so.
+    // without it reminders still come, an hour or more late (inexact, 2.10d), and Medicines says so.
     permissions: ["android.permission.SCHEDULE_EXACT_ALARM"],
     blockedPermissions: [
       "android.permission.RECORD_AUDIO",
@@ -191,5 +200,8 @@ const appConfig = ({ config }: ConfigContext): ExpoConfig => ({
       },
     ],
   ],
+  // EAS project (push tokens, builds): `eas init` once on the company's Expo account, then
+  // EAS_PROJECT_ID in the EAS environment. Without it the app runs and push stays off.
+  ...(easProjectId ? { extra: { ...config.extra, eas: { projectId: easProjectId } } } : {}),
   experiments: { typedRoutes: true, reactCompiler: true },
 });

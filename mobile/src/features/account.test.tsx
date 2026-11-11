@@ -374,3 +374,19 @@ test("a deletion learnt from a refresh shows the notice without a date", async (
   expect(await screen.findByText("Устгах хүсэлтийг хүлээн авлаа")).toBeOnTheScreen();
   expect(screen.getByText(/хүсэлт гаргаснаас хойш 30 хоногийн дараа/)).toBeOnTheScreen();
 });
+
+test("About says what the app is for and never does (docs/09), with the support line", async () => {
+  await openSettingsRow("settings-about");
+  expect(await screen.findByRole("header", { name: "Энэ апп юу хийдэггүй вэ" })).toBeOnTheScreen();
+  expect(
+    screen.getByText(/Оношилгоо хийхгүй, эмчилгээ болон эмийн тун санал болгохгүй/),
+  ).toBeOnTheScreen();
+  expect(screen.getByText(/103 руу залгана уу/)).toBeOnTheScreen();
+  // reminders are never promised (H6, H18) nor caregiver alerts (H16)
+  expect(screen.getByText(/хоцорч эсвэл ирэхгүй байж болно/)).toBeOnTheScreen();
+  expect(screen.getByRole("button", { name: "103 руу залгах" })).toBeOnTheScreen();
+  // doctor sharing comes in Phase 7: not promised now
+  expect(screen.queryByText(/эмчтэйгээ хуваалцах/)).toBeNull();
+  // no privacy URL configured in tests: the button is hidden, never a dead link
+  expect(screen.queryByRole("button", { name: "Нууцлалын бодлого" })).toBeNull();
+});

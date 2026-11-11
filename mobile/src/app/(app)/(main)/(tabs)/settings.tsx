@@ -80,6 +80,12 @@ export default function SettingsScreen() {
         onPress={() => router.push("/settings/admin-history")}
         testID="settings-admin-history"
       />
+      <NavRow
+        label={t("about.open")}
+        hint={t("about.hint")}
+        onPress={() => router.push("/settings/about")}
+        testID="settings-about"
+      />
       {/* Its own block: the switch's label is the only label (nothing read twice). */}
       <View style={[styles.block, { backgroundColor: p.surface, borderColor: p.border }]}>
         <Host matchContents={{ vertical: true }} style={styles.wide}>
