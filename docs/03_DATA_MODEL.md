@@ -347,7 +347,10 @@ create table clinical_events (
   created_at timestamptz not null default now()
 );
 
-create table pending_uploads (                -- апп offline-оос ирсэн давхардлыг барих
+-- 0029 (Phase 3.1): `documents`-д `client_id uuid not null` + unique (patient_id, client_id),
+-- `original_name`, `recorded_by/updated_by/updated_at` нэмэгдсэн; `pending_uploads` хүснэгт
+-- хэрэггүй болсон (давхардлыг client_id барина). Файл storage-д KEK envelope-оор шифрлэгдэнэ (Q49).
+create table pending_uploads (                -- (0029-өөр орлогдсон) апп offline-оос ирсэн давхардлыг барих
   client_upload_id uuid primary key, user_id uuid references users, document_id uuid references documents,
   created_at timestamptz default now()
 );

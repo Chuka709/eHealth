@@ -41,9 +41,21 @@
 		respond 404
 	}
 	handle /api/* {
-		# JSON bodies are small (the CSV import is <= 1 MB; documents go straight to storage
-		# in Phase 3): a bigger body never reaches the API's parser.
-		request_body {
+		# Phase 3: a document upload is the one large body (20 MB file + multipart envelope);
+		# only a POST to .../documents gets it. Everything else is JSON and small (the CSV
+		# import is <= 1 MB): a bigger body never reaches the API's parser.
+		@upload {
+			method POST
+			path_regexp ^/api/v1/patients/[0-9a-f-]{36}/documents$
+		}
+		@not_upload not {
+			method POST
+			path_regexp ^/api/v1/patients/[0-9a-f-]{36}/documents$
+		}
+		request_body @upload {
+			max_size 21MB
+		}
+		request_body @not_upload {
 			max_size 2MB
 		}
 		reverse_proxy api:8000

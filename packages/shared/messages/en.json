@@ -1239,6 +1239,19 @@
     },
     "health": {
       "delete_not_allowed": "Only whoever recorded this, or the profile's owner, can delete it."
+    },
+    "document": {
+      "empty": "The file is empty.",
+      "too_large": "The file is too large (up to 20 MB).",
+      "unsupported_type": "This kind of file cannot be added. Add a PDF or a picture (JPEG, PNG, HEIC).",
+      "unreadable": "The file could not be read. Add it again in another version.",
+      "pdf_encrypted": "A password-protected PDF cannot be read. Add a version without a password.",
+      "pdf_unsafe": "This PDF contains a script or attachment and is not accepted, for safety. Add the result as a picture instead.",
+      "too_many_pages": "The PDF has too many pages (up to 20). Add the result's pages separately.",
+      "too_many": "This profile has too many files stored.",
+      "storage_unavailable": "File storage is not available right now. Try again in a while.",
+      "not_found": "File not found.",
+      "not_yours": "Only the profile's owner or whoever added it can delete this file."
     }
   },
   "import": {

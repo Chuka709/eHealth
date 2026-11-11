@@ -107,7 +107,7 @@ CLI-ээр (`just create-admin`), **TOTP заавал**, тусдаа `/admin` w
 ## 3. Хэрэгжүүлэлт — гүн хамгаалалт
 1. **Postgres RLS** — PHI хүснэгт бүрт `ENABLE` + `FORCE`; апп `labtrack_app` role (BYPASSRLS-гүй); хүсэлт бүрт `SET LOCAL app.user_id`. Worker файл оруулсан хэрэглэгчийн context-оор.
 2. **Policy давхарга** — `auth/policy.py`: `can(actor, action, resource)`; API хариунд `permissions` талбар → апп товч харуулах/нуух.
-3. **Storage** — private bucket, эрх шалгаад presigned URL (≤ 5 мин), түлхүүр `{patient_id}/{document_id}/…`.
+3. **Storage** — private bucket, түлхүүр `{patient_id}/{document_id}/original`. **3.1 (Q49):** файл API-аар орж, шалгагдаад KEK envelope-оор шифрлэгдэж хадгалагдана; унших — API stream (`no-store`, CSP sandbox). Устгасан мөрийн объект `document_deletions`-оор (trigger) maintenance worker-т очно (3.3). Production-ий S3 түлхүүр зөвхөн тухайн bucket-ийн Put/Get/Delete эрхтэй (bucket үүсгэх `Admin` эрх зөвхөн dev SeaweedFS-д). Body: зөвхөн `POST …/documents` 21 MB, бусад 2 MB (Caddy + API middleware).
 4. **RLS тест** — шинэ хүснэгт бүрт харь хэрэглэгч, хугацаа дууссан/цуцлагдсан хандалт.
 
 ### Төхөөрөмж дээрх мэдэгдэл ба URL-ийн мэдэгдэж буй үлдэгдэл (Phase 2.5)

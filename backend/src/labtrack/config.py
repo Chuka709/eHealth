@@ -53,6 +53,14 @@ class Settings(BaseSettings):
     maint_database_url: PostgresDsn | None = None
     # push worker only (labtrack_push, migration 0028)
     push_database_url: PostgresDsn | None = None
+    # Uploaded documents (Phase 3; Q49): private S3-compatible storage, files sealed with the
+    # KEK envelope before they leave the API. Unset endpoint: the in-memory store (tests only).
+    s3_endpoint_url: str | None = None
+    s3_access_key: SecretStr | None = None
+    s3_secret_key: SecretStr | None = None
+    s3_bucket: str = "labtrack-documents"
+    rate_upload_per_minute: int = 20
+    rate_document_file_per_minute: int = 60
     # Client networks allowed to reach /admin (also enforced by Caddy). Unset: private and
     # loopback ranges in dev/test, nobody elsewhere - production must list them explicitly.
     admin_allowed_networks: list[IPvAnyNetwork] | None = None
@@ -69,6 +77,9 @@ class Settings(BaseSettings):
         "admin_login_database_url",
         "maint_database_url",
         "push_database_url",
+        "s3_endpoint_url",
+        "s3_access_key",
+        "s3_secret_key",
         "admin_allowed_networks",
         "expo_access_token",
         mode="before",

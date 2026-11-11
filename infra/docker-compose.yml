@@ -25,6 +25,13 @@ x-backend: &backend
     - ../seed:/seed:ro
   networks: [backend]
 
+# uploaded documents (Phase 3): only the API, the worker and the tests hold the store's keys
+x-s3-env: &s3-env
+  S3_ENDPOINT_URL: http://seaweedfs:8333
+  S3_ACCESS_KEY: ${S3_ACCESS_KEY:?run just init}
+  S3_SECRET_KEY: ${S3_SECRET_KEY:?run just init}
+  S3_BUCKET: ${S3_BUCKET:-labtrack-documents}
+
 services:
   postgres:
     image: postgres:17-alpine
@@ -90,7 +97,7 @@ services:
   api:
     <<: *backend
     environment:
-      <<: *backend-env
+      <<: [*backend-env, *s3-env]
       # Trust X-Forwarded-For only from Caddy and the admin web BFF (fixed addresses below),
       # never from clients. The BFF forwards the admin's address that Caddy saw (docs/04 §6.1).
       FORWARDED_ALLOW_IPS: 172.30.0.10,172.30.0.11
@@ -107,9 +114,12 @@ services:
     depends_on:
       migrate: { condition: service_completed_successfully }
       valkey: { condition: service_healthy }
+      seaweedfs: { condition: service_healthy }
 
   worker:
     <<: *backend
+    environment:
+      <<: [*backend-env, *s3-env]
     command: ["celery", "-A", "labtrack.worker.celery_app", "worker", "--loglevel=INFO", "--concurrency=2",
               "--queues=default"]
     networks: [backend, egress]
@@ -122,6 +132,7 @@ services:
     depends_on:
       migrate: { condition: service_completed_successfully }
       valkey: { condition: service_healthy }
+      seaweedfs: { condition: service_healthy }
 
   # Maintenance (queue "maintenance"): the daily purge and caregivers' dose alerts (2.8e);
   # labtrack_maint and app credentials, no uploads, no internet.
@@ -227,7 +238,7 @@ services:
       # shared test vectors (dose-slots.json): the app's reminder planner uses the same file
       - ../packages/shared/fixtures:/fixtures:ro
     environment:
-      <<: *backend-env
+      <<: [*backend-env, *s3-env]
       ENVIRONMENT: test
       PYTEST_ADDOPTS: "-p no:cacheprovider"
       # API tests log in many times from a few addresses; the limiter has its own test.
@@ -245,11 +256,13 @@ services:
       ADMIN_DATABASE_URL: postgresql+asyncpg://labtrack_admin:${LABTRACK_ADMIN_PASSWORD:?run just init}@postgres:5432/labtrack_test
       ADMIN_LOGIN_DATABASE_URL: postgresql+asyncpg://labtrack_admin_login:${LABTRACK_ADMIN_LOGIN_PASSWORD:?run just init}@postgres:5432/labtrack_test
       DATABASE_URL: postgresql+asyncpg://labtrack_app:${LABTRACK_APP_PASSWORD:?run just init}@postgres:5432/labtrack_test
+      S3_BUCKET: labtrack-test-documents
     entrypoint: ["sh", "-c", "alembic upgrade head && alembic downgrade base && alembic upgrade head && exec \"$$@\"", "--"]
     command: ["pytest", "-q", "--no-header"]
     depends_on:
       postgres: { condition: service_healthy }
       valkey: { condition: service_healthy }
+      seaweedfs: { condition: service_healthy }
 
 networks:
   edge:
