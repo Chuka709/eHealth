@@ -141,24 +141,24 @@ test("a cold start with biometrics on opens locked and calls no API until unlock
   mockGate.result = "fail"; // keep the first automatic prompt from unlocking
   await app();
   expect(await screen.findByText("LabTrack MN түгжээтэй")).toBeOnTheScreen();
-  expect(screen.queryByText("Системийн төлөв")).toBeNull();
+  expect(screen.queryByTestId("home-screen")).toBeNull();
   expect(apiCalls()).toEqual([]);
 
   mockGate.result = "ok";
   await fireEvent.press(screen.getByRole("button", { name: "Түгжээ тайлах" }));
-  expect(await screen.findByText("Системийн төлөв")).toBeOnTheScreen();
+  expect(await screen.findByTestId("home-screen")).toBeOnTheScreen();
 });
 
 test("the prompt is asked automatically once on open", async () => {
   await app();
-  expect(await screen.findByText("Системийн төлөв")).toBeOnTheScreen();
+  expect(await screen.findByTestId("home-screen")).toBeOnTheScreen();
 });
 
 test("a failed unlock stays locked and says what to do", async () => {
   mockGate.result = "fail";
   await app();
   expect(await screen.findByText(/Түгжээг тайлж чадсангүй/)).toBeOnTheScreen();
-  expect(screen.queryByText("Системийн төлөв")).toBeNull();
+  expect(screen.queryByTestId("home-screen")).toBeNull();
 });
 
 test("changed biometrics invalidate the key: only a password sign-in remains", async () => {
@@ -176,7 +176,7 @@ test("changed biometrics invalidate the key: only a password sign-in remains", a
 test("with biometrics off the app opens directly", async () => {
   mockStore.set("lt.biometric", "off");
   await app();
-  expect(await screen.findByText("Системийн төлөв")).toBeOnTheScreen();
+  expect(await screen.findByTestId("home-screen")).toBeOnTheScreen();
 });
 
 describe("returning from the background", () => {
@@ -197,14 +197,14 @@ describe("returning from the background", () => {
   };
   const openUnlocked = async () => {
     await app();
-    expect(await screen.findByText("Системийн төлөв")).toBeOnTheScreen();
+    expect(await screen.findByTestId("home-screen")).toBeOnTheScreen();
     mockGate.result = "fail"; // keep the next lock from unlocking itself
   };
 
   test("under five minutes stays open", async () => {
     await openUnlocked();
     await away(60_000);
-    expect(screen.getByText("Системийн төлөв")).toBeOnTheScreen();
+    expect(screen.getByTestId("home-screen")).toBeOnTheScreen();
   });
 
   test("five minutes or more locks at once, before any signed-in frame or request", async () => {
@@ -213,7 +213,7 @@ describe("returning from the background", () => {
     await away(5 * 60_000);
     // Synchronous: no waiting for the lock screen, and nothing was fetched on the way back.
     expect(screen.getByText("LabTrack MN түгжээтэй")).toBeOnTheScreen();
-    expect(screen.queryByText("Системийн төлөв")).toBeNull();
+    expect(screen.queryByTestId("home-screen")).toBeNull();
     expect(apiCalls()).toEqual([]);
   });
 
@@ -253,8 +253,8 @@ test("with a screen reader the prompt waits for the user (the heading is read fi
   const reader = jest.spyOn(AccessibilityInfo, "isScreenReaderEnabled").mockResolvedValue(true);
   await app();
   expect(await screen.findByText("LabTrack MN түгжээтэй")).toBeOnTheScreen();
-  expect(screen.queryByText("Системийн төлөв")).toBeNull(); // not auto-unlocked
+  expect(screen.queryByTestId("home-screen")).toBeNull(); // not auto-unlocked
   await fireEvent.press(screen.getByRole("button", { name: "Түгжээ тайлах" }));
-  expect(await screen.findByText("Системийн төлөв")).toBeOnTheScreen();
+  expect(await screen.findByTestId("home-screen")).toBeOnTheScreen();
   reader.mockRestore();
 });

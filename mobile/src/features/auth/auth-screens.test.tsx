@@ -217,7 +217,7 @@ describe("sign-in", () => {
     await fireEvent.changeText(screen.getByLabelText("Нууц үг"), "pw-123");
     await fireEvent.press(screen.getByRole("button", { name: "Нэвтрэх" }));
 
-    expect(await screen.findByText("Системийн төлөв")).toBeOnTheScreen();
+    expect(await screen.findByTestId("home-screen")).toBeOnTheScreen();
     expect(getStatus()).toBe("signedIn");
     expect(mockStore.get("lt.refresh")).toBe("r1");
     expect(await bodies("/api/v1/auth/login")).toEqual([

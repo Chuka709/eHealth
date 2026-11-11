@@ -1,6 +1,6 @@
 import { useRouter } from "expo-router";
 import { useTranslations } from "use-intl";
-import { NavRow } from "@/components/nav-row";
+import { NavGroup, NavRow } from "@/components/nav-row";
 import { Screen } from "@/components/screen";
 import { useRecordProfile } from "@/features/health/record-screens";
 import {
@@ -40,64 +40,93 @@ export default function ProfileScreen() {
   return (
     <Screen>
       <ProfileSwitcher />
-      <NavRow
-        label={t("appointments")}
-        hint={known(appointments, () =>
-          next
-            ? t("nextAppointment", { when: `${formatDateTime(next.scheduled_at)} · ${next.title}` })
-            : t("noAppointment"),
-        )}
-        onPress={go("/appointments")}
-        testID="profile-appointments"
-      />
-      <NavRow label={t("vitals")} onPress={go("/vitals")} testID="profile-vitals" />
-      <NavRow
-        label={t("allergies")}
-        hint={known(allergies, () =>
-          allergyList.length
-            ? allergyList
-                .slice(0, 3)
-                .map((a) => a.substance)
-                .join(", ") + (allergyList.length > 3 ? ` +${allergyList.length - 3}` : "")
-            : t("noAllergy"),
-        )}
-        onPress={go("/allergies")}
-        testID="profile-allergies"
-      />
-      <NavRow
-        label={t("contacts")}
-        hint={known(contacts, () =>
-          t("contactCount", { n: ((contacts.data ?? []) as Contact[]).length }),
-        )}
-        onPress={go("/contacts")}
-        testID="profile-contacts"
-      />
-      <NavRow
-        label={t("questions")}
-        hint={known(questions, () =>
-          open === 0 ? t("openQuestionsNone") : t("openQuestions", { n: open }),
-        )}
-        onPress={go("/questions")}
-        testID="profile-questions"
-      />
-      <NavRow label={t("events")} onPress={go("/events")} testID="profile-events" />
-      {own?.access_level === "owner" && !own.is_minor && (
+      <NavGroup title={t("groups.care")}>
         <NavRow
-          label={tg("rowOwner")}
-          hint={tg("rowOwnerHint")}
-          onPress={go("/caregivers")}
-          testID="profile-caregivers"
+          icon="heart-plus-outline"
+          label={t("transplants")}
+          onPress={go("/transplants")}
+          testID="profile-transplants"
         />
-      )}
-      {own?.access_level === "caregiver" && (
         <NavRow
-          label={tg("rowCaregiver")}
-          hint={tg("rowCaregiverHint")}
-          onPress={go("/caregivers/alerts")}
-          testID="profile-caregiver-alerts"
+          icon="clipboard-text-clock-outline"
+          label={t("events")}
+          onPress={go("/events")}
+          testID="profile-events"
         />
-      )}
-      <NavRow label={t("transplants")} onPress={go("/transplants")} testID="profile-transplants" />
+        <NavRow
+          icon="calendar-clock"
+          label={t("appointments")}
+          hint={known(appointments, () =>
+            next
+              ? t("nextAppointment", {
+                  when: `${formatDateTime(next.scheduled_at)} · ${next.title}`,
+                })
+              : t("noAppointment"),
+          )}
+          onPress={go("/appointments")}
+          testID="profile-appointments"
+        />
+      </NavGroup>
+      <NavGroup title={t("groups.health")}>
+        <NavRow
+          icon="heart-pulse"
+          label={t("vitals")}
+          onPress={go("/vitals")}
+          testID="profile-vitals"
+        />
+        <NavRow
+          icon="alert-circle-outline"
+          label={t("allergies")}
+          hint={known(allergies, () =>
+            allergyList.length
+              ? allergyList
+                  .slice(0, 3)
+                  .map((a) => a.substance)
+                  .join(", ") + (allergyList.length > 3 ? ` +${allergyList.length - 3}` : "")
+              : t("noAllergy"),
+          )}
+          onPress={go("/allergies")}
+          testID="profile-allergies"
+        />
+        <NavRow
+          icon="comment-question-outline"
+          label={t("questions")}
+          hint={known(questions, () =>
+            open === 0 ? t("openQuestionsNone") : t("openQuestions", { n: open }),
+          )}
+          onPress={go("/questions")}
+          testID="profile-questions"
+        />
+      </NavGroup>
+      <NavGroup title={t("groups.people")}>
+        <NavRow
+          icon="phone-outline"
+          label={t("contacts")}
+          hint={known(contacts, () =>
+            t("contactCount", { n: ((contacts.data ?? []) as Contact[]).length }),
+          )}
+          onPress={go("/contacts")}
+          testID="profile-contacts"
+        />
+        {own?.access_level === "owner" && !own.is_minor && (
+          <NavRow
+            icon="account-group-outline"
+            label={tg("rowOwner")}
+            hint={tg("rowOwnerHint")}
+            onPress={go("/caregivers")}
+            testID="profile-caregivers"
+          />
+        )}
+        {own?.access_level === "caregiver" && (
+          <NavRow
+            icon="bell-ring-outline"
+            label={tg("rowCaregiver")}
+            hint={tg("rowCaregiverHint")}
+            onPress={go("/caregivers/alerts")}
+            testID="profile-caregiver-alerts"
+          />
+        )}
+      </NavGroup>
     </Screen>
   );
 }

@@ -163,7 +163,7 @@ beforeEach(() => {
 
 const openSettings = async () => {
   await renderRouter("./src/app", { initialUrl: "/" });
-  await fireEvent.press(await screen.findByRole("button", { name: "Тохиргоо" }));
+  await fireEvent.press(await screen.findByRole("button", { name: /^Тохиргоо, tab/ }));
   await screen.findByTestId("settings-profile");
 };
 
@@ -279,7 +279,7 @@ describe("biometric switch", () => {
     mockStore.set("lt.unlock_gate", "1");
     await renderRouter("./src/app", { initialUrl: "/" });
     // Cold start is locked; the automatic prompt (succeeding here) unlocks it.
-    await fireEvent.press(await screen.findByRole("button", { name: "Тохиргоо" }));
+    await fireEvent.press(await screen.findByRole("button", { name: /^Тохиргоо, tab/ }));
     await screen.findByTestId("settings-biometric");
 
     mockGate.ok = false;
@@ -299,7 +299,7 @@ test("an invalidated unlock key cannot switch the lock off: the app locks instea
   mockStore.set("lt.biometric", "on");
   mockStore.set("lt.unlock_gate", "1");
   await renderRouter("./src/app", { initialUrl: "/" });
-  await fireEvent.press(await screen.findByRole("button", { name: "Тохиргоо" }));
+  await fireEvent.press(await screen.findByRole("button", { name: /^Тохиргоо, tab/ }));
   await screen.findByTestId("settings-biometric");
 
   mockGate.invalidated = true; // someone added a finger since the last unlock

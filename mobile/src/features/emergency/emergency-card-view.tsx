@@ -79,15 +79,25 @@ export function EmergencyCardView({ card, copy }: { card: EmergencyCard; copy: C
           quiet
         />
       )}
-      {card.transplants.length > 0 && (
-        <Text accessibilityLanguage={lang} style={[styles.lead, { color: p.text }]}>
-          {e("introTransplant")}
-        </Text>
-      )}
-      {takesImmunosuppressant && (
-        <Text accessibilityLanguage={lang} style={[styles.lead, { color: p.text }]}>
-          {e("introImmunosuppressed")}
-        </Text>
+      {(card.transplants.length > 0 || takesImmunosuppressant) && (
+        // what a responder must see first: a panel with the emergency colour on its edge (2.12)
+        <View
+          style={[
+            styles.leadPanel,
+            { backgroundColor: p.surface, borderColor: p.border, borderLeftColor: p.emergency.bg },
+          ]}
+        >
+          {card.transplants.length > 0 && (
+            <Text accessibilityLanguage={lang} style={[styles.lead, { color: p.text }]}>
+              {e("introTransplant")}
+            </Text>
+          )}
+          {takesImmunosuppressant && (
+            <Text accessibilityLanguage={lang} style={[styles.lead, { color: p.text }]}>
+              {e("introImmunosuppressed")}
+            </Text>
+          )}
+        </View>
       )}
 
       <View style={[styles.box, { borderColor: p.border, backgroundColor: p.surface }]}>
@@ -233,6 +243,13 @@ function keyed<T>(items: readonly T[], base: (item: T) => string): [string, T][]
 
 const styles = StyleSheet.create({
   card: { gap: space.md },
+  leadPanel: {
+    gap: space.sm,
+    padding: space.lg,
+    borderRadius: radius.md,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderLeftWidth: 6,
+  },
   lead: { fontSize: fontSize.title, fontWeight: "700" },
   section: { fontSize: fontSize.title, fontWeight: "700", marginTop: space.sm },
   line: { fontSize: fontSize.bodyLarge, lineHeight: fontSize.bodyLarge * 1.4 },

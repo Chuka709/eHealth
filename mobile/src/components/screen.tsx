@@ -13,14 +13,17 @@ export type ScreenScroll = ComponentRef<typeof ScrollView>;
 export function Screen({
   children,
   scrollRef,
+  testID,
 }: {
   children: ReactNode;
   scrollRef?: Ref<ScreenScroll>;
+  testID?: string;
 }) {
   const p = usePalette();
   return (
     <ScrollView
       ref={scrollRef}
+      testID={testID}
       contentInsetAdjustmentBehavior="automatic"
       automaticallyAdjustKeyboardInsets
       keyboardShouldPersistTaps="handled"

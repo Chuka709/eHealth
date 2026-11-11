@@ -144,7 +144,7 @@ beforeEach(() => {
 const open = () => renderRouter("./src/app", { initialUrl: "/" });
 const openSettingsRow = async (testID: string) => {
   await open();
-  await fireEvent.press(await screen.findByRole("button", { name: "Тохиргоо" }));
+  await fireEvent.press(await screen.findByRole("button", { name: /^Тохиргоо, tab/ }));
   await fireEvent.press(await screen.findByTestId(testID));
 };
 

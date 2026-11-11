@@ -152,7 +152,14 @@
       "biometricDisablePrompt": "Confirm to turn off the biometric lock",
       "signOut": "Sign out",
       "signOutConfirmTitle": "Sign out on this phone?",
-      "signOutConfirmBody": "Your sign-in and the temporary data on this phone will be removed. Your account and history stay on the server. To come back, sign in with your username and password."
+      "signOutConfirmBody": "Your sign-in and the temporary data on this phone will be removed. Your account and history stay on the server. To come back, sign in with your username and password.",
+      "groups": {
+        "health": "Medicines and emergencies",
+        "caregivers": "Caregivers",
+        "account": "Account",
+        "privacy": "Privacy",
+        "app": "App"
+      }
     },
     "profile": {
       "title": "Profile",
@@ -817,7 +824,12 @@
         "waiting": "Waiting to be sent"
       },
       "loadFailed": "Could not load",
-      "deleteTitle": "Delete “{name}”?"
+      "deleteTitle": "Delete “{name}”?",
+      "groups": {
+        "care": "Transplant and care",
+        "health": "Health",
+        "people": "People"
+      }
     },
     "emergency": {
       "title": "Emergency card",

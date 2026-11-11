@@ -7,10 +7,13 @@ import { usePalette } from "@/theme/use-palette";
 
 import { useHealth } from "./use-health";
 
-export function HealthStatus() {
+/** `problemsOnly`: nothing while checking or connected - only an unreachable server shows. */
+export function HealthStatus({ problemsOnly = false }: { problemsOnly?: boolean }) {
   const t = useTranslations("status");
   const p = usePalette();
   const { isPending, isError, refetch, isFetching } = useHealth();
+
+  if (problemsOnly && !isError) return null;
 
   if (isPending) {
     return (

@@ -150,7 +150,7 @@ test("allowed: the locked app opens only the saved card, with no API call (H17, 
   expect(screen.getByText("Пенициллин — Хүнд")).toBeOnTheScreen();
   expect(screen.getByText(/Утсанд хадгалсан хувилбар \(2026\.11\.01 10:00\)/)).toBeOnTheScreen();
   // nothing else of the account: no tabs, no other screen
-  expect(screen.queryByText("Системийн төлөв")).toBeNull();
+  expect(screen.queryByTestId("home-screen")).toBeNull();
   expect(screen.queryByText("Эм")).toBeNull();
   expect(apiCalls()).toEqual([]);
 
@@ -174,7 +174,7 @@ test("allowed: the biometric prompt is not raised by itself over the 🆘 button
   expect(screen.getByText("LabTrack MN түгжээтэй")).toBeOnTheScreen();
   // the owner unlocks with one press
   await fireEvent.press(screen.getByRole("button", { name: "Түгжээ тайлах" }));
-  expect(await screen.findByText("Системийн төлөв")).toBeOnTheScreen();
+  expect(await screen.findByTestId("home-screen")).toBeOnTheScreen();
 });
 
 test.each(["{", '"x"', "[1,null]", '["not-an-id"]'])(
@@ -202,7 +202,7 @@ test("allowed but nothing saved (e.g. a consent withdrawn): no card is offered",
 test("Settings: off by default, the risk is said, and turning it on stays on this phone", async () => {
   mockGate.ok = true; // the automatic prompt unlocks
   await coldStart();
-  await fireEvent.press(await screen.findByRole("button", { name: "Тохиргоо" }));
+  await fireEvent.press(await screen.findByRole("button", { name: /^Тохиргоо, tab/ }));
   await fireEvent.press(await screen.findByTestId("settings-emergency"));
   expect(await screen.findByText(/хэн ч .* энэ картыг/)).toBeOnTheScreen();
   expect(device().getString(SETTING)).toBeUndefined(); // off until the user turns it on

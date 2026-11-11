@@ -431,7 +431,7 @@ test("Android without exact alarms: Medicines says reminders may be late, Home d
   mocked.getExactAlarmPermissionsAsync.mockResolvedValue({ granted: false, status: "denied" });
   try {
     await renderRouter("./src/app", { initialUrl: "/" });
-    await screen.findByText("Системийн төлөв");
+    await screen.findByTestId("home-screen");
     expect(screen.queryByText(/нэг цаг, заримдаа түүнээс ч их/)).toBeNull();
     await fireEvent.press(await screen.findByRole("button", { name: /^Эм/ }));
     expect(await screen.findByText(/нэг цаг, заримдаа түүнээс ч их/)).toBeOnTheScreen();

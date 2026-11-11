@@ -224,7 +224,7 @@ describe("biometric offer", () => {
     const SecureStore = jest.requireMock<{ setItemAsync: jest.Mock }>("expo-secure-store");
     await app();
     await fireEvent.press(await screen.findByRole("button", { name: "Биометрээр түгжих" }));
-    expect(await screen.findByText("Системийн төлөв")).toBeOnTheScreen();
+    expect(await screen.findByTestId("home-screen")).toBeOnTheScreen();
     expect(mockStore.get("lt.biometric")).toBe("on");
     expect(mockStore.get("lt.unlock_gate")).toBe("1");
     expect(SecureStore.setItemAsync).toHaveBeenCalledWith(
@@ -246,14 +246,14 @@ describe("biometric offer", () => {
   test("not now is remembered", async () => {
     await app();
     await fireEvent.press(await screen.findByRole("button", { name: "Одоо биш" }));
-    expect(await screen.findByText("Системийн төлөв")).toBeOnTheScreen();
+    expect(await screen.findByTestId("home-screen")).toBeOnTheScreen();
     expect(mockStore.get("lt.biometric")).toBe("off");
   });
 
   test("phones without enrolled biometrics are not asked", async () => {
     mockBio.enrolled = false;
     await app();
-    expect(await screen.findByText("Системийн төлөв")).toBeOnTheScreen();
+    expect(await screen.findByTestId("home-screen")).toBeOnTheScreen();
   });
 
   test("signing out forgets the choice (it belongs to the user, not the phone)", async () => {
@@ -281,7 +281,7 @@ describe("biometric offer", () => {
       buttons?.find((b) => b.style === "destructive")?.onPress?.();
     });
     await app();
-    await fireEvent.press(await screen.findByRole("button", { name: "Тохиргоо" }));
+    await fireEvent.press(await screen.findByRole("button", { name: /^Тохиргоо, tab/ }));
     await fireEvent.press(await screen.findByRole("button", { name: "Гарах" }));
     expect(await screen.findByText("LabTrack MN-д тавтай морил")).toBeOnTheScreen();
     expect(mockStore.has("lt.biometric")).toBe(false);
