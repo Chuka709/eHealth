@@ -13,6 +13,7 @@ import { Screen } from "@/components/screen";
 import { Paragraph } from "@/components/text";
 import { useRecordProfile } from "@/features/health/record-screens";
 import { ProfileSwitcher } from "@/features/records/profile-switcher";
+import { isForeignFile } from "@/features/upload/upload-files";
 import {
   type Picked,
   pickPdf,
@@ -48,6 +49,7 @@ export default function UploadScreen() {
   const share = useShareIntentContext();
   const shared: Picked[] = (share.shareIntent.files ?? [])
     .filter((f) => ACCEPTED.has(f.mimeType))
+    .filter((f) => isForeignFile(f.path.startsWith("/") ? `file://${f.path}` : f.path))
     .map((f) => ({
       // a plain path may hold spaces or Cyrillic letters: encoded into a file URI (review M4)
       uri:
@@ -57,25 +59,27 @@ export default function UploadScreen() {
       mime: f.mimeType,
     }));
 
-  const add = (pick: () => Promise<Picked[]>) => async () => {
-    if (!own || busy) return;
-    setBusy(true);
-    setProblem(null);
-    try {
-      const files = await pick();
-      if (files.length === 0) return; // cancelled
-      const outcome = await queueFiles(files, own.id);
-      if (outcome === "full") {
-        setProblem("full");
-        return;
+  const add =
+    (pick: () => Promise<Picked[]>, fromShare = false) =>
+    async () => {
+      if (!own || busy) return;
+      setBusy(true);
+      setProblem(null);
+      try {
+        const files = await pick();
+        if (files.length === 0) return; // cancelled
+        const outcome = await queueFiles(files, own.id, { shared: fromShare });
+        if (outcome === "full") {
+          setProblem("full");
+          return;
+        }
+        router.replace("/results");
+      } catch {
+        setProblem("pickFailed");
+      } finally {
+        setBusy(false);
       }
-      router.replace("/results");
-    } catch {
-      setProblem("pickFailed");
-    } finally {
-      setBusy(false);
-    }
-  };
+    };
 
   return (
     <Screen>
@@ -96,7 +100,7 @@ export default function UploadScreen() {
                   void add(async () => {
                     share.resetShareIntent();
                     return shared;
-                  })()
+                  }, true)()
                 }
               />
             </>

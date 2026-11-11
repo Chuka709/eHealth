@@ -31,7 +31,7 @@ jest.mock("expo-file-system", () => {
   class Directory {
     uri: string;
     constructor(base: { uri?: string } | string, name?: string) {
-      const root = typeof base === "string" ? base : (base.uri ?? "file:///doc");
+      const root = typeof base === "string" ? base : (base.uri ?? "file:///data/user/0/pkg/files");
       this.uri = name ? `${root}/${name}` : root;
     }
     get exists() {
@@ -69,7 +69,10 @@ jest.mock("expo-file-system", () => {
   return {
     Directory,
     File: MockFile,
-    Paths: { document: { uri: "file:///doc" }, cache: { uri: "file:///cache" } },
+    Paths: {
+      document: { uri: "file:///data/user/0/pkg/files" },
+      cache: { uri: "file:///data/user/0/pkg/cache" },
+    },
   };
 });
 
@@ -79,7 +82,7 @@ const answer = (status: number, body: unknown = {}) =>
   new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
 
 async function queue(n: number) {
-  const source = `file:///cache/scan-${n}.jpg`;
+  const source = `file:///data/user/0/pkg/cache/scan-${n}.jpg`;
   mockFiles.add(source);
   return enqueueUpload({ uri: source, mime: "image/jpeg" }, P, id(n), currentEpoch());
 }
@@ -98,7 +101,7 @@ afterEach(() => queryClient.clear());
 test("a picked file is copied into the app's own folder, then sent and removed", async () => {
   expect(await queue(1)).toBe("queued");
   const [waiting] = await pendingUploads();
-  expect(waiting.uri).toBe(`file:///cache/upload-queue/${id(1)}.jpg`);
+  expect(waiting.uri).toBe(`file:///data/user/0/pkg/cache/upload-queue/${id(1)}.jpg`);
   expect(mockFiles.has(waiting.uri)).toBe(true);
   const send = jest.fn<ReturnType<SendUpload>, Parameters<SendUpload>>(async () => answer(201));
   expect(await flushUploads(send)).toBe(1);
@@ -163,10 +166,21 @@ test("a waiting file the system removed is reported, and the next ones still go"
 test("the picker's own copy in the cache is removed once ours exists", async () => {
   const { removeSourceCopy } =
     jest.requireActual<typeof import("./upload-files")>("./upload-files");
-  mockFiles.add("file:///cache/ImagePicker/a.jpg");
+  mockFiles.add("file:///data/user/0/pkg/cache/ImagePicker/a.jpg");
   mockFiles.add("file:///elsewhere/b.pdf");
-  removeSourceCopy("file:///cache/ImagePicker/a.jpg");
+  removeSourceCopy("file:///data/user/0/pkg/cache/ImagePicker/a.jpg");
   removeSourceCopy("file:///elsewhere/b.pdf");
-  expect(mockFiles.has("file:///cache/ImagePicker/a.jpg")).toBe(false);
+  expect(mockFiles.has("file:///data/user/0/pkg/cache/ImagePicker/a.jpg")).toBe(false);
   expect(mockFiles.has("file:///elsewhere/b.pdf")).toBe(true); // another app's file is untouched
+});
+
+test("a shared path inside this app's private data is refused (commit security review 3.5)", () => {
+  const { isForeignFile } = jest.requireActual<typeof import("./upload-files")>("./upload-files");
+  expect(isForeignFile("content://com.android.providers.media.documents/document/1")).toBe(true);
+  expect(isForeignFile("file:///storage/emulated/0/Download/x.pdf")).toBe(true);
+  expect(isForeignFile("file:///data/user/0/pkg/cache/share-copy/x.pdf")).toBe(true);
+  expect(isForeignFile("file:///data/user/0/pkg/files/mmkv/lt.local")).toBe(false);
+  expect(isForeignFile("file:///data/user/0/pkg/cache/upload-queue/other.pdf")).toBe(false);
+  expect(isForeignFile("file:///data/data/pkg/files/mmkv/lt.local")).toBe(false); // an alias
+  expect(isForeignFile("file:///storage/../data/user/0/pkg/files/x")).toBe(false);
 });

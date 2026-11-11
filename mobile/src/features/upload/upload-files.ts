@@ -56,6 +56,32 @@ export function removeSourceCopy(uri: string): void {
   if (uri.startsWith(cache) && !uri.startsWith(uploadFolder().uri)) removeFile(uri);
 }
 
+/**
+ * A file another app shared names its own path: never one inside this app's private data
+ * (the encrypted store, the waiting files) - a malicious app could make the user upload them
+ * (commit security review 3.5). The share library's copies in the cache are allowed, the
+ * upload queue folder is not.
+ */
+export function isForeignFile(uri: string): boolean {
+  if (uri.startsWith("content://")) return true;
+  let path: string;
+  try {
+    path = decodeURI(uri.replace(/^file:\/\//, ""));
+  } catch {
+    return false;
+  }
+  if (path.split("/").includes("..")) return false;
+  const local = (u: string) => decodeURI(u.replace(/^file:\/\//, "")).replace(/\/?$/, "/");
+  const cache = local(Paths.cache.uri);
+  const queue = local(uploadFolder().uri);
+  if (path.startsWith(queue)) return false;
+  if (path.startsWith(cache)) return true;
+  // the app's data folder by name, so an alias of it (Android /data/data/<pkg> for
+  // /data/user/0/<pkg>) is refused too; an alias of the cache is refused as well (fail closed)
+  const appFolder = local(Paths.document.uri).split("/").filter(Boolean).at(-2);
+  return appFolder !== undefined && !path.split("/").includes(appFolder);
+}
+
 /** Files in the folder that no waiting upload names (an app killed mid-copy, a wipe cut short). */
 export function removeStrays(keep: ReadonlySet<string>): void {
   try {

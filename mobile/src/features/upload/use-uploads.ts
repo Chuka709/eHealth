@@ -64,12 +64,15 @@ export async function pickPdf(): Promise<Picked[]> {
 export async function queueFiles(
   files: readonly Picked[],
   patientId: string,
+  { shared = false }: { shared?: boolean } = {},
 ): Promise<"queued" | "full"> {
   const epoch = currentEpoch();
   for (const file of files) {
     const outcome = await enqueueUpload(file, patientId, newClientId(), epoch);
     if (outcome === "full") return "full";
-    removeSourceCopy(file.uri); // the scanner's or picker's own copy: ours is enough
+    // the scanner's or picker's own copy: ours is enough. Never a shared file: another app
+    // chose that path (commit security review 3.5)
+    if (!shared) removeSourceCopy(file.uri);
   }
   void queryClient.invalidateQueries({ queryKey: ["uploads"] });
   void sendWaitingUploads();
