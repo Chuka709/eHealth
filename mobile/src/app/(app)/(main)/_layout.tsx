@@ -30,6 +30,15 @@ export default function MainLayout() {
       <Stack.Screen name="emergency" options={{ title: t("emergency.title") }} />
       <Stack.Screen name="notifications/index" options={{ title: t("notifications.title") }} />
       <Stack.Screen name="profiles" options={{ title: t("profiles.title") }} />
+      <Stack.Screen name="caregivers/index" options={{ title: t("caregivers.title") }} />
+      <Stack.Screen
+        name="caregivers/invitations"
+        options={{ title: t("caregivers.invitations.title") }}
+      />
+      <Stack.Screen
+        name="caregivers/alerts"
+        options={{ title: t("caregivers.alertSettings.title") }}
+      />
       <Stack.Screen name="notifications/[id]" options={{ title: t("notifications.title") }} />
       <Stack.Screen name="settings/emergency" options={{ title: t("emergency.title") }} />
       <Stack.Screen

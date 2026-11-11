@@ -10,6 +10,7 @@ import { Screen } from "@/components/screen";
 import { LoadingView, RetryView } from "@/components/state-view";
 import { Paragraph, Title } from "@/components/text";
 import { TextField } from "@/components/text-field";
+import { CaregiverReminderNote } from "@/features/caregivers/reminder-note";
 import { useRegimenText } from "@/features/meds/use-med-text";
 import {
   type Medication,
@@ -112,6 +113,7 @@ export default function MedicationScreen() {
       <Paragraph muted>
         {med.reminders_enabled ? t("detail.reminderOn") : t("detail.reminderOff")}
       </Paragraph>
+      <CaregiverReminderNote patientId={own.id} remindersOn={med.reminders_enabled} />
       {failure && <FormMessage kind="error" text={errorText(failure)} />}
 
       {med.is_current && (

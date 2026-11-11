@@ -77,6 +77,9 @@ export function useGiveConsents() {
       }
     },
     // Success, or a version that changed meanwhile: either way show the server's state.
-    onSettled: () => queryClient.invalidateQueries({ queryKey: consentsKey }),
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: ["caregivers"] }); // Q42 ends them all
+      return queryClient.invalidateQueries({ queryKey: consentsKey });
+    },
   });
 }

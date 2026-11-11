@@ -193,7 +193,10 @@ test("a push opens a screen from its kind and id only; anything else opens the l
   expect(pushRoute(pushData({ notification_id: 7, kind: "dose_overdue" }))).toBe(
     "/notifications/7",
   );
-  expect(pushRoute(pushData({ notification_id: 6, kind: "share_invite" }))).toBe("/notifications");
+  expect(pushRoute(pushData({ notification_id: 6, kind: "share_invite" }))).toBe(
+    "/caregivers/invitations",
+  );
+  expect(pushRoute(pushData({ notification_id: 5, kind: "review_ready" }))).toBe("/notifications");
   for (const junk of [
     null,
     "x",

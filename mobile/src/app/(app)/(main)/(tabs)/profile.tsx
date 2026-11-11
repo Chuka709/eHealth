@@ -20,6 +20,7 @@ import { formatDateTime } from "@/lib/dates";
 /** The health profile: one place for everything the user keeps about their care. */
 export default function ProfileScreen() {
   const t = useTranslations("app.health");
+  const tg = useTranslations("app.caregivers");
   const router = useRouter();
   const { own } = useRecordProfile();
   const appointments = useRecords(APPOINTMENTS, own?.id);
@@ -78,6 +79,22 @@ export default function ProfileScreen() {
         testID="profile-questions"
       />
       <NavRow label={t("events")} onPress={go("/events")} testID="profile-events" />
+      {own?.access_level === "owner" && !own.is_minor && (
+        <NavRow
+          label={tg("rowOwner")}
+          hint={tg("rowOwnerHint")}
+          onPress={go("/caregivers")}
+          testID="profile-caregivers"
+        />
+      )}
+      {own?.access_level === "caregiver" && (
+        <NavRow
+          label={tg("rowCaregiver")}
+          hint={tg("rowCaregiverHint")}
+          onPress={go("/caregivers/alerts")}
+          testID="profile-caregiver-alerts"
+        />
+      )}
       <NavRow label={t("transplants")} onPress={go("/transplants")} testID="profile-transplants" />
     </Screen>
   );

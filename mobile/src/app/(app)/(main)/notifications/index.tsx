@@ -25,6 +25,7 @@ export default function NotificationsScreen() {
   const open = (notice: Notice) => {
     if (notice.read_at === null) markRead.mutate(notice.id);
     if (hasDetail(notice)) router.push(`/notifications/${notice.id}` as never);
+    else if (notice.kind === "share_invite") router.push("/caregivers/invitations" as never);
   };
   return (
     <Screen>

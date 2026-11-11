@@ -9,6 +9,29 @@ export type Patient = components["schemas"]["PatientOut"];
 
 export const patientsKey = ["patients"] as const;
 
+const PROFILE_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * Everything cached about one profile (in memory and, through the persister, in the
+ * encrypted store): its queries are keyed [kind, patientId, ...]. Used when access ends -
+ * the user left as caregiver, or the profile is no longer in the list (access ended, the
+ * owner withdrew the sharing consent - Q42). Rule 8: no one else's data stays on the phone.
+ */
+export function dropProfileData(patientId: string): void {
+  queryClient.removeQueries({ predicate: (q) => q.queryKey[1] === patientId });
+}
+
+/** After the list is read: drop what is cached for any profile not in it any more. */
+export function dropMissingProfiles(patients: readonly { id: string }[]): void {
+  const known = new Set(patients.map((p) => p.id));
+  queryClient.removeQueries({
+    predicate: (q) => {
+      const id = q.queryKey[1];
+      return typeof id === "string" && PROFILE_ID.test(id) && !known.has(id);
+    },
+  });
+}
+
 /** The health profiles the user can open: their own first (GET /patients). */
 export function usePatients({ enabled = true }: { enabled?: boolean } = {}) {
   return useQuery({
@@ -18,6 +41,7 @@ export function usePatients({ enabled = true }: { enabled?: boolean } = {}) {
     queryFn: async () => {
       const { data, error } = await api.GET("/api/v1/patients");
       if (!data) throw apiError(error);
+      dropMissingProfiles(data);
       return data;
     },
   });

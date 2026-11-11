@@ -275,7 +275,10 @@
       "withdrawLabel": "Withdraw the consent “{consent}”",
       "withdrawTitle": "Withdraw this consent?",
       "withdrawBody": "The app cannot be used without this consent. After withdrawing, the consents screen opens; what you entered stays stored.",
-      "withdrawConfirm": "Withdraw"
+      "withdrawConfirm": "Withdraw",
+      "caregiverWithdrawTitle": "Stop sharing with caregivers?",
+      "caregiverWithdrawBody": "Every caregiver stops seeing your profile and getting alerts at once, and pending invitations are cancelled. To share again, you need to invite them anew.",
+      "caregiverWithdrawConfirm": "Stop sharing"
     },
     "noticeGeneric": {
       "title": "Signed out on this device",
@@ -951,6 +954,88 @@
       },
       "changed": "The profile changed after this form was opened, so nothing was saved. Go back and enter it again on the right profile.",
       "changedBack": "Back"
+    },
+    "caregivers": {
+      "title": "Caregivers",
+      "rowOwner": "Caregivers",
+      "rowOwnerHint": "Invite, pause alerts, end access",
+      "rowCaregiver": "My alerts",
+      "rowCaregiverHint": "When to hear about a dose not logged",
+      "intro": "A caregiver can see your profile, add records and be notified when a dose has not been logged. They cannot share or delete. No alert does not mean a dose was taken.",
+      "ownerOnly": "Only the profile's owner manages its caregivers.",
+      "minor": "Caregivers cannot be invited to a child's profile yet.",
+      "listTitle": "Caregivers",
+      "none": "No caregivers yet.",
+      "since": "Since {date}",
+      "alerts": {
+        "on": "Alerts: if a dose is not logged within {minutes} minutes",
+        "off": "Alerts: off (the caregiver chooses)",
+        "paused": "Alerts: paused by you — none until you resume"
+      },
+      "pause": "Pause alerts",
+      "resume": "Resume alerts",
+      "pauseLabel": "Pause alerts to {name}",
+      "resumeLabel": "Resume alerts to {name}",
+      "end": {
+        "button": "End access",
+        "title": "End caregiver access: {name}",
+        "body": "They will no longer see your profile or get alerts. To share again, you need to invite them anew. What they have already seen cannot be taken back.",
+        "confirm": "End"
+      },
+      "pendingTitle": "Pending invitations",
+      "expires": "Valid until {date}",
+      "cancelInvite": "Cancel invitation",
+      "cancelInviteLabel": "Cancel the invitation to {username}",
+      "invite": {
+        "title": "Invite",
+        "hint": "Enter your caregiver's LabTrack username. They get access only after they accept.",
+        "username": "Username",
+        "invalid": "A username is 3–32 characters: lowercase Latin letters, digits, dots, underscores.",
+        "button": "Invite",
+        "checkTitle": "Check the username",
+        "checkBody": "“{username}” — is this right? A wrong one could send your name to someone else as an invitation.",
+        "send": "Send",
+        "sent": "Sent. If the username is right, the invitation shows in the list below.",
+        "needsConsent": "Before inviting, give the “Sharing with caregivers” consent.",
+        "openConsents": "Go to consents"
+      },
+      "invitations": {
+        "title": "Caregiver invitations",
+        "open": "Caregiver invitations",
+        "openHint": "Invitations you received",
+        "none": "No invitations.",
+        "from": "{name} invites you to be a caregiver",
+        "expires": "Valid until {date}",
+        "accept": "Accept",
+        "decline": "Decline",
+        "declineLabel": "Decline the invitation from {name}",
+        "acceptTitle": "Accept the invitation from {name}",
+        "acceptBody": "You will see that profile's lab results, medicines, transplant and emergency card information and can add records; you cannot share or delete. You set your own alerts afterwards. You can leave at any time."
+      },
+      "alertSettings": {
+        "title": "My alerts",
+        "delay": "How long a dose may go unlogged before you are alerted",
+        "minutes": "{minutes} minutes",
+        "off": "No alerts",
+        "shortNote": "Phone reminders can be up to 10 minutes late, so with 15–20 minutes an alert may come before the patient had time to log the dose.",
+        "watched": "Medicines watched: {count}",
+        "onlyReminders": "Only medicines with reminders on are watched. Medicines without reminders give no alerts.",
+        "noAlertNote": "No alert does not mean a dose was taken, and an alert does not mean it was not — it only shows whether it was logged in the app.",
+        "paused": "The profile's owner has paused your alerts.",
+        "save": "Save",
+        "saved": "Saved.",
+        "leave": "Stop being a caregiver",
+        "leaveTitle": "Stop being a caregiver: {name}",
+        "leaveBody": "You will no longer see this profile or get alerts. To come back, the owner invites you anew.",
+        "leaveConfirm": "Stop",
+        "notCaregiver": "You are not a caregiver of this profile.",
+        "changed": "The profile changed after this screen was opened. Go back and open it again.",
+        "watchedNone": "No medicines are watched right now, so no alerts will come."
+      },
+      "reminderOffNote": "This medicine's reminders are off, so caregivers get no alerts for it.",
+      "pauseTitle": "Pause alerts — {name}",
+      "pauseBody": "Until you resume, they get no alert when a dose has not been logged.",
+      "changed": "The profile changed after this screen was opened. Go back and open it again."
     }
   },
   "status": {

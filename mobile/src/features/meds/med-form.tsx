@@ -9,6 +9,7 @@ import { dayOf, PickerField } from "@/components/date-field";
 import { FormMessage } from "@/components/form-message";
 import { Screen, type ScreenScroll } from "@/components/screen";
 import { TextField } from "@/components/text-field";
+import { CaregiverReminderNote } from "@/features/caregivers/reminder-note";
 import { ProfileBanner } from "@/features/records/profile-banner";
 import { newClientId } from "@/lib/random";
 import { useErrorText } from "@/lib/use-error-text";
@@ -206,6 +207,7 @@ export function MedicationForm({ patientId, onDone }: { patientId: string; onDon
           testID="med-reminders"
         />
       </Host>
+      <CaregiverReminderNote patientId={patientId} remindersOn={draft.remindersEnabled} />
       <Choices
         label={t("form.tzMode")}
         options={["home", "local"] as const}
