@@ -1,7 +1,8 @@
 import { fontSize, space, emergencyWallpaper as wallpaper } from "@labtrack/shared";
 import { type ComponentRef, type RefObject, useRef } from "react";
-import { PixelRatio, StyleSheet, Text, View } from "react-native";
+import { PixelRatio, StyleSheet, View } from "react-native";
 import { captureRef } from "react-native-view-shot";
+import { Text } from "@/components/app-text";
 
 import type { Locale } from "@/lib/i18n";
 

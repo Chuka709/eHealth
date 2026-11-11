@@ -821,7 +821,7 @@
     },
     "emergency": {
       "title": "Яаралтай тусламжийн карт",
-      "open": "🆘 Яаралтай",
+      "open": "Яаралтай",
       "openLabel": "Яаралтай тусламжийн карт нээх",
       "switchTo": "English",
       "switchToLabel": "Show the card in English",

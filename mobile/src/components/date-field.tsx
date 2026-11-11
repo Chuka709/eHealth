@@ -1,8 +1,9 @@
 import DateTimePicker from "@expo/ui/community/datetime-picker";
 import { fontSize } from "@labtrack/shared";
 import { useState } from "react";
-import { Platform, StyleSheet, Text, View } from "react-native";
+import { Platform, StyleSheet, View } from "react-native";
 import { useTranslations } from "use-intl";
+import { Text } from "@/components/app-text";
 
 import { formatDate } from "@/lib/dates";
 import { usePalette } from "@/theme/use-palette";

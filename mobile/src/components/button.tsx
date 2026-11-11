@@ -1,5 +1,6 @@
 import { fontSize, minTouchTarget, radius, space } from "@labtrack/shared";
-import { ActivityIndicator, Platform, Pressable, StyleSheet, Text } from "react-native";
+import { ActivityIndicator, Platform, Pressable, StyleSheet } from "react-native";
+import { Text } from "@/components/app-text";
 
 import { usePalette } from "@/theme/use-palette";
 

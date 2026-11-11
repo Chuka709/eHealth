@@ -1,7 +1,9 @@
 import { feedbackGlyph, fontSize, minTouchTarget, radius, space } from "@labtrack/shared";
 import type { ComponentRef, ReactNode, Ref } from "react";
-import { Platform, StyleSheet, Text, TextInput, type TextInputProps, View } from "react-native";
+import { Platform, StyleSheet, TextInput, type TextInputProps, View } from "react-native";
+import { Text } from "@/components/app-text";
 
+import { fonts } from "@/theme/fonts";
 import { usePalette } from "@/theme/use-palette";
 
 export type TextFieldRef = ComponentRef<typeof TextInput>;
@@ -61,6 +63,7 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     fontSize: fontSize.body,
+    fontFamily: fonts.regular,
     paddingHorizontal: space.md,
     paddingVertical: space.sm,
   },

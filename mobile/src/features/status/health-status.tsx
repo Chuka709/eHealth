@@ -1,6 +1,7 @@
 import { feedbackGlyph, fontSize, minTouchTarget, radius, space } from "@labtrack/shared";
-import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Platform, Pressable, StyleSheet, View } from "react-native";
 import { useTranslations } from "use-intl";
+import { Text } from "@/components/app-text";
 
 import { usePalette } from "@/theme/use-palette";
 

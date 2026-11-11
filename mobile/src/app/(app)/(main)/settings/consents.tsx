@@ -1,8 +1,9 @@
 import { Host, Switch } from "@expo/ui";
 import { fontSize, radius, space } from "@labtrack/shared";
 import bundledVersions from "@labtrack/shared/consent-versions.json";
-import { Alert, StyleSheet, Text, View } from "react-native";
+import { Alert, StyleSheet, View } from "react-native";
 import { useTranslations } from "use-intl";
+import { Text } from "@/components/app-text";
 
 import { Button } from "@/components/button";
 import { FormMessage } from "@/components/form-message";

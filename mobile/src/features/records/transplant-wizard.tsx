@@ -1,7 +1,8 @@
 import { fontSize, space } from "@labtrack/shared";
 import { useEffect, useRef, useState } from "react";
-import { AccessibilityInfo, Alert, StyleSheet, Text, View } from "react-native";
+import { AccessibilityInfo, Alert, StyleSheet, View } from "react-native";
 import { useTranslations } from "use-intl";
+import { Text } from "@/components/app-text";
 
 import { Button } from "@/components/button";
 import { FormMessage } from "@/components/form-message";

@@ -1,13 +1,16 @@
 import { fontSize, minTouchTarget, space } from "@labtrack/shared";
 import { useRouter } from "expo-router";
-import { Platform, Pressable, StyleSheet, Text } from "react-native";
+import { Platform, Pressable, StyleSheet } from "react-native";
 import { useTranslations } from "use-intl";
+import { Text } from "@/components/app-text";
+import { Icon } from "@/components/icon";
 
 import { usePalette } from "@/theme/use-palette";
 
 import { unreadCount, useNotices } from "./use-notifications";
 
-/** 🔔 in Home's header, with the number of unread notifications (glyph + number + label). */
+/** The bell in Home's header, with the number of unread notifications (icon + number; the
+ * screen reader hears the label with the count). */
 export function NotificationsButton() {
   const t = useTranslations("app.notifications");
   const router = useRouter();
@@ -22,9 +25,12 @@ export function NotificationsButton() {
       style={({ pressed }) => [styles.button, { opacity: pressed ? 0.85 : 1 }]}
       testID="notifications-open"
     >
-      <Text numberOfLines={1} style={[styles.label, { color: p.text }]}>
-        {unread > 0 ? `🔔 ${unread > 99 ? "99+" : unread}` : "🔔"}
-      </Text>
+      <Icon name={unread > 0 ? "bell-badge-outline" : "bell-outline"} color={p.text} />
+      {unread > 0 && (
+        <Text numberOfLines={1} style={[styles.label, { color: p.primary }]}>
+          {unread > 99 ? "99+" : unread}
+        </Text>
+      )}
     </Pressable>
   );
 }
@@ -33,8 +39,10 @@ const styles = StyleSheet.create({
   button: {
     minHeight: Platform.OS === "ios" ? minTouchTarget.ios : minTouchTarget.android,
     minWidth: Platform.OS === "ios" ? minTouchTarget.ios : minTouchTarget.android,
+    flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
+    gap: 2,
     paddingHorizontal: space.sm,
   },
   label: { fontSize: fontSize.body, fontWeight: "700" },

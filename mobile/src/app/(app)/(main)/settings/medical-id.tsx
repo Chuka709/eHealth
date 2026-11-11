@@ -1,7 +1,8 @@
 import { fontSize, radius, space } from "@labtrack/shared";
 import { useState } from "react";
-import { Platform, StyleSheet, Text, View } from "react-native";
+import { Platform, StyleSheet, View } from "react-native";
 import { useTranslations } from "use-intl";
+import { Text } from "@/components/app-text";
 
 import { Button } from "@/components/button";
 import { Screen } from "@/components/screen";

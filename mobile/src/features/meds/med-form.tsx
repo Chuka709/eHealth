@@ -1,8 +1,9 @@
 import { Host, Switch } from "@expo/ui";
 import { fontSize, space } from "@labtrack/shared";
 import { useRef, useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 import { useTranslations } from "use-intl";
+import { Text } from "@/components/app-text";
 import { Button } from "@/components/button";
 import { Choices } from "@/components/choices";
 import { dayOf, PickerField } from "@/components/date-field";

@@ -1,7 +1,8 @@
 import { fontSize, minTouchTarget, space } from "@labtrack/shared";
 import { useState } from "react";
-import { Platform, Pressable, StyleSheet, Text } from "react-native";
+import { Platform, Pressable, StyleSheet } from "react-native";
 import { useTranslations } from "use-intl";
+import { Text } from "@/components/app-text";
 
 import { usePalette } from "@/theme/use-palette";
 

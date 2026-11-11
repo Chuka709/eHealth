@@ -1,6 +1,7 @@
 import { fontSize, radius, space } from "@labtrack/shared";
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 import { useTranslations } from "use-intl";
+import { Text } from "@/components/app-text";
 
 import { usePalette } from "@/theme/use-palette";
 

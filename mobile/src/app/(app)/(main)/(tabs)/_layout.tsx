@@ -1,8 +1,9 @@
 import { fontSize, space } from "@labtrack/shared";
 import { Tabs } from "expo-router";
-import { type ColorValue, StyleSheet, Text, View } from "react-native";
+import { type ColorValue, StyleSheet, View } from "react-native";
 import { useTranslations } from "use-intl";
 
+import { Icon, type IconName } from "@/components/icon";
 import { EmergencyButton } from "@/features/emergency/emergency-button";
 import { NotificationsButton } from "@/features/notices/notifications-button";
 import { usePalette } from "@/theme/use-palette";
@@ -11,16 +12,10 @@ import { usePalette } from "@/theme/use-palette";
  * The main tabs: Нүүр · Эм · Тохиргоо. Each tab names itself in its header; the tab bar
  * reads its labels (the glyphs are decoration, hidden from screen readers).
  */
-function TabIcon({ glyph, color }: { glyph: string; color: ColorValue }) {
-  return (
-    <Text
-      importantForAccessibility="no"
-      accessible={false}
-      style={{ color, fontSize: fontSize.title }}
-    >
-      {glyph}
-    </Text>
-  );
+function TabIcon({ name, color }: { name: IconName; color: ColorValue }) {
+  const p = usePalette();
+  // the navigator passes the tint as a string; anything else falls back to the muted tint
+  return <Icon name={name} color={typeof color === "string" ? color : p.textMuted} size={26} />;
 }
 
 export default function TabsLayout() {
@@ -34,6 +29,7 @@ export default function TabsLayout() {
         tabBarActiveTintColor: p.primary,
         tabBarInactiveTintColor: p.textMuted,
         tabBarStyle: { backgroundColor: p.surface, borderTopColor: p.border },
+        sceneStyle: { backgroundColor: p.background },
         headerStyle: { backgroundColor: p.surface },
         headerTintColor: p.text,
       }}
@@ -50,7 +46,7 @@ export default function TabsLayout() {
               <EmergencyButton />
             </View>
           ),
-          tabBarIcon: ({ color }) => <TabIcon glyph="⌂" color={color} />,
+          tabBarIcon: ({ color }) => <TabIcon name="home-variant-outline" color={color} />,
         }}
       />
       <Tabs.Screen
@@ -58,7 +54,7 @@ export default function TabsLayout() {
         options={{
           title: t("meds.title"),
           tabBarLabel: t("tabs.meds"),
-          tabBarIcon: ({ color }) => <TabIcon glyph="℞" color={color} />,
+          tabBarIcon: ({ color }) => <TabIcon name="pill" color={color} />,
         }}
       />
       <Tabs.Screen
@@ -66,7 +62,7 @@ export default function TabsLayout() {
         options={{
           title: t("health.title"),
           tabBarLabel: t("tabs.profile"),
-          tabBarIcon: ({ color }) => <TabIcon glyph="♥" color={color} />,
+          tabBarIcon: ({ color }) => <TabIcon name="heart-pulse" color={color} />,
         }}
       />
       <Tabs.Screen
@@ -74,7 +70,7 @@ export default function TabsLayout() {
         options={{
           title: t("settings.title"),
           tabBarLabel: t("tabs.settings"),
-          tabBarIcon: ({ color }) => <TabIcon glyph="⚙" color={color} />,
+          tabBarIcon: ({ color }) => <TabIcon name="cog-outline" color={color} />,
         }}
       />
     </Tabs>

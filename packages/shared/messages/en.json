@@ -821,7 +821,7 @@
     },
     "emergency": {
       "title": "Emergency card",
-      "open": "🆘 Emergency",
+      "open": "Emergency",
       "openLabel": "Open the emergency card",
       "switchTo": "Монгол",
       "switchToLabel": "Картыг монголоор харуулах",

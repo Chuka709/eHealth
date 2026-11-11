@@ -1,6 +1,7 @@
 import { feedbackGlyph, fontSize, radius, space } from "@labtrack/shared";
 import { useEffect } from "react";
-import { AccessibilityInfo, Platform, StyleSheet, Text, View } from "react-native";
+import { AccessibilityInfo, Platform, StyleSheet, View } from "react-native";
+import { Text } from "@/components/app-text";
 
 import { usePalette } from "@/theme/use-palette";
 

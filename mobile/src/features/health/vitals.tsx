@@ -1,8 +1,9 @@
 import { fontSize, radius, space } from "@labtrack/shared";
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import { Alert, StyleSheet, Text, View } from "react-native";
+import { Alert, StyleSheet, View } from "react-native";
 import { useTranslations } from "use-intl";
+import { Text } from "@/components/app-text";
 import { Button } from "@/components/button";
 import { Choices } from "@/components/choices";
 import { FormMessage } from "@/components/form-message";

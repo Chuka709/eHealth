@@ -1,8 +1,9 @@
 import { fontSize } from "@labtrack/shared";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useRef, useState } from "react";
-import { StyleSheet, Text } from "react-native";
+import { StyleSheet } from "react-native";
 import { useTranslations } from "use-intl";
+import { Text } from "@/components/app-text";
 import { Button } from "@/components/button";
 import { PickerField } from "@/components/date-field";
 import { FormMessage } from "@/components/form-message";
