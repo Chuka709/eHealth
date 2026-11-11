@@ -10,12 +10,15 @@ No task arguments; logs carry counts only.
 
 import asyncio
 from dataclasses import dataclass
-from typing import Final
+from typing import TYPE_CHECKING, Final
 
 import structlog
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 
 from labtrack.db.sql import bound_text
+
+if TYPE_CHECKING:
+    from labtrack.storage import ObjectStore
 
 log = structlog.get_logger(__name__)
 
@@ -119,3 +122,105 @@ async def run_daily(maint_url: str) -> MaintenanceResult:
 
 def run_daily_sync(maint_url: str) -> MaintenanceResult:
     return asyncio.run(run_daily(maint_url))
+
+
+# --- objects of deleted documents (Phase 3.3) ------------------------------------------------
+
+DELETION_BATCH: Final = 500
+
+
+async def delete_queued(engine: AsyncEngine, store: "ObjectStore") -> dict[str, int]:
+    """Objects whose rows are gone (document_deletions, filled by a trigger in the deleting
+    transaction): deleted from storage, then their keys. A key is kept when the store fails, so
+    the next run tries again. Keys are ids only."""
+    from labtrack.storage import StorageError  # noqa: PLC0415
+
+    async with engine.connect() as conn:
+        keys = list(
+            (
+                await conn.execute(
+                    bound_text(
+                        "select storage_key from document_deletions order by created_at limit :n"
+                    ),
+                    {"n": DELETION_BATCH},
+                )
+            ).scalars()
+        )
+    done: list[str] = []
+    failed = 0
+    for key in keys:
+        try:
+            await store.delete(key)
+        except StorageError:
+            failed += 1
+            continue
+        done.append(key)
+    if done:
+        async with engine.connect() as conn, conn.begin():
+            await conn.execute(
+                bound_text("delete from document_deletions where storage_key = any(:k)"),
+                {"k": done},
+            )
+    log.info("document_objects_deleted", deleted=len(done), failed=failed)
+    return {"deleted": len(done), "failed": failed}
+
+
+def delete_queued_objects(maint_url: str) -> dict[str, int]:
+    from labtrack.storage import get_store  # noqa: PLC0415
+
+    async def main() -> dict[str, int]:
+        engine = create_async_engine(maint_url, hide_parameters=True)
+        try:
+            return await delete_queued(engine, get_store())
+        finally:
+            await engine.dispose()
+
+    return asyncio.run(main())
+
+
+ORPHAN_AGE: Final = 24 * 3600  # seconds: well past any upload still being committed
+
+
+async def delete_orphans(engine: AsyncEngine, store: "ObjectStore") -> dict[str, int]:
+    """Objects older than a day that belong to no document (an upload whose transaction failed
+    after the object was stored). The database answers only which keys are still live
+    (maint_live_document_keys, 0030); keys are ids only."""
+    from datetime import UTC, datetime, timedelta  # noqa: PLC0415
+
+    from labtrack.storage import StorageError  # noqa: PLC0415
+
+    old = await store.keys_before(datetime.now(UTC) - timedelta(seconds=ORPHAN_AGE))
+    removed = failed = 0
+    for start in range(0, len(old), DELETION_BATCH):
+        batch = old[start : start + DELETION_BATCH]
+        async with engine.connect() as conn:
+            live = set(
+                (
+                    await conn.execute(
+                        bound_text("select * from maint_live_document_keys(:k)"), {"k": batch}
+                    )
+                ).scalars()
+            )
+        for key in batch:
+            if key in live:
+                continue
+            try:
+                await store.delete(key)
+                removed += 1
+            except StorageError:
+                failed += 1
+    log.info("document_orphans_deleted", deleted=removed, failed=failed)
+    return {"deleted": removed, "failed": failed}
+
+
+def delete_orphan_objects(maint_url: str) -> dict[str, int]:
+    from labtrack.storage import get_store  # noqa: PLC0415
+
+    async def main() -> dict[str, int]:
+        engine = create_async_engine(maint_url, hide_parameters=True)
+        try:
+            return await delete_orphans(engine, get_store())
+        finally:
+            await engine.dispose()
+
+    return asyncio.run(main())

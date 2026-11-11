@@ -84,6 +84,21 @@ services:
       timeout: 3s
       retries: 30
 
+  # Virus scan for uploads (Phase 3.3), optional in dev (~1.5 GB RAM): `--profile av`.
+  # Signatures come from freshclam (egress); clamd listens only on the backend network.
+  clamav:
+    image: clamav/clamav:1.4.3
+    profiles: ["av"]
+    environment:
+      CLAMD_CONF_MaxFileSize: 25M
+      CLAMD_CONF_StreamMaxLength: 25M
+      CLAMD_CONF_MaxScanSize: 100M
+      CLAMD_CONF_AlertExceedsMax: "yes"
+      CLAMD_CONF_AlertEncrypted: "yes"
+    volumes:
+      - clamdb:/var/lib/clamav
+    networks: [backend, egress]
+
   migrate:
     <<: *backend
     environment:
@@ -120,6 +135,9 @@ services:
     <<: *backend
     environment:
       <<: [*backend-env, *s3-env]
+      # virus scan of uploads (3.3): `docker compose --profile av up -d clamav` and
+      # CLAMD_HOST=clamav in .env; unset in dev = documents go on unscanned (never in production)
+      CLAMD_HOST: ${CLAMD_HOST:-}
     command: ["celery", "-A", "labtrack.worker.celery_app", "worker", "--loglevel=INFO", "--concurrency=2",
               "--queues=default"]
     networks: [backend, egress]
@@ -139,7 +157,10 @@ services:
   maint-worker:
     <<: *backend
     environment:
-      <<: *backend-env
+      # S3 (3.3): deletes the objects of deleted documents; production gives it a delete-only key
+      <<: [*backend-env, *s3-env]
+      # no field-encryption key: it deletes sealed objects, it never reads them
+      LABTRACK_DEV_KEK: ""
       MAINT_DATABASE_URL: postgresql+asyncpg://labtrack_maint:${LABTRACK_MAINT_PASSWORD:?run just init}@postgres:5432/labtrack
     # two at a time: the daily purge never holds back the 5-minute dose alerts (2.8e)
     command: ["celery", "-A", "labtrack.worker.celery_app", "worker", "--loglevel=INFO", "--concurrency=2",
@@ -257,6 +278,8 @@ services:
       ADMIN_LOGIN_DATABASE_URL: postgresql+asyncpg://labtrack_admin_login:${LABTRACK_ADMIN_LOGIN_PASSWORD:?run just init}@postgres:5432/labtrack_test
       DATABASE_URL: postgresql+asyncpg://labtrack_app:${LABTRACK_APP_PASSWORD:?run just init}@postgres:5432/labtrack_test
       S3_BUCKET: labtrack-test-documents
+      # its own Valkey database: the dev worker never picks up a test's task
+      REDIS_URL: redis://:${VALKEY_PASSWORD:?run just init}@valkey:6379/1
     entrypoint: ["sh", "-c", "alembic upgrade head && alembic downgrade base && alembic upgrade head && exec \"$$@\"", "--"]
     command: ["pytest", "-q", "--no-header"]
     depends_on:
@@ -276,3 +299,4 @@ networks:
 volumes:
   pgdata:
   s3data:
+  clamdb:

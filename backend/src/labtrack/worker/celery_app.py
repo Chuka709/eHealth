@@ -48,6 +48,16 @@ app.conf.update(
             "schedule": 300.0,
             "options": {"expires": 290},
         },
+        # objects of deleted documents (3.3): sealed but readable with the KEK - removed soon
+        "document-orphans": {
+            "task": "labtrack.maintenance.document_orphans",
+            "schedule": crontab(hour=20, minute=10),
+        },
+        "document-deletions": {
+            "task": "labtrack.maintenance.document_deletions",
+            "schedule": 600.0,
+            "options": {"expires": 590},
+        },
     },
 )
 
@@ -120,3 +130,46 @@ def push_receipts() -> dict[str, int]:
     from labtrack.worker.push_tasks import run_push  # noqa: PLC0415
 
     return run_push("receipts", _push_url(), _PUSH_LOCK_SECONDS)
+
+
+# --- documents (Phase 3.3) ------------------------------------------------------------------
+
+# retries of a scan that could not run (clamd down): about 1, 2, 4, 8, 16 minutes
+_SCAN_RETRIES = 5
+
+
+@app.task(  # type: ignore[untyped-decorator]
+    name="labtrack.documents.process",
+    bind=True,
+    max_retries=_SCAN_RETRIES + 3,  # Celery's default (3) would stop before the last try
+    soft_time_limit=180,
+    time_limit=210,
+)
+def process_document(self: Any, document_id: str, user_id: str) -> str:
+    """Ids only (CLAUDE.md rule 3). Runs on the default worker as the uploader."""
+    from labtrack.worker.documents import run_sync  # noqa: PLC0415
+
+    last = self.request.retries >= _SCAN_RETRIES
+    result = run_sync(str(get_settings().database_url), document_id, user_id, last_try=last)
+    if result == "retry" or (result == "missing" and self.request.retries < 2):  # noqa: PLR2004
+        # "missing": the upload's transaction may not have committed yet
+        raise self.retry(countdown=3 if result == "missing" else 60 * 2**self.request.retries)
+    return result
+
+
+@app.task(  # type: ignore[untyped-decorator]
+    name="labtrack.maintenance.document_deletions", soft_time_limit=500, time_limit=560
+)
+def document_deletions() -> dict[str, int]:
+    from labtrack.worker.maintenance import delete_queued_objects  # noqa: PLC0415
+
+    return delete_queued_objects(_maint_url())
+
+
+@app.task(  # type: ignore[untyped-decorator]
+    name="labtrack.maintenance.document_orphans", soft_time_limit=1200, time_limit=1500
+)
+def document_orphans() -> dict[str, int]:
+    from labtrack.worker.maintenance import delete_orphan_objects  # noqa: PLC0415
+
+    return delete_orphan_objects(_maint_url())

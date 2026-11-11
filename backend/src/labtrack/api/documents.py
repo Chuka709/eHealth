@@ -12,7 +12,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, File, Form, Response, UploadFile, status
 from pydantic import BaseModel
 
-from labtrack.api.deps import PatientReadDb, PatientWriteDb
+from labtrack.api.deps import Claims, PatientReadDb, PatientWriteDb
 from labtrack.api.errors import AppError, ErrorBody
 from labtrack.api.ratelimit import per_user
 from labtrack.config import get_settings
@@ -27,6 +27,10 @@ _ERRORS: dict[int | str, dict[str, object]] = {
 }
 Store = Annotated[ObjectStore, Depends(get_store)]
 _UPLOAD_LIMIT = Depends(per_user("upload", lambda: get_settings().rate_upload_per_minute))
+# the app polls a new document's status
+_READ_LIMIT = Depends(
+    per_user("document_read", lambda: get_settings().rate_document_read_per_minute)
+)
 # each read unwraps a key and decrypts up to 20 MB
 _FILE_LIMIT = Depends(
     per_user("document_file", lambda: get_settings().rate_document_file_per_minute)
@@ -58,6 +62,7 @@ def _out(document: service.Document) -> DocumentOut:
 async def upload_document(  # noqa: PLR0917 - FastAPI parameters
     patient_id: UUID,
     db: PatientWriteDb,
+    claims: Claims,
     store: Store,
     response: Response,
     file: Annotated[UploadFile, File()],
@@ -71,6 +76,8 @@ async def upload_document(  # noqa: PLR0917 - FastAPI parameters
     uploaded = await service.upload(db, store, patient_id, client_id, data)
     if not uploaded.created:
         response.status_code = status.HTTP_200_OK  # a retry or the same file: the stored one
+    else:
+        await service.enqueue(uploaded.document.id, claims.user_id)
     return _out(uploaded.document)
 
 
@@ -79,9 +86,15 @@ async def list_documents(patient_id: UUID, db: PatientReadDb) -> list[DocumentOu
     return [_out(d) for d in await service.list_documents(db, patient_id)]
 
 
-@router.get("/{document_id}", response_model=DocumentOut, responses=_ERRORS)
-async def get_document(patient_id: UUID, document_id: UUID, db: PatientReadDb) -> DocumentOut:
-    return _out(await service.get(db, patient_id, document_id))
+@router.get(
+    "/{document_id}", response_model=DocumentOut, responses=_ERRORS, dependencies=[_READ_LIMIT]
+)
+async def get_document(
+    patient_id: UUID, document_id: UUID, db: PatientReadDb, claims: Claims
+) -> DocumentOut:
+    document = await service.get(db, patient_id, document_id)
+    await service.enqueue_if_stuck(db, patient_id, document, claims.user_id)
+    return _out(document)
 
 
 @router.get(

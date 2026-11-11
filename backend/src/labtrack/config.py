@@ -1,7 +1,15 @@
 from functools import lru_cache
 from typing import Literal
 
-from pydantic import Field, IPvAnyNetwork, PostgresDsn, RedisDsn, SecretStr, field_validator
+from pydantic import (
+    Field,
+    IPvAnyNetwork,
+    PostgresDsn,
+    RedisDsn,
+    SecretStr,
+    field_validator,
+    model_validator,
+)
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -61,6 +69,10 @@ class Settings(BaseSettings):
     s3_bucket: str = "labtrack-documents"
     rate_upload_per_minute: int = 20
     rate_document_file_per_minute: int = 60
+    rate_document_read_per_minute: int = 120
+    # virus scan (Phase 3.3): clamd over TCP; unset only in dev/test (documents go unscanned)
+    clamd_host: str | None = None
+    clamd_port: int = 3310
     # Client networks allowed to reach /admin (also enforced by Caddy). Unset: private and
     # loopback ranges in dev/test, nobody elsewhere - production must list them explicitly.
     admin_allowed_networks: list[IPvAnyNetwork] | None = None
@@ -78,6 +90,7 @@ class Settings(BaseSettings):
         "maint_database_url",
         "push_database_url",
         "s3_endpoint_url",
+        "clamd_host",
         "s3_access_key",
         "s3_secret_key",
         "admin_allowed_networks",
@@ -88,6 +101,14 @@ class Settings(BaseSettings):
     def _empty_is_unset(cls, value: object) -> object:
         # Compose passes `SENTRY_DSN=` when unset; that must disable Sentry, not init it.
         return None if value == "" else value
+
+    @model_validator(mode="after")
+    def _scanner_outside_dev(self) -> "Settings":
+        # uploads are never accepted unscanned outside dev/test (security review 3.3): a
+        # forgotten ENVIRONMENT must not quietly skip the virus scan
+        if self.environment not in {"dev", "test"} and not self.clamd_host:
+            raise ValueError("CLAMD_HOST is required outside dev/test")
+        return self
 
 
 @lru_cache

@@ -91,6 +91,7 @@ EXECUTE_MATRIX: dict[str, set[str]] = {
     },
     "labtrack_maint": {
         "maint_caregiver_alert_targets()",
+        "maint_live_document_keys(text[])",
         "maint_purge_deleted_users(integer)",
     },
     # 0028: the push worker's own role

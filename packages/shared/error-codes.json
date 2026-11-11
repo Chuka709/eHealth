@@ -51,6 +51,7 @@
     "consent.required",
     "consent.version_outdated",
     "contact.not_found",
+    "document.conflict",
     "document.not_found",
     "document.not_yours",
     "document.storage_unavailable",

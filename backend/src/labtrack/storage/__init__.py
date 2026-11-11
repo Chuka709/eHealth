@@ -5,6 +5,7 @@ the bucket never holds a readable health record. Keys are `{patient_id}/{documen
 The S3 client is synchronous (boto3): calls run in a worker thread.
 """
 
+from datetime import UTC, datetime
 from functools import lru_cache
 from typing import TYPE_CHECKING, Protocol
 
@@ -22,6 +23,8 @@ class ObjectStore(Protocol):
     async def get(self, key: str) -> bytes: ...
 
     async def delete(self, key: str) -> None: ...
+
+    async def keys_before(self, moment: datetime) -> list[str]: ...
 
 
 class StorageError(Exception):
@@ -53,6 +56,20 @@ class S3ObjectStore:
 
         await self._call(run)
 
+    async def keys_before(self, moment: datetime) -> list[str]:
+        def run() -> list[str]:
+            found: list[str] = []
+            pages = self._client.get_paginator("list_objects_v2").paginate(Bucket=self._bucket)
+            for page in pages:
+                found.extend(
+                    item["Key"]
+                    for item in page.get("Contents", [])
+                    if item["LastModified"] < moment
+                )
+            return found
+
+        return await self._call(run)
+
     def ensure_bucket(self) -> None:
         """Dev/test: the bucket is created on first use (production provisions it)."""
         from botocore.exceptions import ClientError  # noqa: PLC0415
@@ -81,9 +98,11 @@ class MemoryObjectStore:
 
     def __init__(self) -> None:
         self.objects: dict[str, bytes] = {}
+        self.stored_at: dict[str, datetime] = {}
 
     async def put(self, key: str, data: bytes) -> None:
         self.objects[key] = data
+        self.stored_at[key] = datetime.now(UTC)
 
     async def get(self, key: str) -> bytes:
         try:
@@ -93,6 +112,10 @@ class MemoryObjectStore:
 
     async def delete(self, key: str) -> None:
         self.objects.pop(key, None)
+        self.stored_at.pop(key, None)
+
+    async def keys_before(self, moment: datetime) -> list[str]:
+        return [k for k, at in self.stored_at.items() if at < moment]
 
 
 @lru_cache

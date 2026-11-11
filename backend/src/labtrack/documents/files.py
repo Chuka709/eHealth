@@ -87,6 +87,91 @@ def check(data: bytes) -> CheckedFile:
     raise FileRejectedError("document.unsupported_type")
 
 
+_ACTION_TYPES: Final = frozenset(
+    {
+        "/JavaScript",
+        "/Launch",
+        "/SubmitForm",
+        "/ImportData",
+        "/GoToE",
+        "/GoToR",
+        "/RichMediaExecute",
+        "/Rendition",
+        "/Movie",
+        "/Sound",
+    }
+)
+_ACTIVE_KEYS: Final = frozenset(
+    {"/JS", "/JavaScript", "/XFA", "/RichMedia", "/EmbeddedFile", "/EmbeddedFiles", "/Collection"}
+)
+_ACTIVE_SUBTYPES: Final = frozenset(
+    {"/FileAttachment", "/RichMedia", "/Movie", "/Sound", "/Screen", "/3D", "/PS"}
+)
+_ACTIVE_TYPES: Final = frozenset({"/EmbeddedFile", "/RichMedia", "/Filespec"})
+
+
+def _active_content(data: bytes) -> bool:
+    """Every object qpdf finds - in object streams too, names already decoded - walked down to
+    its nested dictionaries and arrays, looking for actions that run or fetch something,
+    scripts, forms (XFA), media and attached files. Links are allowed to http(s) only. qpdf does
+    not repair the file: one it cannot read as written is refused (security review 3.3)."""
+    import pikepdf  # noqa: PLC0415
+
+    try:
+        pdf = pikepdf.open(io.BytesIO(data), attempt_recovery=False)
+    except pikepdf.PasswordError as exc:
+        raise FileRejectedError("document.pdf_encrypted") from exc
+    except pikepdf.PdfError as exc:
+        raise FileRejectedError("document.unreadable") from exc
+    with pdf:
+        if pdf.is_encrypted:
+            raise FileRejectedError("document.pdf_encrypted")
+        try:
+            seen: set[tuple[int, int]] = set()
+            return any(_active(obj, seen, 0) for obj in pdf.objects)
+        except pikepdf.PdfError as exc:
+            raise FileRejectedError("document.unreadable") from exc
+
+
+_MAX_DEPTH: Final = 32
+
+
+def _active(obj: object, seen: set[tuple[int, int]], depth: int) -> bool:  # noqa: PLR0911
+    import pikepdf  # noqa: PLC0415
+
+    if depth > _MAX_DEPTH:
+        return True  # nesting no real report has
+    if isinstance(obj, pikepdf.Object) and obj.is_indirect:
+        if obj.objgen in seen:
+            return False
+        seen.add(obj.objgen)
+    if isinstance(obj, pikepdf.Stream):
+        obj = obj.stream_dict
+    if isinstance(obj, pikepdf.Array):
+        return any(_active(item, seen, depth + 1) for item in obj)
+    if not isinstance(obj, pikepdf.Dictionary):
+        return False
+    keys = set(obj.keys())
+    if keys & _ACTIVE_KEYS:
+        return True
+    if str(obj.get("/S", "")) in _ACTION_TYPES:
+        return True
+    if (
+        str(obj.get("/Type", "")) in _ACTIVE_TYPES
+        or str(obj.get("/Subtype", "")) in _ACTIVE_SUBTYPES
+    ):
+        return True
+    uri = obj.get("/URI")
+    if uri is not None and not str(uri).lower().startswith(("http://", "https://")):
+        return True  # file://, smb:// and the like reach the reader's computer
+    # values are walked too; /Parent and page-tree links are reached as objects anyway
+    return any(
+        _active(value, seen, depth + 1)
+        for key, value in obj.items()
+        if key not in {"/Parent", "/P"}
+    )
+
+
 def _names(raw: bytes) -> bytes:
     """PDF names may spell a character as #xx (/Java#53cript is /JavaScript): decoded first."""
     return _HEX_NAME.sub(lambda m: bytes([int(m.group(1), 16)]), raw)
@@ -118,7 +203,9 @@ def _unsafe_pdf(data: bytes) -> bool:
 
 
 def _check_pdf(data: bytes) -> tuple[int, bool]:
-    if _unsafe_pdf(data):
+    # two independent looks: a real parser over every object, then the raw-byte scan
+    # the bounded byte scan first: its inflate budget stops a zip bomb before qpdf opens it
+    if _unsafe_pdf(data) or _active_content(data):
         raise FileRejectedError("document.pdf_unsafe")
     with _PDFIUM:
         return _read_pdf(data)

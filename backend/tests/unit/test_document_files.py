@@ -222,3 +222,16 @@ def test_an_image_whose_header_claims_a_huge_size_is_too_large() -> None:
     with pytest.raises(FileRejectedError) as err:
         check(data)
     assert err.value.code == "document.too_large"
+
+
+@pytest.mark.parametrize(
+    "extra",
+    [
+        "/OpenAction << /S /URI /URI (file:///etc/passwd) >>",
+        "/Names << /Collection << /D (x) >> >>",
+    ],
+)
+def test_local_links_and_portfolios_are_refused(extra: str) -> None:
+    with pytest.raises(FileRejectedError) as err:
+        check(_catalog_pdf(extra))
+    assert err.value.code == "document.pdf_unsafe"

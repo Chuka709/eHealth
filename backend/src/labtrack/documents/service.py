@@ -8,11 +8,12 @@ the document already there. Audited by id only.
 """
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, datetime, timedelta
 from uuid import UUID, uuid4
 
 from anyio import CapacityLimiter, to_thread
 from sqlalchemy.ext.asyncio import AsyncSession
+from structlog import get_logger
 
 from labtrack.api.errors import AppError
 from labtrack.core.envelope import EnvelopeError, field_aad
@@ -21,6 +22,8 @@ from labtrack.documents.files import FileRejectedError, check
 from labtrack.keys import decrypt_bytes, encrypt_bytes, get_key_provider
 from labtrack.records.repository import audit
 from labtrack.storage import ObjectStore, StorageError
+
+log = get_logger(__name__)
 
 MAX_DOCUMENTS = 2000  # per profile; years of monthly results with room to spare
 
@@ -127,7 +130,7 @@ async def upload(
         await store.put(key, sealed)
     except StorageError as exc:
         # the transaction rolls back: no row without its object. (An object stored and then
-        # a failed commit is an orphan the maintenance sweep removes - Phase 3.3.)
+        # a failed commit is an orphan: the daily orphan sweep removes it - Phase 3.3.)
         raise AppError(503, "document.storage_unavailable") from exc
     return Uploaded(await get(db, patient_id, document_id), created=True)
 
@@ -185,3 +188,39 @@ def _checks() -> CapacityLimiter:
 
 
 _STATUS = {"document.too_large": 413, "document.unsupported_type": 415}
+
+
+# --- processing (Phase 3.3) -------------------------------------------------------------------
+
+STUCK_AFTER = timedelta(minutes=2)
+
+
+async def enqueue(document_id: UUID, user_id: UUID) -> None:
+    """The scan task, a moment after the upload commits (the task retries while the row is not
+    visible yet). Ids only. A broker that is down does not fail the upload: the next status
+    request sends it again (enqueue_if_stuck)."""
+    from labtrack.api.ratelimit import _redis  # noqa: PLC0415
+    from labtrack.worker.celery_app import app  # noqa: PLC0415
+
+    try:
+        # one task per document for 5 minutes: polling the status never piles tasks up
+        if not await _redis().set(f"doc-scan:{document_id}", "1", nx=True, ex=300):
+            return
+        app.send_task(
+            "labtrack.documents.process", args=[str(document_id), str(user_id)], countdown=2
+        )
+    except Exception:
+        log.warning("document_enqueue_failed", document_id=str(document_id))
+
+
+async def enqueue_if_stuck(
+    db: AsyncSession, patient_id: UUID, document: Document, user_id: UUID
+) -> None:
+    """Sent again only for someone who may write the profile: the task runs as them."""
+    if document.status != "uploaded" or datetime.now(UTC) - document.created_at <= STUCK_AFTER:
+        return
+    may_write = (
+        await db.execute(bound_text("select can_write_patient(:p)"), {"p": patient_id})
+    ).scalar_one()
+    if may_write:
+        await enqueue(document.id, user_id)
