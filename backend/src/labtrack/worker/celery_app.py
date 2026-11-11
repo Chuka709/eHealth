@@ -24,8 +24,8 @@ app.conf.update(
     # 03:00 Asia/Ulaanbaatar (UTC+8): account purge and auth_attempts retention.
     # Maintenance runs only on the maint worker, the only process with the maint credentials
     # (the default worker parses untrusted uploads).
-    # Push delivery runs on the push worker: maint credentials too, plus the one outbound route
-    # it needs (Expo), so the daily maintenance worker stays without internet.
+    # Push delivery runs on the push worker: its own role (labtrack_push, delivery only) and the
+    # one outbound route it needs (Expo), so the daily maintenance worker stays without internet.
     task_routes={
         "labtrack.maintenance.*": {"queue": "maintenance"},
         "labtrack.push.*": {"queue": "push"},
@@ -52,6 +52,13 @@ app.conf.update(
 )
 
 _PUSH_LOCK_SECONDS = 120
+
+
+def _push_url() -> str:
+    url = get_settings().push_database_url
+    if url is None:
+        raise RuntimeError("PUSH_DATABASE_URL is not set (role labtrack_push)")
+    return str(url)
 
 
 def _maint_url() -> str:
@@ -105,11 +112,11 @@ def missed_doses() -> dict[str, int]:
 def push_send() -> dict[str, int]:
     from labtrack.worker.push_tasks import run_push  # noqa: PLC0415
 
-    return run_push("send", _maint_url(), _PUSH_LOCK_SECONDS)
+    return run_push("send", _push_url(), _PUSH_LOCK_SECONDS)
 
 
 @app.task(name="labtrack.push.receipts", soft_time_limit=90, time_limit=110)  # type: ignore[untyped-decorator]
 def push_receipts() -> dict[str, int]:
     from labtrack.worker.push_tasks import run_push  # noqa: PLC0415
 
-    return run_push("receipts", _maint_url(), _PUSH_LOCK_SECONDS)
+    return run_push("receipts", _push_url(), _PUSH_LOCK_SECONDS)

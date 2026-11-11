@@ -490,7 +490,7 @@ async def test_a_push_token_is_set_on_ones_own_session_and_follows_the_phone(
 
 
 async def test_the_push_queue_has_keys_and_tokens_only_and_reaches_reset_devices(
-    app_engine: AsyncEngine, owner_engine: AsyncEngine, maint_engine: AsyncEngine
+    app_engine: AsyncEngine, owner_engine: AsyncEngine, push_engine: AsyncEngine
 ) -> None:
     owner, carer, patient, name = await _family(app_engine, owner_engine)
     session, token = await _session(owner_engine, carer), _token()
@@ -501,7 +501,7 @@ async def test_the_push_queue_has_keys_and_tokens_only_and_reaches_reset_devices
     invitation = await _invite(app_engine, owner, patient, name)
 
     async def queued() -> list[Any]:
-        async with maint_engine.connect() as conn:
+        async with push_engine.connect() as conn:
             rows = (await conn.execute(bound_text("select * from maint_push_queue(500)"))).all()
         return [r for r in rows if r.push_token == token]
 
@@ -521,7 +521,7 @@ async def test_the_push_queue_has_keys_and_tokens_only_and_reaches_reset_devices
         "push_token",
         "locale",  # 0023: the text is in the user's language, the user's row is not read
     }
-    async with maint_engine.connect() as conn, conn.begin():
+    async with push_engine.connect() as conn, conn.begin():
         assert (
             await scalar(
                 conn,
@@ -550,7 +550,7 @@ async def test_the_push_queue_has_keys_and_tokens_only_and_reaches_reset_devices
             {"u": carer},
         )
     assert [r.kind for r in await queued()] == ["admin_reset"]
-    async with maint_engine.connect() as conn, conn.begin():
+    async with push_engine.connect() as conn, conn.begin():
         await conn.execute(bound_text("select maint_forget_push_token(:t)"), {"t": token})
     assert await queued() == []
     async with as_user(app_engine, carer) as conn:

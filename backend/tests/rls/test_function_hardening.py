@@ -91,10 +91,13 @@ EXECUTE_MATRIX: dict[str, set[str]] = {
     },
     "labtrack_maint": {
         "maint_caregiver_alert_targets()",
+        "maint_purge_deleted_users(integer)",
+    },
+    # 0028: the push worker's own role
+    "labtrack_push": {
         "maint_forget_push_token(text)",
         "maint_forget_receipt_token(bigint)",
         "maint_mark_pushed(bigint[])",
-        "maint_purge_deleted_users(integer)",
         "maint_push_queue(integer)",
     },
 }
@@ -211,7 +214,7 @@ async def test_definer_execute_matrix(owner_engine: AsyncEngine) -> None:
                 bound_text(
                     "select r, p.oid::regprocedure::text from pg_proc p"
                     " cross join unnest(array['labtrack_app', 'labtrack_admin',"
-                    " 'labtrack_admin_login', 'labtrack_maint']) r"
+                    " 'labtrack_admin_login', 'labtrack_maint', 'labtrack_push']) r"
                     " where p.pronamespace = 'public'::regnamespace and p.prosecdef"
                     " and has_function_privilege(r, p.oid, 'execute')"
                 )

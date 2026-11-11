@@ -35,6 +35,7 @@ services:
       LABTRACK_ADMIN_PASSWORD: ${LABTRACK_ADMIN_PASSWORD:?run just init}
       LABTRACK_ADMIN_LOGIN_PASSWORD: ${LABTRACK_ADMIN_LOGIN_PASSWORD:?run just init}
       LABTRACK_MAINT_PASSWORD: ${LABTRACK_MAINT_PASSWORD:?run just init}
+      LABTRACK_PUSH_PASSWORD: ${LABTRACK_PUSH_PASSWORD:?run just init}
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./postgres/init:/docker-entrypoint-initdb.d:ro
@@ -137,18 +138,19 @@ services:
       migrate: { condition: service_completed_successfully }
       valkey: { condition: service_healthy }
 
-  # Push delivery only (queue "push", Phase 2.8b): labtrack_maint credentials for the push queue
-  # and its one outbound route, Expo. Off (sends and marks nothing) until PUSH_ENABLED=true.
-  # It has internet, so it gets only what it needs: no field-encryption key, no pepper, no app
-  # role (DATABASE_URL is required by the settings and is the maint URL here too).
+  # Push delivery only (queue "push", Phase 2.8b): labtrack_push credentials (2.11b: the
+  # delivery functions and push_receipts only) and its one outbound route, Expo. Off (sends and
+  # marks nothing) until PUSH_ENABLED=true. It has internet, so it gets only what it needs: no
+  # field-encryption key, no pepper, no app role (DATABASE_URL is required by the settings and
+  # is the push URL here too).
   push-worker:
     <<: *backend
     environment:
       ENVIRONMENT: ${ENVIRONMENT:-dev}
-      DATABASE_URL: postgresql+asyncpg://labtrack_maint:${LABTRACK_MAINT_PASSWORD:?run just init}@postgres:5432/labtrack
+      DATABASE_URL: postgresql+asyncpg://labtrack_push:${LABTRACK_PUSH_PASSWORD:?run just init}@postgres:5432/labtrack
       REDIS_URL: redis://:${VALKEY_PASSWORD:?run just init}@valkey:6379/0
       SENTRY_DSN: ${SENTRY_DSN:-}
-      MAINT_DATABASE_URL: postgresql+asyncpg://labtrack_maint:${LABTRACK_MAINT_PASSWORD:?run just init}@postgres:5432/labtrack
+      PUSH_DATABASE_URL: postgresql+asyncpg://labtrack_push:${LABTRACK_PUSH_PASSWORD:?run just init}@postgres:5432/labtrack
       PUSH_ENABLED: ${PUSH_ENABLED:-false}
       EXPO_ACCESS_TOKEN: ${EXPO_ACCESS_TOKEN:-}
     volumes:
@@ -238,6 +240,7 @@ services:
       TEST_ADMIN_DATABASE_URL: postgresql+asyncpg://labtrack_admin:${LABTRACK_ADMIN_PASSWORD:?run just init}@postgres:5432/labtrack_test
       TEST_ADMIN_LOGIN_DATABASE_URL: postgresql+asyncpg://labtrack_admin_login:${LABTRACK_ADMIN_LOGIN_PASSWORD:?run just init}@postgres:5432/labtrack_test
       TEST_MAINT_DATABASE_URL: postgresql+asyncpg://labtrack_maint:${LABTRACK_MAINT_PASSWORD:?run just init}@postgres:5432/labtrack_test
+      TEST_PUSH_DATABASE_URL: postgresql+asyncpg://labtrack_push:${LABTRACK_PUSH_PASSWORD:?run just init}@postgres:5432/labtrack_test
       MAINT_DATABASE_URL: postgresql+asyncpg://labtrack_maint:${LABTRACK_MAINT_PASSWORD:?run just init}@postgres:5432/labtrack_test
       ADMIN_DATABASE_URL: postgresql+asyncpg://labtrack_admin:${LABTRACK_ADMIN_PASSWORD:?run just init}@postgres:5432/labtrack_test
       ADMIN_LOGIN_DATABASE_URL: postgresql+asyncpg://labtrack_admin_login:${LABTRACK_ADMIN_LOGIN_PASSWORD:?run just init}@postgres:5432/labtrack_test

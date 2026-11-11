@@ -1,4 +1,4 @@
-"""Push delivery by the maintenance role (Phase 2.8b; H12, H16; security review L3).
+"""Push delivery by the push role, labtrack_push (Phase 2.8b, 2.11b; H12, H16; security review L3).
 
 Expo is a fake here: nothing leaves the test. The queue is shared with other tests, so every
 assertion looks only at this test's own tokens.
@@ -94,14 +94,17 @@ async def _session_token(owner_engine: AsyncEngine, session: Any) -> str | None:
 
 
 async def test_a_notice_is_pushed_once_with_generic_text_and_two_ids(
-    app_engine: AsyncEngine, owner_engine: AsyncEngine, maint_engine: AsyncEngine
+    app_engine: AsyncEngine,
+    owner_engine: AsyncEngine,
+    maint_engine: AsyncEngine,
+    push_engine: AsyncEngine,
 ) -> None:
     owner, carer, patient, name = await _family(app_engine, owner_engine)
     session, token = await _with_token(app_engine, owner_engine, carer)
     invitation = await _invite(app_engine, owner, patient, name)
     expo = FakeExpo()
 
-    await send_pending(maint_engine, expo)
+    await send_pending(push_engine, expo)
     [message] = expo.to(token)
     assert set(message) == {"to", "title", "body", "data", "sound", "priority", "channelId"}
     # L3: the app reads everything else through the API once signed in
@@ -116,35 +119,41 @@ async def test_a_notice_is_pushed_once_with_generic_text_and_two_ids(
     assert bytes(receipt.token_sha256) == token_hash(token)
 
     # a second run (or a retried task) pushes nothing again
-    await send_pending(maint_engine, expo)
+    await send_pending(push_engine, expo)
     assert len(expo.to(token)) == 1
 
 
 async def test_a_refused_request_marks_nothing_and_is_sent_on_the_next_run(
-    app_engine: AsyncEngine, owner_engine: AsyncEngine, maint_engine: AsyncEngine
+    app_engine: AsyncEngine,
+    owner_engine: AsyncEngine,
+    maint_engine: AsyncEngine,
+    push_engine: AsyncEngine,
 ) -> None:
     owner, carer, patient, name = await _family(app_engine, owner_engine)
     session, token = await _with_token(app_engine, owner_engine, carer)
     await _invite(app_engine, owner, patient, name)
     expo = FakeExpo()
     expo.fail = True
-    result = await send_pending(maint_engine, expo)
+    result = await send_pending(push_engine, expo)
     assert result.failed_requests >= 1
     assert await _receipt_rows(maint_engine, session) == []
     expo.fail = False
-    await send_pending(maint_engine, expo)
+    await send_pending(push_engine, expo)
     assert len(expo.to(token)) == 1
 
 
 async def test_device_not_registered_clears_the_token_at_once(
-    app_engine: AsyncEngine, owner_engine: AsyncEngine, maint_engine: AsyncEngine
+    app_engine: AsyncEngine,
+    owner_engine: AsyncEngine,
+    maint_engine: AsyncEngine,
+    push_engine: AsyncEngine,
 ) -> None:
     owner, carer, patient, name = await _family(app_engine, owner_engine)
     session, token = await _with_token(app_engine, owner_engine, carer)
     await _invite(app_engine, owner, patient, name)
     expo = FakeExpo()
     expo.ticket_errors[token] = "DeviceNotRegistered"
-    await send_pending(maint_engine, expo)
+    await send_pending(push_engine, expo)
     [receipt] = await _receipt_rows(maint_engine, session)
     assert (receipt.status, receipt.error, receipt.ticket_id) == (
         "error",
@@ -166,18 +175,21 @@ async def _age(owner_engine: AsyncEngine, session: Any, minutes: int) -> None:
 
 
 async def test_receipts_are_read_later_and_a_new_token_survives_an_old_receipt(
-    app_engine: AsyncEngine, owner_engine: AsyncEngine, maint_engine: AsyncEngine
+    app_engine: AsyncEngine,
+    owner_engine: AsyncEngine,
+    maint_engine: AsyncEngine,
+    push_engine: AsyncEngine,
 ) -> None:
     owner, carer, patient, name = await _family(app_engine, owner_engine)
     session, _ = await _with_token(app_engine, owner_engine, carer)
     await _invite(app_engine, owner, patient, name)
     expo = FakeExpo()
-    await send_pending(maint_engine, expo)
+    await send_pending(push_engine, expo)
     [sent] = await _receipt_rows(maint_engine, session)
 
     # too early: Expo is not asked yet
     expo.receipts_by_id[sent.ticket_id] = Receipt(False, "DeviceNotRegistered")
-    await check_receipts(maint_engine, expo)
+    await check_receipts(push_engine, expo)
     assert (await _receipt_rows(maint_engine, session))[0].status == "sent"
 
     # the app registered a new token meanwhile (reinstall): the old ticket must not clear it
@@ -187,42 +199,48 @@ async def test_receipts_are_read_later_and_a_new_token_survives_an_old_receipt(
             bound_text("select set_session_push_token(:s, :t)"), {"s": session, "t": fresh}
         )
     await _age(owner_engine, session, 20)
-    await check_receipts(maint_engine, expo)
+    await check_receipts(push_engine, expo)
     [checked] = await _receipt_rows(maint_engine, session)
     assert (checked.status, checked.error) == ("error", "DeviceNotRegistered")
     assert await _session_token(owner_engine, session) == fresh
 
 
 async def test_a_late_device_not_registered_clears_the_same_token(
-    app_engine: AsyncEngine, owner_engine: AsyncEngine, maint_engine: AsyncEngine
+    app_engine: AsyncEngine,
+    owner_engine: AsyncEngine,
+    maint_engine: AsyncEngine,
+    push_engine: AsyncEngine,
 ) -> None:
     owner, carer, patient, name = await _family(app_engine, owner_engine)
     session, _ = await _with_token(app_engine, owner_engine, carer)
     await _invite(app_engine, owner, patient, name)
     expo = FakeExpo()
-    await send_pending(maint_engine, expo)
+    await send_pending(push_engine, expo)
     [sent] = await _receipt_rows(maint_engine, session)
     expo.receipts_by_id[sent.ticket_id] = Receipt(False, "DeviceNotRegistered")
     await _age(owner_engine, session, 20)
-    result = await check_receipts(maint_engine, expo)
+    result = await check_receipts(push_engine, expo)
     assert result.forgotten_tokens >= 1
     assert await _session_token(owner_engine, session) is None
 
 
 async def test_an_ok_receipt_and_one_expo_never_answered(
-    app_engine: AsyncEngine, owner_engine: AsyncEngine, maint_engine: AsyncEngine
+    app_engine: AsyncEngine,
+    owner_engine: AsyncEngine,
+    maint_engine: AsyncEngine,
+    push_engine: AsyncEngine,
 ) -> None:
     owner, carer, patient, name = await _family(app_engine, owner_engine)
     session, token = await _with_token(app_engine, owner_engine, carer)
     other_session, _ = await _with_token(app_engine, owner_engine, carer)
     await _invite(app_engine, owner, patient, name)
     expo = FakeExpo()
-    await send_pending(maint_engine, expo)
+    await send_pending(push_engine, expo)
     [sent] = await _receipt_rows(maint_engine, session)
     expo.receipts_by_id[sent.ticket_id] = Receipt(True, None)
     await _age(owner_engine, session, 20)
     await _age(owner_engine, other_session, 25 * 60)  # Expo has dropped it by now
-    await check_receipts(maint_engine, expo)
+    await check_receipts(push_engine, expo)
     assert [(r.status, r.error) for r in await _receipt_rows(maint_engine, session)] == [
         ("ok", None)
     ]
@@ -237,6 +255,7 @@ async def test_an_admin_reset_reaches_the_signed_out_phone_in_its_language(
     app_engine: AsyncEngine,
     admin_engine: AsyncEngine,
     maint_engine: AsyncEngine,
+    push_engine: AsyncEngine,
 ) -> None:
     """H12: the real reset (admin_issue_token) signs every session out and still tells them."""
     admin = await make_user(owner_engine, "super_admin")
@@ -266,7 +285,7 @@ async def test_an_admin_reset_reaches_the_signed_out_phone_in_its_language(
         )
 
     expo = FakeExpo()
-    await send_pending(maint_engine, expo)
+    await send_pending(push_engine, expo)
     [message] = expo.to(token)
     assert message["data"]["kind"] == "admin_reset"
     assert message["body"].startswith("An admin issued a password reset code")
@@ -295,7 +314,10 @@ async def _sent_at(owner_engine: AsyncEngine, user: UUID) -> list[Any]:
 
 
 async def test_one_refused_token_holds_up_nobody_else(
-    app_engine: AsyncEngine, owner_engine: AsyncEngine, maint_engine: AsyncEngine
+    app_engine: AsyncEngine,
+    owner_engine: AsyncEngine,
+    maint_engine: AsyncEngine,
+    push_engine: AsyncEngine,
 ) -> None:
     """Security review H1: a token of another Expo project makes Expo refuse the request."""
     owner, carer, patient, name = await _family(app_engine, owner_engine)
@@ -307,19 +329,22 @@ async def test_one_refused_token_holds_up_nobody_else(
     await _invite(app_engine, owner2, patient2, name2)
     expo = FakeExpo()
     expo.poison.add(bad)
-    await send_pending(maint_engine, expo)
+    await send_pending(push_engine, expo)
     assert len(expo.to(good)) == 1
     assert len(expo.to(other)) == 1
     [refused] = await _receipt_rows(maint_engine, bad_session)
     assert (refused.status, refused.error) == ("error", "PUSH_TOO_MANY_EXPERIENCE_IDS")
     assert [r.status for r in await _receipt_rows(maint_engine, good_session)] == ["sent"]
     assert all(at is not None for at in await _sent_at(owner_engine, carer))
-    await send_pending(maint_engine, expo)  # nothing is tried again
+    await send_pending(push_engine, expo)  # nothing is tried again
     assert (len(expo.to(good)), len(expo.to(other))) == (1, 1)
 
 
 async def test_a_rate_limited_device_is_sent_again_and_the_others_are_not(
-    app_engine: AsyncEngine, owner_engine: AsyncEngine, maint_engine: AsyncEngine
+    app_engine: AsyncEngine,
+    owner_engine: AsyncEngine,
+    maint_engine: AsyncEngine,
+    push_engine: AsyncEngine,
 ) -> None:
     """Security review M1: MessageRateExceeded / InvalidCredentials are about the moment or the
     setup, so the notice is not marked; the device that got it is not sent it twice."""
@@ -329,17 +354,20 @@ async def test_a_rate_limited_device_is_sent_again_and_the_others_are_not(
     await _invite(app_engine, owner, patient, name)
     expo = FakeExpo()
     expo.ticket_errors[slow] = "MessageRateExceeded"
-    await send_pending(maint_engine, expo)
+    await send_pending(push_engine, expo)
     assert await _receipt_rows(maint_engine, slow_session) == []
     assert await _sent_at(owner_engine, carer) == [None]
     del expo.ticket_errors[slow]
-    await send_pending(maint_engine, expo)
+    await send_pending(push_engine, expo)
     assert (len(expo.to(slow)), len(expo.to(fine))) == (2, 1)
     assert all(at is not None for at in await _sent_at(owner_engine, carer))
 
 
 async def test_a_dose_alert_waits_for_nobody_who_is_no_longer_the_caregiver(
-    app_engine: AsyncEngine, owner_engine: AsyncEngine, maint_engine: AsyncEngine
+    app_engine: AsyncEngine,
+    owner_engine: AsyncEngine,
+    maint_engine: AsyncEngine,
+    push_engine: AsyncEngine,
 ) -> None:
     """Security review L1: access ended before the alert went out - it is not pushed."""
     _, carer, patient = await _caregiver(app_engine, owner_engine)
@@ -360,13 +388,16 @@ async def test_a_dose_alert_waits_for_nobody_who_is_no_longer_the_caregiver(
             {"p": patient, "u": carer},
         )
     expo = FakeExpo()
-    await send_pending(maint_engine, expo)
+    await send_pending(push_engine, expo)
     # the invitation's own notice still goes out; the dose alert does not
     assert [m["data"]["kind"] for m in expo.to(token)] == ["share_invite"]
 
 
 async def test_a_profile_notice_is_pushed_only_while_access_lasts(
-    app_engine: AsyncEngine, owner_engine: AsyncEngine, maint_engine: AsyncEngine
+    app_engine: AsyncEngine,
+    owner_engine: AsyncEngine,
+    maint_engine: AsyncEngine,
+    push_engine: AsyncEngine,
 ) -> None:
     """Commit review of 0023: every kind about a profile, not only dose alerts."""
     _, carer, patient = await _caregiver(app_engine, owner_engine)
@@ -388,7 +419,7 @@ async def test_a_profile_notice_is_pushed_only_while_access_lasts(
             {"p": patient, "u": carer},
         )
     expo = FakeExpo()
-    await send_pending(maint_engine, expo)
+    await send_pending(push_engine, expo)
     assert [m["data"]["kind"] for m in expo.to(token)] == ["share_invite"]
 
 
@@ -437,3 +468,55 @@ async def test_a_moved_token_still_reaches_the_phone_an_admin_reset_signed_out(
     assert [(m.actor_id, m.entity_id, m.diff) for m in moves] == [
         (thief, str(thief_session), {"sessions": 1})
     ]
+
+
+async def test_the_push_role_reaches_delivery_only(
+    owner_engine: AsyncEngine, maint_engine: AsyncEngine, push_engine: AsyncEngine
+) -> None:
+    """2.11b: the one role with internet reads no PHI, runs no maintenance and never deletes a
+    receipt; the maintenance role no longer delivers."""
+    denied_push = (
+        "select count(*) from users",
+        "select count(*) from medications",
+        "select count(*) from notifications",
+        "select push_token from sessions limit 1",
+        "select session_id from push_receipts limit 1",
+        "delete from push_receipts where id = 0",
+        "select * from maint_caregiver_alert_targets()",
+    )
+    for sql in denied_push:
+        async with push_engine.connect() as conn:
+            with pytest.raises(DBAPIError, match="permission denied"):
+                await conn.execute(bound_text(sql))
+    async with push_engine.connect() as conn:
+        await conn.execute(bound_text("select count(*) from maint_push_queue(1)"))
+    for sql in (
+        "select count(*) from maint_push_queue(1)",
+        "select maint_mark_pushed(array[]::bigint[])",
+        "select maint_forget_push_token('x')",
+        "select maint_forget_receipt_token(0)",
+    ):
+        async with maint_engine.connect() as conn:
+            with pytest.raises(DBAPIError, match="permission denied"):
+                await conn.execute(bound_text(sql))
+
+
+async def test_the_push_role_holds_nothing_but_push_receipts(owner_engine: AsyncEngine) -> None:
+    """2.11b: every table, view and sequence the push role can touch (a new grant shows here)."""
+    async with owner_engine.connect() as conn:
+        rows = (
+            await conn.execute(
+                bound_text(
+                    "select c.relname from pg_class c"
+                    " where c.relnamespace = 'public'::regnamespace"
+                    " and c.relkind in ('r', 'p', 'v', 'm', 'S', 'f') and ("
+                    " (c.relkind <> 'S' and (has_table_privilege('labtrack_push', c.oid,"
+                    " 'select,insert,update,delete,truncate,references,trigger')"
+                    " or has_any_column_privilege('labtrack_push', c.oid,"
+                    " 'select,insert,update,references')))"
+                    " or (c.relkind = 'S'"
+                    " and has_sequence_privilege('labtrack_push', c.oid, 'usage,select,update')))"
+                )
+            )
+        ).scalars()
+        assert set(rows) == {"push_receipts", "push_receipts_id_seq"}

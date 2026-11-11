@@ -37,8 +37,8 @@ def _gateway() -> PushGateway:
     return ExpoGateway(token.get_secret_value() if token else None)
 
 
-async def _run(job: Job, maint_url: str, gateway: PushGateway) -> dict[str, int]:
-    engine = create_async_engine(maint_url, hide_parameters=True)
+async def _run(job: Job, push_url: str, gateway: PushGateway) -> dict[str, int]:
+    engine = create_async_engine(push_url, hide_parameters=True)
     try:
         if job == "send":
             sent = await send_pending(engine, gateway)
@@ -61,7 +61,7 @@ async def _run(job: Job, maint_url: str, gateway: PushGateway) -> dict[str, int]
 
 def run_push(
     job: Job,
-    maint_url: str,
+    push_url: str,
     lock_seconds: int,
     *,
     gateway: Callable[[], PushGateway] = _gateway,
@@ -88,7 +88,7 @@ def run_push(
         log.warning("push_lock_unavailable", job=job)
         return {"busy": 1}
     try:
-        return asyncio.run(_run(job, maint_url, gateway()))
+        return asyncio.run(_run(job, push_url, gateway()))
     finally:
         try:
             client.eval(_RELEASE, 1, key, owner)

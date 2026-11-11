@@ -51,6 +51,8 @@ class Settings(BaseSettings):
     admin_login_database_url: PostgresDsn | None = None
     # Daily maintenance worker (labtrack_maint): account purge, auth_attempts retention.
     maint_database_url: PostgresDsn | None = None
+    # push worker only (labtrack_push, migration 0028)
+    push_database_url: PostgresDsn | None = None
     # Client networks allowed to reach /admin (also enforced by Caddy). Unset: private and
     # loopback ranges in dev/test, nobody elsewhere - production must list them explicitly.
     admin_allowed_networks: list[IPvAnyNetwork] | None = None
@@ -66,6 +68,7 @@ class Settings(BaseSettings):
         "admin_database_url",
         "admin_login_database_url",
         "maint_database_url",
+        "push_database_url",
         "admin_allowed_networks",
         "expo_access_token",
         mode="before",

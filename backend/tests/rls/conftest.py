@@ -24,6 +24,7 @@ _REQUIRED = (
     "TEST_ADMIN_DATABASE_URL",
     "TEST_ADMIN_LOGIN_DATABASE_URL",
     "TEST_MAINT_DATABASE_URL",
+    "TEST_PUSH_DATABASE_URL",
 )
 
 
@@ -68,6 +69,14 @@ async def admin_login_engine() -> AsyncIterator[AsyncEngine]:
 @pytest.fixture(scope="session")
 async def maint_engine() -> AsyncIterator[AsyncEngine]:
     engine = create_async_engine(os.environ["TEST_MAINT_DATABASE_URL"])
+    yield engine
+    await engine.dispose()
+
+
+@pytest.fixture(scope="session")
+async def push_engine() -> AsyncIterator[AsyncEngine]:
+    """labtrack_push: the push worker's role (migration 0028)."""
+    engine = create_async_engine(os.environ["TEST_PUSH_DATABASE_URL"])
     yield engine
     await engine.dispose()
 

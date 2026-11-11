@@ -1,4 +1,4 @@
-"""Expo push delivery as `labtrack_maint` (Phase 2.8b; docs/08 "Мэдэгдэл"; H12, H16).
+"""Expo push delivery as `labtrack_push` (2.8b; own role 2.11b; docs/08 "Мэдэгдэл"; H12, H16).
 
 - send: maint_push_queue() -> Expo (at most 100 messages per request) -> a push_receipts row
   per message (ticket id, token hash) -> maint_mark_pushed(). A notification is marked only

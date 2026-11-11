@@ -32,6 +32,12 @@ logs service="":
     {{compose}} logs -f --tail=100 {{service}}
 
 # --- Backend (runs inside the Linux container: same as production) ---
+# Roles added after the data directory was created (labtrack_push, 2.11b): idempotent, run
+# before `just migrate`. Recreates postgres when .env gained a password (`just init`).
+db-roles:
+    {{compose}} up -d --wait postgres
+    {{compose}} exec -T postgres sh /docker-entrypoint-initdb.d/02-push-role.sh
+
 migrate:
     {{compose}} run --rm migrate
 
@@ -80,7 +86,7 @@ e2e-mobile *flows:
 # Recreate the empty test database (as in infra/postgres/init/01-roles.sh). Downgrades do not
 # remove objects an older revision of a migration created, so tests could run on a stale schema.
 reset-test-db:
-    {{compose}} exec -T postgres psql -U postgres -d postgres -v ON_ERROR_STOP=1 -c "drop database if exists labtrack_test with (force)" -c "create database labtrack_test owner labtrack_owner" -c "revoke all on database labtrack_test from public" -c "grant connect on database labtrack_test to labtrack_app, labtrack_admin, labtrack_admin_login, labtrack_maint"
+    {{compose}} exec -T postgres psql -U postgres -d postgres -v ON_ERROR_STOP=1 -c "drop database if exists labtrack_test with (force)" -c "create database labtrack_test owner labtrack_owner" -c "revoke all on database labtrack_test from public" -c "grant connect on database labtrack_test to labtrack_app, labtrack_admin, labtrack_admin_login, labtrack_maint, labtrack_push"
 
 test-rls:
     {{compose}} run --rm test pytest -q --no-header tests/rls
