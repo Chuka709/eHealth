@@ -25,6 +25,7 @@ from labtrack.storage import ObjectStore, StorageError
 
 log = get_logger(__name__)
 
+_SCANNED = frozenset({"queued", "processing", "needs_review", "confirmed"})
 MAX_DOCUMENTS = 2000  # per profile; years of monthly results with room to spare
 
 
@@ -151,6 +152,11 @@ async def read_file(
     db: AsyncSession, store: ObjectStore, patient_id: UUID, document_id: UUID
 ) -> tuple[bytes, str]:
     document = await get(db, patient_id, document_id)
+    # only a file that passed the virus scan is handed out (commit security review 3.3)
+    if document.status == "uploaded":
+        raise AppError(409, "document.not_ready")
+    if document.status not in _SCANNED:
+        raise AppError(409, "document.not_available")
     try:
         sealed = await store.get(storage_key(patient_id, document_id))
         data = await decrypt_bytes(get_key_provider(), sealed, _aad(document_id))

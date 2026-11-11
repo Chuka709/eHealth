@@ -35,6 +35,16 @@ def _pdf(pages: int = 1) -> bytes:
     return out.getvalue() + f"\n% {uuid4()}\n".encode()
 
 
+async def _scanned(owner_engine: AsyncEngine, document_id: str, status: str = "queued") -> None:
+    async with owner_engine.connect() as conn, conn.begin():
+        await conn.execute(
+            bound_text(
+                "update documents set status = cast(:s as doc_status) where id = cast(:d as uuid)"
+            ),
+            {"s": status, "d": document_id},
+        )
+
+
 def _files(data: bytes, client_id: str | None = None) -> dict[str, object]:
     return {
         "files": {"file": ("scan.pdf", data, "application/pdf")},
@@ -65,6 +75,10 @@ async def test_upload_retry_same_file_read_and_delete(
     assert retry.json()["id"] == again.json()["id"] == doc["id"]
     listed = (await client.get(f"{base}/documents", headers=h)).json()
     assert [d["id"] for d in listed] == [doc["id"]]
+    # not handed out before the virus scan
+    early = await client.get(f"{base}/documents/{doc['id']}/file", headers=h)
+    assert (early.status_code, early.json()["code"]) == (409, "document.not_ready")
+    await _scanned(owner_engine, doc["id"])
     file = await client.get(f"{base}/documents/{doc['id']}/file", headers=h)
     assert file.status_code == 200
     assert file.content == data
@@ -117,6 +131,7 @@ async def test_others_cannot_see_or_upload_and_readers_cannot_write(
         assert (await client.get(path, headers=hs)).status_code == 404
     assert (await client.post(f"{base}/documents", headers=hs, **_files(_pdf()))).status_code == 404  # type: ignore[arg-type]
     await _grant(owner_engine, base, stranger, "viewer")
+    await _scanned(owner_engine, doc["id"])
     assert (await client.get(f"{base}/documents/{doc['id']}/file", headers=hs)).status_code == 200
     assert (await client.post(f"{base}/documents", headers=hs, **_files(_pdf()))).status_code == 403  # type: ignore[arg-type]
     assert (await client.delete(f"{base}/documents/{doc['id']}", headers=hs)).status_code == 403
@@ -196,3 +211,14 @@ async def test_an_oversized_body_is_refused_before_parsing(
         content=b"--x--",
     )
     assert (r.status_code, r.json()["code"]) == (413, "document.too_large")
+
+
+@pytest.mark.parametrize("status", ["rejected", "failed"])
+async def test_a_rejected_or_failed_file_is_never_handed_out(
+    client: AsyncClient, owner_engine: AsyncEngine, status: str
+) -> None:
+    _, h, base = await _profile(client, owner_engine)
+    doc = (await client.post(f"{base}/documents", headers=h, **_files(_pdf()))).json()  # type: ignore[arg-type]
+    await _scanned(owner_engine, doc["id"], status)
+    r = await client.get(f"{base}/documents/{doc['id']}/file", headers=h)
+    assert (r.status_code, r.json()["code"]) == (409, "document.not_available")

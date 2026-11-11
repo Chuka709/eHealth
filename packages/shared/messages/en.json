@@ -1252,7 +1252,9 @@
       "storage_unavailable": "File storage is not available right now. Try again in a while.",
       "not_found": "File not found.",
       "not_yours": "Only the profile's owner or whoever added it can delete this file.",
-      "conflict": "This file is being added from another device right now. Wait a moment and refresh the list."
+      "conflict": "This file is being added from another device right now. Wait a moment and refresh the list.",
+      "not_ready": "The file is being checked. Wait a moment and open it again.",
+      "not_available": "This file did not pass the safety check and cannot be opened."
     }
   },
   "import": {
