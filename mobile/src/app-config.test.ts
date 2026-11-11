@@ -30,6 +30,7 @@ const STORE: Env = {
   EXPO_PUBLIC_PRIVACY_URL: "https://example.mn/privacy",
   APP_BUNDLE_ID: undefined,
   EAS_PROJECT_ID: undefined,
+  EXPO_PUBLIC_ALLOW_SCREENSHOTS: undefined,
 };
 
 test("the store build uses the final package and no dev launcher", () => {
@@ -69,4 +70,8 @@ test("a production build needs an https privacy policy link", () => {
   expect(() => load({ ...STORE, EXPO_PUBLIC_PRIVACY_URL: "http://example.mn" })).toThrow(
     /PRIVACY_URL/,
   );
+});
+
+test("a store build refuses the screenshot option", () => {
+  expect(() => load({ ...STORE, EXPO_PUBLIC_ALLOW_SCREENSHOTS: "1" })).toThrow(/SCREENSHOTS/);
 });

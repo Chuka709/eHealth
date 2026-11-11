@@ -4,6 +4,7 @@
   "main": "expo-router/entry",
   "dependencies": {
     "@expo/ui": "~58.0.27",
+    "@formatjs/intl-pluralrules": "^7.0.4",
     "@hookform/resolvers": "^6.0.2",
     "@labtrack/shared": "workspace:*",
     "@react-native-community/netinfo": "12.0.1",

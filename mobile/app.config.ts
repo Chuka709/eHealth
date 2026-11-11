@@ -31,6 +31,11 @@ if (
   throw new Error(`EXPO_PUBLIC_SUPPORT_PHONE must be set for the ${variant} build`);
 }
 
+// Screenshots for design review are a development-bundle option only (src/features/lock/privacy.ts).
+if (variant !== "development" && process.env.EXPO_PUBLIC_ALLOW_SCREENSHOTS) {
+  throw new Error(`EXPO_PUBLIC_ALLOW_SCREENSHOTS must not be set for the ${variant} build`);
+}
+
 // The store listing and Settings -> About link the privacy policy (docs/08 "Дэлгүүрт гаргах").
 if (
   isProd &&

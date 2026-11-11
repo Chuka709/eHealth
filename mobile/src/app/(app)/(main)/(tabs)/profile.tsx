@@ -74,7 +74,9 @@ export default function ProfileScreen() {
       />
       <NavRow
         label={t("questions")}
-        hint={known(questions, () => t("openQuestions", { n: open }))}
+        hint={known(questions, () =>
+          open === 0 ? t("openQuestionsNone") : t("openQuestions", { n: open }),
+        )}
         onPress={go("/questions")}
         testID="profile-questions"
       />
