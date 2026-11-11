@@ -4,6 +4,7 @@ import { setBiometricOn, setLocked } from "@/features/lock/lock-store";
 import { resetPushThrottle } from "@/features/push/push-token";
 import { resetActiveProfile } from "@/features/records/active-profile";
 import { setWizardActive } from "@/features/records/onboarding-store";
+import { clearUploads } from "@/features/upload/upload-files";
 import { publicApi } from "@/lib/api-base";
 import { setLocale } from "@/lib/i18n";
 import { wipeLocalStore } from "@/lib/local-store";
@@ -217,6 +218,8 @@ export async function wipeLocal(
       wipeLocalStore(),
       clearLocalNotifications(),
       Promise.resolve().then(clearExports),
+      // lab result files waiting to be sent (3.4)
+      Promise.resolve().then(clearUploads),
     ]);
     // N2: a cache restore that was already reading may have hydrated after clear() above
     queryClient.clear();

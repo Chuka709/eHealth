@@ -2,7 +2,7 @@ import NetInfo from "@react-native-community/netinfo";
 import { onlineManager } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { AppState } from "react-native";
-
+import { sendWaitingUploads } from "@/features/upload/use-uploads";
 import { authFetch } from "@/lib/api";
 import { apiBaseUrl } from "@/lib/api-base";
 import { startCachePersistence } from "@/lib/persist";
@@ -43,7 +43,11 @@ export function useLocalData(): void {
           }
         })
         .catch(() => undefined)
-        .finally(() => void queryClient.invalidateQueries({ queryKey: ["queue"] }));
+        .finally(() => {
+          void queryClient.invalidateQueries({ queryKey: ["queue"] });
+          // lab result files (3.4): after the small writes, one file at a time
+          void sendWaitingUploads();
+        });
     };
     void startCachePersistence()
       .catch(() => undefined) // the app works without the offline cache

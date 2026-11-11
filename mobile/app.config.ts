@@ -193,6 +193,25 @@ const appConfig = ({ config }: ConfigContext): ExpoConfig => ({
         barcodeScannerEnabled: true,
       },
     ],
+    // Lab results (Phase 3.4): the system photo picker needs no gallery permission, and the
+    // picker never opens the camera (the document scanner does, with the camera text above)
+    // Phase 3.5: a lab result shared from another app (Messenger, Viber, Mail): pictures and
+    // PDFs only; it opens the upload screen, where the user says whose result it is
+    [
+      "expo-share-intent",
+      {
+        androidIntentFilters: ["image/*", "application/pdf"],
+        androidMultiIntentFilters: ["image/*"],
+        iosActivationRules: {
+          NSExtensionActivationSupportsImageWithMaxCount: 10,
+          NSExtensionActivationSupportsFileWithMaxCount: 1,
+        },
+      },
+    ],
+    [
+      "expo-image-picker",
+      { photosPermission: false, cameraPermission: false, microphonePermission: false },
+    ],
     // Local medication reminders (Phase 2.5); push (caregiver alerts) in 2.8. The icon and
     // channel are set with the reminder screens.
     ["expo-notifications", { color: "#0B5FA5" }],

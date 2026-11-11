@@ -21,20 +21,22 @@ minimumReleaseAgeExclude:
   - expo-dev-launcher@58.0.17
   - '@expo/config-plugins@58.0.12'
   - '@expo/config@58.0.11'
-  - '@expo/env@2.5.4'
+  - '@expo/env@2.5.4 || 2.6.0'
   - '@expo/inline-modules@0.2.9'
   - '@expo/local-build-cache-provider@58.0.11'
   - '@expo/log-box@58.0.15'
   - '@expo/prebuild-config@58.0.19'
   - expo-asset@58.0.20
-  - expo-constants@58.0.15
+  - expo-constants@58.0.15 || 58.0.16
   - expo-modules-autolinking@58.0.17
   - '@expo/metro-runtime@58.0.17'
-  - expo-linking@58.0.16
+  - expo-linking@58.0.16 || 58.0.17
   - expo-splash-screen@58.0.13
   - react-native-safe-area-context@5.11.1
   - jest-expo@58.0.14
   - expo-notifications@58.1.8
+  - expo-document-picker@58.0.5
+  - '@expo/require-utils@58.0.6'
 # React Native / Metro / Jest resolve most reliably from a hoisted node_modules.
 nodeLinker: hoisted
 # Install scripts are opt-in (supply-chain hardening). Native binaries we rely on ship prebuilt.

@@ -12,6 +12,8 @@
 | B5 | Зөвшөөрлийн текст хуульчаар, тайлбар текст эмчээр (Q12); Q34, Q47, Q48 эмчээр | компани | ☐ |
 | B6 | Бодит утасны тест матриц (Samsung, Xiaomi, хямд Android — апп хаалттай, нислэгийн горим, Doze, reboot, цагийн бүс) — 09 «Release бүрийн шалгалт» | компани + Claude | ☐ |
 | B7 | Тусламжийн утас `EXPO_PUBLIC_SUPPORT_PHONE` (тестерүүд залгах) | компани | ☐ |
+| B8 | iOS (Apple аккаунт бэлэн болоход): `com.apple.developer.default-data-protection = NSFileProtectionComplete` entitlement; share extension-ий App Group хавтаст хуваалцсан файл үлдэхгүй байхыг шалгах (3.4 security review); share болон document scanner-ийг бодит iPhone дээр турших | Claude + компани | ☐ |
+| B9 | Share intent-ийг **preview build** болон бодит Android утсан дээр (Messenger, Viber, Files) шалгах: dev build дээр share sheet-д апп гарч intent хүлээн авсан ч файлыг уншихад `Permission Denial` (URI зөвшөөрөл dev launcher activity-д очсон бололтой); уншигдахгүй URI ирэхэд `expo-share-intent` нь `CursorIndexOutOfBoundsException`-ээр апп-ыг унагадаг — сангийн засвар/patch эсвэл шинэ хувилбар шаардлагатай | Claude | ☐ |
 
 Код талд бэлэн (2.11): bundle ID `mn.munkhly.labtrack` (Q10), push-ийн тусдаа `labtrack_push` role, `eas.json` `beta` profile (AAB, store, channel `beta`), release тохиргооны шалгалт (`src/app-config.test.ts`: https заавал, dev launcher-гүй, хориотой зөвшөөрөл, нууцлалын URL), Тохиргоо → «Апп-ын тухай» (зориулалтын хил, 103, нууцлалын бодлого, тусламж).
 

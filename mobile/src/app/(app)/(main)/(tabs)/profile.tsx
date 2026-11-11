@@ -21,6 +21,7 @@ import { formatDateTime } from "@/lib/dates";
 export default function ProfileScreen() {
   const t = useTranslations("app.health");
   const tg = useTranslations("app.caregivers");
+  const tu = useTranslations("app.upload");
   const router = useRouter();
   const { own } = useRecordProfile();
   const appointments = useRecords(APPOINTMENTS, own?.id);
@@ -68,6 +69,13 @@ export default function ProfileScreen() {
         />
       </NavGroup>
       <NavGroup title={t("groups.health")}>
+        <NavRow
+          icon="file-document-multiple-outline"
+          label={tu("rowLabel")}
+          hint={tu("rowHint")}
+          onPress={go("/results")}
+          testID="profile-results"
+        />
         <NavRow
           icon="heart-pulse"
           label={t("vitals")}

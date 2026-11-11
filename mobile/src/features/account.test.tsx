@@ -390,3 +390,38 @@ test("About says what the app is for and never does (docs/09), with the support 
   // no privacy URL configured in tests: the button is hidden, never a dead link
   expect(screen.queryByRole("button", { name: "Нууцлалын бодлого" })).toBeNull();
 });
+
+test("lab results: each file says how far it got; adding one asks whose result it is", async () => {
+  const doc = (id: string, status: string, extra: object = {}) => ({
+    id,
+    mime_type: "application/pdf",
+    size_bytes: 1000,
+    page_count: 2,
+    has_text_layer: true,
+    status,
+    error_code: null,
+    created_at: "2026-11-12T01:00:00Z",
+    ...extra,
+  });
+  route({
+    "GET /api/v1/patients/00000000-0000-4000-8000-000000000001/documents": () =>
+      json(200, [
+        doc("00000000-0000-4000-8000-0000000000d1", "uploaded"),
+        doc("00000000-0000-4000-8000-0000000000d2", "queued"),
+        doc("00000000-0000-4000-8000-0000000000d3", "rejected", { error_code: "infected" }),
+      ]),
+  });
+  await open();
+  await fireEvent.press(await screen.findByTestId("home-results"));
+  expect(await screen.findByText("Файлыг шалгаж байна")).toBeOnTheScreen();
+  expect(screen.getByText("Хүлээн авсан — уншихыг хүлээж байна")).toBeOnTheScreen();
+  expect(
+    screen.getByText("Хүлээж аваагүй — өөр файл оруулна уу — файл аюулгүй биш"),
+  ).toBeOnTheScreen();
+  await fireEvent.press(screen.getByRole("button", { name: "Хариу оруулах" }));
+  expect(await screen.findByText("Энэ профайлд нэмнэ: Бат")).toBeOnTheScreen();
+  // scans never go to the phone's photos (CLAUDE.md rule 8) - and the user is told
+  expect(screen.getByText(/зургийн санд хадгалагдахгүй/)).toBeOnTheScreen();
+  expect(screen.getByRole("button", { name: /^Скан хийх/ })).toBeOnTheScreen();
+  expect(screen.getByRole("button", { name: /^Файл \(PDF\)/ })).toBeOnTheScreen();
+});

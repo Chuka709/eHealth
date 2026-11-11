@@ -1,3 +1,6 @@
+import { useRouter } from "expo-router";
+import { useTranslations } from "use-intl";
+import { NavRow } from "@/components/nav-row";
 import { Screen } from "@/components/screen";
 import { EmergencyCardOffer } from "@/features/emergency/card-offer";
 import { AppointmentSection, TodaySection, TransplantSection } from "@/features/home/home-sections";
@@ -16,6 +19,8 @@ import { HealthStatus } from "@/features/status/health-status";
  * reminder warnings come first. Loading /me applies the language.
  */
 export default function HomeScreen() {
+  const t = useTranslations();
+  const router = useRouter();
   useMe();
   const now = useNow();
   const patients = usePatients();
@@ -28,6 +33,15 @@ export default function HomeScreen() {
       {active && (
         // keyed: a profile switch starts every section afresh (no row kept from the last one)
         <ProfileSections key={active.id} patientId={active.id} now={now} />
+      )}
+      {active && (
+        <NavRow
+          icon="file-document-multiple-outline"
+          label={t("app.upload.rowLabel")}
+          hint={t("app.upload.rowHint")}
+          onPress={() => router.push("/results")}
+          testID="home-results"
+        />
       )}
       <EmergencyCardOffer />
       {/* the server connection only when it is a problem (2.12): no developer status on Home */}

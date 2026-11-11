@@ -4,7 +4,8 @@ import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { colors } from "@labtrack/shared";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { useFonts } from "expo-font";
-import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from "expo-router";
+import { DarkTheme, DefaultTheme, Stack, ThemeProvider, useRouter } from "expo-router";
+import { ShareIntentProvider, useShareIntentContext } from "expo-share-intent";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
@@ -51,20 +52,24 @@ export default function RootLayout() {
   }, []);
   useAppLock();
   return (
-    <I18nProvider>
-      <QueryClientProvider client={queryClient}>
-        <ThemeProvider value={scheme === "dark" ? darkTheme : lightTheme}>
-          <RootNavigator />
-          <StatusBar style="auto" />
-        </ThemeProvider>
-      </QueryClientProvider>
-    </I18nProvider>
+    // files shared from other apps (Phase 3.5); cleared when the app goes to the background
+    <ShareIntentProvider options={{ resetOnBackground: true }}>
+      <I18nProvider>
+        <QueryClientProvider client={queryClient}>
+          <ThemeProvider value={scheme === "dark" ? darkTheme : lightTheme}>
+            <RootNavigator />
+            <StatusBar style="auto" />
+          </ThemeProvider>
+        </QueryClientProvider>
+      </I18nProvider>
+    </ShareIntentProvider>
   );
 }
 
 function RootNavigator() {
   const status = useSession();
   const locked = useLocked();
+  useSharedFiles(status, locked);
   // a font that fails to load falls back to the system font: never a blank app
   // icons too, so tab and row icons do not pop in after the splash
   const [fontsLoaded, fontError] = useFonts({ ...fontFiles, ...MaterialCommunityIcons.font });
@@ -90,4 +95,19 @@ function RootNavigator() {
       </Stack.Protected>
     </Stack>
   );
+}
+
+/**
+ * Files shared from another app (3.5): with someone signed in, the upload screen opens (it asks
+ * whose result it is before adding anything); shared while nobody is signed in, they belong to
+ * no account and are forgotten at once (security review 3.4 M3).
+ */
+function useSharedFiles(status: ReturnType<typeof useSession>, locked: boolean): void {
+  const { hasShareIntent, resetShareIntent } = useShareIntentContext();
+  const router = useRouter();
+  useEffect(() => {
+    if (!hasShareIntent || status === "loading") return;
+    if (status !== "signedIn") resetShareIntent();
+    else if (!locked) router.navigate("/upload");
+  }, [hasShareIntent, status, locked, resetShareIntent, router]);
 }

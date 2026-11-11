@@ -98,3 +98,26 @@ jest.mock("expo-notifications", () => {
     }),
   };
 });
+
+// Phase 3.4: picking and scanning lab results (native modules; tests set the results)
+jest.mock("react-native-document-scanner-plugin", () => ({
+  __esModule: true,
+  default: { scanDocument: jest.fn(async () => ({ status: "cancel", scannedImages: [] })) },
+  ResponseType: { ImageFilePath: "imageFilePath", Base64: "base64" },
+}));
+jest.mock("expo-image-picker", () => ({
+  launchImageLibraryAsync: jest.fn(async () => ({ canceled: true, assets: null })),
+}));
+jest.mock("expo-document-picker", () => ({
+  getDocumentAsync: jest.fn(async () => ({ canceled: true, assets: null })),
+}));
+jest.mock("expo-share-intent", () => ({
+  getShareExtensionKey: () => "labtrackShareKey",
+  ShareIntentProvider: ({ children }: { children: unknown }) => children,
+  useShareIntentContext: () => ({
+    hasShareIntent: false,
+    shareIntent: { files: null },
+    resetShareIntent: jest.fn(),
+    error: null,
+  }),
+}));
