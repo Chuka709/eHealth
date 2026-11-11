@@ -1,7 +1,7 @@
 import type { components } from "@labtrack/shared";
-
 import { clearExports } from "@/features/emergency/export-cleanup";
 import { setBiometricOn, setLocked } from "@/features/lock/lock-store";
+import { resetPushThrottle } from "@/features/push/push-token";
 import { setWizardActive } from "@/features/records/onboarding-store";
 import { publicApi } from "@/lib/api-base";
 import { setLocale } from "@/lib/i18n";
@@ -128,6 +128,11 @@ async function runRefresh(): Promise<RefreshOutcome> {
       return "signedOut";
     }
     setAccessToken(data.access_token, data.expires_in);
+    // every rotation sends this device's push token again (2.8a M4: a token another account
+    // took over on this phone comes back by itself); silent when push is not available
+    void import("@/features/push/push-token")
+      .then((push) => push.registerPushToken())
+      .catch(() => undefined);
     return "ok";
   }
   if (response.status === 401) {
@@ -156,6 +161,10 @@ export async function signOut(): Promise<void> {
   // Let a running rotation finish so we revoke the newest token, not the one it replaced.
   await inflight?.catch(() => undefined);
   const refreshToken = await readSecure(secureKeys.refresh).catch(() => null);
+  // while the session still works: no more pushes for it on this phone (2.8f-1 M2)
+  await import("@/features/push/push-token")
+    .then((push) => push.forgetPushToken())
+    .catch(() => undefined);
   if (refreshToken) {
     await publicApi
       .POST("/api/v1/auth/logout", { body: { refresh_token: refreshToken } })
@@ -183,6 +192,7 @@ export async function wipeLocal(
   setBiometricOn(false);
   setLocale("mn"); // the next user starts in the default language
   setWizardActive(false); // an unfinished onboarding is not the next session's
+  resetPushThrottle(); // the next account sends its token at once
   await queryClient.cancelQueries();
   stopCachePersistence(); // before clear(): the persister must not save the emptied cache
   queryClient.clear();

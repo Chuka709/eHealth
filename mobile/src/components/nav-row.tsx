@@ -14,6 +14,7 @@ export function NavRow({
   onPress,
   testID,
   tone = "normal",
+  a11yLabel,
 }: {
   label: string;
   hint?: string;
@@ -21,13 +22,15 @@ export function NavRow({
   testID?: string;
   /** "danger" for a row leading to an irreversible step (account deletion). */
   tone?: "normal" | "danger";
+  /** What a screen reader says instead of the visible label (e.g. without a glyph). */
+  a11yLabel?: string;
 }) {
   const p = usePalette();
   return (
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
-      accessibilityLabel={hint ? `${label}. ${hint}` : label}
+      accessibilityLabel={hint ? `${a11yLabel ?? label}. ${hint}` : (a11yLabel ?? label)}
       testID={testID}
       style={({ pressed }) => [
         styles.row,

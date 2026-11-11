@@ -289,3 +289,126 @@ async def test_withdrawing_the_sharing_consent_ends_every_caregiver(
         await _share(c, owner, granted=False)
         assert (await c.get(base, headers=carer)).status_code == 404
         assert (await c.get(f"{base}/caregivers", headers=owner)).json()["caregivers"] == []
+
+
+async def _dose_alert(owner_engine: AsyncEngine, base: str, carer_id: UUID) -> tuple[int, UUID]:
+    """A dose alert and its notice, as the worker leaves them (arranged as the schema owner)."""
+    patient = UUID(base.rsplit("/", 1)[1])
+    async with owner_engine.connect() as conn, conn.begin():
+        med = (
+            await conn.execute(
+                bound_text(
+                    "insert into medications (patient_id, client_id, name, reminders_enabled)"
+                    " values (:p, gen_random_uuid(), 'Такролимус', true) returning id"
+                ),
+                {"p": patient},
+            )
+        ).scalar_one()
+        alert = (
+            await conn.execute(
+                bound_text(
+                    "insert into dose_alerts (patient_id, medication_id, slot_at, alerted_user_id)"
+                    " values (:p, :m, date_trunc('minute', now()) - interval '40 minutes', :u)"
+                    " returning id"
+                ),
+                {"p": patient, "m": med, "u": carer_id},
+            )
+        ).scalar_one()
+        await conn.execute(
+            bound_text(
+                "insert into notifications (user_id, kind, patient_id, entity_id, title_key)"
+                " values (:u, 'dose_overdue', :p, :e, 'notification.dose_overdue')"
+            ),
+            {"u": carer_id, "p": patient, "e": str(alert)},
+        )
+    return int(alert), med
+
+
+async def test_a_dose_alert_shows_what_is_recorded_now(
+    owner_engine: AsyncEngine, client_from: ClientFactory
+) -> None:
+    async with client_from() as c:
+        owner, base, carer_id, carer = await _accepted(c, owner_engine)
+        alert, _ = await _dose_alert(owner_engine, base, carer_id)
+        [notice] = [
+            n
+            for n in (await c.get("/api/v1/me/notifications", headers=carer)).json()
+            if n["kind"] == "dose_overdue"
+        ]
+        assert notice["patient_id"] == base.rsplit("/", 1)[1]
+        assert notice["entity_id"] == str(alert)
+        r = await c.get(f"{base}/dose-alerts/{alert}", headers=carer)
+        assert (r.status_code, r.json()["recorded"], r.json()["medication_name"]) == (
+            200,
+            None,
+            "Такролимус",
+        )
+        async with owner_engine.connect() as conn, conn.begin():
+            await conn.execute(
+                bound_text(
+                    "insert into medication_intakes (patient_id, medication_id, client_id,"
+                    " scheduled_at, taken_at, status) select patient_id, medication_id,"
+                    " gen_random_uuid(), slot_at, now(), 'taken' from dose_alerts where id = :i"
+                ),
+                {"i": alert},
+            )
+        assert (await c.get(f"{base}/dose-alerts/{alert}", headers=carer)).json()["recorded"] == (
+            "taken"
+        )
+        # the owner sees it too; a stranger reaches nothing; a wrong profile is 404
+        assert (await c.get(f"{base}/dose-alerts/{alert}", headers=owner)).status_code == 200
+        _, stranger = await _signed_in(c, owner_engine)
+        assert (await c.get(f"{base}/dose-alerts/{alert}", headers=stranger)).status_code == 404
+        assert (
+            await c.get(f"{base}/dose-alerts/{alert + 10**9}", headers=carer)
+        ).status_code == 404
+
+        # access ended: the notice leaves the list, the alert is unreachable
+        assert (await c.delete(f"{base}/caregivers/{carer_id}", headers=owner)).status_code == 204
+        kinds = [n["kind"] for n in (await c.get("/api/v1/me/notifications", headers=carer)).json()]
+        assert "dose_overdue" not in kinds
+        assert (await c.get(f"{base}/dose-alerts/{alert}", headers=carer)).status_code == 404
+
+
+async def test_a_dose_alert_is_only_for_its_caregiver_and_its_profile(
+    owner_engine: AsyncEngine, client_from: ClientFactory
+) -> None:
+    async with client_from() as c:
+        owner, base, carer_id, carer = await _accepted(c, owner_engine)
+        alert, _ = await _dose_alert(owner_engine, base, carer_id)
+        # a second caregiver of the same profile was not alerted: nothing to see
+        second_id, second = await _signed_in(c, owner_engine)
+        await c.post(
+            f"{base}/caregiver-invitations",
+            json={"username": await _username(owner_engine, second_id)},
+            headers=owner,
+        )
+        [inv] = (await c.get("/api/v1/me/caregiver-invitations", headers=second)).json()
+        await c.post(
+            "/api/v1/me/caregiver-invitations/respond",
+            json={"invitation_id": inv["id"], "accept": True},
+            headers=second,
+        )
+        assert (await c.get(f"{base}/dose-alerts/{alert}", headers=second)).status_code == 404
+        # through a profile the caregiver can open (their own), someone else's alert id: 404
+        _, own = await _create(c, carer, full_name="Сараа", relation="self")
+        r = await c.get(f"/api/v1/patients/{own['id']}/dose-alerts/{alert}", headers=carer)
+        assert r.status_code == 404
+
+
+async def test_an_invitations_notice_stays_only_while_it_can_be_answered(
+    owner_engine: AsyncEngine, client_from: ClientFactory
+) -> None:
+    async with client_from() as c:
+        owner, base, _, carer, name = await _family(c, owner_engine)
+        await c.post(f"{base}/caregiver-invitations", json={"username": name}, headers=owner)
+
+        async def kinds() -> list[str]:
+            return [
+                n["kind"] for n in (await c.get("/api/v1/me/notifications", headers=carer)).json()
+            ]
+
+        assert "share_invite" in await kinds()
+        [pending] = (await c.get(f"{base}/caregivers", headers=owner)).json()["invitations"]
+        await c.delete(f"{base}/caregiver-invitations/{pending['id']}", headers=owner)
+        assert "share_invite" not in await kinds()

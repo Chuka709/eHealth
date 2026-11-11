@@ -7306,6 +7306,116 @@
         }
       }
     },
+    "/api/v1/patients/{patient_id}/dose-alerts/{alert_id}": {
+      "get": {
+        "tags": [
+          "caregivers"
+        ],
+        "summary": "Dose Alert",
+        "description": "For the caregiver it was sent to, or the profile's owner (RLS on dose_alerts).",
+        "operationId": "dose_alert_api_v1_patients__patient_id__dose_alerts__alert_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "patient_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Patient Id"
+            }
+          },
+          {
+            "name": "alert_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "maximum": 9223372036854775807,
+              "minimum": 1,
+              "title": "Alert Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DoseAlertOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          }
+        }
+      }
+    },
     "/api/v1/me/caregiver-invitations": {
       "get": {
         "tags": [
@@ -10925,6 +11035,48 @@
         ],
         "title": "DeletionOut"
       },
+      "DoseAlertOut": {
+        "properties": {
+          "slot_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Slot At"
+          },
+          "medication_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Medication Id"
+          },
+          "medication_name": {
+            "type": "string",
+            "title": "Medication Name"
+          },
+          "recorded": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "taken",
+                  "skipped"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recorded"
+          }
+        },
+        "type": "object",
+        "required": [
+          "slot_at",
+          "medication_id",
+          "medication_name",
+          "recorded"
+        ],
+        "title": "DoseAlertOut",
+        "description": "What a dose alert was about, and what is recorded for that dose now (decision 3: a push\nalready sent is not withdrawn; the app shows the current state instead)."
+      },
       "Elapsed": {
         "properties": {
           "days": {
@@ -12633,6 +12785,29 @@
             "type": "string",
             "title": "Title Key"
           },
+          "patient_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Patient Id"
+          },
+          "entity_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Entity Id"
+          },
           "created_at": {
             "type": "string",
             "format": "date-time",
@@ -12656,6 +12831,8 @@
           "id",
           "kind",
           "title_key",
+          "patient_id",
+          "entity_id",
           "created_at",
           "read_at"
         ],

@@ -5,6 +5,7 @@ import { useEmergencyCardSync } from "@/features/emergency/use-card-sync";
 import { useReminderResponses, useReminderSync } from "@/features/meds/use-reminders";
 import { useZonePrompt } from "@/features/meds/use-zone-prompt";
 import { useLocalData } from "@/features/offline/use-local-data";
+import { usePushRegistration } from "@/features/push/use-push-registration";
 
 /**
  * Every signed-in screen except onboarding lives in this group, so a new screen is behind the
@@ -21,10 +22,14 @@ export default function MainLayout() {
   useZonePrompt();
   // the saved emergency card follows every change (the locked app and an offline phone show it)
   useEmergencyCardSync();
+  // server push: this device's token on this session, again on every return (2.8f)
+  usePushRegistration();
   return (
     <Stack screenOptions={{ headerBackTitle: t("common.back") }}>
       <Stack.Screen name="(tabs)" options={{ headerShown: false, title: t("name") }} />
       <Stack.Screen name="emergency" options={{ title: t("emergency.title") }} />
+      <Stack.Screen name="notifications/index" options={{ title: t("notifications.title") }} />
+      <Stack.Screen name="notifications/[id]" options={{ title: t("notifications.title") }} />
       <Stack.Screen name="settings/emergency" options={{ title: t("emergency.title") }} />
       <Stack.Screen
         name="settings/emergency-wallpaper"

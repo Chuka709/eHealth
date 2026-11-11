@@ -38,6 +38,7 @@
     "auth.required",
     "auth.session_invalid",
     "auth.session_not_found",
+    "caregiver.alert_not_found",
     "caregiver.consent_required",
     "caregiver.invitation_not_found",
     "caregiver.minor_profile",

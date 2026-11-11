@@ -899,6 +899,37 @@
         "inEnglish": "Show the text in English",
         "inMongolian": "Show the text in Mongolian"
       }
+    },
+    "notifications": {
+      "title": "Notifications",
+      "channel": "LabTrack notifications",
+      "open": "Notifications",
+      "openUnread": "Notifications, {count} new",
+      "empty": "No notifications yet.",
+      "unread": "● New",
+      "gone": "This notification is gone, or you can no longer see that profile.",
+      "kind": {
+        "share_invite": "You have a caregiver invitation",
+        "dose_overdue": "A dose has not been logged yet",
+        "admin_reset": "An admin issued a password reset code for your account",
+        "admin_action": "An admin changed your account",
+        "review_ready": "A new result is ready to review",
+        "critical_pending": "A new result may contain a value that needs prompt review",
+        "other": "New notification"
+      },
+      "dose": {
+        "title": "Dose log",
+        "profile": "Profile: {name}",
+        "medication": "{name} — {at}",
+        "recorded": {
+          "taken": "Now: logged as “taken”.",
+          "skipped": "Now: logged as “skipped”.",
+          "none": "Now: nothing logged yet. Please check."
+        },
+        "note": "This only shows whether the dose is logged in the app. A dose taken while the phone was offline, or logged later, may not show here yet.",
+        "profileUnknown": "Profile: —"
+      },
+      "unreadSpoken": "New"
     }
   },
   "status": {
@@ -956,7 +987,8 @@
       "owner_only": "Only the profile's owner manages its caregivers. Ask the owner to make the change.",
       "not_caregiver": "You are not a caregiver of this profile. Ask the profile's owner for an invitation.",
       "not_found": "Caregiver not found. Refresh the list and try again.",
-      "invitation_not_found": "The invitation was not found or is no longer valid. Ask the profile's owner to send a new one."
+      "invitation_not_found": "The invitation was not found or is no longer valid. Ask the profile's owner to send a new one.",
+      "alert_not_found": "The notification was not found, or you can no longer see this profile."
     },
     "consent": {
       "not_allowed": "You cannot give consent for this profile.",

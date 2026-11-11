@@ -1008,6 +1008,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/patients/{patient_id}/dose-alerts/{alert_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Dose Alert
+         * @description For the caregiver it was sent to, or the profile's owner (RLS on dose_alerts).
+         */
+        get: operations["dose_alert_api_v1_patients__patient_id__dose_alerts__alert_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me/caregiver-invitations": {
         parameters: {
             query?: never;
@@ -1868,6 +1888,27 @@ export interface components {
             scheduled_for: string;
         };
         /**
+         * DoseAlertOut
+         * @description What a dose alert was about, and what is recorded for that dose now (decision 3: a push
+         *     already sent is not withdrawn; the app shows the current state instead).
+         */
+        DoseAlertOut: {
+            /**
+             * Slot At
+             * Format: date-time
+             */
+            slot_at: string;
+            /**
+             * Medication Id
+             * Format: uuid
+             */
+            medication_id: string;
+            /** Medication Name */
+            medication_name: string;
+            /** Recorded */
+            recorded: ("taken" | "skipped") | null;
+        };
+        /**
          * Elapsed
          * @description Time since the transplant, never more than can be true (counted from the last possible
          *     day of a month/year-only date); `approximate`: show "≈" or the year, not a day count.
@@ -2388,6 +2429,10 @@ export interface components {
             kind: string;
             /** Title Key */
             title_key: string;
+            /** Patient Id */
+            patient_id: string | null;
+            /** Entity Id */
+            entity_id: string | null;
             /**
              * Created At
              * Format: date-time
@@ -8564,6 +8609,83 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    dose_alert_api_v1_patients__patient_id__dose_alerts__alert_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                patient_id: string;
+                alert_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DoseAlertOut"];
+                };
             };
             /** @description Unauthorized */
             401: {

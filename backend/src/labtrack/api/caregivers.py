@@ -15,10 +15,10 @@ hour (0002; user decision (a), 2026-11-11). No caregivers on a child's profile i
 """
 
 from datetime import datetime
-from typing import Annotated
+from typing import Annotated, Literal
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Response, status
+from fastapi import APIRouter, Depends, Path, Response, status
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 from sqlalchemy.exc import DBAPIError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -27,6 +27,7 @@ from labtrack.api.deps import PatientReadDb, PatientWriteDb, PhiDb
 from labtrack.api.errors import AppError, ErrorBody
 from labtrack.api.ratelimit import per_user
 from labtrack.config import get_settings
+from labtrack.core.medications import IntakeRecord, is_taken, merged_all
 from labtrack.db.sql import bound_text
 
 router = APIRouter(prefix="/patients/{patient_id}", tags=["caregivers"])
@@ -294,6 +295,50 @@ async def leave(patient_id: UUID, db: PatientWriteDb) -> Response:
     if not done:
         raise AppError(403, "caregiver.not_caregiver")
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+class DoseAlertOut(BaseModel):
+    """What a dose alert was about, and what is recorded for that dose now (decision 3: a push
+    already sent is not withdrawn; the app shows the current state instead)."""
+
+    slot_at: datetime
+    medication_id: UUID
+    medication_name: str
+    recorded: Literal["taken", "skipped"] | None  # None: still nothing recorded
+
+
+_DOSE_ALERT = bound_text(
+    "select a.slot_at, a.medication_id, m.name as medication_name from dose_alerts a"
+    " join medications m on m.id = a.medication_id and m.patient_id = a.patient_id"
+    " where a.id = :i and a.patient_id = :p"
+)
+_DOSE_RECORDS = bound_text(
+    "select status, taken_at from medication_intakes"
+    " where patient_id = :p and medication_id = :m and scheduled_at = :at"
+)
+
+
+@router.get("/dose-alerts/{alert_id}", response_model=DoseAlertOut, responses=_ERRORS)
+async def dose_alert(
+    patient_id: UUID,
+    # bigint range: a larger id would overflow in the database (500) instead of a 422
+    alert_id: Annotated[int, Path(ge=1, le=2**63 - 1)],
+    db: PatientReadDb,
+) -> DoseAlertOut:
+    """For the caregiver it was sent to, or the profile's owner (RLS on dose_alerts)."""
+    row = (await db.execute(_DOSE_ALERT, {"i": alert_id, "p": patient_id})).one_or_none()
+    if row is None:
+        raise AppError(404, "caregiver.alert_not_found")
+    records = [
+        IntakeRecord(r.status, r.taken_at)
+        for r in await db.execute(
+            _DOSE_RECORDS, {"p": patient_id, "m": row.medication_id, "at": row.slot_at}
+        )
+    ]
+    recorded: Literal["taken", "skipped"] | None = None
+    if records:
+        recorded = "taken" if is_taken(merged_all(records)) else "skipped"
+    return DoseAlertOut(**row._mapping, recorded=recorded)
 
 
 # --- the invited person ------------------------------------------------------------------

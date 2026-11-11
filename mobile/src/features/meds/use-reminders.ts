@@ -17,6 +17,8 @@ import {
   recordsKey,
   useRecords,
 } from "@/features/health/use-health";
+import { pushData, pushRoute } from "@/features/notices/push-route";
+import { refreshNotices } from "@/features/notices/use-notifications";
 import { ownProfile, type Patient, patientsKey, usePatients } from "@/features/records/use-profile";
 import { formatDateTime } from "@/lib/dates";
 import { queryClient } from "@/lib/query-client";
@@ -237,6 +239,12 @@ export function useReminderResponses(): void {
       const request = response.notification.request;
       Notifications.clearLastNotificationResponse();
       const trigger = request.trigger as { type?: string } | null;
+      if (trigger?.type === "push") {
+        // a server push only opens a screen; what it is about is read from the API (2.8f)
+        void refreshNotices().catch(() => undefined);
+        router.navigate(pushRoute(pushData(request.content.data)) as never);
+        return;
+      }
       if (LOCAL_APPOINTMENT_ID.test(request.identifier) && trigger?.type !== "push") {
         // an appointment reminder opens that appointment - if it is the user's own, still there
         const visit = appointmentData(request.content.data);

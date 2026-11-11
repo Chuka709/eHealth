@@ -1,9 +1,10 @@
-import { fontSize } from "@labtrack/shared";
+import { fontSize, space } from "@labtrack/shared";
 import { Tabs } from "expo-router";
-import { type ColorValue, Text } from "react-native";
+import { type ColorValue, StyleSheet, Text, View } from "react-native";
 import { useTranslations } from "use-intl";
 
 import { EmergencyButton } from "@/features/emergency/emergency-button";
+import { NotificationsButton } from "@/features/notices/notifications-button";
 import { usePalette } from "@/theme/use-palette";
 
 /**
@@ -43,7 +44,12 @@ export default function TabsLayout() {
           title: t("name"),
           tabBarLabel: t("tabs.home"),
           // one tap from the app's first screen (docs/08, H17)
-          headerRight: () => <EmergencyButton />,
+          headerRight: () => (
+            <View style={styles.headerButtons}>
+              <NotificationsButton />
+              <EmergencyButton />
+            </View>
+          ),
           tabBarIcon: ({ color }) => <TabIcon glyph="⌂" color={color} />,
         }}
       />
@@ -74,3 +80,7 @@ export default function TabsLayout() {
     </Tabs>
   );
 }
+
+const styles = StyleSheet.create({
+  headerButtons: { flexDirection: "row", alignItems: "center", gap: space.md },
+});

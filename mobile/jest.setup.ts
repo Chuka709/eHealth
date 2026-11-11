@@ -87,7 +87,12 @@ jest.mock("expo-notifications", () => {
       scheduled.delete(id);
     }),
     addNotificationResponseReceivedListener: jest.fn(() => ({ remove: jest.fn() })),
+    addNotificationReceivedListener: jest.fn(() => ({ remove: jest.fn() })),
     useLastNotificationResponse: jest.fn(() => null),
     clearLastNotificationResponse: jest.fn(),
+    // no Expo/FCM/APNs credentials (decision (c)): no token, the app carries on
+    getExpoPushTokenAsync: jest.fn(async () => {
+      throw new Error("no credentials");
+    }),
   };
 });
