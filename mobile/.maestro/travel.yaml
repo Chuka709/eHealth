@@ -13,6 +13,9 @@ appId: ${MAESTRO_APP_ID}
 - extendedWaitUntil:
     visible: "Өнөөдрийн тунгууд"
     timeout: 15000
-# the dose keeps its Ulaanbaatar minute, never 08:00 Seoul time
-- assertVisible: "08:00 · Такролимус"
+# the dose keeps its Ulaanbaatar minute (08:00), never shown in Seoul time (09:00); 2.12: the
+# time heads its group of doses
+- assertVisible: "08:00"
+- assertVisible: "Такролимус"
+- assertNotVisible: "09:00"
 - tapOn: "Нүүр"

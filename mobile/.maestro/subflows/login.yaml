@@ -8,6 +8,13 @@ appId: ${MAESTRO_APP_ID}
 - tapOn: "Нэвтрэх"
 - tapOn: "Хэрэглэгчийн нэр"
 - inputText: ${USERNAME}
+# a slow (software-rendered) emulator may type a character twice: check and type it again
+- runFlow:
+    when:
+      notVisible: ${USERNAME}
+    commands:
+      - eraseText: 40
+      - inputText: ${USERNAME}
 - pressKey: Enter
 - inputText:
     text: ${PASSWORD}

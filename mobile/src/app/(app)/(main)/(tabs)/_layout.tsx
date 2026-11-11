@@ -3,6 +3,7 @@ import { Tabs } from "expo-router";
 import { type ColorValue, StyleSheet, View } from "react-native";
 import { useTranslations } from "use-intl";
 
+import { Text } from "@/components/app-text";
 import { Icon, type IconName } from "@/components/icon";
 import { EmergencyButton } from "@/features/emergency/emergency-button";
 import { NotificationsButton } from "@/features/notices/notifications-button";
@@ -12,6 +13,19 @@ import { usePalette } from "@/theme/use-palette";
  * The main tabs: Нүүр · Эм · Тохиргоо. Each tab names itself in its header; the tab bar
  * reads its labels (the glyphs are decoration, hidden from screen readers).
  */
+function HeaderTitle({ children, color }: { children: string; color: string }) {
+  return (
+    <Text
+      accessibilityRole="header"
+      numberOfLines={1}
+      maxFontSizeMultiplier={1.3}
+      style={{ color, fontSize: fontSize.bodyLarge, fontWeight: "600" }}
+    >
+      {children}
+    </Text>
+  );
+}
+
 function TabIcon({ name, color }: { name: IconName; color: ColorValue }) {
   const p = usePalette();
   // the navigator passes the tint as a string; anything else falls back to the muted tint
@@ -32,6 +46,8 @@ export default function TabsLayout() {
         sceneStyle: { backgroundColor: p.background },
         headerStyle: { backgroundColor: p.surface },
         headerTintColor: p.text,
+        // one line, scaled to at most 1.3x: at 200% text the title crowded the header buttons
+        headerTitle: ({ children }) => <HeaderTitle color={p.text}>{children}</HeaderTitle>,
       }}
     >
       <Tabs.Screen

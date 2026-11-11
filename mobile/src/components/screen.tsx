@@ -1,6 +1,7 @@
 import { space } from "@labtrack/shared";
 import type { ComponentRef, ReactNode, Ref } from "react";
 import { ScrollView, StyleSheet } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 import { usePalette } from "@/theme/use-palette";
 
@@ -14,13 +15,16 @@ export function Screen({
   children,
   scrollRef,
   testID,
+  safeTop = false,
 }: {
   children: ReactNode;
   scrollRef?: Ref<ScreenScroll>;
   testID?: string;
+  /** A screen without a header (welcome, notice): keeps clear of the status bar (2.12). */
+  safeTop?: boolean;
 }) {
   const p = usePalette();
-  return (
+  const scroll = (
     <ScrollView
       ref={scrollRef}
       testID={testID}
@@ -32,6 +36,13 @@ export function Screen({
     >
       {children}
     </ScrollView>
+  );
+  return safeTop ? (
+    <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: p.background }}>
+      {scroll}
+    </SafeAreaView>
+  ) : (
+    scroll
   );
 }
 
