@@ -1,0 +1,24 @@
+# Phase 2.9: Home shows the transplant (none yet: the wizard was skipped), today's doses with
+# one-tap recording through the same queue as Medicines, and the next appointment (none yet).
+# Runs after medication.yaml (one medicine, one dose at 08:00, nothing recorded).
+appId: ${MAESTRO_APP_ID}
+---
+- tapOn: "Нүүр"
+- extendedWaitUntil:
+    visible: "Өнөөдөр 1 тунгаас 0 нь тэмдэглэгдсэн"
+    timeout: 15000
+- assertVisible: "Шилжүүлэн суулгалт нэмэх"
+- scrollUntilVisible:
+    element: "Алгассан"
+- tapOn: "Алгассан"
+- extendedWaitUntil:
+    visible: "– Алгассан гэж тэмдэглэсэн"
+    timeout: 15000
+# the row stays on Home, so the mistake can be undone right there
+- assertVisible: "Өнөөдөр 1 тунгаас 1 нь тэмдэглэгдсэн"
+- tapOn: "Буцаах"
+- extendedWaitUntil:
+    notVisible: "– Алгассан гэж тэмдэглэсэн"
+    timeout: 15000
+- scrollUntilVisible:
+    element: "Төлөвлөсөн товлол алга."

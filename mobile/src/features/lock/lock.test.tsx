@@ -92,7 +92,7 @@ beforeEach(() => {
   mockFetch.mockReset();
   mockFetch.mockImplementation(async (input: Request | string, init?: RequestInit) => {
     const request = typeof input === "string" ? new Request(input, init) : input;
-    const path = request.url.slice(apiBaseUrl.length);
+    const path = request.url.slice(apiBaseUrl.length).split("?")[0];
     if (path === "/api/v1/auth/refresh") {
       return json(200, {
         access_token: "a1",
@@ -118,6 +118,11 @@ beforeEach(() => {
       ]);
     if (path === "/api/v1/me/notifications") return json(200, []);
     if (path === "/api/v1/auth/logout") return new Response(null, { status: 204 });
+    // the profile's records Home shows (Phase 2.9): none
+    if (path.endsWith("/timezone")) {
+      return json(200, { home: "Asia/Ulaanbaatar", current: "Asia/Ulaanbaatar", switches: [] });
+    }
+    if (/\/(transplants|medications|intakes|appointments)$/.test(path)) return json(200, []);
     return json(200, { status: "ok" });
   });
   globalThis.fetch = mockFetch as unknown as typeof fetch;

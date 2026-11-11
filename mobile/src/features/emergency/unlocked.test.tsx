@@ -88,6 +88,7 @@ const routes: Record<string, () => Response> = {
   [`${P}/transplants`]: () => json(200, []),
   [`${P}/medications`]: () => json(200, []),
   [`${P}/appointments`]: () => json(200, []),
+  [`${P}/intakes`]: () => json(200, []),
   [`${P}/timezone`]: () =>
     json(200, { home: "Asia/Ulaanbaatar", current: "Asia/Ulaanbaatar", switches: [] }),
   [`${P}/emergency-card`]: () => json(200, CARD),

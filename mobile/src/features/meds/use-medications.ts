@@ -249,13 +249,14 @@ const MINUTE = 60_000;
 /**
  * Q24: before "Уусан", what the server has for this dose right now (another person may have
  * recorded it since the list was read). Null when nothing is recorded, or offline - then the
- * tap is recorded as usual and kept beside an earlier one.
+ * tap is recorded as usual and kept beside an earlier one. "unknown" when the server answered
+ * but could not say (an error): the user is asked, never left to record unawares.
  */
 export async function currentRecord(
   patientId: string,
   medicationId: string,
   scheduledAt: number,
-): Promise<Intake | null> {
+): Promise<Intake | null | "unknown"> {
   try {
     const { data } = await api.GET("/api/v1/patients/{patient_id}/intakes", {
       params: {
@@ -267,7 +268,8 @@ export async function currentRecord(
         },
       },
     });
-    return data?.find((i) => i.status !== "skipped") ?? null;
+    if (!data) return "unknown";
+    return data.find((i) => i.status !== "skipped") ?? null;
   } catch {
     return null;
   }

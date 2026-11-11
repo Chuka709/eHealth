@@ -455,7 +455,9 @@
           "caregiver": "a caregiver",
           "someone": "someone else"
         },
-        "alreadyBodyYou": "You already logged this dose as taken at {time}. Log it again? The new entry is kept separately."
+        "alreadyBodyYou": "You already logged this dose as taken at {time}. Log it again? The new entry is kept separately.",
+        "uncheckedTitle": "Could not check whether this dose is already recorded",
+        "uncheckedBody": "Someone else may have recorded it. Record it as taken?"
       },
       "summary": {
         "title": "This month's records",
@@ -1049,6 +1051,17 @@
       "pauseTitle": "Pause alerts — {name}",
       "pauseBody": "Until you resume, they get no alert when a dose has not been logged.",
       "changed": "The profile changed after this screen was opened. Go back and open it again."
+    },
+    "home": {
+      "allTransplants": "All transplants ({count})",
+      "dosesRecorded": "Today: {recorded} of {total} doses recorded",
+      "dosesAllRecorded": "All of today's doses are recorded.",
+      "allMeds": "All medicines and today's doses",
+      "nextAppointment": "Next appointment",
+      "noAppointment": "No appointment planned.",
+      "allAppointments": "All appointments",
+      "dosesUnknown": "Today's records could not be loaded, so which doses are recorded cannot be shown now. Doses you record are sent once online.",
+      "retry": "Try again"
     }
   },
   "status": {

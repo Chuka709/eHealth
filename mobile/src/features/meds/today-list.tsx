@@ -1,5 +1,5 @@
 import { fontSize, radius, space } from "@labtrack/shared";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Alert, StyleSheet, Text, View } from "react-native";
 import { useTranslations } from "use-intl";
 
@@ -62,6 +62,15 @@ export function TodayList({
   const [settling, setSettling] = useState<string | null>(null);
 
   const inFlight = useRef(new Set<string>());
+  // a profile switch while the server is asked unmounts this list: no question about the
+  // previous person's dose may then appear over another profile (H20)
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
   const run = async (key: string, work: () => Promise<Notice>) => {
     // one tap at a time per dose, checked synchronously: a double tap never queues twice
     if (inFlight.current.has(key)) return;
@@ -102,6 +111,21 @@ export function TodayList({
     } finally {
       inFlight.current.delete(checking);
     }
+    if (!mounted.current) return settle(patientId);
+    // the list may have been closed (a profile switch) while the question was open
+    const record = () => (mounted.current ? void save(dose, key, status) : settle(patientId));
+    if (stored === "unknown") {
+      Alert.alert(
+        t("dose.uncheckedTitle"),
+        t("dose.uncheckedBody"),
+        [
+          { text: t("dose.alreadyCancel"), style: "cancel", onPress: () => settle(patientId) },
+          { text: t("dose.alreadyRecord"), onPress: record },
+        ],
+        { cancelable: true },
+      );
+      return;
+    }
     if (!stored?.taken_at) return save(dose, key, status);
     const who = t(`dose.who.${stored.recorded_by ?? "someone"}` as "dose.who.you");
     const time = clockIn(Date.parse(stored.taken_at), dose.zone);
@@ -112,7 +136,7 @@ export function TodayList({
         : t("dose.alreadyBody", { time, who }),
       [
         { text: t("dose.alreadyCancel"), style: "cancel", onPress: () => settle(patientId) },
-        { text: t("dose.alreadyRecord"), onPress: () => void save(dose, key, status) },
+        { text: t("dose.alreadyRecord"), onPress: record },
       ],
       { cancelable: true },
     );

@@ -32,5 +32,5 @@ appId: ${MAESTRO_APP_ID}
       - tapOn: "Одоохондоо алгасах"
 
 - extendedWaitUntil:
-    visible: "Системийн төлөв"
+    visible: "Өнөөдрийн тунгууд" # Home (Phase 2.9); the system status is further down
     timeout: 15000

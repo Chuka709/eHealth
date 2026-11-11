@@ -18,5 +18,7 @@ appId: ${MAESTRO_APP_ID}
 
 # Phase 2.5: medicines, today's doses and reminders.
 - runFlow: subflows/medication.yaml
+# Phase 2.9: Home - transplant, today's doses (one tap), next appointment.
+- runFlow: subflows/home.yaml
 # Phase 2.7: the emergency card, the wallet PDF, the wallpaper, Medical ID.
 - runFlow: subflows/emergency.yaml

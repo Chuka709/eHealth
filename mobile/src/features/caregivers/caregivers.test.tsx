@@ -302,15 +302,15 @@ test("only caregivers who get alerts count for the reminders-off note", () => {
 test("leaving as caregiver drops what the phone kept of that person", async () => {
   setActiveProfile(MOTHER.id);
   await openTab(/^Профайл,/);
-  queryClient.setQueryData(["medications", MOTHER.id], [{ id: "m1" }]);
-  queryClient.setQueryData(["medications", OWN.id], [{ id: "m0" }]);
+  queryClient.setQueryData(["medications", MOTHER.id], [{ id: "m1", regimens: [] }]);
+  queryClient.setQueryData(["medications", OWN.id], [{ id: "m0", regimens: [] }]);
   await fireEvent.press(await screen.findByTestId("profile-caregiver-alerts"));
   await fireEvent.press(
     await screen.findByRole("button", { name: /Асран хамгаалагчаас гарах: Дулмаа/ }),
   );
   await waitFor(() => expect(posts.some((p) => p.path === "leave")).toBe(true));
   await waitFor(() => expect(queryClient.getQueryData(["medications", MOTHER.id])).toBeUndefined());
-  expect(queryClient.getQueryData(["medications", OWN.id])).toEqual([{ id: "m0" }]);
+  expect(queryClient.getQueryData(["medications", OWN.id])).toEqual([{ id: "m0", regimens: [] }]);
 });
 
 test("a profile gone from the list leaves the cache too (access ended, Q42)", () => {
