@@ -9,9 +9,12 @@ interface ButtonProps {
   onPress: () => void;
   /**
    * primary: filled; secondary: outlined; danger: outlined in the danger colour (sign out,
-   * delete); link: text only (same touch target).
+   * delete); link: text only (same touch target); quiet: text only but an action (role
+   * button) - a secondary choice beside a primary one (2.12: "Алгассан" beside "Уусан").
    */
-  variant?: "primary" | "secondary" | "danger" | "link";
+  variant?: "primary" | "secondary" | "danger" | "link" | "quiet";
+  /** Content width instead of the full row (a button beside text). */
+  compact?: boolean;
   busy?: boolean;
   disabled?: boolean;
   /** Spoken label when it differs from the visible text (e.g. adds context). */
@@ -34,6 +37,7 @@ export function Button({
   expanded,
   selected,
   checked,
+  compact = false,
 }: ButtonProps) {
   const p = usePalette();
   const inactive = disabled || busy;
@@ -57,6 +61,7 @@ export function Button({
       accessibilityState={{ disabled: inactive, busy, expanded, selected, checked: marked }}
       style={({ pressed }) => [
         styles.button,
+        compact && styles.compact,
         filled && { backgroundColor: p.primary },
         (variant === "secondary" || variant === "danger") && {
           borderColor: tone,
@@ -85,5 +90,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: space.lg,
     paddingVertical: space.sm,
   },
+  compact: { alignSelf: "flex-start", paddingHorizontal: space.xl },
   label: { fontSize: fontSize.body, fontWeight: "600", textAlign: "center", flexShrink: 1 },
 });

@@ -3,9 +3,9 @@ import { useEffect, useRef, useState } from "react";
 import { Alert, StyleSheet, View } from "react-native";
 import { useTranslations } from "use-intl";
 import { Text } from "@/components/app-text";
-
 import { Button } from "@/components/button";
 import { FormMessage } from "@/components/form-message";
+import { Icon } from "@/components/icon";
 import { usePalette } from "@/theme/use-palette";
 
 import type { TodayDose } from "./plan";
@@ -182,25 +182,56 @@ export function TodayList({
       {doses.length === 0 && waiting.length === 0 && (
         <Text style={[styles.body, { color: p.text }]}>{t("todayEmpty")}</Text>
       )}
-      {doses.map((dose) => {
-        const key = `${dose.medication.id}@${dose.slot.scheduledAt}@${dose.slot.at}`;
-        return (
-          <DoseRow
-            key={key}
-            dose={dose}
-            due={dose.slot.scheduledAt <= now}
-            busy={busy === key}
-            settling={settling === key}
-            onMark={(status) => void mark(dose, key, status)}
-            onUndo={() => void undo(dose, key)}
-          />
-        );
-      })}
+      {byTime(doses).map(({ key: groupKey, time, items }) => (
+        <View key={groupKey} style={styles.group}>
+          {/* the time only: Home lists a part of the day, so a count here could mislead */}
+          <Text accessibilityRole="header" style={[styles.groupTime, { color: p.text }]}>
+            {time}
+          </Text>
+          <View style={[styles.card, { backgroundColor: p.surface, borderColor: p.border }]}>
+            {items.map((dose, i) => {
+              const key = `${dose.medication.id}@${dose.slot.scheduledAt}@${dose.slot.at}`;
+              return (
+                <DoseRow
+                  key={key}
+                  first={i === 0}
+                  dose={dose}
+                  due={dose.slot.scheduledAt <= now}
+                  busy={busy === key}
+                  settling={settling === key}
+                  onMark={(status) => void mark(dose, key, status)}
+                  onUndo={() => void undo(dose, key)}
+                />
+              );
+            })}
+          </View>
+        </View>
+      ))}
     </View>
   );
 }
 
+/**
+ * Doses grouped by the clock time shown (2.12): a day is lived by its dose times. Only doses of
+ * the same instant share a group - the same "08:00" text at another instant (a "local" medicine
+ * in another zone, a DST repeat) is a group of its own, keyed by its instant (medical review).
+ */
+export function byTime(
+  doses: readonly TodayDose[],
+): { key: string; time: string; items: TodayDose[] }[] {
+  const groups: { key: string; time: string; at: number; items: TodayDose[] }[] = [];
+  for (const dose of doses) {
+    const time = clockIn(dose.slot.scheduledAt, dose.zone);
+    const at = dose.slot.scheduledAt;
+    const last = groups.at(-1);
+    if (last && last.time === time && last.at === at) last.items.push(dose);
+    else groups.push({ key: `${time}@${at}@${groups.length}`, time, at, items: [dose] });
+  }
+  return groups;
+}
+
 function DoseRow({
+  first,
   dose,
   due,
   busy,
@@ -208,6 +239,7 @@ function DoseRow({
   onMark,
   onUndo,
 }: {
+  first: boolean;
   dose: TodayDose;
   due: boolean;
   busy: boolean;
@@ -242,57 +274,79 @@ function DoseRow({
         : due
           ? t("dose.stateNone")
           : t("dose.upcoming");
+  const recorded = dose.state !== null;
   return (
     <View
-      style={[styles.row, { backgroundColor: p.surface, borderColor: p.border }]}
+      style={[
+        styles.row,
+        !first && { borderTopColor: p.border, borderTopWidth: StyleSheet.hairlineWidth },
+      ]}
       testID={`dose-${dose.medication.id}-${dose.slot.at}`}
     >
-      <Text style={[styles.title, { color: p.text }]}>
-        {time} · {name}
-      </Text>
-      {amount && <Text style={[styles.body, { color: p.text }]}>{amount}</Text>}
-      {/* stays mounted: a change of state is read out where the buttons were */}
-      <Text
-        accessibilityLiveRegion="polite"
-        style={[styles.body, { color: dose.state ? p.text : p.textMuted }]}
-      >
-        {state}
-      </Text>
-      {(dose.recorded?.also ?? []).map((x) => (
-        <Text key={`${x.by}@${x.takenAt}`} style={[styles.body, { color: p.text }]}>
-          {t("dose.alsoRecorded", { who: who(x.by), time: at(x.takenAt) })}
-        </Text>
-      ))}
-      {dose.state === null ? (
-        <View style={styles.actions}>
-          <View style={styles.action}>
+      <View style={styles.line}>
+        <View style={styles.what}>
+          <Text style={[styles.name, { color: p.text }]}>{name}</Text>
+          {amount && <Text style={[styles.body, { color: p.textMuted }]}>{amount}</Text>}
+        </View>
+        {dose.state === null && (
+          // stays on the right even when a large font wraps it onto its own line
+          <View style={styles.primary}>
             <Button
+              compact
               label={t("dose.taken")}
               accessibilityLabel={t("dose.markTaken", { time, name })}
               busy={busy}
               onPress={() => onMark("taken")}
             />
           </View>
-          <View style={styles.action}>
-            <Button
-              label={t("dose.skipped")}
-              accessibilityLabel={t("dose.markSkipped", { time, name })}
-              variant="secondary"
-              disabled={busy}
-              onPress={() => onMark("skipped")}
-            />
-          </View>
-        </View>
-      ) : (
-        <Button
-          label={t("dose.undo")}
-          accessibilityLabel={t("dose.undoLabel", { time, name })}
-          variant="link"
-          busy={busy}
-          disabled={settling}
-          onPress={onUndo}
-        />
-      )}
+        )}
+      </View>
+      {/* stays mounted: a change of state is read out where the buttons were */}
+      <View style={styles.stateLine}>
+        {/* the state's mark, beside its words (never colour alone) */}
+        {dose.state === "taken" && <Icon name="check-circle" color={p.done.fg} size={18} />}
+        {dose.state === "skipped" && (
+          <Icon name="minus-circle-outline" color={p.textMuted} size={18} />
+        )}
+        <Text
+          accessibilityLiveRegion="polite"
+          style={[
+            styles.body,
+            styles.stateText,
+            { color: dose.state === "taken" ? p.done.fg : recorded ? p.text : p.textMuted },
+          ]}
+        >
+          {state}
+        </Text>
+      </View>
+      {(dose.recorded?.also ?? []).map((x) => (
+        <Text key={`${x.by}@${x.takenAt}`} style={[styles.body, { color: p.text }]}>
+          {t("dose.alsoRecorded", { who: who(x.by), time: at(x.takenAt) })}
+        </Text>
+      ))}
+      <View style={styles.secondary}>
+        {dose.state === null ? (
+          // a deliberate choice: outlined, at the left, away from "Уусан" (2.12 medical review)
+          <Button
+            compact
+            label={t("dose.skipped")}
+            accessibilityLabel={t("dose.markSkipped", { time, name })}
+            variant="secondary"
+            disabled={busy}
+            onPress={() => onMark("skipped")}
+          />
+        ) : (
+          <Button
+            compact
+            label={t("dose.undo")}
+            accessibilityLabel={t("dose.undoLabel", { time, name })}
+            variant="quiet"
+            busy={busy}
+            disabled={settling}
+            onPress={onUndo}
+          />
+        )}
+      </View>
     </View>
   );
 }
@@ -329,14 +383,30 @@ function FailedDoses({ patientId, doses }: { patientId: string; doses: TodayDose
 
 const styles = StyleSheet.create({
   list: { gap: space.md },
-  row: {
-    gap: space.xs,
-    padding: space.md,
-    borderRadius: radius.md,
-    borderWidth: StyleSheet.hairlineWidth * 2,
+  group: { gap: space.sm },
+  groupTime: {
+    fontSize: fontSize.title,
+    fontWeight: "700",
+    fontVariant: ["tabular-nums"],
   },
-  title: { fontSize: fontSize.bodyLarge, fontWeight: "700" },
+  card: {
+    borderRadius: radius.lg,
+    borderWidth: StyleSheet.hairlineWidth,
+    overflow: "hidden",
+  },
+  row: { gap: space.sm, paddingHorizontal: space.lg, paddingVertical: space.md },
+  line: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    flexWrap: "wrap",
+    gap: space.md,
+  },
+  what: { flexGrow: 1, flexShrink: 1, flexBasis: 160, gap: 2 },
+  name: { fontSize: fontSize.bodyLarge, fontWeight: "600" },
+  stateLine: { flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: space.xs },
+  stateText: { flexShrink: 1 },
+  secondary: { flexDirection: "row" },
+  primary: { marginLeft: "auto" },
   body: { fontSize: fontSize.body, lineHeight: fontSize.body * 1.4 },
-  actions: { flexDirection: "row", flexWrap: "wrap", gap: space.sm, marginTop: space.sm },
-  action: { flexBasis: "47%", flexGrow: 1 },
 });

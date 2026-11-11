@@ -1,5 +1,6 @@
+import { radius, space } from "@labtrack/shared";
 import { useRouter } from "expo-router";
-import { View } from "react-native";
+import { StyleSheet, View } from "react-native";
 import { useTranslations } from "use-intl";
 
 import { Button } from "@/components/button";
@@ -14,6 +15,7 @@ import { useTransplants } from "@/features/records/use-transplants";
 import { formatDateTime } from "@/lib/dates";
 import { loading, OFFLINE_ERROR as OFFLINE } from "@/lib/query-state";
 import { useErrorText } from "@/lib/use-error-text";
+import { usePalette } from "@/theme/use-palette";
 
 import { doseCounts, latestTransplant, nextAppointment, useHomeDoses } from "./home-data";
 
@@ -51,6 +53,31 @@ function Loading() {
     </View>
   );
 }
+
+/**
+ * Today's records as a band (2.12): one segment per dose, filled when recorded (taken or
+ * skipped alike, in the neutral brand colour - a count, never a judgement: H25). Decorative:
+ * the sentence above says the same in words.
+ */
+function DayBand({ recorded, total }: { recorded: number; total: number }) {
+  const p = usePalette();
+  return (
+    <View accessible={false} importantForAccessibility="no-hide-descendants" style={styles.band}>
+      {Array.from({ length: total }, (_, i) => (
+        <View
+          // biome-ignore lint/suspicious/noArrayIndexKey: segments have no identity
+          key={i}
+          style={[styles.segment, { backgroundColor: i < recorded ? p.primary : p.primarySoft }]}
+        />
+      ))}
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  band: { flexDirection: "row", gap: space.xs, height: 8 },
+  segment: { flex: 1, borderRadius: radius.pill },
+});
 
 /** The latest transplant: organ, date as given, time since (the server's count, never more). */
 export function TransplantSection({ patientId }: { patientId: string }) {
@@ -134,7 +161,10 @@ export function TodaySection({ patientId, now }: { patientId: string; now: Date 
       ) : (
         <>
           {total === 0 ? null : intakes.data ? (
-            <Paragraph>{t("home.dosesRecorded", { recorded, total })}</Paragraph>
+            <>
+              <Paragraph>{t("home.dosesRecorded", { recorded, total })}</Paragraph>
+              <DayBand recorded={recorded} total={total} />
+            </>
           ) : (
             // offline on a new day, or the server failed: no count that could be wrong, and
             // the doses stay recordable (the queue sends them later; a dose is one row - H20)

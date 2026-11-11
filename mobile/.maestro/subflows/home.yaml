@@ -12,13 +12,13 @@ appId: ${MAESTRO_APP_ID}
     element: "Алгассан"
 - tapOn: "Алгассан"
 - extendedWaitUntil:
-    visible: "– Алгассан гэж тэмдэглэсэн"
+    visible: "Алгассан гэж тэмдэглэсэн"
     timeout: 15000
 # the row stays on Home, so the mistake can be undone right there
 - assertVisible: "Өнөөдөр 1 тунгаас 1 нь тэмдэглэгдсэн"
 - tapOn: "Буцаах"
 - extendedWaitUntil:
-    notVisible: "– Алгассан гэж тэмдэглэсэн"
+    notVisible: "Алгассан гэж тэмдэглэсэн"
     timeout: 15000
 - scrollUntilVisible:
     element: "Төлөвлөсөн товлол алга."

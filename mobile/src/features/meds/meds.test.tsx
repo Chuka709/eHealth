@@ -227,7 +227,7 @@ test("today's doses come from the dose history; a tap records one through the qu
   // the dose's own minute (08:00 Ulaanbaatar), not the moment of the tap
   expect(new Date(String(body.scheduled_at)).toISOString()).toMatch(/T00:00:00\.000Z$/);
   expect(String(body.client_id)).toMatch(/^[0-9a-f-]{36}$/);
-  expect(await screen.findByText("✓ Уусан гэж тэмдэглэсэн")).toBeOnTheScreen();
+  expect(await screen.findByText("Уусан гэж тэмдэглэсэн")).toBeOnTheScreen();
 });
 
 test("adding a medicine: catalog search, a dose per time, ambiguous numbers refused", async () => {
@@ -289,13 +289,13 @@ test("a recorded dose can be undone; a refused one is shown, never dropped", asy
   await screen.findByTestId(`dose-${MED_ID}-08:00`);
   const [taken] = screen.getAllByRole("button", { name: /^Уусан — / });
   await fireEvent.press(taken);
-  expect(await screen.findByText("✓ Уусан гэж тэмдэглэсэн")).toBeOnTheScreen();
+  expect(await screen.findByText("Уусан гэж тэмдэглэсэн")).toBeOnTheScreen();
   // sent already: undone on the server, by the stored row's own id
-  await waitFor(() => expect(screen.getByRole("link", { name: /^Буцаах — / })).toBeEnabled());
+  await waitFor(() => expect(screen.getByRole("button", { name: /^Буцаах — / })).toBeEnabled());
   await press(/^Буцаах — /);
   await waitFor(() => expect(deleted).toHaveLength(1));
   expect(deleted[0]).toMatch(/^9/);
-  await waitFor(() => expect(screen.queryByText("✓ Уусан гэж тэмдэглэсэн")).toBeNull());
+  await waitFor(() => expect(screen.queryByText("Уусан гэж тэмдэглэсэн")).toBeNull());
 
   refuseIntakes = true;
   const [skip] = screen.getAllByRole("button", { name: /^Алгассан — / });

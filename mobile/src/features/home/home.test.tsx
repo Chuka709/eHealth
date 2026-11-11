@@ -283,7 +283,7 @@ test("Home: one tap records a dose through the same queue; the row stays for 'Б
   await fireEvent.press(taken);
   await waitFor(() => expect(posts.filter((p) => p.key === "intake")).toHaveLength(1));
   expect(posts[0].body).toMatchObject({ medication_id: MED_ID, status: "taken" });
-  expect(await screen.findByText("✓ Уусан гэж тэмдэглэсэн")).toBeOnTheScreen();
+  expect(await screen.findByText("Уусан гэж тэмдэглэсэн")).toBeOnTheScreen();
   expect(await screen.findByRole(/button|link/, { name: /^Буцаах — / })).toBeOnTheScreen();
   expect(await screen.findByText("Өнөөдөр 2 тунгаас 1 нь тэмдэглэгдсэн")).toBeOnTheScreen();
   // Home never judges a dose (Q23)

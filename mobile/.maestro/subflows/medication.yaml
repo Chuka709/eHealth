@@ -55,9 +55,9 @@ appId: ${MAESTRO_APP_ID}
     element: "Алгассан"
 - tapOn: "Алгассан"
 - extendedWaitUntil:
-    visible: "– Алгассан гэж тэмдэглэсэн"
+    visible: "Алгассан гэж тэмдэглэсэн"
     timeout: 15000
 - tapOn: "Буцаах"
 - extendedWaitUntil:
-    notVisible: "– Алгассан гэж тэмдэглэсэн"
+    notVisible: "Алгассан гэж тэмдэглэсэн"
     timeout: 15000
