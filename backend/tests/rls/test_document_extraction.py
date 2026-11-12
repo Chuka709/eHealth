@@ -398,16 +398,14 @@ async def test_the_sweep_hands_back_a_lost_task_and_fails_a_day_old_one(
 async def test_a_reading_that_takes_too_long_times_out(
     app_engine: AsyncEngine, owner_engine: AsyncEngine, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    import time  # noqa: PLC0415
-
+    """The child process was killed (test_isolated_reader): the document is failed."""
     store, user = MemoryObjectStore(), await make_user(owner_engine)
     patient = await make_patient(app_engine, user)
     doc = await _queued(app_engine, store, user, patient)
 
-    def slow(data: bytes, claimed: object) -> None:
-        time.sleep(1.5)
+    def killed(data: bytes, claimed: object) -> None:
+        raise TimeoutError
 
-    monkeypatch.setattr(worker, "_read", slow)
-    monkeypatch.setattr(worker, "READ_TIMEOUT_S", 0.3)
+    monkeypatch.setattr(worker, "_read", killed)
     assert (await worker.extract(app_engine, store, doc, user)).result == "failed"
     assert await _status(app_engine, user, doc) == ("failed", "extraction_timeout")

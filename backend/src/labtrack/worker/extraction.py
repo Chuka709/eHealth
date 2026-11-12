@@ -8,10 +8,12 @@ the virus scan left the document "queued"; the task gets two ids and nothing els
   printed name) and an audit row are written in one transaction -> "needs_review".
 - Anything else - a scan or photo, an unknown layout - is "failed" with `not_read`: the person
   enters the results by hand (Phase 5) or, with their consent, the AI reads it (Phase 4.5).
-- An error while reading -> "failed" with `extraction_error`; reading longer than
-  READ_TIMEOUT_S -> `extraction_timeout`; a page with far more text than a report, or a report
-  of more than 500 rows -> `not_read`. A worker killed mid-read leaves "processing", which the
-  maintenance sweep turns to "failed" (0032). Logs carry ids and error class names only.
+- The untrusted PDF is parsed in a child process with memory and CPU limits, killed after
+  READ_TIMEOUT_S -> `extraction_timeout` (commit security review); the child failing or any
+  other error while reading -> "failed" with `extraction_error`; a page with far more text
+  than a report, or a report of more than 500 rows -> `not_read`. A worker killed mid-read
+  leaves "processing", which the maintenance sweep turns to "failed" (0032). Logs carry ids
+  and error class names only.
 - The database briefly away while claiming: the task is retried (Celery autoretry); once
   claimed, any error fails the document (`extraction_error`) - the person adds it again.
 """
@@ -39,8 +41,7 @@ from labtrack.core.lab_drafts import (
 )
 from labtrack.db.sql import bound_text
 from labtrack.documents.service import _aad
-from labtrack.extraction.readers import read_locally
-from labtrack.extraction.text_pdf import TooMuchText, read_pages
+from labtrack.extraction.isolated import read_isolated
 from labtrack.extraction.types import ReadDocument
 from labtrack.keys import decrypt_bytes, get_key_provider
 from labtrack.storage import ObjectStore, StorageError, get_store
@@ -154,12 +155,10 @@ async def _catalog(conn: AsyncConnection) -> tuple[Catalog, dict[str, str]]:
 
 
 def _read(data: bytes, claimed: _Claimed) -> ReadDocument | None:
+    """Blocking: the parse runs in a child process killed after READ_TIMEOUT_S (isolated.py)."""
     if claimed.mime_type != "application/pdf" or claimed.has_text_layer is False:
         return None  # a scan or photo: no local reader (Q50)
-    try:
-        document = read_locally(read_pages(data))
-    except TooMuchText:
-        return None
+    document = read_isolated(data, timeout=READ_TIMEOUT_S)
     if document is None or any(len(r.results) > MAX_RESULTS for r in document.reports):
         return None
     return document
@@ -257,9 +256,7 @@ async def extract(
     try:
         sealed = await store.get(claimed.storage_key)
         data = await decrypt_bytes(get_key_provider(), sealed, _aad(document_id))
-        document = await asyncio.wait_for(
-            asyncio.to_thread(_read, data, claimed), timeout=READ_TIMEOUT_S
-        )
+        document = await asyncio.to_thread(_read, data, claimed)
         if document is None:
             await _finish(engine, user_id, document_id, "failed", "not_read")
             return Outcome("not_read")
