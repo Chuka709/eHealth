@@ -73,6 +73,14 @@ class Settings(BaseSettings):
     # virus scan (Phase 3.3): clamd over TCP; unset only in dev/test (documents go unscanned)
     clamd_host: str | None = None
     clamd_port: int = 3310
+    # reading by AI (Phase 4.5, Q50): text PDFs of no known layout, names removed, with the
+    # person's consent. The default worker only needs the switch and the daily cap; the key and
+    # model live on the AI worker alone (rule 11).
+    ai_extraction_enabled: bool = False
+    ai_daily_documents: int = Field(default=20, ge=0, le=500)  # per user
+    ai_daily_documents_total: int = Field(default=500, ge=0, le=100_000)  # all users
+    anthropic_api_key: SecretStr | None = None
+    extraction_model: str | None = None
     # Client networks allowed to reach /admin (also enforced by Caddy). Unset: private and
     # loopback ranges in dev/test, nobody elsewhere - production must list them explicitly.
     admin_allowed_networks: list[IPvAnyNetwork] | None = None
@@ -95,6 +103,8 @@ class Settings(BaseSettings):
         "s3_secret_key",
         "admin_allowed_networks",
         "expo_access_token",
+        "anthropic_api_key",
+        "extraction_model",
         mode="before",
     )
     @classmethod

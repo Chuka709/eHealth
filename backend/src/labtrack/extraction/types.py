@@ -52,8 +52,10 @@ class ReadResult:
     raw_unit: str | None
     ref_text: str | None
     lab_flag: str | None
-    page: int
+    page: int | None  # None: not known (an AI reading that named no page)
     snippet: str  # the row as printed (no identity on a result row)
+    critical_text: str | None = None  # a critical limit printed for this row, as printed
+    issues: tuple[str, ...] = ()  # what the reader itself found doubtful ("not_in_source")
 
 
 @dataclass(frozen=True, slots=True)

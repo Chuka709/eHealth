@@ -33,6 +33,8 @@ app.conf.update(
     task_routes={
         "labtrack.maintenance.*": {"queue": "maintenance"},
         "labtrack.push.*": {"queue": "push"},
+        # reading by AI (4.5): the only worker with the API key and a route out
+        "labtrack.ai.*": {"queue": "ai"},
     },
     beat_schedule={
         "maintenance-daily": {
@@ -182,6 +184,35 @@ def extract_document(document_id: str, user_id: str) -> str:
     from labtrack.worker.extraction import run_sync  # noqa: PLC0415
 
     return run_sync(str(get_settings().database_url), document_id, user_id)
+
+
+@app.task(  # type: ignore[untyped-decorator]
+    name="labtrack.ai.read", soft_time_limit=150, time_limit=180
+)
+def ai_read(document_id: str) -> str:
+    """The document id only (rule 3). On the AI worker: de-identified text in, the answer out
+    (Valkey). It starts nothing: the default worker polls for the answer (save_ai)."""
+    from labtrack.worker.ai_tasks import read_with_ai  # noqa: PLC0415
+
+    return read_with_ai(document_id)
+
+
+@app.task(  # type: ignore[untyped-decorator]
+    name="labtrack.documents.save_ai",
+    bind=True,
+    max_retries=20,  # every 15 s, well past the 4 minutes the answer is waited for
+    soft_time_limit=60,
+    time_limit=90,
+)
+def save_ai(self: Any, document_id: str, user_id: str) -> str:
+    """Ids only. On the default worker: the AI's answer saved as a draft, as the user who
+    asked (checked against ai_requests, never taken from the AI worker)."""
+    from labtrack.worker.extraction import save_ai_sync  # noqa: PLC0415
+
+    result = save_ai_sync(str(get_settings().database_url), document_id, user_id)
+    if result == "waiting":
+        raise self.retry(countdown=15)
+    return result
 
 
 @app.task(  # type: ignore[untyped-decorator]

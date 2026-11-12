@@ -27,6 +27,7 @@ EXECUTE_MATRIX: dict[str, set[str]] = {
         "activation_consume(text,text,inet,boolean)",
         "activation_token_user(text)",
         "activation_username_mismatch(text,inet)",
+        "ai_consent_ok(uuid,jsonb)",
         "admin_token_is_live(text)",
         "audit_write(text,text,text,uuid,jsonb)",
         "auth_change_password(text,uuid,boolean,text)",

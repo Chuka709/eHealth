@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncEngine
 from labtrack.core.text import normalize_name, normalize_unit
 from labtrack.db.sql import bound_text
 from labtrack.documents.service import _aad, storage_key
+from labtrack.extraction.isolated import Reading
 from labtrack.extraction.types import PrintedIdentity, ReadDocument, ReadReport, ReadResult
 from labtrack.keys import encrypt_bytes, get_key_provider
 from labtrack.storage import MemoryObjectStore
@@ -124,8 +125,8 @@ async def _age(owner_engine: AsyncEngine, doc: UUID, age: timedelta) -> None:
         await conn.execute(bound_text("alter table documents enable trigger documents_touch"))
 
 
-def _reader(document: ReadDocument | None) -> Any:
-    return lambda data, claimed: document
+def _reader(document: ReadDocument | None, lines: tuple[tuple[int, str], ...] = ()) -> Any:
+    return lambda data, claimed: Reading(document, lines)
 
 
 async def test_a_known_layout_becomes_draft_reports_for_review(

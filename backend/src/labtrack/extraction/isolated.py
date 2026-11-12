@@ -14,6 +14,7 @@ quote the document).
 import json
 import subprocess
 import sys
+from dataclasses import dataclass
 from typing import Any, Final
 
 from labtrack.extraction.types import (
@@ -25,6 +26,7 @@ from labtrack.extraction.types import (
 
 MEMORY_LIMIT: Final = 1024 * 1024 * 1024  # bytes of address space for the child
 CPU_LIMIT: Final = 60  # seconds of CPU
+MAX_TEXT_CHARS: Final = 60_000  # text handed on for the AI: a few report pages
 
 
 class IsolatedReadError(Exception):
@@ -56,7 +58,17 @@ def to_json(document: ReadDocument) -> dict[str, Any]:
                 "reported_raw": r.reported_raw,
                 "analysed_raw": r.analysed_raw,
                 "results": [
-                    [x.raw_name, x.raw_value, x.raw_unit, x.ref_text, x.lab_flag, x.page, x.snippet]
+                    [
+                        x.raw_name,
+                        x.raw_value,
+                        x.raw_unit,
+                        x.ref_text,
+                        x.lab_flag,
+                        x.page,
+                        x.snippet,
+                        x.critical_text,
+                        list(x.issues),
+                    ]
                     for x in r.results
                 ],
             }
@@ -84,8 +96,10 @@ def from_json(data: dict[str, Any]) -> ReadDocument:
                         raw_unit=x[2],
                         ref_text=x[3],
                         lab_flag=x[4],
-                        page=int(x[5]),
+                        page=None if x[5] is None else int(x[5]),
                         snippet=str(x[6]),
+                        critical_text=x[7] if len(x) > 7 else None,  # noqa: PLR2004
+                        issues=tuple(str(i) for i in x[8]) if len(x) > 8 else (),  # noqa: PLR2004
                     )
                     for x in r["results"]
                 ),
@@ -95,8 +109,16 @@ def from_json(data: dict[str, Any]) -> ReadDocument:
     )
 
 
-def read_isolated(data: bytes, *, timeout: float) -> ReadDocument | None:
-    """The document read in a child process; None when no local reader can read it.
+@dataclass(frozen=True, slots=True)
+class Reading:
+    """A known layout's reading, or else the page text lines (for the AI, after deidentify)."""
+
+    document: ReadDocument | None
+    lines: tuple[tuple[int, str], ...] = ()
+
+
+def read_isolated(data: bytes, *, timeout: float) -> Reading:
+    """The document read in a child process.
 
     Raises TimeoutError (the child was killed) or IsolatedReadError.
     """
@@ -115,7 +137,9 @@ def read_isolated(data: bytes, *, timeout: float) -> ReadDocument | None:
         raise IsolatedReadError
     try:
         answer = json.loads(done.stdout)
-        return None if answer["document"] is None else from_json(answer["document"])
+        document = None if answer["document"] is None else from_json(answer["document"])
+        lines = tuple((int(page), str(text)) for page, text in answer["lines"])
+        return Reading(document, lines)
     except (ValueError, KeyError, TypeError, IndexError) as exc:
         raise IsolatedReadError from exc
 
@@ -126,10 +150,20 @@ def _main() -> None:  # pragma: no cover - exercised through read_isolated
 
     data = sys.stdin.buffer.read()
     try:
-        document = read_locally(read_pages(data))
+        pages = read_pages(data)
     except TooMuchText:
-        document = None
-    out = {"document": None if document is None else to_json(document)}
+        pages = ()
+    document = read_locally(pages) if pages else None
+    lines: list[tuple[int, str]] = []
+    if document is None:  # the text, for the AI path - capped
+        size = 0
+        for page in pages:
+            for line in page.lines:
+                size += len(line.text)
+                if size > MAX_TEXT_CHARS:
+                    break
+                lines.append((page.number, line.text))
+    out = {"document": None if document is None else to_json(document), "lines": lines}
     sys.stdout.write(json.dumps(out, ensure_ascii=False))
 
 

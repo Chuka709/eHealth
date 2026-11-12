@@ -43,8 +43,10 @@ def _pdf(lines: list[tuple[float, float, str]]) -> bytes:
     return bytes(out)
 
 
-def test_a_pdf_of_no_known_layout_is_read_as_nothing() -> None:
-    assert read_isolated(_pdf([(25, 100, "Glucose 5.4")]), timeout=30) is None
+def test_a_pdf_of_no_known_layout_gives_its_text_lines() -> None:
+    reading = read_isolated(_pdf([(25, 100, "Glucose 5.4"), (25, 120, "Urea 6.1")]), timeout=30)
+    assert reading.document is None
+    assert reading.lines == ((1, "Glucose 5.4"), (1, "Urea 6.1"))
 
 
 def test_garbage_makes_the_child_fail_without_details() -> None:

@@ -88,8 +88,11 @@ class DraftResult:
     ref_high: Decimal | None
     lab_flag: str | None
     issues: tuple[str, ...]
-    source_page: int
+    source_page: int | None
     source_snippet: str
+    critical_text: str | None = None
+    critical_low: Decimal | None = None
+    critical_high: Decimal | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -247,9 +250,10 @@ def _result(
     texts, cut = _trim(row)
     value = parse_value(row.raw_value)
     printed = parse_range(row.ref_text)
+    critical = parse_range(row.critical_text)
     code = match_test(row.raw_name, specimen, catalog.synonyms, user_synonyms)
     test = catalog.tests.get(code) if code else None
-    issues = list(report_issues)
+    issues = [*report_issues, *row.issues]
     if code is None:
         issues.append("unknown_test")
     issues.extend(_unit_issues(value.numeric, row.raw_unit, test, catalog))
@@ -274,6 +278,10 @@ def _result(
         issues=tuple(dict.fromkeys(issues)),
         source_page=row.page,
         source_snippet=row.snippet[:500],
+        # kept as printed (rule 5); no flag from it here - the critical banner is Phase 5
+        critical_text=row.critical_text[:300] if row.critical_text else None,
+        critical_low=critical.low,
+        critical_high=critical.high,
     )
 
 

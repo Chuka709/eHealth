@@ -14,6 +14,7 @@
 | B7 | Тусламжийн утас `EXPO_PUBLIC_SUPPORT_PHONE` (тестерүүд залгах) | компани | ☐ |
 | B8 | iOS (Apple аккаунт бэлэн болоход): `com.apple.developer.default-data-protection = NSFileProtectionComplete` entitlement; share extension-ий App Group хавтаст хуваалцсан файл үлдэхгүй байхыг шалгах (3.4 security review); share болон document scanner-ийг бодит iPhone дээр турших | Claude + компани | ☐ |
 | B9 | Share intent-ийг **preview build** болон бодит Android утсан дээр (Messenger, Viber, Files) шалгах: dev build дээр share sheet-д апп гарч intent хүлээн авсан ч файлыг уншихад `Permission Denial` (URI зөвшөөрөл dev launcher activity-д очсон бололтой); уншигдахгүй URI ирэхэд `expo-share-intent` нь `CursorIndexOutOfBoundsException`-ээр апп-ыг унагадаг — сангийн засвар/patch эсвэл шинэ хувилбар шаардлагатай | Claude | ☐ |
+| B10 | AI-аар унших (4.5) асаахаас өмнө: Valkey ACL — ai-worker-т зөвхөн `ai-input:*`/`ai-output:*` түлхүүр ба `ai` queue (бусад queue, rate-limit түлхүүрт хүрэхгүй); ai-worker-ийн гарах замыг зөвхөн `api.anthropic.com` руу proxy-оор; Anthropic-тай DPA (Q12) ба Data safety-д «эрүүл мэндийн мэдээлэл (нэргүй текст) гадаадад боловсруулагдана»; `AI_EXTRACTION_ENABLED` анхдагчаар унтраалттай | компани + Claude | ☐ |
 
 Код талд бэлэн (2.11): bundle ID `mn.munkhly.labtrack` (Q10), push-ийн тусдаа `labtrack_push` role, `eas.json` `beta` profile (AAB, store, channel `beta`), release тохиргооны шалгалт (`src/app-config.test.ts`: https заавал, dev launcher-гүй, хориотой зөвшөөрөл, нууцлалын URL), Тохиргоо → «Апп-ын тухай» (зориулалтын хил, 103, нууцлалын бодлого, тусламж).
 
@@ -34,7 +35,7 @@
   - Цуглуулдаг: Health info (эм, тун, уусан/алгассан тэмдэглэл, шилжүүлэн суулгалт, клиникийн үйл явдал, амин үзүүлэлт, харшил, товлол, эмчээс асуух асуулт, яаралтай карт), Personal info (нэр, хэрэглэгчийн нэр, утас — админ бүртгэлд; **яаралтай холбоо барих хүний** нэр, утас — гуравдагч хүн; асран хамгаалагчийн холбоос), профайлын цагийн бүсийн түүх (байршлын шинжтэй эсэхийг хуульчаар), App activity (PHI-гүй, HMAC хэрэглэгчтэй enum/тоо — 10d), Device ID (push token).
   - Хуваалцдаг: push token → Expo/Google (FCM) зөвхөн мэдэгдэл хүргэх; мэдэгдэлд эмийн нэр, PHI байхгүй (дүрэм 3). Асран хамгаалагчтай — хэрэглэгч өөрөө зөвшөөрсөн үед.
   - Дамжуулалтад шифрлэлттэй (https); хэрэглэгч устгуулах хүсэлт гаргаж болно (апп дотор + web).
-  - Phase 4 (AI задлалт, Anthropic) нэмэгдэхэд Data safety-г шинэчилнэ.
+  - Phase 4 (AI задлалт, Anthropic) нэмэгдэхэд Data safety-г шинэчилнэ: 4.5-аас хойш зөвшөөрсөн хэрэглэгчийн танихгүй хэлбэрийн текст PDF-ийн нэргүй текст Anthropic (АНУ) руу (B10).
 
 ## 4. Тестер бүртгэх (админ)
 1. Web админ (`/admin`) → хэрэглэгч үүсгэх (нэр, утас) → нэг удаагийн идэвхжүүлэх QR/SMS (`labtrack://activate#…`). Админ нууц үг хэзээ ч мэдэхгүй (дүрэм 2).
