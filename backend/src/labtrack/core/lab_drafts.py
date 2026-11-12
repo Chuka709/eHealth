@@ -485,6 +485,13 @@ def with_history(report: DraftReport, prior: Sequence[Prior], catalog: Catalog) 
     return replace(report, results=rows)
 
 
+def day_start(moment: datetime) -> datetime:
+    """A date given with only its day: that day's start in Ulaanbaatar (as a reading keeps a
+    printed day - `parse_stamp`), so day comparisons never shift by the sender's zone."""
+    local = moment.astimezone(LOCAL_ZONE).date()
+    return datetime(local.year, local.month, local.day, tzinfo=LOCAL_ZONE).astimezone(UTC)
+
+
 # --- review (Phase 5.3): the same checks again after the person's edit ------------------------
 
 

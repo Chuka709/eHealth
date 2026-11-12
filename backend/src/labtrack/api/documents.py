@@ -17,7 +17,7 @@ from labtrack.api.deps import Claims, PatientReadDb, PatientWriteDb
 from labtrack.api.errors import AppError, ErrorBody
 from labtrack.api.ratelimit import per_user
 from labtrack.config import get_settings
-from labtrack.documents import reports, service
+from labtrack.documents import reports, review, service
 from labtrack.documents.files import MAX_BYTES
 from labtrack.storage import ObjectStore, get_store
 
@@ -121,6 +121,7 @@ class LabReportOut(BaseModel):
     date_ambiguous: bool
     name_match_score: Exact | None
     has_unconfirmed_critical: bool
+    source: str  # read from the document, or typed in by a person
     created_at: datetime
     results: list[LabResultOut]
     last_doses: list[LastDoseOut]
@@ -218,6 +219,25 @@ async def get_document_file(
             "Cross-Origin-Resource-Policy": "same-origin",
         },
     )
+
+
+class MoveBody(BaseModel):
+    patient_id: UUID  # the profile the document really belongs to
+
+
+@router.post(
+    "/{document_id}/move",
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses=_ERRORS,
+    dependencies=[_UPLOAD_LIMIT],
+)
+async def move_document(
+    patient_id: UUID, document_id: UUID, body: MoveBody, db: PatientWriteDb
+) -> Response:
+    """ "Wrong profile": the profile's owner moves the document and its drafts to another
+    profile they write (never with a confirmed report), where they are checked again."""
+    await review.move_document(db, patient_id, document_id, body.patient_id)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.delete("/{document_id}", status_code=status.HTTP_204_NO_CONTENT, responses=_ERRORS)

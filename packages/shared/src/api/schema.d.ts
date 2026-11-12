@@ -954,6 +954,47 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/patients/{patient_id}/documents/{document_id}/move": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Move Document
+         * @description "Wrong profile": the profile's owner moves the document and its drafts to another
+         *     profile they write (never with a confirmed report), where they are checked again.
+         */
+        post: operations["move_document_api_v1_patients__patient_id__documents__document_id__move_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/patients/{patient_id}/reports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create Report
+         * @description A draft typed in by the person; it is reviewed and confirmed like a read one.
+         */
+        post: operations["create_report_api_v1_patients__patient_id__reports_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/patients/{patient_id}/reports/{report_id}": {
         parameters: {
             query?: never;
@@ -2430,6 +2471,8 @@ export interface components {
             name_match_score: string | null;
             /** Has Unconfirmed Critical */
             has_unconfirmed_critical: boolean;
+            /** Source */
+            source: string;
             /**
              * Created At
              * Format: date-time
@@ -2559,6 +2602,29 @@ export interface components {
             platform: "ios" | "android" | "web";
             /** Device Token */
             device_token?: string | null;
+        };
+        /**
+         * ManualReport
+         * @description A result typed in by hand: the sample's date (and whether its time is known) always
+         *     said; optionally the profile's own scan or photo it was typed from.
+         */
+        ManualReport: {
+            /** Document Id */
+            document_id?: string | null;
+            /** Lab Name */
+            lab_name?: string | null;
+            /**
+             * Collected At
+             * Format: date-time
+             */
+            collected_at: string;
+            /**
+             * Collected Precision
+             * @enum {string}
+             */
+            collected_precision: "day" | "minute";
+            /** Results */
+            results: components["schemas"]["ResultNew"][];
         };
         /** MeOut */
         MeOut: {
@@ -2774,6 +2840,14 @@ export interface components {
              * Format: uuid
              */
             medication_id: string;
+        };
+        /** MoveBody */
+        MoveBody: {
+            /**
+             * Patient Id
+             * Format: uuid
+             */
+            patient_id: string;
         };
         /** MyInvitationOut */
         MyInvitationOut: {
@@ -9122,6 +9196,192 @@ export interface operations {
             };
             /** @description Service Unavailable */
             503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    move_document_api_v1_patients__patient_id__documents__document_id__move_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                patient_id: string;
+                document_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MoveBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Content Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Unsupported Media Type */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    create_report_api_v1_patients__patient_id__reports_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                patient_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ManualReport"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LabReportOut"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
                 headers: {
                     [name: string]: unknown;
                 };

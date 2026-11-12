@@ -97,6 +97,8 @@
     "review.acknowledge_one",
     "review.critical_needs_ack",
     "review.issue_not_open",
+    "review.move_confirmed",
+    "review.move_target",
     "review.not_draft",
     "review.not_found",
     "review.open_issues",

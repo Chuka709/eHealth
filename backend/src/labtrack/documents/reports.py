@@ -87,6 +87,7 @@ class Report:
     date_ambiguous: bool
     name_match_score: Decimal | None
     has_unconfirmed_critical: bool
+    source: str  # read | typed (0037)
     created_at: datetime
     results: list[Result]
     last_doses: list[LastDose]
@@ -99,7 +100,7 @@ _REPORTS = bound_text(
     # how the printed name matched: for the profile's writers only, like the run (security
     # review 4.6) - a reader sees the confirmed values, not how they were read
     " case when can_write_patient(r.patient_id) then r.name_match_score end"
-    " as name_match_score, r.has_unconfirmed_critical,"
+    " as name_match_score, r.has_unconfirmed_critical, r.source,"
     " r.created_at"
     " from lab_reports r left join extraction_runs run"
     " on run.id = r.extraction_run_id and run.patient_id = r.patient_id"

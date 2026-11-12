@@ -22,17 +22,19 @@ from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any, Final
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from sqlalchemy.exc import DBAPIError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from labtrack import consents
 from labtrack.api.errors import AppError
 from labtrack.core.lab_drafts import (
     Catalog,
     DraftReport,
     DraftResult,
     Precision,
+    day_start,
     redraft_result,
     report_issues,
     with_history,
@@ -67,7 +69,8 @@ _CRITICAL_FLAGS: Final = frozenset({"critical_low", "critical_high"})
 _REPORT = bound_text(
     "select id, patient_id, document_id, status::text as status, specimen, collected_at,"
     " collected_precision, date_ambiguous, analysed_at, reported_at, name_match_score,"
-    " has_unconfirmed_critical from lab_reports where id = :r and patient_id = :p"
+    " has_unconfirmed_critical, extraction_run_id, source"
+    " from lab_reports where id = :r and patient_id = :p"
 )
 # the draft locked for this change (RLS: drafts of the caller's writable profiles only)
 _LOCK = bound_text(
@@ -276,6 +279,9 @@ async def _redo(
         analysed_at=report.analysed_at,
         reported_at=report.reported_at,
         name_score=report.name_match_score,
+        # a reading checks the printed name; a report typed from a scan or photo is
+        # checked by the person (the name on it is theirs to confirm - H2); a paper result
+        # typed in with no file has nothing to check
         read_from_document=report.document_id is not None,
         now=datetime.now(UTC),
     )
@@ -305,6 +311,8 @@ async def _redo(
         ack = {*row.acknowledged, *extra_ack.get(row.id, ())}
         await db.execute(_UPDATE_ROW, _params(row, draft, patient_id, ack))
     await db.execute(_CRITICAL, {"r": report.id, "p": patient_id})
+    if report.source == "typed":  # may have become critical by this change (H5)
+        await db.execute(_NOTIFY_TYPED, {"r": report.id})
 
 
 def _row(stored: Any, edit: RowEdit | None = None, *, new_date: bool = False) -> _Row:
@@ -441,7 +449,8 @@ async def edit_report(
             raise AppError(422, "validation")
         await db.execute(
             _UPDATE_REPORT,
-            {"r": report_id, "p": patient_id, "collected": edit.collected_at,
+            {"r": report_id, "p": patient_id,
+             "collected": _moment(edit.collected_at, edit.collected_precision),
              "precision": edit.collected_precision},
         )  # fmt: skip
     if edit.lab_name is not None:
@@ -460,6 +469,14 @@ async def edit_report(
     flagged = sorted(set(edit.acknowledge) & ONE_AT_A_TIME)
     action = "report.accept_name" if flagged else "report.edit"
     await audit(db, action, "lab_report", report_id, patient_id, fields + flagged)
+
+
+def _pg(exc: DBAPIError) -> object:
+    return getattr(exc.orig, "__cause__", None) or exc.orig
+
+
+def _moment(at: datetime, precision: Precision | None) -> datetime:
+    return day_start(at) if precision == "day" else at
 
 
 def _status_error(exc: DBAPIError) -> AppError:
@@ -505,3 +522,113 @@ async def reject(
             await db.execute(_REJECT, {"r": report_id})
     except DBAPIError as exc:
         raise _status_error(exc) from None
+
+
+# --- typed in by hand, and the wrong profile (Phase 5.4) ---------------------------------------
+
+_NEW_REPORT = bound_text(
+    "insert into lab_reports (id, patient_id, document_id, lab_name, collected_at,"
+    " collected_precision) values (:r, :p, :d, :lab, :at, :precision)"
+)
+_DOCUMENT = bound_text(
+    "select status::text as status from documents where id = :d and patient_id = :p"
+)
+_DOC_REPORTS = bound_text(
+    "select id from lab_reports where document_id = :d and patient_id = :p"
+    " and status = 'needs_review'"
+)
+_MOVE = bound_text("select move_document(:d, :t)")
+_NOTIFY_READ = bound_text("select notify_document_read(:d)")
+_NOTIFY_TYPED = bound_text("select notify_report_critical(:r)")
+_CAN_WRITE = bound_text("select coalesce(can_write_patient(:p), false)")
+MAX_TYPED_ROWS: Final = 100
+
+
+@dataclass(frozen=True)
+class TypedRow:
+    raw_name: str
+    edit: RowEdit
+
+
+async def create_manual(
+    db: AsyncSession,
+    patient_id: UUID,
+    *,
+    report_id: UUID,
+    document_id: UUID | None,
+    lab_name: str | None,
+    collected_at: datetime,
+    collected_precision: Precision,
+    rows: Sequence[TypedRow],
+) -> None:
+    """A report the person types in (a scan or photo that is not read - Q50, or a paper
+    result): a draft like any other, checked by `core` row by row and confirmed the same way."""
+    if not rows or len(rows) > MAX_TYPED_ROWS:
+        raise AppError(422, "validation")
+    if collected_at.tzinfo is None:
+        raise AppError(422, "validation")
+    if document_id is not None:
+        doc = (await db.execute(_DOCUMENT, {"d": document_id, "p": patient_id})).first()
+        if doc is None:
+            raise AppError(404, "document.not_found")
+        if doc.status not in {"needs_review", "failed"}:
+            raise AppError(409, "document.not_ready")
+    try:
+        async with db.begin_nested():
+            await db.execute(
+                _NEW_REPORT,
+                {"r": report_id, "p": patient_id, "d": document_id,
+                 "lab": lab_name.strip()[:200] if lab_name and lab_name.strip() else None,
+                 "at": _moment(collected_at, collected_precision),
+                 "precision": collected_precision},
+            )  # fmt: skip
+    except DBAPIError as exc:  # the document moved or went meanwhile
+        if getattr(_pg(exc), "sqlstate", None) == "23503":
+            raise AppError(404, "document.not_found") from None
+        raise
+    await audit(db, "report.create", "lab_report", report_id, patient_id, None)
+    for row in rows:
+        await add_result(
+            db, patient_id, report_id, new_id=uuid4(), raw_name=row.raw_name, edit=row.edit
+        )
+    # possibly critical: the owner and alerting caregivers were told by each row's change
+
+
+async def move_document(
+    db: AsyncSession, patient_id: UUID, document_id: UUID, target_id: UUID
+) -> None:
+    """ "Wrong profile": the document and its drafts go to the other profile, where they are
+    checked again (no accepted issue moves along; the printed name is unchecked there)."""
+    # the new profile's gate as for any route on it (a minor's consents - Q9), after access
+    access = await db.execute(_CAN_WRITE, {"p": target_id})
+    if not access.scalar_one():
+        raise AppError(403, "review.move_target")
+    await consents.require_for_patient(db, target_id)
+    try:
+        async with db.begin_nested():
+            await db.execute(_MOVE, {"d": document_id, "t": target_id})
+    except DBAPIError as exc:
+        text = str(getattr(exc.orig, "args", [""])[0] if exc.orig else "")
+        if "confirmed reports" in text:
+            raise AppError(409, "review.move_confirmed") from None
+        if "document not ready" in text:
+            raise AppError(409, "document.not_ready") from None
+        if "too many documents" in text:
+            raise AppError(409, "document.too_many") from None
+        if getattr(_pg(exc), "sqlstate", None) == "23505":  # the same file there already
+            raise AppError(409, "document.conflict") from None
+        if "target not allowed" in text:
+            raise AppError(403, "review.move_target") from None
+        if "document not found" in text:
+            raise AppError(404, "document.not_found") from None
+        raise
+    catalog, mine = await load_catalog(db)
+    for (rid,) in (await db.execute(_DOC_REPORTS, {"d": document_id, "p": target_id})).all():
+        report = await _report(db, target_id, rid)
+        rows = [_row(r) for r in await _rows(db, target_id, rid)]
+        await _redo(db, target_id, report, rows, catalog=catalog, mine=mine, extra_ack={})
+    # the new profile is told as for a read document (the old one's notices went - 0037);
+    # typed-in drafts of it were told by their recomputation above
+    status = (await db.execute(_DOCUMENT, {"d": document_id, "p": target_id})).scalar_one()
+    if status == "needs_review":
+        await db.execute(_NOTIFY_READ, {"d": document_id})

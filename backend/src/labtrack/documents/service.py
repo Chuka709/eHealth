@@ -148,6 +148,9 @@ async def list_documents(db: AsyncSession, patient_id: UUID) -> list[Document]:
     return [Document(**row) for row in rows]
 
 
+_KEY = bound_text("select storage_key from documents where patient_id = :p and id = :i")
+
+
 async def read_file(
     db: AsyncSession, store: ObjectStore, patient_id: UUID, document_id: UUID
 ) -> tuple[bytes, str]:
@@ -158,7 +161,9 @@ async def read_file(
     if document.status not in _SCANNED:
         raise AppError(409, "document.not_available")
     try:
-        sealed = await store.get(storage_key(patient_id, document_id))
+        # the stored key: a moved document keeps its first profile's prefix (0037)
+        key = (await db.execute(_KEY, {"p": patient_id, "i": document_id})).scalar_one()
+        sealed = await store.get(key)
         data = await decrypt_bytes(get_key_provider(), sealed, _aad(document_id))
     except StorageError as exc:
         raise AppError(503, "document.storage_unavailable") from exc

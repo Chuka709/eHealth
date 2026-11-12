@@ -7329,6 +7329,257 @@
         }
       }
     },
+    "/api/v1/patients/{patient_id}/documents/{document_id}/move": {
+      "post": {
+        "tags": [
+          "documents"
+        ],
+        "summary": "Move Document",
+        "description": "\"Wrong profile\": the profile's owner moves the document and its drafts to another\nprofile they write (never with a confirmed report), where they are checked again.",
+        "operationId": "move_document_api_v1_patients__patient_id__documents__document_id__move_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "patient_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Patient Id"
+            }
+          },
+          {
+            "name": "document_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Document Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MoveBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Content Too Large"
+          },
+          "415": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unsupported Media Type"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/patients/{patient_id}/reports": {
+      "post": {
+        "tags": [
+          "lab-reports"
+        ],
+        "summary": "Create Report",
+        "description": "A draft typed in by the person; it is reviewed and confirmed like a read one.",
+        "operationId": "create_report_api_v1_patients__patient_id__reports_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "patient_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Patient Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ManualReport"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LabReportOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          }
+        }
+      }
+    },
     "/api/v1/patients/{patient_id}/reports/{report_id}": {
       "get": {
         "tags": [
@@ -13863,6 +14114,10 @@
             "type": "boolean",
             "title": "Has Unconfirmed Critical"
           },
+          "source": {
+            "type": "string",
+            "title": "Source"
+          },
           "created_at": {
             "type": "string",
             "format": "date-time",
@@ -13899,6 +14154,7 @@
           "date_ambiguous",
           "name_match_score",
           "has_unconfirmed_critical",
+          "source",
           "created_at",
           "results",
           "last_doses"
@@ -14358,6 +14614,64 @@
           "platform"
         ],
         "title": "LoginRequest"
+      },
+      "ManualReport": {
+        "properties": {
+          "document_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Document Id"
+          },
+          "lab_name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 200
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lab Name"
+          },
+          "collected_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Collected At"
+          },
+          "collected_precision": {
+            "type": "string",
+            "enum": [
+              "day",
+              "minute"
+            ],
+            "title": "Collected Precision"
+          },
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/ResultNew"
+            },
+            "type": "array",
+            "maxItems": 100,
+            "minItems": 1,
+            "title": "Results"
+          }
+        },
+        "type": "object",
+        "required": [
+          "collected_at",
+          "collected_precision",
+          "results"
+        ],
+        "title": "ManualReport",
+        "description": "A result typed in by hand: the sample's date (and whether its time is known) always\nsaid; optionally the profile's own scan or photo it was typed from."
       },
       "MeOut": {
         "properties": {
@@ -15157,6 +15471,20 @@
           "medication_id"
         ],
         "title": "MedicationSummaryOut"
+      },
+      "MoveBody": {
+        "properties": {
+          "patient_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Patient Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "patient_id"
+        ],
+        "title": "MoveBody"
       },
       "MyInvitationOut": {
         "properties": {

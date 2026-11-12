@@ -1356,7 +1356,9 @@
       "no_date": "Enter the date the sample was taken.",
       "no_results": "The result has no rows.",
       "acknowledge_one": "Check and mark this row on its own, one at a time.",
-      "critical_needs_ack": "This result may hold a value that needs prompt review. Confirm you have seen it before deleting or rejecting."
+      "critical_needs_ack": "This result may hold a value that needs prompt review. Confirm you have seen it before deleting or rejecting.",
+      "move_confirmed": "A document with a confirmed result cannot be moved to another profile.",
+      "move_target": "You cannot move it to that profile."
     }
   },
   "import": {

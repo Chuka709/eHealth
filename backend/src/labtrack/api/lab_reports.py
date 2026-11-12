@@ -57,6 +57,17 @@ class ResultNew(BaseModel):
     test_code: Annotated[str, Field(pattern=r"^[A-Z0-9_]{1,32}$")] | None = None
 
 
+class ManualReport(BaseModel):
+    """A result typed in by hand: the sample's date (and whether its time is known) always
+    said; optionally the profile's own scan or photo it was typed from."""
+
+    document_id: UUID | None = None
+    lab_name: Text | None = None
+    collected_at: datetime
+    collected_precision: Literal["day", "minute"]
+    results: list[ResultNew] = Field(min_length=1, max_length=100)
+
+
 class RejectBody(BaseModel):
     """`critical_seen`: the person saw that the draft may hold a critical value (H5)."""
 
@@ -75,6 +86,42 @@ async def _out(db: PatientReadDb, patient_id: UUID, report_id: UUID) -> LabRepor
     if found is None:
         raise AppError(404, "review.not_found")
     return report_out(found)
+
+
+@router.post(
+    "",
+    response_model=LabReportOut,
+    status_code=status.HTTP_201_CREATED,
+    responses=_ERRORS,
+    dependencies=[_WRITE_LIMIT],
+)
+async def create_report(patient_id: UUID, body: ManualReport, db: PatientWriteDb) -> LabReportOut:
+    """A draft typed in by the person; it is reviewed and confirmed like a read one."""
+    report_id = uuid4()
+    rows = [
+        review.TypedRow(
+            r.raw_name,
+            review.RowEdit(
+                raw_value=r.raw_value,
+                raw_unit=r.raw_unit,
+                ref_text=r.ref_text,
+                critical_text=r.critical_text,
+                test_code=r.test_code,
+            ),
+        )
+        for r in body.results
+    ]
+    await review.create_manual(
+        db,
+        patient_id,
+        report_id=report_id,
+        document_id=body.document_id,
+        lab_name=body.lab_name,
+        collected_at=body.collected_at,
+        collected_precision=body.collected_precision,
+        rows=rows,
+    )
+    return await _out(db, patient_id, report_id)
 
 
 @router.get(

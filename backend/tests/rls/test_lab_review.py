@@ -173,3 +173,47 @@ async def test_rows_never_move_and_status_is_never_written(
         with pytest.raises(DBAPIError, match="permission denied"):
             async with as_user(app_engine, owner) as conn:
                 await conn.execute(bound_text(sql), {"a": a, "b": b})
+
+
+async def test_only_the_owner_moves_a_document(
+    app_engine: AsyncEngine, owner_engine: AsyncEngine
+) -> None:
+    owner, carer = await make_user(owner_engine), await make_user(owner_engine)
+    source = await make_patient(app_engine, owner)
+    target = await make_patient(app_engine, owner, minor=True)
+    await grant(app_engine, owner, source, carer, "caregiver")
+    await grant(app_engine, owner, target, carer, "caregiver")
+    doc = uuid4()
+    async with owner_engine.connect() as conn, conn.begin():
+        await conn.execute(
+            bound_text(
+                "insert into documents (id, patient_id, client_id, storage_key, mime_type,"
+                " size_bytes, sha256, recorded_by) values (:d, :p, :c, :k, 'application/pdf',"
+                " 1, :h, :u)"
+            ),
+            {
+                "d": doc,
+                "p": source,
+                "c": uuid4(),
+                "k": f"{source}/{doc}/original",
+                "h": doc.hex * 2,
+                "u": owner,
+            },
+        )
+    move = bound_text("select move_document(:d, :t)")
+    # a caregiver never takes a document out of the owner's profile, even one they added
+    async with owner_engine.connect() as conn, conn.begin():
+        await conn.execute(
+            bound_text("update documents set recorded_by = :u, status = 'needs_review'"
+                       " where id = :d"),
+            {"u": carer, "d": doc},
+        )  # fmt: skip
+    with pytest.raises(DBAPIError, match="document not found"):
+        async with as_user(app_engine, carer) as conn:
+            await conn.execute(move, {"d": doc, "t": target})
+    async with as_user(app_engine, owner) as conn:
+        await conn.execute(move, {"d": doc, "t": target})
+        moved_to = await scalar(
+            conn, bound_text("select patient_id from documents where id = :d"), {"d": doc}
+        )
+    assert moved_to == target
