@@ -118,13 +118,15 @@ async function listDocuments(patientId: string) {
   return data;
 }
 
-/** A profile's documents; polled while one is still being checked. */
+const WORKING = new Set(["uploaded", "queued", "processing"]);
+
+/** A profile's documents; polled while one is still being checked or read. */
 export function useDocuments(patientId: string | undefined) {
   return useQuery({
     queryKey: ["documents", patientId],
     queryFn: () => listDocuments(patientId as string),
     enabled: patientId !== undefined,
     refetchInterval: (query) =>
-      query.state.data?.some((d) => d.status === "uploaded") ? 5000 : false,
+      query.state.data?.some((d) => WORKING.has(d.status)) ? 5000 : false,
   });
 }

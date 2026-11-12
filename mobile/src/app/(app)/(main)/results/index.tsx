@@ -1,6 +1,6 @@
 import { fontSize, radius, space } from "@labtrack/shared";
 import { useRouter } from "expo-router";
-import { StyleSheet, View } from "react-native";
+import { Pressable, StyleSheet, View } from "react-native";
 import { useTranslations } from "use-intl";
 
 import { Text } from "@/components/app-text";
@@ -12,6 +12,7 @@ import { LoadingView, RetryView } from "@/components/state-view";
 import { Paragraph, Title } from "@/components/text";
 import { useRecordProfile } from "@/features/health/record-screens";
 import { dismissFailedUpload } from "@/features/upload/upload-queue";
+import { failReason } from "@/features/upload/use-reports";
 import {
   type DocumentItem,
   sendWaitingUploads,
@@ -99,15 +100,31 @@ export default function ResultsScreen() {
 
 function DocumentRow({ document, first }: { document: DocumentItem; first: boolean }) {
   const t = useTranslations("app.upload");
+  const router = useRouter();
   const p = usePalette();
   const bad = document.status === "failed" || document.status === "rejected";
   const kind = document.mime_type === "application/pdf" ? t("kindPdf") : t("kindPicture");
   const pages = document.page_count ? t("pages", { n: document.page_count }) : null;
+  const reason = bad ? failReason(document.error_code) : null;
+  // a reading to look at: the draft (needs_review) or the confirmed report
+  const opens = document.status === "needs_review" || document.status === "confirmed";
+  const status = t(`status.${document.status}` as "status.uploaded");
+  const why = reason ? t(`failReason.${reason}`) : null;
   return (
-    <View
-      style={[
+    <Pressable
+      disabled={!opens}
+      onPress={() => router.push({ pathname: "/results/[id]", params: { id: document.id } })}
+      accessibilityRole={opens ? "button" : undefined}
+      accessibilityLabel={[kind, pages, formatDateTime(document.created_at), status, why]
+        .filter(Boolean)
+        .join(". ")}
+      accessibilityHint={opens ? t("review.open") : undefined}
+      // the row is one element for a screen reader: its status changes are announced here
+      accessibilityLiveRegion="polite"
+      style={({ pressed }) => [
         styles.row,
         !first && { borderTopColor: p.border, borderTopWidth: StyleSheet.hairlineWidth },
+        { opacity: pressed ? 0.85 : 1 },
       ]}
       testID={`document-${document.id}`}
     >
@@ -122,15 +139,14 @@ function DocumentRow({ document, first }: { document: DocumentItem; first: boole
         <Text style={[styles.meta, { color: p.textMuted }]}>
           {formatDateTime(document.created_at)}
         </Text>
-        <Text
-          accessibilityLiveRegion="polite"
-          style={[styles.meta, { color: bad ? p.danger : p.text }]}
-        >
-          {t(`status.${document.status}` as "status.uploaded")}
-          {document.error_code === "infected" ? ` — ${t("infected")}` : ""}
-        </Text>
+        <Text style={[styles.meta, { color: bad ? p.danger : p.text }]}>{status}</Text>
+        {why && <Text style={[styles.meta, { color: p.textMuted }]}>{why}</Text>}
+        {opens && (
+          <Text style={[styles.meta, styles.link, { color: p.primary }]}>{t("review.open")}</Text>
+        )}
       </View>
-    </View>
+      {opens && <Icon name="chevron-right" color={p.textMuted} />}
+    </Pressable>
   );
 }
 
@@ -148,4 +164,5 @@ const styles = StyleSheet.create({
   text: { flex: 1, gap: 2 },
   name: { fontSize: fontSize.body, fontWeight: "600" },
   meta: { fontSize: fontSize.caption },
+  link: { fontWeight: "600" },
 });

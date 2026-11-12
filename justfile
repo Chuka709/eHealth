@@ -59,6 +59,12 @@ unlock-admin username:
 e2e-web *args:
     {{pnpm}} --filter web exec playwright test {{args}}
 
+# Reading quality against hand-checked answers (docs/05 "Eval"): synthetic eval/cases (in git)
+# and real eval/local (git-ignored, PHI). `just eval --details`, `--check` (DoD), `--ai` (costs
+# money; ANTHROPIC_API_KEY and EXTRACTION_MODEL from the environment).
+eval *args:
+    cd backend; $env:UV_PYTHON_DOWNLOADS = "never"; uv run python -m labtrack.extraction.evaluate ../eval/cases ../eval/local --seed ../seed/lab_tests.json --report ../eval/report.md {{args}}
+
 test-api *args:
     {{compose}} run --rm test pytest -q --no-header {{args}}
 

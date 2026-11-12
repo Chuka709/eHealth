@@ -1,0 +1,87 @@
+{
+ "note": "Made up: with an unknown test",
+ "tags": [
+  "liver",
+  "mn",
+  "local"
+ ],
+ "profile_name": "Зохиомол Туршилт",
+ "reports": [
+  {
+   "collected": "2025-07-20",
+   "results": [
+    {
+     "name": "АЛТ",
+     "value": "42",
+     "unit": "U/L",
+     "numeric": "42",
+     "ref_low": "0",
+     "ref_high": "40",
+     "test_code": "ALT"
+    },
+    {
+     "name": "АСТ",
+     "value": "35",
+     "unit": "U/L",
+     "numeric": "35",
+     "ref_low": "0",
+     "ref_high": "40",
+     "test_code": "AST"
+    },
+    {
+     "name": "ГГТ",
+     "value": "60",
+     "unit": "U/L",
+     "numeric": "60",
+     "ref_low": "8",
+     "ref_high": "61",
+     "test_code": "GGT"
+    },
+    {
+     "name": "Нийт билирубин",
+     "value": "18,2",
+     "unit": "мкмоль/л",
+     "numeric": "18.2",
+     "ref_low": "3.4",
+     "ref_high": "20.5",
+     "test_code": "TBIL"
+    },
+    {
+     "name": "Альбумин",
+     "value": "41",
+     "unit": "г/л",
+     "numeric": "41",
+     "ref_low": "35",
+     "ref_high": "52",
+     "test_code": "ALB"
+    },
+    {
+     "name": "Кали",
+     "value": "4,1",
+     "unit": "ммоль/л",
+     "numeric": "4.1",
+     "ref_low": "3.5",
+     "ref_high": "5.1",
+     "test_code": "K"
+    },
+    {
+     "name": "Креатинин",
+     "value": "70",
+     "unit": "мкмоль/л",
+     "numeric": "70",
+     "ref_text": "Эр: 62-115 / Эм: 44-97",
+     "test_code": "CREA"
+    },
+    {
+     "name": "Зохиомол маркер",
+     "value": "1.2",
+     "unit": "ед",
+     "numeric": "1.2",
+     "ref_low": "0",
+     "ref_high": "2",
+     "test_code": null
+    }
+   ]
+  }
+ ]
+}

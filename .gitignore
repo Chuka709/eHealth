@@ -13,6 +13,8 @@ GoogleService-Info.plist
 
 # PHI — raw (non-anonymized) eval inputs stay local
 eval/cases/**/raw/
+eval/local/
+eval/report.md
 
 # Old planning versions (kept locally only)
 _archive/

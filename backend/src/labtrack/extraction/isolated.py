@@ -164,7 +164,8 @@ def _main() -> None:  # pragma: no cover - exercised through read_isolated
                     break
                 lines.append((page.number, line.text))
     out = {"document": None if document is None else to_json(document), "lines": lines}
-    sys.stdout.write(json.dumps(out, ensure_ascii=False))
+    # bytes: UTF-8 whatever the platform's console encoding is (Windows dev machines)
+    sys.stdout.buffer.write(json.dumps(out, ensure_ascii=False).encode("utf-8"))
 
 
 if __name__ == "__main__":

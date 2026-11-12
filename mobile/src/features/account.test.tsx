@@ -415,9 +415,8 @@ test("lab results: each file says how far it got; adding one asks whose result i
   await fireEvent.press(await screen.findByTestId("home-results"));
   expect(await screen.findByText("Файлыг шалгаж байна")).toBeOnTheScreen();
   expect(screen.getByText("Хүлээн авсан — уншихыг хүлээж байна")).toBeOnTheScreen();
-  expect(
-    screen.getByText("Хүлээж аваагүй — өөр файл оруулна уу — файл аюулгүй биш"),
-  ).toBeOnTheScreen();
+  expect(screen.getByText("Хүлээж аваагүй — өөр файл оруулна уу")).toBeOnTheScreen();
+  expect(screen.getByText("Файл аюулгүй биш тул хүлээж аваагүй.")).toBeOnTheScreen();
   await fireEvent.press(screen.getByRole("button", { name: "Хариу оруулах" }));
   expect(await screen.findByText("Энэ профайлд нэмнэ: Бат")).toBeOnTheScreen();
   // scans never go to the phone's photos (CLAUDE.md rule 8) - and the user is told

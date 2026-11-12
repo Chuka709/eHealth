@@ -6,17 +6,18 @@ decrypted, never cached. No route reveals the storage key or the file's hash.
 """
 
 from datetime import datetime
+from decimal import Decimal
 from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, Form, Response, UploadFile, status
-from pydantic import BaseModel
+from pydantic import BaseModel, PlainSerializer
 
 from labtrack.api.deps import Claims, PatientReadDb, PatientWriteDb
 from labtrack.api.errors import AppError, ErrorBody
 from labtrack.api.ratelimit import per_user
 from labtrack.config import get_settings
-from labtrack.documents import service
+from labtrack.documents import reports, service
 from labtrack.documents.files import MAX_BYTES
 from labtrack.storage import ObjectStore, get_store
 
@@ -50,6 +51,65 @@ class DocumentOut(BaseModel):
 
 def _out(document: service.Document) -> DocumentOut:
     return DocumentOut(**document.__dict__)
+
+
+# exact numbers travel as strings (rule 7)
+Exact = Annotated[
+    Decimal, PlainSerializer(lambda d: format(d, "f"), return_type=str, when_used="json")
+]
+
+
+class LabResultOut(BaseModel):
+    """One row as read from the document; nothing in it is judged here (rules 4-5)."""
+
+    id: UUID
+    position: int
+    test_code: str | None
+    test_name_mn: str | None
+    test_name_en: str | None
+    raw_name: str
+    raw_value: str
+    raw_unit: str | None
+    value_numeric: Exact | None
+    comparator: str | None
+    value_text: str | None
+    qualitative: str | None
+    ref_text: str | None
+    ref_low: Exact | None
+    ref_high: Exact | None
+    critical_text: str | None
+    critical_low: Exact | None
+    critical_high: Exact | None
+    lab_flag: str | None
+    flag: str
+    issues: list[str]
+    source_page: int | None
+
+
+class LabReportOut(BaseModel):
+    id: UUID
+    document_id: UUID | None
+    method: str | None
+    status: str
+    lab_name: str | None
+    panel_name: str | None
+    specimen: str | None
+    collected_at: datetime | None
+    collected_precision: str
+    analysed_at: datetime | None
+    reported_at: datetime | None
+    date_ambiguous: bool
+    name_match_score: Exact | None
+    has_unconfirmed_critical: bool
+    created_at: datetime
+    results: list[LabResultOut]
+
+
+def _report_out(report: reports.Report) -> LabReportOut:
+    return LabReportOut(
+        **{k: v for k, v in report.__dict__.items() if k != "results"},
+        results=[LabResultOut(**x.__dict__) for x in report.results],
+    )
 
 
 @router.post(
@@ -95,6 +155,20 @@ async def get_document(
     document = await service.get(db, patient_id, document_id)
     await service.enqueue_if_stuck(db, patient_id, document, claims.user_id)
     return _out(document)
+
+
+@router.get(
+    "/{document_id}/reports",
+    response_model=list[LabReportOut],
+    responses=_ERRORS,
+    dependencies=[_READ_LIMIT],
+)
+async def get_document_reports(
+    patient_id: UUID, document_id: UUID, db: PatientReadDb
+) -> list[LabReportOut]:
+    """What was read from the document: drafts for the profile's writers, only confirmed
+    reports for its readers (RLS, 0031)."""
+    return [_report_out(r) for r in await reports.for_document(db, patient_id, document_id)]
 
 
 @router.get(

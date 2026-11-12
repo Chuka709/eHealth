@@ -1125,14 +1125,13 @@
       "kindPdf": "PDF",
       "kindPicture": "Picture",
       "pages": "Pages: {n}",
-      "infected": "the file is not safe",
       "status": {
         "uploaded": "Checking the file",
         "queued": "Received - waiting to be read",
         "processing": "Being read",
         "needs_review": "Waiting for you to review",
         "confirmed": "Confirmed",
-        "failed": "Could not be checked - add it again",
+        "failed": "Could not be processed",
         "rejected": "Not accepted - add another file"
       },
       "shared": "Files shared from another app: {n}. Check the profile, then add them.",
@@ -1141,7 +1140,52 @@
       "ignoreShared": "Do not add",
       "noProfile": "Choose a profile first.",
       "whoseList": "Profile: {name}",
-      "listOffline": "The list appears once you are online. Files you add wait on the phone and are sent by themselves."
+      "listOffline": "The list appears once you are online. Files you add wait on the phone and are sent by themselves.",
+      "failReason": {
+        "not_read": "Could not be read automatically. The file is kept; entering the values by hand is not available yet.",
+        "temporary": "Something went wrong for a moment. Please add the file again.",
+        "unreadable": "The file is damaged or cannot be opened. Please add another file.",
+        "infected": "The file is not safe, so it was not accepted."
+      },
+      "review": {
+        "title": "Read results",
+        "open": "See the values read",
+        "draftNotice": "This is a draft read automatically from the file. Check every value against your result. Only after you confirm it does it go into your history and charts.",
+        "byAi": "Some of it was read by AI and may contain mistakes — please check it.",
+        "nameMismatch": "The name printed on the result may not match this profile. Check whose result it is.",
+        "comingSoon": "Correcting and confirming values is coming soon.",
+        "empty": "No values were read from this file.",
+        "untitled": "Tests",
+        "collected": "Date: {date}",
+        "dateUnknown": "Date not read",
+        "range": "Reference range: {range}",
+        "noRange": "No reference range on the result",
+        "check": "Check",
+        "issues": {
+          "not_in_source": "not found in the file",
+          "implausible": "may be misread",
+          "ref_suspicious": "reference range looks wrong",
+          "flag_mismatch": "check the range against the paper",
+          "unknown_unit": "unit not recognised",
+          "unknown_test": "test not recognised",
+          "date_future": "date is in the future",
+          "date_old": "date is very old",
+          "date_ambiguous": "date is unclear",
+          "name_mismatch": "name does not match",
+          "possible_duplicate": "may be a duplicate",
+          "large_delta": "very different from the last result — check the reading",
+          "low_confidence": "reading is unsure",
+          "name_missing": "no name on the result",
+          "date_missing": "no date",
+          "date_inconsistent": "dates do not agree",
+          "unit_missing": "no unit",
+          "truncated": "text cut off",
+          "other": "please check"
+        },
+        "draftLabel": "Draft — not confirmed",
+        "nameMissing": "No name could be read from the result. Check that it belongs to this profile.",
+        "critical": "Critical limit (on the result): {range}"
+      }
     }
   },
   "status": {

@@ -242,6 +242,8 @@ def _reminders(*, expect_some: bool) -> int:
 
 
 FAST_STAGES = ("reminders", "wizard", "travel", "renew", "offline")
+# only when named: needs a document read into a draft on demo_kidney (4.6)
+NAMED_STAGES = ("results",)
 
 
 def _demo_credentials() -> dict[str, str]:
@@ -315,6 +317,10 @@ def _run_fast(stages: list[str]) -> int:
         if not code and "offline" in stages:
             # signed in afresh under the permission: the reminders are set exact from the start
             code = _offline_reminder(lambda: maestro("demo_kidney", "demo-login.yaml"))
+        if not code and "results" in stages:
+            code = maestro("demo_kidney", "demo-login.yaml") or maestro(
+                "demo_kidney", "results.yaml"
+            )
         return code
     finally:
         if os.environ.get("E2E_KEEP_DEBUG") == "1":
@@ -328,7 +334,7 @@ def main() -> int:
     args = [f for f in sys.argv[1:] if f]  # `just` passes '' when none given
     if args[:1] == ["--fast"]:
         stages = " ".join(args[1:]).split() or list(FAST_STAGES)  # one quoted string from `just`
-        unknown = set(stages) - set(FAST_STAGES)
+        unknown = set(stages) - set(FAST_STAGES) - set(NAMED_STAGES)
         if unknown:
             raise SystemExit(f"e2e-mobile: unknown stage(s) {sorted(unknown)}; {FAST_STAGES}")
         return _run_fast(stages)

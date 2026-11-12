@@ -916,6 +916,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/patients/{patient_id}/documents/{document_id}/reports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Document Reports
+         * @description What was read from the document: drafts for the profile's writers, only confirmed
+         *     reports for its readers (RLS, 0031).
+         */
+        get: operations["get_document_reports_api_v1_patients__patient_id__documents__document_id__reports_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/patients/{patient_id}/documents/{document_id}/file": {
         parameters: {
             query?: never;
@@ -2279,6 +2300,100 @@ export interface components {
         InviteIn: {
             /** Username */
             username: string;
+        };
+        /** LabReportOut */
+        LabReportOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Document Id */
+            document_id: string | null;
+            /** Method */
+            method: string | null;
+            /** Status */
+            status: string;
+            /** Lab Name */
+            lab_name: string | null;
+            /** Panel Name */
+            panel_name: string | null;
+            /** Specimen */
+            specimen: string | null;
+            /** Collected At */
+            collected_at: string | null;
+            /** Collected Precision */
+            collected_precision: string;
+            /** Analysed At */
+            analysed_at: string | null;
+            /** Reported At */
+            reported_at: string | null;
+            /** Date Ambiguous */
+            date_ambiguous: boolean;
+            /** Name Match Score */
+            name_match_score: string | null;
+            /** Has Unconfirmed Critical */
+            has_unconfirmed_critical: boolean;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Results */
+            results: components["schemas"]["LabResultOut"][];
+        };
+        /**
+         * LabResultOut
+         * @description One row as read from the document; nothing in it is judged here (rules 4-5).
+         */
+        LabResultOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Position */
+            position: number;
+            /** Test Code */
+            test_code: string | null;
+            /** Test Name Mn */
+            test_name_mn: string | null;
+            /** Test Name En */
+            test_name_en: string | null;
+            /** Raw Name */
+            raw_name: string;
+            /** Raw Value */
+            raw_value: string;
+            /** Raw Unit */
+            raw_unit: string | null;
+            /** Value Numeric */
+            value_numeric: string | null;
+            /** Comparator */
+            comparator: string | null;
+            /** Value Text */
+            value_text: string | null;
+            /** Qualitative */
+            qualitative: string | null;
+            /** Ref Text */
+            ref_text: string | null;
+            /** Ref Low */
+            ref_low: string | null;
+            /** Ref High */
+            ref_high: string | null;
+            /** Critical Text */
+            critical_text: string | null;
+            /** Critical Low */
+            critical_low: string | null;
+            /** Critical High */
+            critical_high: string | null;
+            /** Lab Flag */
+            lab_flag: string | null;
+            /** Flag */
+            flag: string;
+            /** Issues */
+            issues: string[];
+            /** Source Page */
+            source_page: number | null;
         };
         /** LiveTokenOut */
         LiveTokenOut: {
@@ -8527,6 +8642,110 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Content Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Unsupported Media Type */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    get_document_reports_api_v1_patients__patient_id__documents__document_id__reports_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                patient_id: string;
+                document_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LabReportOut"][];
+                };
             };
             /** @description Unauthorized */
             401: {
