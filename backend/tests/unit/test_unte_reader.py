@@ -131,7 +131,7 @@ def test_recognises_the_layout_and_reads_panels_with_dates_and_specimen() -> Non
         "цус",
     )
     assert (blood.collected_raw, blood.reported_raw) == (
-        "2025-08-18 00:00:00",
+        "2025-08-18",
         "2025-08-18 12:05:52",
     )
     assert [

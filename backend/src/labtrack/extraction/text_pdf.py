@@ -1,7 +1,9 @@
 """The words of a PDF's text layer with their places, grouped into lines (pdfplumber, MIT).
 
 Only for files that passed the upload checks (documents/files.py: type, size, pages, no
-scripts). A page without words gives no lines: a scan needs another reader (Q50).
+scripts). A page without words gives no lines: a scan needs another reader (Q50). A page with
+far more characters than any lab report (a crafted file) is not read at all (security review
+4.4 M2): `TooMuchText`.
 """
 
 import io
@@ -12,6 +14,12 @@ import pdfplumber
 from labtrack.extraction.types import Line, Page, Word
 
 LINE_TOLERANCE: Final = 2.5  # points: words this close in height are one line
+MAX_CHARS_PER_PAGE: Final = 20_000  # a dense lab page has ~5 000
+MAX_PAGES: Final = 20  # as the upload check (documents/files.py MAX_PAGES)
+
+
+class TooMuchText(Exception):  # noqa: N818 - a reason, not an error
+    """More text than a lab report: the document is left for another way of reading."""
 
 
 def group_lines(words: list[Word]) -> tuple[Line, ...]:
@@ -27,7 +35,11 @@ def group_lines(words: list[Word]) -> tuple[Line, ...]:
 def read_pages(data: bytes) -> tuple[Page, ...]:
     pages: list[Page] = []
     with pdfplumber.open(io.BytesIO(data)) as pdf:
+        if len(pdf.pages) > MAX_PAGES:
+            raise TooMuchText
         for number, page in enumerate(pdf.pages, 1):
+            if len(page.chars) > MAX_CHARS_PER_PAGE:
+                raise TooMuchText
             words = [
                 Word(
                     text=str(w["text"]),

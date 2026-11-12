@@ -224,3 +224,27 @@ def delete_orphan_objects(maint_url: str) -> dict[str, int]:
             await engine.dispose()
 
     return asyncio.run(main())
+
+
+# --- documents stuck in reading (Phase 4.4, security review M1) ------------------------------
+
+
+async def sweep_extractions(engine: AsyncEngine) -> list[tuple[str, str]]:
+    """Documents left "processing" fail; ones still "queued" are handed back to be read.
+
+    maint_sweep_extractions (0032) does both and returns (document, uploader) ids only.
+    """
+    async with engine.connect() as conn, conn.begin():
+        rows = (await conn.execute(bound_text("select * from maint_sweep_extractions()"))).all()
+    return [(str(r.document_id), str(r.user_id)) for r in rows]
+
+
+def sweep_extractions_sync(maint_url: str) -> list[tuple[str, str]]:
+    async def main() -> list[tuple[str, str]]:
+        engine = create_async_engine(maint_url, hide_parameters=True)
+        try:
+            return await sweep_extractions(engine)
+        finally:
+            await engine.dispose()
+
+    return asyncio.run(main())

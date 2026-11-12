@@ -61,9 +61,10 @@ class ReadReport:
     lab_name: str | None
     panel_name: str | None
     specimen: str | None
-    collected_raw: str | None
-    reported_raw: str | None
+    collected_raw: str | None  # when the sample was taken (or sent), as printed
+    reported_raw: str | None  # when the lab signed the result
     results: tuple[ReadResult, ...]
+    analysed_raw: str | None = None  # when the lab analysed it
 
 
 @dataclass(frozen=True, slots=True)
@@ -83,6 +84,7 @@ class ReadDocument:
                     "specimen": r.specimen,
                     "collected_raw": r.collected_raw,
                     "reported_raw": r.reported_raw,
+                    "analysed_raw": r.analysed_raw,
                     "results": [
                         {
                             "raw_name": x.raw_name,

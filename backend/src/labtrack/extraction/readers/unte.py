@@ -31,6 +31,12 @@ _MARK: Final = re.compile(r"Улсын\s+Нэгдүгээр\s+Төв\s+Эмнэ�
 _DATE: Final = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 _TIME: Final = re.compile(r"^\d{2}:\d{2}:\d{2}$")
 _SLACK: Final = 3.0  # points a word may start left of its column
+# a panel's signatures: which date each gives, and whether only its day is printed (sent)
+_SIGNED: Final = {
+    "Илгээсэн:": ("collected_raw", True),
+    "Шинжилсэн:": ("analysed_raw", False),
+    "Баталгаажуулсан:": ("reported_raw", False),
+}
 
 
 @dataclass(frozen=True, slots=True)
@@ -57,6 +63,7 @@ class _Panel:
     panel_name: str | None
     specimen: str | None = None
     collected_raw: str | None = None
+    analysed_raw: str | None = None
     reported_raw: str | None = None
     rows: list[Row] = field(default_factory=list)
 
@@ -68,6 +75,7 @@ class _Panel:
             collected_raw=self.collected_raw,
             reported_raw=self.reported_raw,
             results=tuple(self.rows),
+            analysed_raw=self.analysed_raw,
         )
 
 
@@ -86,13 +94,17 @@ def _between(line: Line, start: str, end: str | None) -> str | None:
     return " ".join(after) or None
 
 
-def _signed_date(line: Line) -> str | None:
-    """'Илгээсэн: <who> 2025-08-18 00:00:00' -> '2025-08-18 00:00:00' (the signer is dropped)."""
+def _signed_date(line: Line, *, day_only: bool = False) -> str | None:
+    """'Шинжилсэн: <who> 2025-08-18 10:15:21' -> '2025-08-18 10:15:21' (the signer is dropped).
+
+    `day_only`: the "Илгээсэн" (sent) date is printed with a placeholder 00:00:00 - only the
+    day is known, so only the day is returned (never a made-up midnight; H30).
+    """
     texts = [w.text for w in line.words]
     for i, text in enumerate(texts):
         if _DATE.match(text):
             time = texts[i + 1] if i + 1 < len(texts) and _TIME.match(texts[i + 1]) else None
-            return f"{text} {time}" if time else text
+            return f"{text} {time}" if time and not day_only else text
     return None
 
 
@@ -154,10 +166,9 @@ class _UnteReader:
                     in_table = bool(panels)
                 elif line.text.startswith("H - лавлах"):
                     in_table = False
-                elif first == "Илгээсэн:" and panels:
-                    panels[-1].collected_raw = _signed_date(line)
-                elif first == "Баталгаажуулсан:" and panels:
-                    panels[-1].reported_raw = _signed_date(line)
+                elif first in _SIGNED and panels:
+                    field_name, day_only = _SIGNED[first]
+                    setattr(panels[-1], field_name, _signed_date(line, day_only=day_only))
                 elif first in {"Хуудас", "Байршил:"}:
                     break  # the page footer; a panel open here goes on over the page
                 elif in_table and columns is not None:

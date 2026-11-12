@@ -4,6 +4,7 @@ from typing import Any
 
 from celery import Celery, signals
 from celery.schedules import crontab
+from sqlalchemy.exc import OperationalError
 
 from labtrack.config import get_settings
 from labtrack.logging import configure_logging
@@ -21,6 +22,9 @@ app.conf.update(
     task_default_queue="default",
     timezone="UTC",
     worker_hijack_root_logger=False,
+    # a worker parsing untrusted files is replaced when it grows (security review 4.4 M2)
+    worker_max_memory_per_child=600_000,  # KiB
+    worker_max_tasks_per_child=200,
     # 03:00 Asia/Ulaanbaatar (UTC+8): account purge and auth_attempts retention.
     # Maintenance runs only on the maint worker, the only process with the maint credentials
     # (the default worker parses untrusted uploads).
@@ -57,6 +61,12 @@ app.conf.update(
             "task": "labtrack.maintenance.document_deletions",
             "schedule": 600.0,
             "options": {"expires": 590},
+        },
+        # documents stuck in reading (4.4): failed after 10 minutes, a lost task read again
+        "extraction-sweep": {
+            "task": "labtrack.maintenance.extraction_sweep",
+            "schedule": 300.0,
+            "options": {"expires": 290},
         },
     },
 )
@@ -154,7 +164,37 @@ def process_document(self: Any, document_id: str, user_id: str) -> str:
     if result == "retry" or (result == "missing" and self.request.retries < 2):  # noqa: PLR2004
         # "missing": the upload's transaction may not have committed yet
         raise self.retry(countdown=3 if result == "missing" else 60 * 2**self.request.retries)
+    if result == "queued":
+        extract_document.delay(document_id, user_id)  # read it (Phase 4.4)
     return result
+
+
+@app.task(  # type: ignore[untyped-decorator]
+    name="labtrack.documents.extract",
+    soft_time_limit=120,
+    time_limit=150,
+    autoretry_for=(OperationalError,),  # the database briefly away: the document stays queued
+    max_retries=3,
+    retry_backoff=True,
+)
+def extract_document(document_id: str, user_id: str) -> str:
+    """Ids only (rule 3). Reads a scanned document into draft reports, as the uploader."""
+    from labtrack.worker.extraction import run_sync  # noqa: PLC0415
+
+    return run_sync(str(get_settings().database_url), document_id, user_id)
+
+
+@app.task(  # type: ignore[untyped-decorator]
+    name="labtrack.maintenance.extraction_sweep", soft_time_limit=60, time_limit=90
+)
+def extraction_sweep() -> dict[str, int]:
+    from labtrack.worker.maintenance import sweep_extractions_sync  # noqa: PLC0415
+
+    again = sweep_extractions_sync(_maint_url())
+    for document_id, user_id in again:
+        # dropped if not run before the next sweep hands it back again
+        extract_document.apply_async((document_id, user_id), expires=290)
+    return {"read_again": len(again)}
 
 
 @app.task(  # type: ignore[untyped-decorator]
