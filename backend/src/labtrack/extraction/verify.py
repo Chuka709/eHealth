@@ -1,11 +1,11 @@
 """An AI reading checked against the text it was given (4.5 reviews: H1, prompt injection).
 
-A row's value - and its range, when one is given - must be found in one line of the text
-that was sent; that line becomes the row's evidence (`snippet`). A row whose value or range
-is not in the text is kept for the person to see but marked `not_in_source`, so a made-up
-value (an error, or an instruction hidden in the document) never looks printed; a critical
-limit not in the text is dropped (no banner from a made-up limit). Matching is
-on whole tokens after folding spaces, case and Unicode forms ("5.4" is not found in "15.4").
+A row's name and value - and its range, when one is given - must be found together in one
+line of the text that was sent; that line becomes the row's evidence (`snippet`). A row not
+found so is kept for the person to see but marked `not_in_source`, so a made-up value (an
+error, or an instruction hidden in the document) never looks printed; a critical limit not
+in the text is dropped (no banner from a made-up limit). Matching is on whole tokens after
+folding spaces, case and Unicode forms ("5.4" is not found in "15.4").
 """
 
 import re
@@ -29,9 +29,9 @@ def _check(row: ReadResult, lines: list[str]) -> ReadResult:
     value, ref, name = _norm(row.raw_value), _norm(row.ref_text or ""), _norm(row.raw_name)
     unit = _norm(row.raw_unit or "")
     with_value = [line for line in lines if value and _contains(line, value)]
-    # the line that also has the test's name, else any line with the value
+    # the test's name and its value on one line: a value found only under another test's
+    # name proves nothing (commit security review)
     best = next((line for line in with_value if name and name in line), None)
-    best = best or (with_value[0] if with_value else None)
     # the unit may be printed in a column header: anywhere in the text, then
     unit_found = not unit or any(_contains(line, unit) for line in lines)
     if best is None or not _contains(best, ref) or not unit_found:

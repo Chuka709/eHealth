@@ -83,7 +83,7 @@ async def _consent(app_engine: AsyncEngine, user: UUID, *, granted: bool = True)
 
 
 def _answer(code: str, value: str = "5.4") -> ReadDocument:
-    row = ReadResult(f"Glucose {code}", value, "mmol/L", "3.9 - 6.1", None, 1, "")
+    row = ReadResult("Glucose", value, "mmol/L", "3.9 - 6.1", None, 1, "")
     return ReadDocument(
         reader="ai:test-model",
         reports=(ReadReport("Lab", None, "serum", "2025-08-18", None, (row,)),),
@@ -337,3 +337,12 @@ async def test_the_default_worker_checks_the_answer_itself(
             {"p": patient},
         )
     assert "not_in_source" in issues
+
+
+def test_a_value_found_only_under_another_tests_name_is_not_proof() -> None:
+    from labtrack.extraction.verify import check_against_source  # noqa: PLC0415
+
+    rows = (ReadResult("Potassium", "5.4", "mmol/L", None, None, 1, ""),)
+    reading = ReadDocument("ai:m", (ReadReport(None, None, None, None, None, rows),))
+    checked = check_against_source(reading, "Glucose 5.4 mmol/L 3.9 - 6.1")
+    assert "not_in_source" in checked.reports[0].results[0].issues
