@@ -106,16 +106,17 @@ async def test_owner_writes_a_draft_and_the_database_records_the_writer(
 async def test_a_draft_is_never_written_or_turned_confirmed_by_the_app(
     app_engine: AsyncEngine, owner_engine: AsyncEngine
 ) -> None:
-    """Rule 4: confirmation comes with the review screen (Phase 5), not with the reader."""
+    """Rule 4: a report is confirmed only through confirm_lab_report() (0036), never by a
+    plain write; a row never moves to another report or profile."""
     owner = await make_user(owner_engine)
     patient = await make_patient(app_engine, owner)
     ids = await _report(app_engine, owner, patient)
     statements: tuple[LiteralString, ...] = (
         "insert into lab_reports (patient_id, status) values (:p, 'confirmed')",
         "update lab_reports set status = 'confirmed' where patient_id = :p",
-        "update lab_results set value_numeric = 9 where patient_id = :p",
+        "update lab_reports set confirmed_at = now() where patient_id = :p",
+        "update lab_results set patient_id = :p, report_id = report_id where patient_id = :p",
         "update extraction_runs set raw_output = '{}' where patient_id = :p",
-        "delete from lab_results where patient_id = :p",
     )
     for sql in statements:
         with pytest.raises(DBAPIError, match="permission denied"):
@@ -338,21 +339,21 @@ async def test_readers_see_confirmed_reports_only_never_drafts_or_runs(
     assert await _count(app_engine, owner, patient) == 4
 
 
-async def test_caregiver_adds_results_only_to_their_own_draft(
+async def test_results_are_added_only_to_a_draft(
     app_engine: AsyncEngine, owner_engine: AsyncEngine
 ) -> None:
     owner, carer = await make_user(owner_engine), await make_user(owner_engine)
     patient = await make_patient(app_engine, owner)
     await grant(app_engine, owner, patient, carer, "caregiver")
     owners = await _report(app_engine, owner, patient)
-    with pytest.raises(DBAPIError, match="row-level security"):
-        async with as_user(app_engine, carer) as conn:
-            await conn.execute(_RESULT, {"r": owners["report"], "p": patient, "n": 9})
+    # any writer reviews a draft, whoever uploaded it (0036)
+    async with as_user(app_engine, carer) as conn:
+        await conn.execute(_RESULT, {"r": owners["report"], "p": patient, "n": 9})
     # nor to a confirmed report, even the owner's own
     await _confirm(owner_engine, owners["report"])
     with pytest.raises(DBAPIError, match="row-level security"):
         async with as_user(app_engine, owner) as conn:
-            await conn.execute(_RESULT, {"r": owners["report"], "p": patient, "n": 9})
+            await conn.execute(_RESULT, {"r": owners["report"], "p": patient, "n": 10})
 
 
 async def test_caregiver_never_deletes_a_confirmed_report_even_their_own(

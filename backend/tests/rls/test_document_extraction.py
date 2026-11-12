@@ -360,7 +360,7 @@ async def test_access_ending_mid_read_leaves_no_rows_and_the_sweep_ends_it(
     await grant(app_engine, owner, patient, carer, "caregiver")
     doc = await _queued(app_engine, store, carer, patient)
     monkeypatch.setattr(worker, "_read", _reader(_reading(test_code)))
-    catalog = worker._catalog
+    catalog = worker.load_catalog  # type: ignore[attr-defined]
 
     async def revoke_then_catalog(conn: Any) -> Any:
         async with owner_engine.connect() as other, other.begin():
@@ -373,7 +373,7 @@ async def test_access_ending_mid_read_leaves_no_rows_and_the_sweep_ends_it(
             )
         return await catalog(conn)
 
-    monkeypatch.setattr(worker, "_catalog", revoke_then_catalog)
+    monkeypatch.setattr(worker, "load_catalog", revoke_then_catalog)
     assert (await worker.extract(app_engine, store, doc, carer)).result == "failed"
     async with owner_engine.connect() as conn, conn.begin():
         row = (

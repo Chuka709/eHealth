@@ -296,6 +296,7 @@ def _result(
     user_synonyms: Mapping[str, str],
     report_issues: tuple[str, ...],
     sex: Sex,
+    picked_test: str | None = None,
 ) -> DraftResult:
     texts, cut = _trim(row)
     value = parse_value(row.raw_value)
@@ -306,7 +307,8 @@ def _result(
         value, reference=reference, ref_text=row.ref_text, critical=critical,
         lab_flag=row.lab_flag,
     )  # fmt: skip
-    code = match_test(row.raw_name, specimen, catalog.synonyms, user_synonyms)
+    # the person's own pick in review is theirs to make; otherwise an exact match only
+    code = picked_test or match_test(row.raw_name, specimen, catalog.synonyms, user_synonyms)
     test = catalog.tests.get(code) if code else None
     limits = Limits(reference.low, reference.high) if reference else Limits()
     critical_at = Limits(critical.low, critical.high) if critical else Limits()
@@ -481,3 +483,44 @@ def with_history(report: DraftReport, prior: Sequence[Prior], catalog: Catalog) 
         for r in report.results
     )
     return replace(report, results=rows)
+
+
+# --- review (Phase 5.3): the same checks again after the person's edit ------------------------
+
+
+def report_issues(
+    *,
+    collected_at: datetime | None,
+    collected_precision: Precision,
+    date_ambiguous: bool,
+    analysed_at: datetime | None,
+    reported_at: datetime | None,
+    name_score: Decimal | None,
+    read_from_document: bool,
+    now: datetime,
+) -> tuple[str, ...]:
+    """The report's own issues, put on each of its rows: its dates and - for a reading of a
+    document - the printed name. A row the person typed in has no printed name to check."""
+    collected = Stamp(collected_at, collected_precision, ambiguous=date_ambiguous)
+    others = (Stamp(analysed_at), Stamp(reported_at))
+    person = _person_issues(name_score) if read_from_document else ()
+    return (*_date_issues(collected, *others, now), *person)
+
+
+def redraft_result(
+    position: int,
+    row: ReadResult,
+    *,
+    specimen: str | None,
+    catalog: Catalog,
+    user_synonyms: Mapping[str, str],
+    report_issues: tuple[str, ...],
+    sex: Sex,
+    picked_test: str | None,
+) -> DraftResult:
+    """A row as the person corrected it: parsed, matched, converted and flagged exactly as a
+    reading is (rule 6) - the app never computes any of it."""
+    return _result(
+        position, row, specimen=specimen, catalog=catalog, user_synonyms=user_synonyms,
+        report_issues=report_issues, sex=sex, picked_test=picked_test,
+    )  # fmt: skip

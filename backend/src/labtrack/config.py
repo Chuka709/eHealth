@@ -70,6 +70,7 @@ class Settings(BaseSettings):
     rate_upload_per_minute: int = 20
     rate_document_file_per_minute: int = 60
     rate_document_read_per_minute: int = 120
+    rate_lab_review_per_minute: int = 60  # each change recomputes the whole row
     # virus scan (Phase 3.3): clamd over TCP; unset only in dev/test (documents go unscanned)
     clamd_host: str | None = None
     clamd_port: int = 3310

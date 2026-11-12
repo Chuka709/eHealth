@@ -82,8 +82,28 @@ class LabResultOut(BaseModel):
     critical_high: Exact | None
     lab_flag: str | None
     flag: str
+    flag_source: str | None
+    flag_mismatch: bool
+    unit_canonical: str | None
+    value_canonical: Exact | None
     issues: list[str]
+    acknowledged: list[str]
+    edited_by_user: bool
+    read_value: str | None
+    read_critical_text: str | None
     source_page: int | None
+
+
+class LastDoseOut(BaseModel):
+    """The last logged dose of a linked medicine before the sample - a fact only."""
+
+    test_code: str
+    medication_id: UUID
+    medication_name: str
+    taken_at: datetime | None
+    minutes_before: int | None
+    time_unknown: bool
+    other_records: int
 
 
 class LabReportOut(BaseModel):
@@ -103,12 +123,14 @@ class LabReportOut(BaseModel):
     has_unconfirmed_critical: bool
     created_at: datetime
     results: list[LabResultOut]
+    last_doses: list[LastDoseOut]
 
 
-def _report_out(report: reports.Report) -> LabReportOut:
+def report_out(report: reports.Report) -> LabReportOut:
     return LabReportOut(
-        **{k: v for k, v in report.__dict__.items() if k != "results"},
+        **{k: v for k, v in report.__dict__.items() if k not in {"results", "last_doses"}},
         results=[LabResultOut(**x.__dict__) for x in report.results],
+        last_doses=[LastDoseOut(**d.__dict__) for d in report.last_doses],
     )
 
 
@@ -168,7 +190,7 @@ async def get_document_reports(
 ) -> list[LabReportOut]:
     """What was read from the document: drafts for the profile's writers, only confirmed
     reports for its readers (RLS, 0031)."""
-    return [_report_out(r) for r in await reports.for_document(db, patient_id, document_id)]
+    return [report_out(r) for r in await reports.for_document(db, patient_id, document_id)]
 
 
 @router.get(

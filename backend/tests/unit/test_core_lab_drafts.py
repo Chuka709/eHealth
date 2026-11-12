@@ -13,6 +13,8 @@ from labtrack.core.lab_drafts import (
     draft_report,
     name_match_score,
     parse_stamp,
+    redraft_result,
+    report_issues,
     with_history,
 )
 from labtrack.core.text import normalize_name, normalize_unit
@@ -270,3 +272,25 @@ def test_a_range_not_used_is_said_also_when_the_lab_mark_sets_the_flag() -> None
     result = _converted(row).results[0]
     assert (result.flag, result.flag_source) == ("high", "lab_flag")
     assert "ref_not_used" in result.issues
+
+
+def test_report_issues_after_review() -> None:
+    # the person set the date: no date issue; a typed-in report has no printed name to check
+    assert report_issues(collected_at=NOW, collected_precision="minute", date_ambiguous=False,
+                         name_score=None, read_from_document=False, analysed_at=None,
+                         reported_at=None, now=NOW) == ()  # fmt: skip
+    assert report_issues(collected_at=None, collected_precision="day", date_ambiguous=False,
+                         name_score=None, read_from_document=True, analysed_at=None,
+                         reported_at=None, now=NOW) == (
+        "date_missing", "name_missing",
+    )  # fmt: skip
+
+
+def test_the_persons_test_pick_is_used() -> None:
+    row = ReadResult("Тодорхойгүй нэр", "1,2", "мг/дл", None, None, 1, "x")
+    result = redraft_result(
+        0, row, specimen=None, catalog=CONVERTING, user_synonyms={}, report_issues=(),
+        sex="unknown", picked_test="CREA",
+    )  # fmt: skip
+    assert (result.test_code, result.value_canonical) == ("CREA", Decimal("106.08"))
+    assert "unknown_test" not in result.issues

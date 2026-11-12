@@ -1344,6 +1344,19 @@
       "conflict": "This file is being added from another device right now. Wait a moment and refresh the list.",
       "not_ready": "The file is being checked. Wait a moment and open it again.",
       "not_available": "This file did not pass the safety check and cannot be opened."
+    },
+    "review": {
+      "not_found": "The result was not found.",
+      "not_draft": "This result has already been confirmed or rejected and cannot be changed.",
+      "unknown_test": "The chosen test is not in the list.",
+      "issue_not_open": "This row has nothing like that to check.",
+      "acknowledge_alone": "Correct the value and mark it as matching the printout separately.",
+      "too_many_rows": "This result has too many rows.",
+      "open_issues": "Some rows still need checking. Check them all, then confirm again.",
+      "no_date": "Enter the date the sample was taken.",
+      "no_results": "The result has no rows.",
+      "acknowledge_one": "Check and mark this row on its own, one at a time.",
+      "critical_needs_ack": "This result may hold a value that needs prompt review. Confirm you have seen it before deleting or rejecting."
     }
   },
   "import": {

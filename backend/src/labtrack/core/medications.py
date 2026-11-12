@@ -215,3 +215,9 @@ def merged_all(records: Sequence[IntakeRecord]) -> IntakeRecord:
     for record in records[1:]:
         result = merge_intake(result, record)
     return result
+
+
+def minutes_between(earlier: datetime, later: datetime) -> int:
+    """Whole minutes from a dose to a sample (rounded down) - shown as a fact, e.g. before a
+    tacrolimus trough; never judged against a target interval here (rule 10b)."""
+    return int((later - earlier).total_seconds() // 60)

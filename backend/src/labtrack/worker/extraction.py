@@ -41,16 +41,13 @@ from labtrack.consents import AI_EXTRACTION, VERSIONS
 from labtrack.core.envelope import EnvelopeError
 from labtrack.core.lab_drafts import (
     MAX_RESULTS,
-    Catalog,
-    CatalogTest,
     DraftReport,
-    Prior,
     draft_report,
     name_match_score,
     with_history,
 )
-from labtrack.core.ranges import Sex
 from labtrack.db.sql import bound_text
+from labtrack.documents.catalog import as_sex, load_catalog, load_prior
 from labtrack.documents.service import _aad
 from labtrack.extraction.deidentify import deidentify
 from labtrack.extraction.isolated import Reading, from_json, read_isolated
@@ -91,28 +88,7 @@ _FINISH = bound_text(
     "update documents set status = cast(:s as doc_status), error_code = :e"
     " where id = :d and status = 'processing'"
 )
-_TESTS = bound_text(
-    "select code, canonical_unit, physio_min, physio_max, delta_check_pct from test_catalog"
-    " where is_active"
-)
-_FACTORS = bound_text(
-    "select c.test_code, c.from_unit, c.factor from unit_conversions c"
-    " join test_catalog t on t.code = c.test_code and t.canonical_unit = c.to_unit"
-)
-# the profile's values of these tests in the catalog unit, confirmed or another draft still
-# waiting (duplicate, delta checks); a value with a comparator is never compared
-_PRIOR = bound_text(
-    "select x.test_code, x.collected_at, x.value_canonical, r.status = 'confirmed' as confirmed"
-    " from lab_results x"
-    " join lab_reports r on r.id = x.report_id and r.status in ('confirmed', 'needs_review')"
-    " where x.patient_id = :p and x.value_canonical is not null and x.collected_at is not null"
-    " and x.comparator is null and x.test_code = any(cast(:codes as text[]))"
-    # never this document's own rows (a reading of it again)
-    " and r.document_id is distinct from :d"
-)
 _NOTIFY = bound_text("select notify_document_read(:d)")
-_SYNONYMS = bound_text("select synonym_norm, test_code, user_id from test_synonyms")
-_UNITS = bound_text("select alias_norm, unit from unit_aliases")
 _PROFILE = bound_text("select full_name, sex::text as sex from patients where id = :p")
 _RUN = bound_text(
     "insert into extraction_runs (id, patient_id, document_id, method, reader, prompt_version,"
@@ -218,29 +194,6 @@ async def _finish(
         return
     if changed.rowcount == 0:
         log.warning("document_status_not_set", document_id=str(document_id))
-
-
-async def _catalog(conn: AsyncConnection) -> tuple[Catalog, dict[str, str]]:
-    factors: dict[str, dict[str, Decimal]] = {}
-    for r in (await conn.execute(_FACTORS)).all():
-        factors.setdefault(r.test_code, {})[r.from_unit] = r.factor
-    tests = {
-        r.code: CatalogTest(
-            r.code,
-            r.canonical_unit,
-            r.physio_min,
-            r.physio_max,
-            factors=factors.get(r.code, {}),
-            delta_check_pct=r.delta_check_pct,
-        )
-        for r in (await conn.execute(_TESTS)).all()
-    }
-    synonyms: dict[str, str] = {}
-    mine: dict[str, str] = {}
-    for r in (await conn.execute(_SYNONYMS)).all():  # RLS: the global ones and the user's own
-        (mine if r.user_id is not None else synonyms)[r.synonym_norm] = r.test_code
-    units = {r.alias_norm: r.unit for r in (await conn.execute(_UNITS)).all()}
-    return Catalog(tests=tests, synonyms=synonyms, unit_aliases=units), mine
 
 
 def _read(data: bytes, claimed: _Claimed) -> Reading:
@@ -432,15 +385,9 @@ async def _store(
     reading carries no name: its name check was made before sending (`ai_request`)."""
     async with engine.connect() as conn, conn.begin():
         await _begin(conn, user_id)
-        catalog, mine = await _catalog(conn)
+        catalog, mine = await load_catalog(conn)
         profile = (await conn.execute(_PROFILE, {"p": claimed.patient_id})).one()
-        sex: Sex = (
-            "male"
-            if profile.sex == "male"
-            else "female"
-            if profile.sex == "female"
-            else ("unknown")
-        )
+        sex = as_sex(profile.sex)
         if ai_request is None:
             score = name_match_score(document.identity, profile.full_name)
         else:
@@ -449,7 +396,7 @@ async def _store(
         drafts = [
             draft_report(r, catalog, mine, name_score=score, sex=sex) for r in document.reports
         ]
-        prior = await _prior(conn, claimed.patient_id, document_id, drafts)
+        prior = await load_prior(conn, claimed.patient_id, drafts, document_id=document_id)
         reports = [with_history(r, prior, catalog) for r in drafts]
         await _save(
             conn,
@@ -466,16 +413,6 @@ async def _store(
         # here rolls the drafts back with it - the sweep then fails the document
         await conn.execute(_NOTIFY, {"d": document_id})
     return reports
-
-
-async def _prior(
-    conn: AsyncConnection, patient_id: UUID, document_id: UUID, reports: Sequence[DraftReport]
-) -> list[Prior]:
-    codes = sorted({x.test_code for r in reports for x in r.results if x.test_code})
-    if not codes:
-        return []
-    rows = (await conn.execute(_PRIOR, {"p": patient_id, "d": document_id, "codes": codes})).all()
-    return [Prior(r.test_code, r.collected_at, r.value_canonical, r.confirmed) for r in rows]
 
 
 async def _ai_allowed(conn: AsyncConnection, patient_id: UUID) -> bool:
