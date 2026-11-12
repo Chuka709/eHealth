@@ -75,7 +75,9 @@ export default function ResultsScreen() {
       ))}
       <Title>{t("listTitle")}</Title>
       {own && <Paragraph muted>{t("whoseList", { name: own.full_name })}</Paragraph>}
-      {documents.isPending && own ? (
+      {documents.isPending && own && documents.fetchStatus === "paused" ? (
+        <Paragraph muted>{t("listOffline")}</Paragraph>
+      ) : documents.isPending && own ? (
         <LoadingView />
       ) : !documents.data ? (
         <RetryView text={errorText(documents.error)} onRetry={() => void documents.refetch()} />

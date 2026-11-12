@@ -1140,7 +1140,8 @@
       "sharedUnsupported": "The shared file is not a PDF or a picture and cannot be added.",
       "ignoreShared": "Do not add",
       "noProfile": "Choose a profile first.",
-      "whoseList": "Profile: {name}"
+      "whoseList": "Profile: {name}",
+      "listOffline": "The list appears once you are online. Files you add wait on the phone and are sent by themselves."
     }
   },
   "status": {
