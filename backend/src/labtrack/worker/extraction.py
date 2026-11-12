@@ -27,7 +27,7 @@ import json
 import secrets
 import time
 from collections.abc import Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import timedelta
 from decimal import Decimal
 from typing import Any, Final
@@ -52,7 +52,8 @@ from labtrack.documents.service import _aad
 from labtrack.extraction.deidentify import deidentify
 from labtrack.extraction.isolated import Reading, from_json, read_isolated
 from labtrack.extraction.llm import PROMPT_VERSION
-from labtrack.extraction.types import ReadDocument
+from labtrack.extraction.types import PrintedIdentity, ReadDocument
+from labtrack.extraction.verify import check_against_source
 from labtrack.keys import decrypt_bytes, get_key_provider
 from labtrack.storage import ObjectStore, StorageError, get_store
 from labtrack.worker.ai_handoff import Handoff, ValkeyHandoff
@@ -108,10 +109,10 @@ _OWN_CONSENTS = bound_text(
 )
 _AI_REQUEST = bound_text(
     "insert into ai_requests (document_id, patient_id, requested_by, nonce, name_match_score,"
-    " name_printed) values (:d, :p, app_user_id(), :n, :score, :printed)"
+    " name_printed, sent_text) values (:d, :p, app_user_id(), :n, :score, :printed, :text)"
 )
 _AI_REQUEST_FIND = bound_text(
-    "select patient_id, nonce, name_match_score, name_printed,"
+    "select patient_id, nonce, name_match_score, name_printed, sent_text,"
     " created_at > now() - make_interval(secs => :wait) as waiting"
     " from ai_requests where document_id = :d"
 )
@@ -460,12 +461,25 @@ async def _hand_to_ai(
                 "n": nonce,
                 "score": score,
                 "printed": score is not None,
+                "text": clean.text,
             },
         )
     await handoff.put_input(document_id, nonce, clean.text)
     handoff.send(document_id, user_id)
     log.info("document_sent_to_ai", document_id=str(document_id))
     return True
+
+
+def _untrusted(document: ReadDocument) -> ReadDocument:
+    """The AI worker's reading without anything it claims about it: no issues, no evidence."""
+    return replace(
+        document,
+        identity=PrintedIdentity(),
+        reports=tuple(
+            replace(r, results=tuple(replace(x, issues=(), snippet="") for x in r.results))
+            for r in document.reports
+        ),
+    )
 
 
 async def _fail_ai(engine: AsyncEngine, user_id: UUID, document_id: UUID, code: str) -> None:
@@ -513,7 +527,11 @@ async def save_ai(  # noqa: PLR0911 - one exit per outcome
         await _fail_ai(engine, user_id, document_id, code if code in AI_ERRORS else "ai_failed")
         return Outcome("failed")
     try:
-        document = from_json(answer["document"])
+        # checked again here against the text this worker sent: the AI worker's own
+        # checks are not trusted (commit security review 4.5)
+        document = check_against_source(
+            _untrusted(from_json(answer["document"])), request.sent_text
+        )
         if not any(r.results for r in document.reports):
             await _fail_ai(engine, user_id, document_id, "not_read")
             return Outcome("not_read")

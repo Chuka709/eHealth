@@ -142,3 +142,25 @@ def test_the_persons_name_not_a_parents_or_doctors(
 ) -> None:
     identity = _run(line, "Na 140 ммоль/л 136-145").identity
     assert (identity.family_name, identity.given_name) == (family, given)
+
+
+@pytest.mark.parametrize(
+    ("profile", "printed"),
+    [
+        ("Мөнх-Очир", "Munkh-Ochir"),
+        ("Мөнх-Очир", "Monkh-Ochir"),
+        ("Мөнх-Очир", "Mönh-Ochir"),
+        ("Түмэн", "Tümen"),
+        ("Batbold", "Батболд"),  # a profile in Latin letters, a report in Cyrillic
+    ],
+)
+def test_other_spellings_of_the_name_are_masked(profile: str, printed: str) -> None:
+    assert printed not in _text(f"Signed for {printed}", profile=profile)
+
+
+@pytest.mark.parametrize(
+    "line",
+    ["Contact 88112233 /night/", "Утас 99112233 2025/01/02", "Sample 12345678 a/b"],
+)
+def test_a_long_number_without_a_real_unit_is_masked(line: str) -> None:
+    assert not any(n in _text(line) for n in ("88112233", "99112233", "12345678"))

@@ -94,8 +94,12 @@ _UNIT_TOKEN: Final = re.compile(r"/|%|copies|копи|iu|ме\b|ед\b|г/л|g/l
 _REGISTER: Final = re.compile(r"(?<!\w)[A-ZА-ЯӨҮЁ]{2}\s?\d{8}(?!\w)", re.IGNORECASE)
 _EMAIL: Final = re.compile(r"[\w.+-]+@[\w-]+\.[\w.-]+")
 _PHONE: Final = re.compile(r"\+\d[\d\s-]{6,15}\d")
+# 8+ digits are masked (phones, register-like and sample numbers) unless a measurement unit
+# from this list follows at once - a viral load "12500000 copies/mL" (commit security review)
 _LONG_NUMBER: Final = re.compile(
-    r"(?<![\d.,])\d{8,}(?![\d.,])(?!\s*\S*(?:/|copies|копи|iu|ме))", re.I
+    r"(?<![\d.,])\d{8,}(?![\d.,])"
+    r"(?!\s*(?:copies|копи|iu|ме|ед|log)\b)",
+    re.IGNORECASE,
 )
 _SUFFIXES: Final = r"(?:ын|ийн|ий|ы|д|т|аас|ээс|оос|өөс|тай|тэй|той|аар|ээр|оор|өөр)?"
 _MAX_NAME_WORDS: Final = 3
@@ -253,13 +257,47 @@ def _mask_line(text: str, found: _Found) -> tuple[str | None, bool]:
     return line, had
 
 
+# how a Mongolian name may be spelled in Latin letters (passports, foreign labs): each of
+# these letters can go several ways; the plain transliteration covers the rest
+_LATIN_WAYS: Final = {
+    "ө": ("o", "u", "ö"),
+    "ү": ("u", "ü"),
+    "х": ("h", "kh"),
+    "е": ("e", "ye"),
+    "ы": ("y", "i"),
+    "й": ("i", "y"),
+    "ц": ("ts", "c"),
+    "ж": ("j", "zh"),
+}
+_MAX_SPELLINGS: Final = 64
+_TO_CYRILLIC: Final = str.maketrans(
+    {
+        "a": "а", "b": "б", "v": "в", "g": "г", "d": "д", "e": "э", "j": "ж", "z": "з",
+        "i": "и", "k": "к", "l": "л", "m": "м", "n": "н", "o": "о", "p": "п", "r": "р",
+        "s": "с", "t": "т", "u": "у", "f": "ф", "h": "х", "c": "ц", "y": "ы",
+    }
+)  # fmt: skip
+
+
+def _spellings(word: str) -> set[str]:
+    """The word's other spellings: Latin ways for a Cyrillic name, Cyrillic for a Latin one."""
+    key = word.casefold()
+    if re.fullmatch(r"[a-z-]+", key):
+        return {key.translate(_TO_CYRILLIC)}
+    variants = [""]
+    for letter in key:
+        ways = _LATIN_WAYS.get(letter) or (letter.translate(_TRANSLIT),)
+        variants = [v + w for v in variants for w in ways][:_MAX_SPELLINGS]
+    return set(variants)
+
+
 def _name_masks(profile_name: str) -> re.Pattern[str] | None:
     words = {
         w
         for w in re.split(r"[\s.,]+", unicodedata.normalize("NFKC", profile_name))
         if len(w) >= MIN_NAME_WORD
     }
-    words |= {w.casefold().translate(_TRANSLIT) for w in words}
+    words |= {v for w in words for v in _spellings(w)}
     words = {w for w in words if len(w) >= MIN_NAME_WORD}
     if not words:
         return None

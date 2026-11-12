@@ -313,3 +313,27 @@ def test_the_ai_task_leaves_a_code_when_it_cannot_read(monkeypatch: pytest.Monke
 
     assert ai_tasks.read_with_ai("doc", Refusing) == "ai_refused"
     assert ai_tasks.read_with_ai("doc", lambda: None) == "ai_unconfigured"
+
+
+async def test_the_default_worker_checks_the_answer_itself(
+    app_engine: AsyncEngine,
+    owner_engine: AsyncEngine,
+    monkeypatch: pytest.MonkeyPatch,
+    ai_on: None,
+    test_code: str,  # noqa: F811
+) -> None:
+    """A made-up value the AI worker passed as fine is marked against the text sent."""
+    store, user, patient, doc = await _setup(app_engine, owner_engine, monkeypatch)
+    await _consent(app_engine, user)
+    handoff = MemoryHandoff()
+    await worker.extract(app_engine, store, doc, user, handoff)
+    forged = _answer(test_code, value="9.9")  # not in the sent text
+    handoff.answer(doc, {**_good(test_code), "document": to_json(forged)})
+    assert (await worker.save_ai(app_engine, doc, user, handoff)).result == "needs_review"
+    async with as_user(app_engine, user) as conn:
+        issues = await scalar(
+            conn,
+            bound_text("select issues from lab_results where patient_id = :p"),
+            {"p": patient},
+        )
+    assert "not_in_source" in issues
