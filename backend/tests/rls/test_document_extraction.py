@@ -159,7 +159,8 @@ async def test_a_known_layout_becomes_draft_reports_for_review(
             await conn.execute(
                 bound_text(
                     "select position, test_code, value_numeric, ref_low, ref_high, lab_flag,"
-                    " flag::text as flag, issues, confidence from lab_results"
+                    " flag::text as flag, flag_source, flag_mismatch, unit_canonical,"
+                    " value_canonical, issues, confidence from lab_results"
                     " where patient_id = :p order by position"
                 ),
                 {"p": patient},
@@ -194,11 +195,28 @@ async def test_a_known_layout_becomes_draft_reports_for_review(
     assert (str(glucose.ref_low), str(glucose.ref_high), glucose.flag) == (
         "4.11",
         "6.38",
-        "unknown",
+        "normal",
     )
-    assert (amylase.test_code, amylase.lab_flag, amylase.issues) == (None, "H", ["unknown_test"])
+    assert (glucose.flag_source, glucose.unit_canonical, str(glucose.value_canonical)) == (
+        "computed_document_range",
+        "mmol/L",
+        "5.37",
+    )
+    # the lab's H on a value inside its printed range: for the person to check
+    assert (amylase.test_code, amylase.lab_flag, amylase.flag, amylase.flag_mismatch) == (
+        None,
+        "H",
+        "normal",
+        True,
+    )
+    assert amylase.issues == ["unknown_test", "flag_mismatch"]
     assert str(amylase.confidence) == "0.80"
     assert audited == 1
+    async with as_user(app_engine, user) as conn:  # the owner (and uploader) is told once
+        notices = (
+            await conn.execute(bound_text("select kind, entity_id from notifications"))
+        ).all()
+    assert [(n.kind, n.entity_id) for n in notices] == [("review_ready", str(doc))]
     # a second run changes nothing: the status moved on
     assert (await worker.extract(app_engine, store, doc, user)).result == "done"
 

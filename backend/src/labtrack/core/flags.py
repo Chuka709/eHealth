@@ -7,7 +7,8 @@ In this order, and only from the document:
    it is the opposite;
 3. no usable reference but a printed lab mark (H, L, ↑, ↓, HH, LL, *) -> that mark, with
    `flag_source = lab_flag` (a mark that is not known -> unknown);
-4. nothing printed -> no_reference.
+4. a range printed that cannot be used (by sex with the sex unknown, by age, text)
+   -> unknown; nothing printed -> no_reference.
 A value with a comparator is a range of values: "<0.5" against a high limit of 5 is normal,
 ">1000" against 200 is high, "<5" against a low limit of 2 cannot be told -> unknown (never
 guessed). A value at a reference limit is inside the range ("< 5" with 5 -> normal: the
@@ -29,7 +30,7 @@ from dataclasses import dataclass
 from decimal import Decimal
 from typing import Final, Literal
 
-from labtrack.core.lab_values import Value, parse_value
+from labtrack.core.lab_values import Value, parse_range, parse_value
 from labtrack.core.ranges import Critical, Reference
 
 Flag = Literal[
@@ -259,7 +260,11 @@ def compute_flag(
             "lab_flag",
             possibly_critical=possibly or (lab_says_critical and not marked_critical),
         )
-    return FlagResult("no_reference", "none", possibly_critical=possibly)
+    # a range is printed but none can be used (by sex with no sex known, by age, text):
+    # "unknown", never "no reference" - the person reads the printed text
+    printed = parse_range(ref_text).kind not in {"none"}
+    fallback: Flag = "unknown" if printed else "no_reference"
+    return FlagResult(fallback, "none", possibly_critical=possibly)
 
 
 def outside_target(value: Value, low: Decimal | None, high: Decimal | None) -> bool | None:

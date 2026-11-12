@@ -8,10 +8,12 @@ import pytest
 from labtrack.core.lab_drafts import (
     Catalog,
     CatalogTest,
+    Prior,
     Stamp,
     draft_report,
     name_match_score,
     parse_stamp,
+    with_history,
 )
 from labtrack.core.text import normalize_name, normalize_unit
 from labtrack.extraction.types import PrintedIdentity, ReadReport, ReadResult
@@ -76,15 +78,15 @@ def test_a_printed_day_stays_a_day_and_the_times_are_kept_apart() -> None:
     assert timed.collected_precision == "minute"
 
 
-def test_implausible_only_in_the_catalogs_own_unit() -> None:
+def test_implausible_in_the_catalog_unit_only() -> None:
     draft = _draft(
         _report(
             _row("Глюкоз", "537"),  # a dropped decimal point
-            _row("Креатинин", "0.70", "0.7 - 1.2", "мг/дл"),  # another unit: Phase 5 converts
+            _row("Креатинин", "0.70", "0.7 - 1.2", "мг/дл"),  # no factor listed: not converted
         )
     )
     assert draft.results[0].issues == ("implausible",)
-    assert draft.results[1].issues == ()
+    assert draft.results[1].issues == ("no_conversion",)  # said: off the trend, unchecked
 
 
 @pytest.mark.parametrize(
@@ -171,3 +173,100 @@ def test_the_printed_name_against_the_profile(
 
 def test_no_printed_name_is_no_score() -> None:
     assert name_match_score(PrintedIdentity(), "Дорж Батболд") is None
+
+
+CONVERTING = Catalog(
+    tests={
+        "CREA": CatalogTest(
+            "CREA",
+            "µmol/L",
+            Decimal("5"),
+            Decimal("3000"),
+            factors={"mg/dL": Decimal("88.4")},
+            delta_check_pct=Decimal("50"),
+        ),
+    },
+    synonyms={normalize_name("Креатинин"): "CREA"},
+    unit_aliases={normalize_unit("мг/дл"): "mg/dL", normalize_unit("мкмоль/л"): "µmol/L"},
+)
+
+
+def _converted(*rows: ReadResult, sex: str = "unknown"):  # type: ignore[no-untyped-def]
+    return draft_report(
+        _report(*rows), CONVERTING, {}, name_score=SURE, sex=sex,  # type: ignore[arg-type]
+        now=lambda: NOW,
+    )  # fmt: skip
+
+
+def test_value_and_printed_limits_go_to_the_catalog_unit_by_one_factor() -> None:
+    row = ReadResult("Креатинин", "1,2", "мг/дл", "0.7 - 1.3", None, 1, "x", critical_text="> 10")
+    result = _converted(row).results[0]
+    assert (result.unit_canonical, result.value_canonical) == ("µmol/L", Decimal("106.08"))
+    assert (result.ref_low_canonical, result.ref_high_canonical) == (
+        Decimal("61.88"),
+        Decimal("114.92"),
+    )
+    assert (result.critical_low_canonical, result.critical_high_canonical) == (
+        None,
+        Decimal("884.0"),
+    )
+    assert (result.flag, result.flag_source) == ("normal", "computed_document_range")
+    # printed numbers stay as printed
+    assert (result.value_numeric, result.ref_low) == (Decimal("1.2"), Decimal("0.7"))
+
+
+def test_implausible_after_conversion() -> None:
+    result = _converted(_row("Креатинин", "120", unit="мг/дл")).results[0]  # µmol/L as mg/dL
+    assert "implausible" in result.issues
+
+
+def test_the_range_for_the_profiles_sex() -> None:
+    row = _row("Креатинин", "100", "Эр: 62-115 / Эм: 44-97", "мкмоль/л")
+    female = _converted(row, sex="female").results[0]
+    assert (female.ref_low, female.ref_high, female.flag) == (Decimal("44"), Decimal("97"), "high")
+    unknown = _converted(row).results[0]
+    # printed, but none can be picked: unknown (never "no reference"), and said on the row
+    assert (unknown.ref_low, unknown.flag) == (None, "unknown")
+    assert "ref_not_used" in unknown.issues
+
+
+def test_critical_rows_make_the_report_critical() -> None:
+    critical = ReadResult(
+        "Креатинин", "1200", "мкмоль/л", None, None, 1, "x", critical_text="> 1000"
+    )
+    possible = ReadResult("Креатинин", "90", "мкмоль/л", "62 - 115", "HH", 1, "x")
+    plain = _row("Креатинин", "90", "62 - 115", "мкмоль/л")
+    assert _converted(critical).has_unconfirmed_critical
+    assert _converted(critical).results[0].flag == "critical_high"
+    drafted = _converted(possible)
+    assert drafted.has_unconfirmed_critical  # the lab's own HH (H5)
+    assert {"possible_critical", "flag_mismatch"} <= set(drafted.results[0].issues)
+    assert not _converted(plain).has_unconfirmed_critical
+    unreadable = ReadResult("Креатинин", "90", "мкмоль/л", None, None, 1, "x", critical_text="?!")
+    assert {"possible_critical", "critical_unreadable"} <= set(
+        _converted(unreadable).results[0].issues
+    )
+
+
+def test_history_marks_duplicates_and_large_changes() -> None:
+    draft = _converted(_row("Креатинин", "200", "62 - 115", "мкмоль/л"))  # 18 Aug (UB)
+    prior = [
+        Prior("CREA", datetime(2025, 8, 10, tzinfo=UTC), Decimal("100")),
+        Prior("CREA", datetime(2025, 8, 18, 2, tzinfo=UTC), Decimal("200")),
+        Prior("GLU", datetime(2025, 8, 18, 2, tzinfo=UTC), Decimal("200")),
+    ]
+    issues = with_history(draft, prior, CONVERTING).results[0].issues
+    assert "possible_duplicate" in issues
+    assert "large_delta" in issues  # 100 -> 200: +100 % over a 50 % check
+    calm = with_history(draft, prior[:1], CONVERTING.__class__(
+        tests={"CREA": CatalogTest("CREA", "µmol/L", None, None)},
+        synonyms={}, unit_aliases={},
+    ))  # fmt: skip
+    assert calm.results[0].issues == draft.results[0].issues  # no delta check listed
+
+
+def test_a_range_not_used_is_said_also_when_the_lab_mark_sets_the_flag() -> None:
+    row = ReadResult("Креатинин", "100", "мкмоль/л", "Эр: 62-115 / Эм: 44-97", "H", 1, "x")
+    result = _converted(row).results[0]
+    assert (result.flag, result.flag_source) == ("high", "lab_flag")
+    assert "ref_not_used" in result.issues

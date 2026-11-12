@@ -224,6 +224,12 @@ def catalog_from_seed(path: Path) -> Catalog:
         tests[t["code"]] = CatalogTest(
             t["code"], t.get("canonical_unit"), _exact(t.get("physio_min")),
             _exact(t.get("physio_max")),
+            factors={
+                c["from_unit"]: Decimal(str(c["factor"]))
+                for c in t.get("unit_conversions", [])
+                if c["to_unit"] == t.get("canonical_unit")
+            },
+            delta_check_pct=_exact(t.get("delta_check_pct")),
         )  # fmt: skip
         names = [t["code"], t["name_mn"], t["name_en"], t.get("name_ru"), *t.get("synonyms", [])]
         for name in filter(None, names):

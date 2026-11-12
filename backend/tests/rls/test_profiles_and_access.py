@@ -258,19 +258,20 @@ async def test_users_cannot_send_unrelated_notifications(
             )
 
 
-async def test_result_notification_reaches_a_caregiver_with_access(
-    app_engine: AsyncEngine, owner_engine: AsyncEngine, admin_engine: AsyncEngine
+@pytest.mark.parametrize("kind", ["critical_pending", "review_ready"])
+async def test_result_notices_come_only_from_a_read_document(
+    app_engine: AsyncEngine, owner_engine: AsyncEngine, kind: str
 ) -> None:
+    """notify_document_read() picks the recipients (0035); the app cannot push them at will."""
     owner, carer = await make_user(owner_engine), await make_user(owner_engine)
     patient = await make_patient(app_engine, owner)
     await grant(app_engine, owner, patient, carer, "caregiver")
-    async with as_user(app_engine, owner) as conn:
-        await conn.execute(
-            bound_text("select notify(:u, 'critical_pending', :p, null, 'result.critical')"),
-            {"u": carer, "p": patient},
-        )
-    async with as_user(app_engine, carer) as conn:
-        assert await scalar(conn, bound_text("select count(*) from notifications")) == 1
+    with pytest.raises(DBAPIError, match="notification not allowed"):
+        async with as_user(app_engine, owner) as conn:
+            await conn.execute(
+                bound_text("select notify(:u, :k, :p, null, 'result.critical')"),
+                {"u": carer, "k": kind, "p": patient},
+            )
 
 
 async def test_birth_date_cannot_be_rewritten_to_unlock_proxy_consent(

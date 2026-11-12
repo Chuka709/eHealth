@@ -108,20 +108,22 @@ def _flag(
         ("45", "> 60", "low"),
         ("STRAW", "3.5-5.1", "unknown"),
         ("4.2", None, "no_reference"),
-        ("4.2", "хэвийн", "no_reference"),
+        ("4.2", "хэвийн", "unknown"),  # printed but not usable: never "no reference"
     ],
 )
 def test_flag_against_the_printed_range(raw: str, ref: str | None, flag: str) -> None:
     result = _flag(raw, ref)
     assert result.flag == flag
-    expected_source = "none" if flag == "no_reference" else "computed_document_range"
+    expected_source = (
+        "none" if flag == "no_reference" or ref == "хэвийн" else "computed_document_range"
+    )
     assert result.source == expected_source
 
 
 def test_flag_by_sex() -> None:
     assert _flag("100", "Эр: 62-115 / Эм: 44-97", sex="female").flag == "high"
     assert _flag("100", "Эр: 62-115 / Эм: 44-97", sex="male").flag == "normal"
-    assert _flag("100", "Эр: 62-115 / Эм: 44-97").flag == "no_reference"
+    assert _flag("100", "Эр: 62-115 / Эм: 44-97").flag == "unknown"  # sex not known
 
 
 @pytest.mark.parametrize(

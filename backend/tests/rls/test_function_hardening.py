@@ -51,6 +51,7 @@ EXECUTE_MATRIX: dict[str, set[str]] = {
         "my_admin_actions()",
         "my_caregiver_invitations()",
         "notify(uuid,text,uuid,text,text)",
+        "notify_document_read(uuid)",
         "owner_caregiver_invitations(uuid)",
         "owner_caregivers(uuid)",
         "pause_caregiver_alerts(uuid,uuid,boolean)",

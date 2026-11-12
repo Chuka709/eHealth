@@ -5,31 +5,40 @@ Everything here is a draft for the person to check (rule 4): numbers and ranges 
 reviewer at what may be misread - never a correction. Each issue is put on every row it
 concerns, so no row of a doubtful report looks sure:
 - `unknown_test`: no catalog test for the printed name (the person picks one);
-- `implausible`: a number outside the catalog's physiological bounds - checked only when the
-  printed unit is the catalog's own unit (other units are converted in Phase 5);
-  `unit_missing` / `unknown_unit` when that check cannot be made for a known test;
+- `implausible`: a number outside the catalog's physiological bounds, in the catalog unit
+  (`core.units`: the value and its printed limits by the test's own factor); `unit_missing` /
+  `unknown_unit` when that check cannot be made for a known test (a known unit with no listed
+  factor keeps its printed numbers and no catalog value - never on the trend);
 - `ref_suspicious`: a printed range with low above high (not used);
 - dates: `date_missing`, `date_ambiguous`, `date_future`, `date_old`, and `date_inconsistent`
   (analysed or signed before the sample's day);
 - the person: `name_mismatch` (the printed name does not fit the profile) or `name_missing`;
-- `truncated`: a printed text longer than kept.
-No flag (high/low) is set here: flags come with review (Phase 5) from the printed range.
+- `truncated`: a printed text longer than kept;
+- the flag from the printed range for the profile's sex (`core.flags`): `flag_mismatch` when
+  the lab's mark points another way, `possible_critical` when a value may be critical but
+  cannot be told (also the lab's own HH/LL on a value the printed limits do not call
+  critical), `critical_unreadable`, `critical_inside_reference`;
+- with earlier confirmed values (`with_history`): `possible_duplicate` (same test, day and
+  value) and `large_delta` (beyond the catalog's delta check from the latest earlier value).
+A report `has_unconfirmed_critical` when any row is critical or possibly critical (H5).
 Dates printed without a zone are Ulaanbaatar time (the labs read so far are in Mongolia); a
 date printed without a time is kept as that day (`precision` "day"), never as a made-up time.
 """
 
 import re
-from collections.abc import Callable, Mapping
-from dataclasses import dataclass
+from collections.abc import Callable, Mapping, Sequence
+from dataclasses import dataclass, field, replace
 from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 from typing import Final, Literal
 from zoneinfo import ZoneInfo
 
+from labtrack.core.flags import compute_flag
 from labtrack.core.lab_values import parse_range, parse_value
 from labtrack.core.matching import match_test
-from labtrack.core.ranges import critical_limits
-from labtrack.core.text import normalize_name, normalize_unit
+from labtrack.core.ranges import Sex, critical_limits, reference_for
+from labtrack.core.text import normalize_name
+from labtrack.core.units import Limits, UnitSpec, convert, implausible
 from labtrack.extraction.types import PrintedIdentity, ReadReport, ReadResult
 
 LOCAL_ZONE: Final = ZoneInfo("Asia/Ulaanbaatar")
@@ -54,6 +63,11 @@ class CatalogTest:
     canonical_unit: str | None
     physio_min: Decimal | None
     physio_max: Decimal | None
+    factors: Mapping[str, Decimal] = field(default_factory=dict)  # unit -> to canonical
+    delta_check_pct: Decimal | None = None
+
+    def units(self) -> UnitSpec:
+        return UnitSpec(self.canonical_unit, self.factors, self.physio_min, self.physio_max)
 
 
 @dataclass(frozen=True, slots=True)
@@ -94,6 +108,19 @@ class DraftResult:
     critical_text: str | None = None
     critical_low: Decimal | None = None
     critical_high: Decimal | None = None
+    unit_canonical: str | None = None
+    value_canonical: Decimal | None = None
+    ref_low_canonical: Decimal | None = None
+    ref_high_canonical: Decimal | None = None
+    critical_low_canonical: Decimal | None = None
+    critical_high_canonical: Decimal | None = None
+    flag: str = "unknown"
+    flag_source: str | None = None
+    flag_mismatch: bool = False
+
+    @property
+    def critical(self) -> bool:
+        return self.flag in {"critical_low", "critical_high"} or "possible_critical" in self.issues
 
 
 @dataclass(frozen=True, slots=True)
@@ -107,6 +134,10 @@ class DraftReport:
     reported_at: datetime | None
     date_ambiguous: bool
     results: tuple[DraftResult, ...]
+
+    @property
+    def has_unconfirmed_critical(self) -> bool:
+        return any(r.critical for r in self.results)
 
 
 def parse_stamp(raw: str | None) -> Stamp:
@@ -210,21 +241,38 @@ def _date_issues(
     return tuple(issues)
 
 
-def _unit_issues(
-    value: Decimal | None, unit: str | None, test: CatalogTest | None, catalog: Catalog
-) -> tuple[str, ...]:
+@dataclass(frozen=True, slots=True)
+class _Units:
+    issues: tuple[str, ...] = ()
+    unit: str | None = None
+    value: Decimal | None = None
+    reference: Limits = field(default_factory=Limits)
+    critical: Limits = field(default_factory=Limits)
+
+
+def _units(
+    value: Decimal | None,
+    unit: str | None,
+    test: CatalogTest | None,
+    catalog: Catalog,
+    *,
+    reference: Limits,
+    critical: Limits,
+) -> _Units:
     if value is None or test is None or test.canonical_unit is None:
-        return ()
-    if unit is None:
-        return ("unit_missing",)
-    known = catalog.unit_aliases.get(normalize_unit(unit))
-    if known is None and unit != test.canonical_unit:
-        return ("unknown_unit",)
-    if (known or unit) != test.canonical_unit:
-        return ()  # another known unit: converted in Phase 5 before any bound applies
-    low, high = test.physio_min, test.physio_max
-    out_of_bounds = (low is not None and value < low) or (high is not None and value > high)
-    return ("implausible",) if out_of_bounds else ()
+        return _Units()
+    out = convert(
+        unit, test.units(), catalog.unit_aliases, value=value, reference=reference,
+        critical=critical,
+    )  # fmt: skip
+    if out == "no_conversion":
+        # a known unit with no listed factor (urea mg/dL - Q52): printed numbers only, off the
+        # trend and without the plausibility check - said on the row
+        return _Units(issues=("no_conversion",))
+    if isinstance(out, str):
+        return _Units(issues=(out,))
+    issues = ("implausible",) if implausible(out.value, test.units()) else ()
+    return _Units(issues, out.unit, out.value, out.reference, out.critical)
 
 
 def _trim(row: ReadResult) -> tuple[dict[str, str | None], bool]:
@@ -247,19 +295,45 @@ def _result(
     catalog: Catalog,
     user_synonyms: Mapping[str, str],
     report_issues: tuple[str, ...],
+    sex: Sex,
 ) -> DraftResult:
     texts, cut = _trim(row)
     value = parse_value(row.raw_value)
     printed = parse_range(row.ref_text)
+    reference = reference_for(row.ref_text, sex)
     critical = critical_limits(row.critical_text)
+    flag = compute_flag(
+        value, reference=reference, ref_text=row.ref_text, critical=critical,
+        lab_flag=row.lab_flag,
+    )  # fmt: skip
     code = match_test(row.raw_name, specimen, catalog.synonyms, user_synonyms)
     test = catalog.tests.get(code) if code else None
+    limits = Limits(reference.low, reference.high) if reference else Limits()
+    critical_at = Limits(critical.low, critical.high) if critical else Limits()
+    units = _units(
+        value.numeric, row.raw_unit, test, catalog, reference=limits, critical=critical_at
+    )
     issues = [*report_issues, *row.issues]
     if code is None:
         issues.append("unknown_test")
-    issues.extend(_unit_issues(value.numeric, row.raw_unit, test, catalog))
+    issues.extend(units.issues)
     if printed.kind == "suspicious":
         issues.append("ref_suspicious")
+    if flag.mismatch:
+        issues.append("flag_mismatch")
+    if flag.possibly_critical:
+        issues.append("possible_critical")
+    if critical is not None and critical.unreadable:
+        issues.append("critical_unreadable")
+    if flag.critical_inside_reference:
+        issues.append("critical_inside_reference")
+    # a range printed but none used for this person (also when the lab's mark set the flag)
+    if (
+        reference is None
+        and printed.kind not in {"none", "suspicious"}
+        and flag.source != "computed_document_range"
+    ):
+        issues.append("ref_not_used")  # printed, but none could be picked for this person
     if cut or len(row.snippet) > 500:  # noqa: PLR2004 - lab_results.source_snippet
         issues.append("truncated")
     return DraftResult(
@@ -273,17 +347,26 @@ def _result(
         value_text=value.text[:200] if value.text else None,
         qualitative=value.qualitative,
         ref_text=texts["ref_text"],
-        ref_low=printed.low,
-        ref_high=printed.high,
+        # the printed range for this person (by sex when printed so), never the catalog's
+        ref_low=limits.low,
+        ref_high=limits.high,
         lab_flag=texts["lab_flag"],
         issues=tuple(dict.fromkeys(issues)),
         source_page=row.page,
         source_snippet=row.snippet[:500],
-        # kept as printed (rule 5); no flag from it here - the critical banner is Phase 5
         critical_text=row.critical_text[:300] if row.critical_text else None,
         # "< 2.5" printed as a critical limit means critical below 2.5 (core.ranges)
-        critical_low=critical.low if critical else None,
-        critical_high=critical.high if critical else None,
+        critical_low=critical_at.low,
+        critical_high=critical_at.high,
+        unit_canonical=units.unit,
+        value_canonical=units.value,
+        ref_low_canonical=units.reference.low,
+        ref_high_canonical=units.reference.high,
+        critical_low_canonical=units.critical.low,
+        critical_high_canonical=units.critical.high,
+        flag=flag.flag,
+        flag_source=flag.source,
+        flag_mismatch=flag.mismatch,
     )
 
 
@@ -293,6 +376,7 @@ def draft_report(
     user_synonyms: Mapping[str, str],
     *,
     name_score: Decimal | None,
+    sex: Sex = "unknown",
     now: Callable[[], datetime] = lambda: datetime.now(UTC),
 ) -> DraftReport:
     """`name_score`: `name_match_score` of the document's printed name (one per document)."""
@@ -320,7 +404,80 @@ def draft_report(
                 catalog=catalog,
                 user_synonyms=user_synonyms,
                 report_issues=report_issues,
+                sex=sex,
             )
             for i, row in enumerate(report.results[:MAX_RESULTS])
         ),
     )
+
+
+@dataclass(frozen=True, slots=True)
+class Prior:
+    """An earlier confirmed value of the profile, in the catalog unit."""
+
+    test_code: str
+    collected_at: datetime
+    value_canonical: Decimal
+    confirmed: bool = True  # False: another draft still waiting for review
+
+
+def _changed_by(new: Decimal, old: Decimal) -> Decimal:
+    """How far apart, in % of the smaller: the same for a rise and a fall (45 -> 4.5 and
+    4.5 -> 45 both 900 %), so a misread comma that lowers a value is caught as well."""
+    return (max(new / old, old / new) - 1) * 100
+
+
+def _history_issues(
+    row: DraftResult, day: date | None, at: datetime | None, prior: Sequence[Prior],
+    catalog: Catalog, *, by_day: bool,
+) -> tuple[str, ...]:  # fmt: skip
+    # a value with a comparator ("<0.5") is not one number: never compared
+    if row.test_code is None or row.value_canonical is None or row.comparator is not None:
+        return ()
+    mine = [p for p in prior if p.test_code == row.test_code]
+    issues: list[str] = []
+    if day is not None and any(
+        p.collected_at.astimezone(LOCAL_ZONE).date() == day
+        and p.value_canonical == row.value_canonical
+        for p in mine
+    ):
+        issues.append("possible_duplicate")
+    test = catalog.tests.get(row.test_code)
+    # a report with only its day: earlier means an earlier day (the hour is not known)
+    earlier = [
+        p
+        for p in mine
+        if p.confirmed
+        and (
+            (by_day and day is not None and p.collected_at.astimezone(LOCAL_ZONE).date() < day)
+            or (not by_day and at is not None and p.collected_at < at)
+        )
+    ]
+    if test is not None and test.delta_check_pct is not None and earlier:
+        last = max(earlier, key=lambda p: p.collected_at).value_canonical
+        new = row.value_canonical
+        if last > 0 and new > 0 and _changed_by(new, last) > test.delta_check_pct:
+            issues.append("large_delta")
+    return tuple(issues)
+
+
+def with_history(report: DraftReport, prior: Sequence[Prior], catalog: Catalog) -> DraftReport:
+    """`possible_duplicate` (against confirmed values and other drafts) / `large_delta`
+    (against the latest earlier confirmed value) - `prior` holds no comparator values."""
+    day = report.collected_at.astimezone(LOCAL_ZONE).date() if report.collected_at else None
+    rows = tuple(
+        replace(r, issues=tuple(dict.fromkeys((*r.issues, *extra))))
+        if (
+            extra := _history_issues(
+                r,
+                day,
+                report.collected_at,
+                prior,
+                catalog,
+                by_day=report.collected_precision == "day",
+            )
+        )
+        else r
+        for r in report.results
+    )
+    return replace(report, results=rows)

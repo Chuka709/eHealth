@@ -57,7 +57,12 @@ _BODY: Final[Mapping[str, Mapping[Locale, str]]] = {
         "mn": "Эм уусан тэмдэглэл хараахан бүртгэгдээгүй байна. Аппаас шалгана уу.",
         "en": "A dose has not been logged yet. Please check the app.",
     },
-    # an AI draft the user has not confirmed: "may", as in the app (docs/08 "Мэдэгдэл")
+    # a read document waiting for the person's check (names nothing)
+    "review_ready": {
+        "mn": "Шинэ шинжилгээний хариу уншигдлаа. Аппаас шалгаж батална уу.",
+        "en": "A new lab result has been read. Please check and confirm it in the app.",
+    },
+    # a draft the user has not confirmed: "may", as in the app (docs/08 "Мэдэгдэл")
     "critical_pending": {
         "mn": "Шинэ хариунд яаралтай хянах утга байж болзошгүй. Аппаас шалгана уу.",
         "en": "A new result may contain a value that needs prompt review. Please check the app.",

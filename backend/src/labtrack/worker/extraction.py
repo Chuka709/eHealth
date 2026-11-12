@@ -44,9 +44,12 @@ from labtrack.core.lab_drafts import (
     Catalog,
     CatalogTest,
     DraftReport,
+    Prior,
     draft_report,
     name_match_score,
+    with_history,
 )
+from labtrack.core.ranges import Sex
 from labtrack.db.sql import bound_text
 from labtrack.documents.service import _aad
 from labtrack.extraction.deidentify import deidentify
@@ -89,11 +92,28 @@ _FINISH = bound_text(
     " where id = :d and status = 'processing'"
 )
 _TESTS = bound_text(
-    "select code, canonical_unit, physio_min, physio_max from test_catalog where is_active"
+    "select code, canonical_unit, physio_min, physio_max, delta_check_pct from test_catalog"
+    " where is_active"
 )
+_FACTORS = bound_text(
+    "select c.test_code, c.from_unit, c.factor from unit_conversions c"
+    " join test_catalog t on t.code = c.test_code and t.canonical_unit = c.to_unit"
+)
+# the profile's values of these tests in the catalog unit, confirmed or another draft still
+# waiting (duplicate, delta checks); a value with a comparator is never compared
+_PRIOR = bound_text(
+    "select x.test_code, x.collected_at, x.value_canonical, r.status = 'confirmed' as confirmed"
+    " from lab_results x"
+    " join lab_reports r on r.id = x.report_id and r.status in ('confirmed', 'needs_review')"
+    " where x.patient_id = :p and x.value_canonical is not null and x.collected_at is not null"
+    " and x.comparator is null and x.test_code = any(cast(:codes as text[]))"
+    # never this document's own rows (a reading of it again)
+    " and r.document_id is distinct from :d"
+)
+_NOTIFY = bound_text("select notify_document_read(:d)")
 _SYNONYMS = bound_text("select synonym_norm, test_code, user_id from test_synonyms")
 _UNITS = bound_text("select alias_norm, unit from unit_aliases")
-_PROFILE = bound_text("select full_name from patients where id = :p")
+_PROFILE = bound_text("select full_name, sex::text as sex from patients where id = :p")
 _RUN = bound_text(
     "insert into extraction_runs (id, patient_id, document_id, method, reader, prompt_version,"
     " pipeline_version, input_tokens, output_tokens, duration_ms, raw_output, issues)"
@@ -122,16 +142,21 @@ _REPORT = bound_text(
     " panel_name, specimen, collected_at, collected_precision, analysed_at, reported_at,"
     " date_ambiguous, name_match_score, has_unconfirmed_critical)"
     " values (:id, :p, :d, :run, :lab, :panel, :specimen, :collected, :precision, :analysed,"
-    " :reported, :ambiguous, :score, false)"
+    " :reported, :ambiguous, :score, :critical)"
 )
 _RESULT = bound_text(
     "insert into lab_results (report_id, patient_id, position, test_code, raw_name, raw_value,"
     " raw_unit, value_numeric, comparator, value_text, qualitative, ref_text, ref_low,"
     " ref_high, critical_text, critical_low, critical_high, lab_flag, issues, confidence,"
-    " source_page, source_snippet)"
+    " source_page, source_snippet, unit_canonical, value_canonical, ref_low_canonical,"
+    " ref_high_canonical, critical_low_canonical, critical_high_canonical, flag, flag_source,"
+    " flag_mismatch)"
     " values (:report, :p, :position, :code, :name, :value, :unit, :numeric, :comparator,"
     " :text, :qualitative, :ref_text, :ref_low, :ref_high, :critical_text, :critical_low,"
-    " :critical_high, :lab_flag, cast(:issues as text[]), :confidence, :page, :snippet)"
+    " :critical_high, :lab_flag, cast(:issues as text[]), :confidence, :page, :snippet,"
+    " :unit_canonical, :value_canonical, :ref_low_canonical, :ref_high_canonical,"
+    " :critical_low_canonical, :critical_high_canonical, cast(:flag as result_flag),"
+    " :flag_source, :flag_mismatch)"
 )
 _AUDIT = bound_text(
     "select audit_write('document.extract', 'document', cast(:d as text), :p, null)"
@@ -196,8 +221,18 @@ async def _finish(
 
 
 async def _catalog(conn: AsyncConnection) -> tuple[Catalog, dict[str, str]]:
+    factors: dict[str, dict[str, Decimal]] = {}
+    for r in (await conn.execute(_FACTORS)).all():
+        factors.setdefault(r.test_code, {})[r.from_unit] = r.factor
     tests = {
-        r.code: CatalogTest(r.code, r.canonical_unit, r.physio_min, r.physio_max)
+        r.code: CatalogTest(
+            r.code,
+            r.canonical_unit,
+            r.physio_min,
+            r.physio_max,
+            factors=factors.get(r.code, {}),
+            delta_check_pct=r.delta_check_pct,
+        )
         for r in (await conn.execute(_TESTS)).all()
     }
     synonyms: dict[str, str] = {}
@@ -278,6 +313,7 @@ async def _save(
                 "reported": report.reported_at,
                 "ambiguous": report.date_ambiguous,
                 "score": score,
+                "critical": report.has_unconfirmed_critical,
             },
         )
         for x in report.results:
@@ -309,6 +345,15 @@ def _result_params(report_id: UUID, patient_id: UUID, x: Any) -> dict[str, Any]:
         "confidence": _UNSURE if x.issues else _SURE,
         "page": x.source_page,
         "snippet": x.source_snippet,
+        "unit_canonical": x.unit_canonical,
+        "value_canonical": x.value_canonical,
+        "ref_low_canonical": x.ref_low_canonical,
+        "ref_high_canonical": x.ref_high_canonical,
+        "critical_low_canonical": x.critical_low_canonical,
+        "critical_high_canonical": x.critical_high_canonical,
+        "flag": x.flag,
+        "flag_source": x.flag_source,
+        "flag_mismatch": x.flag_mismatch,
     }
 
 
@@ -388,13 +433,24 @@ async def _store(
     async with engine.connect() as conn, conn.begin():
         await _begin(conn, user_id)
         catalog, mine = await _catalog(conn)
+        profile = (await conn.execute(_PROFILE, {"p": claimed.patient_id})).one()
+        sex: Sex = (
+            "male"
+            if profile.sex == "male"
+            else "female"
+            if profile.sex == "female"
+            else ("unknown")
+        )
         if ai_request is None:
-            profile = (await conn.execute(_PROFILE, {"p": claimed.patient_id})).scalar_one()
-            score = name_match_score(document.identity, profile)
+            score = name_match_score(document.identity, profile.full_name)
         else:
             score = ai_request.name_match_score if ai_request.name_printed else None
             await conn.execute(_AI_REQUEST_DONE, {"d": document_id})
-        reports = [draft_report(r, catalog, mine, name_score=score) for r in document.reports]
+        drafts = [
+            draft_report(r, catalog, mine, name_score=score, sex=sex) for r in document.reports
+        ]
+        prior = await _prior(conn, claimed.patient_id, document_id, drafts)
+        reports = [with_history(r, prior, catalog) for r in drafts]
         await _save(
             conn,
             document_id=document_id,
@@ -406,7 +462,20 @@ async def _store(
             method=method,
         )
         await conn.execute(_FINISH, {"s": "needs_review", "e": None, "d": document_id})
+        # review_ready, or critical_pending (H5): the database picks who is told. Raising
+        # here rolls the drafts back with it - the sweep then fails the document
+        await conn.execute(_NOTIFY, {"d": document_id})
     return reports
+
+
+async def _prior(
+    conn: AsyncConnection, patient_id: UUID, document_id: UUID, reports: Sequence[DraftReport]
+) -> list[Prior]:
+    codes = sorted({x.test_code for r in reports for x in r.results if x.test_code})
+    if not codes:
+        return []
+    rows = (await conn.execute(_PRIOR, {"p": patient_id, "d": document_id, "codes": codes})).all()
+    return [Prior(r.test_code, r.collected_at, r.value_canonical, r.confirmed) for r in rows]
 
 
 async def _ai_allowed(conn: AsyncConnection, patient_id: UUID) -> bool:

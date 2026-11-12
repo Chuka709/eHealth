@@ -64,7 +64,10 @@ def test_texts_follow_the_users_language_and_the_kind() -> None:
     assert message_for(_push(kind="dose_overdue", locale="en"))["body"] == (
         "A dose has not been logged yet. Please check the app."
     )
-    assert message_for(_push(kind="review_ready"))["body"] == "Танд шинэ мэдэгдэл байна."
+    assert message_for(_push(kind="share_invite"))["body"] == "Танд шинэ мэдэгдэл байна."
+    assert message_for(_push(kind="review_ready"))["body"] == (
+        "Шинэ шинжилгээний хариу уншигдлаа. Аппаас шалгаж батална уу."
+    )
     reset = message_for(_push(kind="admin_reset"))["body"]
     assert "нууц үг" in reset
     assert "Кодоо хэнд ч бүү хэлээрэй." in reset  # H12: a caller asking for the code
