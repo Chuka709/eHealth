@@ -346,7 +346,8 @@ test("'Уусан' on a reminder records that dose", async () => {
   const listener = notifications.addNotificationResponseReceivedListener.mock.calls.at(-1)?.[0] as (
     r: unknown,
   ) => void;
-  const at = Date.parse("2026-11-04T00:00:00Z");
+  // today's dose: a reminder is only accepted near now (a fixed date goes stale)
+  const at = Date.parse(morningDose());
   listener({
     actionIdentifier: "taken",
     notification: {
@@ -365,7 +366,7 @@ test("'Уусан' on a reminder records that dose", async () => {
   expect(posts[0].body).toMatchObject({
     medication_id: MED_ID,
     status: "taken",
-    scheduled_at: "2026-11-04T00:00:00.000Z",
+    scheduled_at: morningDose(),
   });
 });
 
@@ -375,7 +376,8 @@ test("a reminder for another profile or medicine records nothing", async () => {
   const listener = notifications.addNotificationResponseReceivedListener.mock.calls.at(-1)?.[0] as (
     r: unknown,
   ) => void;
-  const at = Date.parse("2026-11-04T00:00:00Z");
+  // today's dose: a reminder is only accepted near now (a fixed date goes stale)
+  const at = Date.parse(morningDose());
   const respond = (p: string, m: string, id: string) =>
     listener({
       actionIdentifier: "taken",
