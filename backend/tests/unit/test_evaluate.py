@@ -236,6 +236,50 @@ def test_ai_cases_are_skipped_without_the_ai(
     assert "| f | ai | - | skipped |" in capsys.readouterr().out
 
 
+def test_hand_written_answers_are_read_from_csv(tmp_path: Path, catalog: Catalog) -> None:
+    """Excel's "CSV UTF-8" (BOM, ";"), numbers as written on the paper result."""
+    folder = _central_lab_case(tmp_path / "local-1")
+    (folder / "expected.json").unlink()
+    (folder / "answers.csv").write_text(
+        "\ufeffdate;name;value;unit;ref_low;ref_high;ref_text;qualitative;test_code\n"
+        "2025-05-03;Креатинин;88;мкмоль/л;62;115;;;CREA\n"
+        ";;;;;;;;\n",
+        encoding="utf-8",
+    )
+    (folder / "case.json").write_text('{"tags": ["kidney"]}', encoding="utf-8")
+    [case] = evaluate.find_cases([tmp_path])
+    assert (case.id, case.tags, len(case.rows)) == ("local-1", ("kidney",), 1)
+    s = evaluate.score(evaluate.read_case(case, catalog, None))
+    assert all(s.rate(k) == 1.0 for k in ("value", "unit", "ref", "test", "date")), s.wrong
+
+
+def test_csv_values_comparators_and_words() -> None:
+    reports = evaluate.answers_from_csv(
+        "date,name,value,unit,ref_text,qualitative\n"
+        "2025-06-11,BK вирус,<500,copies/mL,,\n"
+        '2025-06-11,HBV ДНХ,"1,2E+06",IU/mL,,\n'
+        "2025-06-11,Уураг,Сөрөг,,Сөрөг,Сөрөг\n"
+    )
+    results: list[dict[str, object]] = reports[0]["results"]  # type: ignore[assignment]
+    bk, hbv, protein = results
+    assert (bk["numeric"], bk["comparator"]) == ("500", "<")
+    assert hbv["numeric"] == "1.2E+06"
+    assert ("numeric" not in protein, protein["qualitative"]) == (True, "negative")
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "name,value\nA,1\n",
+        "date,name,value\n2025-01-01,A,\n",
+        "date,name,value,qualitative\n2025-01-01,A,x,maybe\n",
+    ],
+)
+def test_bad_answers_are_refused(text: str) -> None:
+    with pytest.raises(SystemExit):
+        evaluate.answers_from_csv(text)
+
+
 def test_p95() -> None:
     assert evaluate.p95([]) == 0.0
     assert evaluate.p95([float(i) for i in range(1, 21)]) == 20.0

@@ -1,6 +1,8 @@
 """`just eval`: how well documents are read, against hand-checked answers (docs/05 "Eval").
 
-A case is a folder with `expected.json` and one input:
+A case is a folder with its answers and one input. The answers are `expected.json`, or
+`answers.csv` written by hand from the paper result (eval/answers_template.csv; Excel's
+"CSV UTF-8" with "," or ";"), plus an optional `case.json` ({"profile_name", "tags"}):
 - `input.pdf` - a real document, read the way the worker reads it (child process, then the
   local readers); real cases live in `eval/local/` and are never committed (PHI).
 - `input.words.json` - a made-up printout as words placed on pages (synthetic cases in
@@ -21,6 +23,8 @@ extra row, or p95 > 30 s per page of a real PDF. The report keeps only case ids 
 """
 
 import argparse
+import csv
+import io
 import json
 import os
 import re
@@ -31,7 +35,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from decimal import Decimal
 from pathlib import Path
-from typing import Final
+from typing import Any, Final
 from zoneinfo import ZoneInfo
 
 from labtrack.core.lab_drafts import Catalog, CatalogTest, DraftReport, DraftResult, draft_report
@@ -94,8 +98,77 @@ def _exact(value: object) -> Decimal | None:
     return None if value is None else Decimal(str(value))
 
 
+# answers.csv columns (eval/answers_template.csv); only date, name and value are required
+CSV_COLUMNS: Final = (
+    "date", "name", "value", "unit", "ref_low", "ref_high", "ref_text", "critical_low",
+    "critical_high", "qualitative", "test_code",
+)  # fmt: skip
+_QUALITATIVE: Final = {
+    "эерэг": "positive", "positive": "positive", "+": "positive",
+    "сөрөг": "negative", "negative": "negative", "-": "negative",
+    "эргэлзээтэй": "equivocal", "equivocal": "equivocal",
+}  # fmt: skip
+_PRINTED_NUMBER: Final = re.compile(r"(<=|>=|<|>)?\s*([0-9]+(?:[.,][0-9]+)?(?:[eE][+-]?[0-9]+)?)")
+
+
+def _cell(row: dict[str, str], key: str) -> str | None:
+    value = (row.get(key) or "").strip()
+    return value or None
+
+
+def _number(text: str | None) -> str | None:
+    return None if text is None else text.replace(",", ".")
+
+
+def answers_from_csv(text: str) -> list[dict[str, object]]:
+    """The `reports` of expected.json from a hand-written answers.csv: one report per date.
+
+    A value is a number when it reads as one as written ("12,4", "<500", "1.2E+06"); the
+    numbers are taken from the person's own writing, never from the reader (no circularity).
+    """
+    dialect = csv.Sniffer().sniff(text.splitlines()[0], delimiters=",;")
+    reader = csv.DictReader(io.StringIO(text), dialect=dialect)
+    missing = {"date", "name", "value"} - set(reader.fieldnames or ())
+    if missing:
+        raise SystemExit(f"answers.csv: missing column(s) {sorted(missing)}")
+    by_date: dict[str | None, list[dict[str, object]]] = {}
+    for number, row in enumerate(reader, start=2):
+        name, value = _cell(row, "name"), _cell(row, "value")
+        if name is None and value is None:
+            continue  # an empty line
+        if name is None or value is None:
+            raise SystemExit(f"answers.csv line {number}: name and value are both needed")
+        answer: dict[str, object] = {"name": name, "value": value, "unit": _cell(row, "unit")}
+        if match := _PRINTED_NUMBER.fullmatch(value.replace(" ", "")):
+            answer["numeric"] = _number(match.group(2))
+            if match.group(1):
+                answer["comparator"] = match.group(1)
+        for key in ("ref_low", "ref_high", "critical_low", "critical_high"):
+            if (cell := _cell(row, key)) is not None:
+                answer[key] = _number(cell)
+        if (ref_text := _cell(row, "ref_text")) is not None:
+            answer["ref_text"] = ref_text
+        if (word := _cell(row, "qualitative")) is not None:
+            if word.casefold() not in _QUALITATIVE:
+                raise SystemExit(f"answers.csv line {number}: qualitative is Эерэг/Сөрөг/...")
+            answer["qualitative"] = _QUALITATIVE[word.casefold()]
+        answer["test_code"] = _cell(row, "test_code")
+        by_date.setdefault(_cell(row, "date"), []).append(answer)
+    return [{"collected": day, "results": rows} for day, rows in by_date.items()]
+
+
+def _case_data(path: Path) -> dict[str, object]:
+    if (path / "expected.json").exists():
+        data: dict[str, object] = json.loads((path / "expected.json").read_text(encoding="utf-8"))
+        return data
+    meta = path / "case.json"
+    data = json.loads(meta.read_text(encoding="utf-8")) if meta.exists() else {}
+    data["reports"] = answers_from_csv((path / "answers.csv").read_text(encoding="utf-8-sig"))
+    return data
+
+
 def load_case(path: Path) -> Case:
-    data = json.loads((path / "expected.json").read_text(encoding="utf-8"))
+    data: dict[str, Any] = _case_data(path)
     rows: list[ExpectedRow] = []
     for report in data["reports"]:
         for r in report["results"]:
@@ -127,9 +200,15 @@ def load_case(path: Path) -> Case:
 
 
 def find_cases(roots: Iterable[Path]) -> list[Case]:
-    paths = [
-        p.parent for root in roots if root.is_dir() for p in sorted(root.glob("*/expected.json"))
-    ]
+    paths = sorted(
+        {
+            p.parent
+            for root in roots
+            if root.is_dir()
+            for name in ("expected.json", "answers.csv")
+            for p in root.glob(f"*/{name}")
+        }
+    )
     if bad := [p for p in paths if not CASE_ID.fullmatch(p.name)]:
         raise SystemExit(f"{len(bad)} case folder(s) not named like 'local-1' (a-z, 0-9, -)")
     return [load_case(p) for p in paths]
