@@ -28,6 +28,7 @@ from zoneinfo import ZoneInfo
 
 from labtrack.core.lab_values import parse_range, parse_value
 from labtrack.core.matching import match_test
+from labtrack.core.ranges import critical_limits
 from labtrack.core.text import normalize_name, normalize_unit
 from labtrack.extraction.types import PrintedIdentity, ReadReport, ReadResult
 
@@ -250,7 +251,7 @@ def _result(
     texts, cut = _trim(row)
     value = parse_value(row.raw_value)
     printed = parse_range(row.ref_text)
-    critical = parse_range(row.critical_text)
+    critical = critical_limits(row.critical_text)
     code = match_test(row.raw_name, specimen, catalog.synonyms, user_synonyms)
     test = catalog.tests.get(code) if code else None
     issues = [*report_issues, *row.issues]
@@ -280,8 +281,9 @@ def _result(
         source_snippet=row.snippet[:500],
         # kept as printed (rule 5); no flag from it here - the critical banner is Phase 5
         critical_text=row.critical_text[:300] if row.critical_text else None,
-        critical_low=critical.low,
-        critical_high=critical.high,
+        # "< 2.5" printed as a critical limit means critical below 2.5 (core.ranges)
+        critical_low=critical.low if critical else None,
+        critical_high=critical.high if critical else None,
     )
 
 
