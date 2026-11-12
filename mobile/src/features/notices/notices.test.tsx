@@ -196,7 +196,14 @@ test("a push opens a screen from its kind and id only; anything else opens the l
   expect(pushRoute(pushData({ notification_id: 6, kind: "share_invite" }))).toBe(
     "/caregivers/invitations",
   );
-  expect(pushRoute(pushData({ notification_id: 5, kind: "review_ready" }))).toBe("/notifications");
+  // a result: through its notice (which names the profile and the result - 5.5)
+  expect(pushRoute(pushData({ notification_id: 5, kind: "review_ready" }))).toBe(
+    "/notifications/5",
+  );
+  expect(pushRoute(pushData({ notification_id: 4, kind: "critical_pending" }))).toBe(
+    "/notifications/4",
+  );
+  expect(pushRoute(pushData({ notification_id: 3, kind: "admin_reset" }))).toBe("/notifications");
   for (const junk of [
     null,
     "x",

@@ -93,7 +93,15 @@ const result = (position: number, extra: Record<string, unknown>) => ({
   critical_high: null,
   lab_flag: null,
   flag: "unknown",
-  issues: [],
+  flag_source: null,
+  flag_mismatch: false,
+  unit_canonical: null,
+  value_canonical: null,
+  issues: [] as string[],
+  acknowledged: [] as string[],
+  edited_by_user: false,
+  read_value: null,
+  read_critical_text: null,
   source_page: 1,
   ...extra,
 });
@@ -112,7 +120,9 @@ const REPORT = {
   date_ambiguous: false,
   name_match_score: "1.00",
   has_unconfirmed_critical: false,
+  source: "read",
   created_at: "2026-11-12T03:00:05Z",
+  last_doses: [] as unknown[],
   results: [
     result(0, {
       test_code: "CREA",
@@ -123,6 +133,8 @@ const REPORT = {
       value_numeric: "88",
       ref_text: "62 - 115",
       lab_flag: "H",
+      flag: "normal",
+      flag_source: "computed_document_range",
     }),
     result(1, {
       raw_name: "Зохиомол маркер",
@@ -163,6 +175,27 @@ const handlers: Record<string, () => Response> = {
   [`GET /api/v1/patients/${OWN.id}/documents`]: () => json(200, documents),
   [`GET /api/v1/patients/${OWN.id}/documents/${DOC}/reports`]: () => json(200, reports),
 };
+let sent: { method: string; path: string; body: unknown }[] = [];
+
+/** What the server would answer: an accepted issue is kept, a confirm confirms. */
+function answer(path: string, body: { acknowledge?: string[] } | null) {
+  const [report] = reports;
+  if (path.endsWith("/confirm")) {
+    reports = [{ ...report, status: "confirmed" }];
+    return reports[0];
+  }
+  const rowId = path.match(/results\/([0-9a-f-]+)$/)?.[1];
+  const next = {
+    ...report,
+    results: report.results.map((r) =>
+      r.id === rowId && body?.acknowledge
+        ? { ...r, acknowledged: [...r.acknowledged, ...body.acknowledge] }
+        : r,
+    ),
+  };
+  reports = [next];
+  return next;
+}
 
 async function openResults() {
   await renderRouter("./src/app", { initialUrl: "/" });
@@ -177,14 +210,23 @@ beforeEach(() => {
   mockStore.set("lt.refresh", "r0");
   documents = [];
   reports = [];
+  sent = [];
   globalThis.fetch = jest.fn(async (input: Request | string, init?: RequestInit) => {
     const request = typeof input === "string" ? new Request(input, init) : input;
-    const handler = handlers[`${request.method} ${request.url.slice(apiBaseUrl.length)}`];
-    return handler ? handler() : json(404, { code: "not_found", message_key: "error.not_found" });
+    const path = request.url.slice(apiBaseUrl.length);
+    const handler = handlers[`${request.method} ${path}`];
+    if (handler) return handler();
+    // review writes: answered with the report as the server would have it (5.5)
+    if (path.startsWith(`/api/v1/patients/${OWN.id}/reports/`)) {
+      const body = request.method === "GET" ? null : await request.clone().text();
+      sent.push({ method: request.method, path, body: body ? JSON.parse(body) : null });
+      return json(200, answer(path, body ? JSON.parse(body) : null));
+    }
+    return json(404, { code: "not_found", message_key: "error.not_found" });
   }) as unknown as typeof fetch;
 });
 
-test("a read document opens its draft: rows as printed, what to check, no flags", async () => {
+test("a read document opens its draft: rows as printed, the flag, what to check", async () => {
   documents = [document("needs_review")];
   reports = [REPORT];
   await openResults();
@@ -192,12 +234,79 @@ test("a read document opens its draft: rows as printed, what to check, no flags"
   expect(await screen.findByText("Биохими")).toBeOnTheScreen();
   expect(screen.getByText(/автоматаар уншсан ноорог/)).toBeOnTheScreen();
   expect(screen.getByText("Огноо: 2025.05.03")).toBeOnTheScreen(); // a day, no time
-  expect(screen.getByText("! Ноорог — батлаагүй")).toBeOnTheScreen();
+  expect(screen.getByText("Ноорог — батлаагүй")).toBeOnTheScreen();
   expect(screen.getByText("88 мкмоль/л")).toBeOnTheScreen();
   expect(screen.getByText("Лавлах хэмжээ: 62 - 115")).toBeOnTheScreen();
-  expect(screen.getByText(/Шалгах: шинжилгээ танигдсангүй/)).toBeOnTheScreen();
-  expect(screen.queryByText("H")).toBeNull(); // the lab's own mark is not shown (rule 5)
+  expect(screen.getByText("! шинжилгээ танигдсангүй")).toBeOnTheScreen();
+  // the flag the server computed from the printed range, never the lab's own mark
+  expect(screen.getByText(/Лавлах хэмжээнд/)).toBeOnTheScreen();
+  expect(screen.queryByText("H")).toBeNull();
   expect(screen.queryByText(/AI-аар/)).toBeNull();
+  expect(screen.queryByTestId("critical-banner")).toBeNull();
+});
+
+test("confirm waits until every issue is looked at, one at a time", async () => {
+  documents = [document("needs_review")];
+  reports = [REPORT];
+  await openResults();
+  await fireEvent.press(await screen.findByTestId(`document-${DOC}`));
+  expect(await screen.findByText("1 мөр шалгах шаардлагатай")).toBeOnTheScreen();
+  const confirm = screen.getByRole("button", { name: /^Батлах\./ });
+  expect(confirm).toBeDisabled();
+  await fireEvent.press(
+    screen.getByRole("button", { name: /«шинжилгээ танигдсангүй»: хариутай ижил/ }),
+  );
+  expect(await screen.findByText("Бүх мөр шалгагдсан")).toBeOnTheScreen();
+  expect(sent[0]).toMatchObject({
+    method: "PATCH",
+    body: { acknowledge: ["unknown_test"] },
+  });
+  await fireEvent.press(screen.getByRole("button", { name: /^Батлах\./ }));
+  expect(await screen.findByText(/Батлагдсан/)).toBeOnTheScreen();
+  expect(sent.at(-1)?.path).toMatch(/\/confirm$/);
+});
+
+test("a draft that may be critical opens under a red banner, its row first", async () => {
+  documents = [document("needs_review")];
+  reports = [
+    {
+      ...REPORT,
+      has_unconfirmed_critical: true,
+      results: [
+        REPORT.results[1],
+        result(2, {
+          raw_name: "Кали",
+          raw_value: "6,9",
+          raw_unit: "ммоль/л",
+          critical_text: "> 6.5",
+          flag: "critical_high",
+        }),
+      ],
+    },
+  ];
+  await openResults();
+  await fireEvent.press(await screen.findByTestId(`document-${DOC}`));
+  expect(await screen.findByTestId("critical-banner")).toBeOnTheScreen();
+  expect(screen.getByText(/103 руу залгана уу/)).toBeOnTheScreen();
+  expect(screen.getByText(/Критик хязгаараас их/)).toBeOnTheScreen();
+  const rows = screen.getAllByTestId(/^result-/).map((r) => r.props.testID);
+  expect(rows[0]).toBe("result-2"); // the critical row comes first
+});
+
+test("an ambiguous date is picked, never accepted", async () => {
+  documents = [document("needs_review")];
+  reports = [
+    {
+      ...REPORT,
+      results: REPORT.results.map((r) => ({ ...r, issues: [...r.issues, "date_ambiguous"] })),
+    },
+  ];
+  await openResults();
+  await fireEvent.press(await screen.findByTestId(`document-${DOC}`));
+  expect(await screen.findByTestId("date-editor")).toBeOnTheScreen();
+  // no "matches the printout" for the date
+  expect(screen.queryByRole("button", { name: /«огноо тодорхойгүй»/ })).toBeNull();
+  expect(screen.getByRole("button", { name: "Огноог хадгалах" })).toBeDisabled();
 });
 
 test("a document not read automatically says so, and does not open", async () => {
@@ -227,4 +336,29 @@ test("fail reasons and issue codes", () => {
     "other",
   ]);
   expect(knownIssues(["name_missing", "truncated"])).toEqual(["name_missing", "truncated"]);
+});
+
+test("editing a row sends only what changed; the server computes the rest", async () => {
+  documents = [document("needs_review")];
+  reports = [REPORT];
+  handlers[`GET /api/v1/lab-tests`] = () =>
+    json(200, [
+      {
+        code: "CREA",
+        name_mn: "Креатинин",
+        name_en: "Creatinine",
+        canonical_unit: "µmol/L",
+        category: "renal",
+      },
+    ]); // prettier-ignore
+  await openResults();
+  await fireEvent.press(await screen.findByTestId(`document-${DOC}`));
+  const editButtons = await screen.findAllByRole("button", { name: "Засах" });
+  await fireEvent.press(editButtons[0]);
+  const value = await screen.findByTestId("row-value");
+  await fireEvent.changeText(value, "1,3");
+  await fireEvent.press(screen.getByRole("button", { name: "Хадгалах" }));
+  expect(await screen.findByTestId("document-reports")).toBeOnTheScreen();
+  const patch = sent.find((x) => x.method === "PATCH");
+  expect(patch?.body).toEqual({ raw_value: "1,3" });
 });

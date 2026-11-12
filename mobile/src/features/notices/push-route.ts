@@ -17,7 +17,14 @@ export function pushData(raw: unknown): PushData | null {
 
 /** The screen to open: a notice with details of its own, or the list. */
 export function pushRoute(data: PushData | null): string {
-  if (data?.kind === "dose_overdue") return `/notifications/${data.notificationId}`;
+  // the notice says which profile and result: opened from there (the push names neither)
+  if (
+    data?.kind === "dose_overdue" ||
+    data?.kind === "review_ready" ||
+    data?.kind === "critical_pending"
+  ) {
+    return `/notifications/${data.notificationId}`;
+  }
   if (data?.kind === "share_invite") return "/caregivers/invitations";
   return "/notifications";
 }

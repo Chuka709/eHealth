@@ -16,5 +16,14 @@ export function noticeKey(notice: Pick<Notice, "kind">): string {
 
 /** Notices with a screen of their own (the others are read in the list). */
 export function hasDetail(notice: Pick<Notice, "kind" | "patient_id" | "entity_id">): boolean {
-  return notice.kind === "dose_overdue" && notice.patient_id !== null && notice.entity_id !== null;
+  return (
+    (notice.kind === "dose_overdue" || isResultNotice(notice)) &&
+    notice.patient_id !== null &&
+    notice.entity_id !== null
+  );
+}
+
+/** A result to review (a read document, or a typed-in report that may be critical - 5.2/5.4). */
+export function isResultNotice(notice: Pick<Notice, "kind">): boolean {
+  return notice.kind === "review_ready" || notice.kind === "critical_pending";
 }

@@ -1,12 +1,13 @@
-import { useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import { useTranslations } from "use-intl";
 
 import { Screen } from "@/components/screen";
 import { LoadingView, RetryView } from "@/components/state-view";
 import { Paragraph, Title } from "@/components/text";
-import { hasDetail } from "@/features/notices/notice-text";
+import { hasDetail, isResultNotice } from "@/features/notices/notice-text";
 import { useDoseAlert, useMarkRead, useNotices } from "@/features/notices/use-notifications";
+import { setActiveProfile } from "@/features/records/active-profile";
 import { usePatients } from "@/features/records/use-profile";
 import { formatDateTime } from "@/lib/dates";
 import { useErrorText } from "@/lib/use-error-text";
@@ -25,7 +26,9 @@ export default function NoticeScreen() {
   const notices = useNotices();
   const notice = notices.data?.find((n) => n.id === noticeId);
   const detail = notice && hasDetail(notice) ? notice : undefined;
-  const alert = useDoseAlert(detail?.patient_id ?? null, detail ? Number(detail.entity_id) : null);
+  const result = detail && isResultNotice(detail) ? detail : undefined;
+  const dose = detail && !result ? detail : undefined;
+  const alert = useDoseAlert(dose?.patient_id ?? null, dose ? Number(dose.entity_id) : null);
   const patients = usePatients();
   const markRead = useMarkRead();
   const unread = notice?.read_at === null;
@@ -34,6 +37,16 @@ export default function NoticeScreen() {
   useEffect(() => {
     if (unread) mutateRead(noticeId);
   }, [unread, noticeId, mutateRead]);
+
+  // a result to review: on its own profile, in the review screen (5.5)
+  const router = useRouter();
+  const resultPatient = result?.patient_id ?? null;
+  const resultId = result?.entity_id ?? null;
+  useEffect(() => {
+    if (resultPatient === null || resultId === null) return;
+    setActiveProfile(resultPatient);
+    router.replace(`/results/${resultId}`);
+  }, [resultPatient, resultId, router]);
 
   // not in the list yet (a push newer than the last read): read it once more before "gone"
   const [checked, setChecked] = useState(false);
@@ -56,6 +69,7 @@ export default function NoticeScreen() {
       </Screen>
     );
   }
+  if (result) return <LoadingView />; // moving on to the review screen (effect above)
   if (alert.isPending) return <LoadingView />;
   if (!alert.data) {
     return <RetryView text={errorText(alert.error)} onRetry={() => void alert.refetch()} />;

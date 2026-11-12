@@ -982,7 +982,12 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /**
+         * List Typed Reports
+         * @description Reports typed in without a file (a document's reports are listed with the document):
+         *     drafts for the profile's writers, confirmed ones for its readers too (RLS).
+         */
+        get: operations["list_typed_reports_api_v1_patients__patient_id__reports_get"];
         put?: never;
         /**
          * Create Report
@@ -1085,6 +1090,26 @@ export interface paths {
          * @description A draft that may hold a critical value is rejected only with `critical_seen` (H5).
          */
         post: operations["reject_report_api_v1_patients__patient_id__reports__report_id__reject_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/lab-tests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Lab Tests
+         * @description The catalog's tests, for the person to pick the one a printed name means (review).
+         */
+        get: operations["list_lab_tests_api_v1_lab_tests_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -2552,6 +2577,19 @@ export interface components {
             /** Source Page */
             source_page: number | null;
         };
+        /** LabTestOut */
+        LabTestOut: {
+            /** Code */
+            code: string;
+            /** Name Mn */
+            name_mn: string;
+            /** Name En */
+            name_en: string;
+            /** Canonical Unit */
+            canonical_unit: string | null;
+            /** Category */
+            category: string;
+        };
         /**
          * LastDoseOut
          * @description The last logged dose of a linked medicine before the sample - a fact only.
@@ -3147,6 +3185,29 @@ export interface components {
              * @default false
              */
             critical_seen: boolean;
+        };
+        /** ReportItem */
+        ReportItem: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Lab Name */
+            lab_name: string | null;
+            /** Collected At */
+            collected_at: string | null;
+            /** Collected Precision */
+            collected_precision: string;
+            /** Status */
+            status: string;
+            /** Has Unconfirmed Critical */
+            has_unconfirmed_critical: boolean;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
         };
         /** ReportPatch */
         ReportPatch: {
@@ -9311,6 +9372,82 @@ export interface operations {
             };
         };
     };
+    list_typed_reports_api_v1_patients__patient_id__reports_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                patient_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReportItem"][];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
     create_report_api_v1_patients__patient_id__reports_post: {
         parameters: {
             query?: never;
@@ -9890,6 +10027,80 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["LabReportOut"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    list_lab_tests_api_v1_lab_tests_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LabTestOut"][];
                 };
             };
             /** @description Unauthorized */

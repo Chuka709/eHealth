@@ -11,6 +11,7 @@ import { Screen } from "@/components/screen";
 import { LoadingView, RetryView } from "@/components/state-view";
 import { Paragraph, Title } from "@/components/text";
 import { useRecordProfile } from "@/features/health/record-screens";
+import { useTypedReports } from "@/features/review/use-review";
 import { dismissFailedUpload } from "@/features/upload/upload-queue";
 import { failReason } from "@/features/upload/use-reports";
 import {
@@ -45,6 +46,10 @@ export default function ResultsScreen() {
   const p = usePalette();
   const { own } = useRecordProfile();
   const documents = useDocuments(own?.id);
+  const typed = useTypedReports(own?.id);
+  // a typed-in report has no file: "rejected" is the person's own choice, not a refused file
+  const typedStatus = (status: string) =>
+    status === "rejected" ? t("review.rejected") : t(`status.${status}` as "status.uploaded");
   const queue = useUploadQueue();
   const waiting = (queue.data?.pending ?? []).filter((u) => u.patientId === own?.id);
   const refused = (queue.data?.failed ?? []).filter((u) => u.patientId === own?.id);
@@ -91,8 +96,55 @@ export default function ResultsScreen() {
           ))}
         </View>
       )}
+      {(typed.data ?? []).length > 0 && (
+        <View style={styles.block}>
+          <Text accessibilityRole="header" style={[styles.name, { color: p.text }]}>
+            {t("review.typed")}
+          </Text>
+          <View style={[styles.card, { backgroundColor: p.surface, borderColor: p.border }]}>
+            {(typed.data ?? []).map((r, i) => (
+              <Pressable
+                key={r.id}
+                onPress={() => router.push({ pathname: "/results/[id]", params: { id: r.id } })}
+                accessibilityRole="button"
+                accessibilityLabel={[
+                  r.lab_name ?? t("review.untitled"),
+                  r.collected_at ? formatDateTime(r.collected_at) : null,
+                  typedStatus(r.status),
+                ]
+                  .filter(Boolean)
+                  .join(". ")}
+                style={({ pressed }) => [
+                  styles.row,
+                  i > 0 && { borderTopColor: p.border, borderTopWidth: StyleSheet.hairlineWidth },
+                  { opacity: pressed ? 0.85 : 1 },
+                ]}
+                testID={`typed-${r.id}`}
+              >
+                <Icon name={STATUS_ICON[r.status] ?? "file-outline"} color={p.primary} />
+                <View style={styles.text}>
+                  <Text style={[styles.name, { color: p.text }]}>
+                    {r.lab_name ?? t("review.untitled")}
+                  </Text>
+                  <Text style={[styles.meta, { color: p.textMuted }]}>
+                    {r.collected_at ? formatDateTime(r.collected_at) : t("review.dateUnknown")}
+                  </Text>
+                  <Text style={[styles.meta, { color: p.text }]}>{typedStatus(r.status)}</Text>
+                </View>
+                <Icon name="chevron-right" color={p.textMuted} />
+              </Pressable>
+            ))}
+          </View>
+        </View>
+      )}
       <View style={styles.bottom}>
         <Button label={t("open")} onPress={() => router.push("/upload")} />
+        {/* a paper result: typed in by hand (Phase 5.4) */}
+        <Button
+          label={t("review.typeIn")}
+          variant="secondary"
+          onPress={() => router.push("/results/new")}
+        />
       </View>
     </Screen>
   );
@@ -141,6 +193,17 @@ function DocumentRow({ document, first }: { document: DocumentItem; first: boole
         </Text>
         <Text style={[styles.meta, { color: bad ? p.danger : p.text }]}>{status}</Text>
         {why && <Text style={[styles.meta, { color: p.textMuted }]}>{why}</Text>}
+        {/* not read automatically (a scan or photo - Q50): the person types the values in */}
+        {reason === "not_read" && document.status === "failed" && (
+          <Button
+            label={t("review.typeIn")}
+            variant="link"
+            compact
+            onPress={() =>
+              router.push({ pathname: "/results/new", params: { document: document.id } })
+            }
+          />
+        )}
         {opens && (
           <Text style={[styles.meta, styles.link, { color: p.primary }]}>{t("review.open")}</Text>
         )}
@@ -152,7 +215,7 @@ function DocumentRow({ document, first }: { document: DocumentItem; first: boole
 
 const styles = StyleSheet.create({
   block: { gap: space.xs },
-  bottom: { marginTop: space.lg },
+  bottom: { marginTop: space.lg, gap: space.sm },
   card: { borderRadius: radius.lg, borderWidth: StyleSheet.hairlineWidth, overflow: "hidden" },
   row: {
     flexDirection: "row",

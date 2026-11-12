@@ -37,7 +37,7 @@ export function failReason(code: string | null | undefined): FailReason {
   return "not_read";
 }
 
-/** The issue codes a result row may carry (0031/0032), each with its own text; a code
+/** The issue codes a result row may carry (0031/0032/0035/0036), each with its own text; a code
  * this app does not know yet is still shown, as "other" (never dropped - medical review 4.6). */
 export const ISSUE_CODES = [
   "not_in_source",
@@ -58,6 +58,12 @@ export const ISSUE_CODES = [
   "date_inconsistent",
   "unit_missing",
   "truncated",
+  "possible_critical",
+  "critical_unreadable",
+  "critical_inside_reference",
+  "no_conversion",
+  "ref_not_used",
+  "critical_edited",
 ] as const;
 export type IssueCode = (typeof ISSUE_CODES)[number] | "other";
 

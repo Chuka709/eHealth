@@ -7578,6 +7578,107 @@
             "description": "Too Many Requests"
           }
         }
+      },
+      "get": {
+        "tags": [
+          "lab-reports"
+        ],
+        "summary": "List Typed Reports",
+        "description": "Reports typed in without a file (a document's reports are listed with the document):\ndrafts for the profile's writers, confirmed ones for its readers too (RLS).",
+        "operationId": "list_typed_reports_api_v1_patients__patient_id__reports_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "patient_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Patient Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ReportItem"
+                  },
+                  "title": "Response List Typed Reports Api V1 Patients  Patient Id  Reports Get"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          }
+        }
       }
     },
     "/api/v1/patients/{patient_id}/reports/{report_id}": {
@@ -8403,6 +8504,97 @@
             "description": "Too Many Requests"
           }
         }
+      }
+    },
+    "/api/v1/lab-tests": {
+      "get": {
+        "tags": [
+          "lab-reports"
+        ],
+        "summary": "List Lab Tests",
+        "description": "The catalog's tests, for the person to pick the one a printed name means (review).",
+        "operationId": "list_lab_tests_api_v1_lab_tests_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/LabTestOut"
+                  },
+                  "type": "array",
+                  "title": "Response List Lab Tests Api V1 Lab Tests Get"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
       }
     },
     "/api/v1/patients/{patient_id}/emergency-card": {
@@ -14474,6 +14666,46 @@
         "title": "LabResultOut",
         "description": "One row as read from the document; nothing in it is judged here (rules 4-5)."
       },
+      "LabTestOut": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "name_mn": {
+            "type": "string",
+            "title": "Name Mn"
+          },
+          "name_en": {
+            "type": "string",
+            "title": "Name En"
+          },
+          "canonical_unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Canonical Unit"
+          },
+          "category": {
+            "type": "string",
+            "title": "Category"
+          }
+        },
+        "type": "object",
+        "required": [
+          "code",
+          "name_mn",
+          "name_en",
+          "canonical_unit",
+          "category"
+        ],
+        "title": "LabTestOut"
+      },
       "LastDoseOut": {
         "properties": {
           "test_code": {
@@ -16316,6 +16548,66 @@
         "type": "object",
         "title": "RejectBody",
         "description": "`critical_seen`: the person saw that the draft may hold a critical value (H5)."
+      },
+      "ReportItem": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "lab_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lab Name"
+          },
+          "collected_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Collected At"
+          },
+          "collected_precision": {
+            "type": "string",
+            "title": "Collected Precision"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "has_unconfirmed_critical": {
+            "type": "boolean",
+            "title": "Has Unconfirmed Critical"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "lab_name",
+          "collected_at",
+          "collected_precision",
+          "status",
+          "has_unconfirmed_critical",
+          "created_at"
+        ],
+        "title": "ReportItem"
       },
       "ReportPatch": {
         "properties": {

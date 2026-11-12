@@ -58,6 +58,8 @@ export default function MainLayout() {
       <Stack.Screen name="upload" options={{ title: t("upload.title") }} />
       <Stack.Screen name="results/index" options={{ title: t("upload.listTitle") }} />
       <Stack.Screen name="results/[id]" options={{ title: t("upload.review.title") }} />
+      <Stack.Screen name="results/row" options={{ title: t("upload.review.rowTitle") }} />
+      <Stack.Screen name="results/new" options={{ title: t("upload.review.newTitle") }} />
       <Stack.Screen name="settings/delete-account" options={{ title: t("deleteAccount.title") }} />
       <Stack.Screen name="transplants/index" options={{ title: t("transplant.listTitle") }} />
       <Stack.Screen name="transplants/new" options={{ title: t("transplant.add") }} />

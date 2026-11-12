@@ -1,36 +1,39 @@
-import { feedbackGlyph, fontSize, radius, space } from "@labtrack/shared";
-import { useLocalSearchParams } from "expo-router";
-import { StyleSheet, View } from "react-native";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { useState } from "react";
+import { Alert, View } from "react-native";
 import { useTranslations } from "use-intl";
 
-import { Text } from "@/components/app-text";
+import { Button } from "@/components/button";
+import { SelectList } from "@/components/choices";
 import { FormMessage } from "@/components/form-message";
 import { Screen } from "@/components/screen";
 import { LoadingView, RetryView } from "@/components/state-view";
 import { Paragraph, Title } from "@/components/text";
 import { useRecordProfile } from "@/features/health/record-screens";
-import {
-  knownIssues,
-  type LabReport,
-  type LabResult,
-  useDocumentReports,
-} from "@/features/upload/use-reports";
-import { formatDate, formatDateTime } from "@/lib/dates";
+import { ReportReview } from "@/features/review/report-review";
+import { useMoveDocument, useReport } from "@/features/review/use-review";
+import { useDocumentReports } from "@/features/upload/use-reports";
 import { useErrorText } from "@/lib/use-error-text";
-import { usePalette } from "@/theme/use-palette";
 
 /**
- * What was read from one document (Phase 4.6), read-only: each row as printed (name, value,
- * unit, range) so it can be held against the paper, with what needs checking. A draft (rule 4):
- * no flag and no judgement here; confirming and editing come with the review screen (Phase 5).
+ * Review of what was read from one document (Phase 5.5) - or of one typed-in report: a
+ * notice names either (review_ready: the document, critical_pending of a typed-in report:
+ * the report), so the id is tried as a document first. Drafts are checked and confirmed here;
+ * confirmed reports are shown as they are. Nothing is computed in the app (rule 6).
  */
-export default function DocumentReportsScreen() {
+export default function ReviewScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const t = useTranslations("app.upload.review");
-  const errorText = useErrorText();
   const tu = useTranslations("app.upload");
+  const errorText = useErrorText();
+  const router = useRouter();
   const { patients, own } = useRecordProfile();
   const reports = useDocumentReports(own?.id, id);
+  const notDocument = reports.isError;
+  const single = useReport(own?.id, id, notDocument);
+  const move = useMoveDocument(own?.id, id);
+  const [moving, setMoving] = useState(false);
+  const [target, setTarget] = useState<string | null>(null);
 
   if (!own && !patients.isPending) {
     return (
@@ -39,130 +42,85 @@ export default function DocumentReportsScreen() {
       </Screen>
     );
   }
-  if (reports.isPending) return <LoadingView />;
-  if (!reports.data) {
-    return <RetryView text={errorText(reports.error)} onRetry={() => void reports.refetch()} />;
+  if (!own || reports.isPending || (notDocument && single.isPending)) return <LoadingView />;
+  const list = reports.data ?? (single.data ? [single.data] : undefined);
+  if (!list) {
+    return (
+      <RetryView
+        text={errorText(single.error ?? reports.error)}
+        onRetry={() => void (notDocument ? single.refetch() : reports.refetch())}
+      />
+    );
   }
-  const drafts = reports.data.filter((r) => r.status === "needs_review");
-  const byAi = reports.data.some((r) => r.method === "ai");
-  const anyIssue = (code: string) =>
-    reports.data.some((r) => r.results.some((x) => x.issues.includes(code)));
-  const nameMismatch = anyIssue("name_mismatch");
-  const nameMissing = !nameMismatch && anyIssue("name_missing");
+  const drafts = list.filter((r) => r.status === "needs_review");
+  const byAi = list.some((r) => r.method === "ai");
+  // only the owner moves a document (0037); to another profile the user writes
+  const others = (patients.data ?? []).filter(
+    (x) => x.id !== own.id && (x.access_level === "owner" || x.access_level === "caregiver"),
+  );
+  const canMove = reports.data !== undefined && own.access_level === "owner" && drafts.length > 0;
+  const moveTo = () => {
+    const name = others.find((x) => x.id === target)?.full_name;
+    if (!target || !name) return;
+    // someone's health data changes person: always confirmed first (UI review M2)
+    Alert.alert(t("move"), t("moveConfirm", { name }), [
+      { text: t("cancel"), style: "cancel" },
+      {
+        text: t("move"),
+        onPress: () => move.mutate(target, { onSuccess: () => router.replace("/results") }),
+      },
+    ]);
+  };
   return (
     <Screen testID="document-reports">
       <Title>{t("title")}</Title>
-      {drafts.length > 0 && <FormMessage kind="warning" quiet text={t("draftNotice")} />}
+      <Paragraph muted>{own.full_name}</Paragraph>
+      {drafts.some((r) => r.source === "read") && (
+        <FormMessage kind="warning" quiet text={t("draftNotice")} />
+      )}
+      {drafts.some((r) => r.source === "typed") && (
+        <FormMessage kind="warning" quiet text={t("typedNotice")} />
+      )}
       {byAi && <FormMessage kind="warning" quiet text={t("byAi")} />}
-      {nameMismatch && <FormMessage kind="error" quiet text={t("nameMismatch")} />}
-      {nameMissing && <FormMessage kind="warning" quiet text={t("nameMissing")} />}
-      {reports.data.length === 0 ? (
+      {moving && (
+        // at the top, where the person is reading: the choice of profile, then "Шилжүүлэх"
+        <View testID="move-picker">
+          {others.length === 0 ? (
+            <Paragraph>{t("noOtherProfile")}</Paragraph>
+          ) : (
+            <>
+              <SelectList
+                label={t("moveTo")}
+                options={others.map((x) => x.id)}
+                value={target}
+                labelOf={(pid) => others.find((x) => x.id === pid)?.full_name ?? ""}
+                onSelect={setTarget}
+              />
+              <Button
+                label={t("move")}
+                disabled={target === null}
+                busy={move.isPending}
+                onPress={moveTo}
+              />
+            </>
+          )}
+          {move.error && <FormMessage kind="error" text={errorText(move.error)} />}
+          <Button label={t("cancel")} variant="link" onPress={() => setMoving(false)} />
+        </View>
+      )}
+      {list.length === 0 ? (
         <Paragraph>{t("empty")}</Paragraph>
       ) : (
-        reports.data.map((r) => <ReportCard key={r.id} report={r} />)
+        list.map((r) => (
+          <ReportReview
+            key={r.id}
+            patientId={own.id}
+            profileName={own.full_name}
+            report={r}
+            onMove={canMove ? () => setMoving(true) : undefined}
+          />
+        ))
       )}
-      {drafts.length > 0 && <Paragraph muted>{t("comingSoon")}</Paragraph>}
     </Screen>
   );
 }
-
-const DOCUMENT_ISSUES = new Set<string>(["name_mismatch", "name_missing"]);
-
-function collectedText(report: LabReport): string | null {
-  if (!report.collected_at) return null;
-  return report.collected_precision === "day"
-    ? formatDate(report.collected_at)
-    : formatDateTime(report.collected_at);
-}
-
-function ReportCard({ report }: { report: LabReport }) {
-  const t = useTranslations("app.upload.review");
-  const p = usePalette();
-  const collected = collectedText(report);
-  const meta = [report.lab_name, report.specimen].filter(Boolean).join(" · ");
-  return (
-    <View style={styles.section}>
-      <Text accessibilityRole="header" style={[styles.heading, { color: p.text }]}>
-        {report.panel_name ?? report.lab_name ?? t("untitled")}
-      </Text>
-      {report.status === "needs_review" && (
-        <Text style={[styles.meta, styles.draft, { color: p.feedback.warning.fg }]}>
-          {`${feedbackGlyph.warning} ${t("draftLabel")}`}
-        </Text>
-      )}
-      {meta.length > 0 && <Text style={[styles.meta, { color: p.textMuted }]}>{meta}</Text>}
-      <Text style={[styles.meta, { color: p.textMuted }]}>
-        {collected ? t("collected", { date: collected }) : t("dateUnknown")}
-      </Text>
-      <View style={[styles.card, { backgroundColor: p.surface, borderColor: p.border }]}>
-        {report.results.map((x, i) => (
-          <ResultRow key={x.id} result={x} first={i === 0} />
-        ))}
-      </View>
-    </View>
-  );
-}
-
-function ResultRow({ result, first }: { result: LabResult; first: boolean }) {
-  const t = useTranslations("app.upload.review");
-  const p = usePalette();
-  // the name is the document's, said once in the banner above - not on every row
-  const issues = knownIssues(result.issues).filter((i) => !DOCUMENT_ISSUES.has(i));
-  const value = [result.raw_value, result.raw_unit].filter(Boolean).join(" ");
-  const range = result.ref_text ? t("range", { range: result.ref_text }) : t("noRange");
-  // a critical limit as printed on the document, if any (rule 5: never one of ours)
-  const critical = result.critical_text ? t("critical", { range: result.critical_text }) : null;
-  const known =
-    result.test_name_mn && result.test_name_mn !== result.raw_name ? result.test_name_mn : null;
-  const issueText = issues.map((i) => t(`issues.${i}`)).join(", ");
-  return (
-    <View
-      accessible
-      accessibilityRole="text"
-      accessibilityLabel={[
-        result.raw_name,
-        value,
-        range,
-        critical,
-        issueText && `${t("check")}: ${issueText}`,
-      ]
-        .filter(Boolean)
-        .join(". ")}
-      style={[
-        styles.row,
-        !first && { borderTopColor: p.border, borderTopWidth: StyleSheet.hairlineWidth },
-      ]}
-      testID={`result-${result.position}`}
-    >
-      <View style={styles.line}>
-        <Text style={[styles.name, { color: p.text }]}>{result.raw_name}</Text>
-        <Text style={[styles.value, { color: p.text }]}>{value}</Text>
-      </View>
-      {known && <Text style={[styles.meta, { color: p.textMuted }]}>{known}</Text>}
-      <Text style={[styles.meta, { color: p.textMuted }]}>{range}</Text>
-      {critical && <Text style={[styles.meta, { color: p.textMuted }]}>{critical}</Text>}
-      {issues.length > 0 && (
-        <Text style={[styles.meta, { color: p.feedback.warning.fg }]}>
-          {`${feedbackGlyph.warning} ${t("check")}: ${issueText}`}
-        </Text>
-      )}
-    </View>
-  );
-}
-
-const styles = StyleSheet.create({
-  section: { gap: space.xs },
-  heading: { fontSize: fontSize.body, fontWeight: "700" },
-  card: {
-    marginTop: space.sm,
-    borderRadius: radius.lg,
-    borderWidth: StyleSheet.hairlineWidth,
-    overflow: "hidden",
-  },
-  row: { paddingHorizontal: space.lg, paddingVertical: space.md, gap: 2 },
-  line: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between", gap: space.sm },
-  name: { fontSize: fontSize.body, fontWeight: "600", flexShrink: 1 },
-  value: { fontSize: fontSize.body, fontVariant: ["tabular-nums"] },
-  meta: { fontSize: fontSize.caption },
-  draft: { fontWeight: "600" },
-});

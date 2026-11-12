@@ -356,3 +356,18 @@ async def test_a_typed_critical_draft_leaves_no_notice_on_the_old_profile(
     )
     assert r.status_code == 204, r.text
     assert await carer_notices() == 0  # someone else's result: no longer told here
+
+
+async def test_typed_reports_without_a_file_are_listed(
+    client: AsyncClient,
+    owner_engine: AsyncEngine,
+    code: str,  # noqa: F811
+) -> None:
+    _, h, base = await _profile(client, owner_engine)
+    r = await client.post(f"{base}/reports", headers=h, json=_typed(code))
+    assert r.status_code == 201, r.text
+    listed = await client.get(f"{base}/reports", headers=h)
+    assert [x["id"] for x in listed.json()] == [r.json()["id"]]
+    doctor, hd = await _signed_in(client, owner_engine)
+    await _grant(owner_engine, base, doctor, "doctor")
+    assert (await client.get(f"{base}/reports", headers=hd)).json() == []  # a draft: not theirs

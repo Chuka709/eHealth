@@ -12,14 +12,16 @@ from uuid import UUID, uuid4
 from fastapi import APIRouter, Depends, Response, status
 from pydantic import BaseModel, Field
 
-from labtrack.api.deps import PatientReadDb, PatientWriteDb
+from labtrack.api.deps import PatientReadDb, PatientWriteDb, PhiDb
 from labtrack.api.documents import LabReportOut, report_out
 from labtrack.api.errors import AppError, ErrorBody
 from labtrack.api.ratelimit import per_user
 from labtrack.config import get_settings
+from labtrack.db.sql import bound_text
 from labtrack.documents import reports, review
 
 router = APIRouter(prefix="/patients/{patient_id}/reports", tags=["lab-reports"])
+tests_router = APIRouter(prefix="/lab-tests", tags=["lab-reports"])
 
 _ERRORS: dict[int | str, dict[str, object]] = {
     s: {"model": ErrorBody} for s in (401, 403, 404, 409, 422, 429)
@@ -122,6 +124,32 @@ async def create_report(patient_id: UUID, body: ManualReport, db: PatientWriteDb
         rows=rows,
     )
     return await _out(db, patient_id, report_id)
+
+
+class ReportItem(BaseModel):
+    id: UUID
+    lab_name: str | None
+    collected_at: datetime | None
+    collected_precision: str
+    status: str
+    has_unconfirmed_critical: bool
+    created_at: datetime
+
+
+_TYPED = bound_text(
+    "select id, lab_name, collected_at, collected_precision, status::text as status,"
+    " has_unconfirmed_critical, created_at from lab_reports"
+    " where patient_id = :p and document_id is null"
+    " order by created_at desc limit 200"
+)
+
+
+@router.get("", response_model=list[ReportItem], responses=_ERRORS, dependencies=[_READ_LIMIT])
+async def list_typed_reports(patient_id: UUID, db: PatientReadDb) -> list[ReportItem]:
+    """Reports typed in without a file (a document's reports are listed with the document):
+    drafts for the profile's writers, confirmed ones for its readers too (RLS)."""
+    rows = (await db.execute(_TYPED, {"p": patient_id})).mappings().all()
+    return [ReportItem(**r) for r in rows]
 
 
 @router.get(
@@ -235,3 +263,24 @@ async def reject_report(
     seen = body.critical_seen if body else False
     await review.reject(db, patient_id, report_id, critical_seen=seen)
     return await _out(db, patient_id, report_id)
+
+
+class LabTestOut(BaseModel):
+    code: str
+    name_mn: str
+    name_en: str
+    canonical_unit: str | None
+    category: str
+
+
+_TESTS = bound_text(
+    "select code, name_mn, name_en, canonical_unit, category from test_catalog"
+    " where is_active order by category, name_mn"
+)
+
+
+@tests_router.get("", response_model=list[LabTestOut], responses=_ERRORS)
+async def list_lab_tests(db: PhiDb) -> list[LabTestOut]:
+    """The catalog's tests, for the person to pick the one a printed name means (review)."""
+    rows = (await db.execute(_TESTS)).mappings().all()
+    return [LabTestOut(**r) for r in rows]

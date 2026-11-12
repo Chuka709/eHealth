@@ -408,3 +408,12 @@ async def test_an_ambiguous_date_is_chosen_never_accepted(
     )
     assert r.status_code == 200, r.text
     assert "date_ambiguous" not in {i for x in r.json()["results"] for i in x["issues"]}
+
+
+async def test_the_test_catalog_lists_the_tests(
+    client: AsyncClient, owner_engine: AsyncEngine, code: str
+) -> None:
+    _, h, _ = await _profile(client, owner_engine)
+    r = await client.get("/api/v1/lab-tests", headers=h)
+    assert r.status_code == 200, r.text
+    assert any(t["code"] == code and t["canonical_unit"] == "g/L" for t in r.json())
