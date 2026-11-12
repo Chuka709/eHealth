@@ -223,6 +223,13 @@ create table lab_results (
   created_at timestamptz not null default now()
 );
 create index on lab_results (patient_id, test_code, collected_at desc);
+-- 0031 (Phase 4.1): `extraction_runs` — `patient_id` + `method` ('local'|'ai', Q50), `reader`,
+-- `error_code` (чөлөөт текст биш), app-д зөвхөн INSERT/SELECT, owner устгана. `lab_reports` —
+-- `specimen` нэмэгдсэн, `source_patient_name` ХАДГАЛАХГҮЙ (зөвхөн `name_match_score`),
+-- `recorded_by/updated_by/updated_at`; app `status`/`confirmed_*`-г тавьж, өөрчилж чадахгүй
+-- (draft — дүрэм 4; батлалт Phase 5). `lab_results` — `position`, issue-ийн тогтсон жагсаалт
+-- (CHECK). Composite FK: run/report → documents(id, patient_id), result → lab_reports(id,
+-- patient_id); баримт устахад тайлан үлдэж (`document_id` null), run устна.
 
 create table patient_targets (
   patient_id uuid references patients on delete cascade,
