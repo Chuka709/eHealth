@@ -15,11 +15,11 @@
     "@tanstack/react-query-persist-client": "^5.105.3",
     "@zxcvbn-ts/core": "^4.2.0",
     "@zxcvbn-ts/language-common": "^4.1.3",
-    "expo": "~58.0.25",
+    "expo": "58.0.24",
     "expo-camera": "~58.0.14",
     "expo-constants": "~58.0.16",
     "expo-crypto": "~58.0.8",
-    "expo-dev-client": "~58.0.20",
+    "expo-dev-client": "58.0.19",
     "expo-device": "~58.0.5",
     "expo-document-picker": "~58.0.5",
     "expo-file-system": "~58.0.13",
@@ -89,5 +89,13 @@
     "transformIgnorePatterns": [
       "node_modules/(?!((jest-)?react-native|@react-native(-community)?|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|use-intl|intl-messageformat|@formatjs/.*|@schummar/.*|@labtrack/.*|openapi-fetch|standard-navigation))"
     ]
+  },
+  "expo": {
+    "install": {
+      "exclude": [
+        "expo",
+        "expo-dev-client"
+      ]
+    }
   }
 }
