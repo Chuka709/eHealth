@@ -2152,6 +2152,10 @@ export interface components {
              * Format: date-time
              */
             previous_collected_at: string;
+            /** Previous Raw Value */
+            previous_raw_value: string | null;
+            /** Previous Raw Unit */
+            previous_raw_unit: string | null;
         };
         /** ChangePasswordRequest */
         ChangePasswordRequest: {

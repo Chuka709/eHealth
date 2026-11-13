@@ -13699,13 +13699,37 @@
             "type": "string",
             "format": "date-time",
             "title": "Previous Collected At"
+          },
+          "previous_raw_value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Previous Raw Value"
+          },
+          "previous_raw_unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Previous Raw Unit"
           }
         },
         "type": "object",
         "required": [
           "percent",
           "previous_value",
-          "previous_collected_at"
+          "previous_collected_at",
+          "previous_raw_value",
+          "previous_raw_unit"
         ],
         "title": "ChangeOut"
       },

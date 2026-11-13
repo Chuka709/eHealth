@@ -26,6 +26,7 @@
 4. **Анхны AAB-г Play Console-д гараар** upload (Google-ийн шаардлага); дараа нь `eas submit --platform android --profile beta` (track `internal`, `draft`).
 5. Internal testing → тестерүүдийн Gmail жагсаалт → opt-in линк.
 6. Шинэчлэл: native өөрчлөлтгүй бол `eas update --channel beta` (OTA, `runtimeVersion: fingerprint`), бусад үед шинэ build.
+7. **Android 17 (API 37) ба дотоод сүлжээ (2026.11.13):** `ACCESS_LOCAL_NETWORK`-ийг зарласан апп зөвшөөрөлгүйгээр дотоод хаяг (`10.0.2.2`, `192.168.x.x`) руу холбогдож чадахгүй — dev build-д `expo-dev-launcher` үүнийг зарладаг тул «ойролцоох төхөөрөмж» цонхыг **зөвшөөрнө** (татгалзвал апп сервертэй холбогдохгүй, adb reverse-ийн loopback л ажиллана). Beta/production нь нийтийн `https://` хаягтай, зөвшөөрөл зарладаггүй — targetSdk 37 болгох үед дахин шалгана.
 
 ## 3. Play Console declaration-ийн ноорог (хуульчаар батлуулна)
 - **App access:** «Хаалттай бүлгийн апп: аккаунтыг байгууллага олгоно, өөрөө бүртгүүлэх боломжгүй.» Review-д: админ урьдчилан бүртгэсэн туршилтын аккаунт (зохиомол өгөгдөлтэй — `just seed-demo`-той адил), идэвхжүүлсэн, нэр + нууц үг.

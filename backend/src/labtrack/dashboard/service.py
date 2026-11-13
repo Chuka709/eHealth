@@ -53,6 +53,9 @@ class Card:
     name_en: str
     latest: Value | None
     change: core.Change | None
+    # the previous value as ITS result printed it (the change line shows it, not a converted
+    # number - a reader compares what the results say)
+    previous_printed: tuple[str, str | None] | None
     spark: list[core.Point]
     spark_unit: str | None  # the unit of every spark point (the newest point's)
 
@@ -130,8 +133,10 @@ async def dashboard(db: AsyncSession, patient_id: UUID, now: datetime) -> Dashbo
     names = {t.code: t for t in await repo.tests(db, codes)}
     codes = [c for c in codes if c in names]  # a retired test is not shown
     history: dict[str, list[core.Point]] = defaultdict(list)
+    printed: dict[str, tuple[str, str | None]] = {}
     for row in await repo.history(db, patient_id, codes):
         history[row.test_code].append(_point(row))
+        printed[str(row.id)] = (row.raw_value, row.raw_unit)
     cards = []
     for code in codes:
         test = names[code]
@@ -144,9 +149,14 @@ async def dashboard(db: AsyncSession, patient_id: UUID, now: datetime) -> Dashbo
                 name_en=test.name_en,
                 latest=values.get(code),
                 change=(
-                    core.change(latest_point, history[code], test.category)
-                    if latest_point is not None
-                    else None
+                    change := (
+                        core.change(latest_point, history[code], test.category)
+                        if latest_point is not None
+                        else None
+                    )
+                ),
+                previous_printed=(
+                    printed.get(change.previous.result_id) if change is not None else None
                 ),
                 spark=(points := core.spark(history[code])),
                 spark_unit=points[-1].unit if points else None,

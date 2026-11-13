@@ -102,6 +102,7 @@ async def test_kidney_cards_with_tacrolimus_and_only_confirmed_values(
     assert (crea["latest"]["ref_low"], crea["latest"]["ref_high"]) == ("1", "2")
     assert crea["change"]["percent"] == "20"
     assert crea["change"]["previous_value"] == "1.00"
+    assert crea["change"]["previous_raw_value"] == "1.00"
     assert [p["value"] for p in crea["spark"]] == ["1.00", "1.20"]
     assert crea["spark_unit"] == crea["latest"]["unit"]
     hgb = body["cards"][2]

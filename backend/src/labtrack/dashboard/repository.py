@@ -37,8 +37,10 @@ _LATEST = bound_text(
     " where v.patient_id = :p"
 )
 _HISTORY = bound_text(
-    "select id, test_code, collected_at, value_canonical, comparator, unit_canonical, flag"
+    "select id, test_code, collected_at, value_canonical, comparator, unit_canonical, flag,"
+    " raw_value, raw_unit"
     " from (select lr.id, lr.test_code, lr.collected_at, lr.value_canonical, lr.comparator,"
+    " lr.raw_value, lr.raw_unit,"
     " lr.unit_canonical, lr.flag::text as flag, row_number() over (partition by lr.test_code"
     " order by lr.collected_at desc, lr.id desc) as n"
     " from lab_results lr"

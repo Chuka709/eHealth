@@ -66,8 +66,11 @@ class SparkPoint(BaseModel):
 
 class ChangeOut(BaseModel):
     percent: str  # whole percent, signed
-    previous_value: str
+    previous_value: str  # in the catalog unit (the percent's basis)
     previous_collected_at: datetime
+    # the previous value as its result printed it
+    previous_raw_value: str | None
+    previous_raw_unit: str | None
 
 
 class CardOut(BaseModel):
@@ -117,13 +120,15 @@ def _value_out(v: service.Value) -> ValueOut:
     )
 
 
-def _change_out(c: core.Change | None) -> ChangeOut | None:
+def _change_out(c: core.Change | None, printed: tuple[str, str | None] | None) -> ChangeOut | None:
     if c is None or c.previous.value is None:
         return None
     return ChangeOut(
         percent=num(c.percent) or "0",
         previous_value=num(c.previous.value) or "0",
         previous_collected_at=c.previous.collected_at,
+        previous_raw_value=printed[0] if printed else None,
+        previous_raw_unit=printed[1] if printed else None,
     )
 
 
@@ -138,7 +143,7 @@ async def get_dashboard(patient_id: UUID, db: PatientReadDb) -> DashboardOut:
                 name_mn=c.name_mn,
                 name_en=c.name_en,
                 latest=_value_out(c.latest) if c.latest is not None else None,
-                change=_change_out(c.change),
+                change=_change_out(c.change, c.previous_printed),
                 spark_unit=c.spark_unit,
                 spark=[
                     SparkPoint(

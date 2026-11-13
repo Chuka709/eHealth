@@ -3,6 +3,7 @@ import { useTranslations } from "use-intl";
 import { NavRow } from "@/components/nav-row";
 import { Screen } from "@/components/screen";
 import { EmergencyCardOffer } from "@/features/emergency/card-offer";
+import { LabSections } from "@/features/home/dashboard-sections";
 import { AppointmentSection, TodaySection, TransplantSection } from "@/features/home/home-sections";
 import { AdminNoticeBanner } from "@/features/me/admin-notice-banner";
 import { useMe } from "@/features/me/use-me";
@@ -14,7 +15,8 @@ import { usePatients } from "@/features/records/use-profile";
 import { HealthStatus } from "@/features/status/health-status";
 
 /**
- * Home (Phase 2.9): today's doses with one-tap "Уусан", the latest transplant, the next
+ * Home (Phase 2.9, 6.8): today's doses with one-tap "Уусан", lab values worth a look and the
+ * key cards (6.8), the latest transplant, the next
  * appointment - for the profile the record screens show. The account's own notices and
  * reminder warnings come first. Loading /me applies the language.
  */
@@ -32,7 +34,12 @@ export default function HomeScreen() {
       <ProfileSwitcher />
       {active && (
         // keyed: a profile switch starts every section afresh (no row kept from the last one)
-        <ProfileSections key={active.id} patientId={active.id} now={now} />
+        <ProfileSections
+          key={active.id}
+          patientId={active.id}
+          now={now}
+          canEdit={active.access_level === "owner" || active.access_level === "caregiver"}
+        />
       )}
       {active && (
         <NavRow
@@ -50,11 +57,21 @@ export default function HomeScreen() {
   );
 }
 
-function ProfileSections({ patientId, now }: { patientId: string; now: Date }) {
+function ProfileSections({
+  patientId,
+  now,
+  canEdit,
+}: {
+  patientId: string;
+  now: Date;
+  canEdit: boolean;
+}) {
   return (
     <>
       {/* the daily action first, within thumb reach */}
       <TodaySection patientId={patientId} now={now} />
+      {/* confirmed lab values worth a look, then the key cards (Phase 6.8) */}
+      <LabSections patientId={patientId} canEdit={canEdit} />
       <TransplantSection patientId={patientId} />
       <AppointmentSection patientId={patientId} now={now} />
     </>
