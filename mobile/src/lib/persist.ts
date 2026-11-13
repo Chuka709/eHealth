@@ -73,7 +73,11 @@ async function start(): Promise<void> {
     queryClient.removeQueries({
       predicate: (query) => query.meta?.account !== true && query.meta?.persist === true,
     });
+    return;
   }
+  // Restored before the network (6.10): what was saved is shown, never taken as fresh - the
+  // screens on it ask the server again however recently it was saved.
+  void queryClient.invalidateQueries({ predicate: (query) => query.meta?.persist === true });
 }
 
 /**
