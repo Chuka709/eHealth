@@ -601,7 +601,7 @@ $$;
 ## Тэмдэглэл
 - Батлагдсан утгыг засвал хуучин утга `audit_logs.diff`-д.
 - `lab_results.collected_at` нь `lab_reports.collected_at`-ийн хуулбар (trend индекс) — тайлангийн огноо өөрчлөгдөхөд trigger-ээр синк, тесттэй.
-- `latest_results` — **энгийн view** (`security_invoker`, `security_barrier`; 0038), materialized биш: materialized view эзнийхээ эрхээр уншсан мөрийг хадгалдаг тул RLS-ийг тойрно. Тест бүрийн хамгийн сүүлийн **батлагдсан** утга (ноорог, татгалзсан орохгүй — дүрэм 4), `test_code` ба огноотой мөр л; ижил агшинд — сүүлд батлагдсан тайлан. `(patient_id, test_code, collected_at desc)` индексээр.
+- `latest_results` — **энгийн view** (`security_invoker`, `security_barrier`; 0038), materialized биш: materialized view эзнийхээ эрхээр уншсан мөрийг хадгалдаг тул RLS-ийг тойрно. Тест бүрийн хамгийн сүүлийн **батлагдсан** утга (ноорог, татгалзсан орохгүй — дүрэм 4), `test_code` ба огноотой мөр л; ижил агшинд — сүүлд батлагдсан тайлан. `(patient_id, test_code, collected_at desc)` индексээр. Dashboard (6.10) ижил тодорхойлолтыг тест тус бүрээр `lateral`-аар уншина (RLS-ийн шалгалт цөөн мөрөнд) — нэгийг өөрчилбөл хоёуланг (`tests/rls/test_dashboard.py` харьцуулна).
 - `dashboard_cards (patient_id pk, test_codes text[], recorded_by, updated_by, created_at, updated_at)` — профайлын pin хийсэн картууд дарааллаар (0038). Мөргүй = эрхтний анхдагч картууд; хоосон жагсаалт = хэрэглэгч алийг ч сонгоогүй. Зөвхөн бичигч (эзэн, асран хамгаалагч) харж/өөрчилнө; DB шалгана: идэвхтэй каталогийн тест, давхардалгүй, ≤ 24.
 - Seed: `seed/lab_tests.json` → test_catalog, test_synonyms, unit_aliases, unit_conversions.
 

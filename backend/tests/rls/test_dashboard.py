@@ -21,6 +21,7 @@ _NOW = datetime.now(UTC)
 _LATEST = bound_text(
     "select test_code, raw_value from latest_results where patient_id = :p order by test_code"
 )
+_VIEW_IDS = bound_text("select id from latest_results where patient_id = :p")
 _CARDS = bound_text("select test_codes from dashboard_cards where patient_id = :p")
 _PUT = bound_text("insert into dashboard_cards (patient_id, test_codes) values (:p, :c)")
 
@@ -330,3 +331,31 @@ async def test_writer_columns_and_truncate_belong_to_the_database(
         with pytest.raises(DBAPIError, match=r"permission denied|cannot insert into view"):
             async with as_user(app_engine, owner) as conn:
                 await conn.execute(bound_text(sql), {"p": patient})
+
+
+async def test_the_repository_reads_what_the_view_defines(
+    app_engine: AsyncEngine, owner_engine: AsyncEngine
+) -> None:
+    """The dashboard reads test by test (6.10, not through the view): the same rows - newest
+    confirmed value, a draft never, the later-confirmed report on a tie - and none for others."""
+    from labtrack.dashboard import repository as repo  # noqa: PLC0415
+
+    owner, stranger = await make_user(owner_engine), await make_user(owner_engine)
+    patient = await make_patient(app_engine, owner)
+    await _report(owner_engine, patient, _NOW - timedelta(days=10), {"CREA": "1.40", "K": "4.1"})
+    await _report(owner_engine, patient, _NOW - timedelta(days=10), {"CREA": "1.20"})  # tie
+    await _report(owner_engine, patient, _NOW, {"CREA": "9.90"}, status="needs_review")
+    params = {"p": patient, "codes": ["CREA", "K"], "n": repo.HISTORY_PER_TEST}
+    async with as_user(app_engine, owner) as conn:
+        view = {r.id for r in (await conn.execute(_VIEW_IDS, {"p": patient})).all()}
+        latest = (await conn.execute(repo._LATEST, {"p": patient})).all()
+        history = (await conn.execute(repo._HISTORY, params)).all()
+    assert {r.id for r in latest} == view
+    assert sorted((r.test_code, r.raw_value) for r in latest) == [("CREA", "1.20"), ("K", "4.1")]
+    assert sorted((r.test_code, r.raw_value) for r in history) == [
+        ("CREA", "1.20"), ("CREA", "1.40"), ("K", "4.1")
+    ]  # fmt: skip
+    for user in (stranger, None):
+        async with as_user(app_engine, user) as conn:
+            assert (await conn.execute(repo._LATEST, {"p": patient})).all() == []
+            assert (await conn.execute(repo._HISTORY, params)).all() == []

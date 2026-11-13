@@ -363,8 +363,9 @@ _INTAKE_COLUMNS = (
     " as recorded_by_role from medication_intakes where patient_id = :p"
 )
 _INTAKES_RANGE = bound_text(
-    _INTAKE_COLUMNS + " and coalesce(scheduled_at, taken_at) >= :since"
-    " and coalesce(scheduled_at, taken_at) < :until"
+    # plain column comparisons: index conditions under the row policy (coalesce is not - 0039)
+    _INTAKE_COLUMNS + " and ((scheduled_at >= :since and scheduled_at < :until)"
+    " or (scheduled_at is null and taken_at >= :since and taken_at < :until))"
     " and (cast(:m as uuid) is null or medication_id = :m)"
     " order by coalesce(scheduled_at, taken_at) desc limit :limit"
 )

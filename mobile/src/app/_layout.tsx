@@ -1,4 +1,5 @@
 import "@/lib/intl-polyfill";
+import "@/lib/perf"; // the timing starts with the app (Phase 6 DoD)
 
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { colors } from "@labtrack/shared";

@@ -1,5 +1,6 @@
 import { flagGlyph, fontSize, radius, space } from "@labtrack/shared";
 import { useRouter } from "expo-router";
+import { useEffect } from "react";
 import { Alert, Linking, Pressable, StyleSheet, View } from "react-native";
 import { useTranslations } from "use-intl";
 
@@ -9,6 +10,7 @@ import { FormMessage } from "@/components/form-message";
 import { Paragraph, Title } from "@/components/text";
 import { CRITICAL_FLAGS, flagKey, flagToken } from "@/features/review/flag";
 import { formatDate, formatDateTime } from "@/lib/dates";
+import { markOnce } from "@/lib/perf";
 import { loading, OFFLINE_ERROR } from "@/lib/query-state";
 import { useErrorText } from "@/lib/use-error-text";
 import { usePalette } from "@/theme/use-palette";
@@ -38,6 +40,10 @@ export function LabSections({ patientId, canEdit }: { patientId: string; canEdit
     dashboard.data && Array.isArray(dashboard.data.cards) && Array.isArray(dashboard.data.attention)
       ? dashboard.data
       : undefined;
+  // shown with data: the Phase 6 DoD timing point (dev or a measuring build only)
+  useEffect(() => {
+    if (data) markOnce("home-lab-ready");
+  }, [data]);
   if (loading(dashboard)) {
     return <Paragraph muted>{t("loading")}</Paragraph>;
   }

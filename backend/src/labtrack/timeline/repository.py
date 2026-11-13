@@ -35,8 +35,10 @@ RANK = {
 }
 
 _ITEMS = bound_text(
-    "select kind, rank, id, day, precision, at, title, detail, ref_id, until_day,"
-    " results, flagged, unflagged, day > :today as planned from ("
+    # the page first, then the counts of its reports only (not of every report - 6.10)
+    "select y.kind, y.rank, y.id, y.day, y.precision, y.at, y.title, y.detail, y.ref_id,"
+    " y.until_day, c.results, c.flagged, c.unflagged, y.day > :today as planned from ("
+    "select * from ("
     # a transplant: its stored date is the first possible day of a month/year-only date
     " select 'transplant' as kind, 6 as rank, t.id, t.transplant_date as day,"
     " t.date_precision as precision, null::timestamptz as at, t.organ::text as title,"
@@ -71,21 +73,22 @@ _ITEMS = bound_text(
     " union all"
     " select 'report', 1, r.id, (r.collected_at at time zone 'Asia/Ulaanbaatar')::date,"
     " r.collected_precision, r.collected_at, r.lab_name, r.source, r.document_id, null,"
-    " (select count(*) from lab_results x where x.report_id = r.id"
-    " and x.patient_id = r.patient_id)::int,"
-    " (select count(*) from lab_results x where x.report_id = r.id"
-    " and x.patient_id = r.patient_id"
-    " and x.flag in ('low', 'high', 'critical_low', 'critical_high', 'abnormal'))::int,"
-    # values with no usable range (no_reference, unknown): never "all fine" by omission
-    " (select count(*) from lab_results x where x.report_id = r.id"
-    " and x.patient_id = r.patient_id and x.flag in ('no_reference', 'unknown'))::int"
+    " null, null, null"
     " from lab_reports r where r.patient_id = :p and r.status = 'confirmed'"
     " and r.collected_at is not null"
     " and (cast(:lab as text) is null or r.lab_name = :lab)"
     " ) x"
     " where x.kind = any(cast(:kinds as text[]))"
     " and (cast(:day as date) is null or (x.day, x.rank, x.id::text) < (:day, :rank, :id))"
-    " order by x.day desc, x.rank desc, x.id::text desc limit :n"
+    " order by x.day desc, x.rank desc, x.id::text desc limit :n) y"
+    " left join lateral (select count(*)::int as results,"
+    " (count(*) filter (where z.flag in ('low', 'high', 'critical_low', 'critical_high',"
+    " 'abnormal')))::int as flagged,"
+    # values with no usable range (no_reference, unknown): never "all fine" by omission
+    " (count(*) filter (where z.flag in ('no_reference', 'unknown')))::int as unflagged"
+    " from lab_results z where y.kind = 'report' and z.report_id = y.id"
+    " and z.patient_id = :p) c on y.kind = 'report'"
+    " order by y.day desc, y.rank desc, y.id::text desc"
 )
 _LABS = bound_text(
     "select lab_name, count(*)::int as reports, max(collected_at) as latest from lab_reports"

@@ -1,10 +1,12 @@
 import { Stack } from "expo-router";
+import { useEffect } from "react";
 
 import { LoadingView, RetryView } from "@/components/state-view";
 import { needsConsent, useConsents } from "@/features/consents/use-consents";
 import { useBiometricState } from "@/features/lock/biometric";
 import { useWizardActive } from "@/features/records/onboarding-store";
 import { ownProfile, usePatients } from "@/features/records/use-profile";
+import { startCachePersistence } from "@/lib/persist";
 import { useErrorText } from "@/lib/use-error-text";
 
 /**
@@ -21,6 +23,12 @@ export default function AppLayout() {
   // health data (the profiles) only once the consents are given (server: 403 before)
   const patients = usePatients({ enabled: consented });
   const wizardActive = useWizardActive();
+  // The saved records (encrypted, `meta.persist`) as soon as the consents are known to be
+  // given, not only once Home is up: Home then opens on them while the network refreshes
+  // them (Phase 6 DoD - Home p95 < 1.5 s). useLocalData in (main) awaits the same start.
+  useEffect(() => {
+    if (consented) void startCachePersistence().catch(() => undefined);
+  }, [consented]);
 
   if (consents.isPending || biometric.isPending) return <LoadingView />;
   // Fail closed without known consent state; a failed background refresh keeps the last one.

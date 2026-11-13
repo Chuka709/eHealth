@@ -26,28 +26,38 @@ _LINKED = bound_text(
     " where m.patient_id = :p and c.related_test_code is not null"
 )
 _PINNED = bound_text("select test_codes from dashboard_cards where patient_id = :p")
+# The latest confirmed value of each catalog test, as `latest_results` (0038) defines it, read
+# test by test through the (patient_id, test_code, collected_at desc) index: the row policy then
+# checks a handful of rows instead of all of the profile's results (Phase 6.10: 3000 values).
+# Keep it the view's definition: a change to one is a change to both (tests/rls/test_dashboard).
 _LATEST = bound_text(
     "select v.id, v.report_id, v.test_code, v.collected_at, v.raw_value, v.raw_unit,"
     " v.comparator, v.value_text, v.qualitative, v.unit_canonical, v.value_canonical,"
-    " v.ref_text, v.ref_low_canonical, v.ref_high_canonical, v.flag::text as flag,"
-    " lr.issues, t.name_mn, t.name_en, t.category"
-    " from latest_results v"
-    " join lab_results lr on lr.id = v.id and lr.patient_id = v.patient_id"
-    " join test_catalog t on t.code = v.test_code"
-    " where v.patient_id = :p"
-)
-_HISTORY = bound_text(
-    "select id, test_code, collected_at, value_canonical, comparator, unit_canonical, flag,"
-    " raw_value, raw_unit"
-    " from (select lr.id, lr.test_code, lr.collected_at, lr.value_canonical, lr.comparator,"
-    " lr.raw_value, lr.raw_unit,"
-    " lr.unit_canonical, lr.flag::text as flag, row_number() over (partition by lr.test_code"
-    " order by lr.collected_at desc, lr.id desc) as n"
+    " v.ref_text, v.ref_low_canonical, v.ref_high_canonical, v.flag, v.issues,"
+    " t.name_mn, t.name_en, t.category"
+    " from test_catalog t"
+    " cross join lateral (select lr.id, lr.report_id, lr.test_code, lr.collected_at,"
+    " lr.raw_value, lr.raw_unit, lr.comparator, lr.value_text, lr.qualitative,"
+    " lr.unit_canonical, lr.value_canonical, lr.ref_text, lr.ref_low_canonical,"
+    " lr.ref_high_canonical, lr.flag::text as flag, lr.issues"
     " from lab_results lr"
     " join lab_reports r on r.id = lr.report_id and r.patient_id = lr.patient_id"
-    " where lr.patient_id = :p and r.status = 'confirmed' and lr.collected_at is not null"
-    " and lr.test_code = any(cast(:codes as text[]))) x"
-    " where n <= :n"
+    " where lr.patient_id = :p and lr.test_code = t.code and r.status = 'confirmed'"
+    " and lr.collected_at is not null"
+    " order by lr.collected_at desc, r.confirmed_at desc nulls last, lr.id desc limit 1) v"
+)
+# the last :n confirmed values of each card's test, newest first (the same order)
+_HISTORY = bound_text(
+    "select h.id, h.test_code, h.collected_at, h.value_canonical, h.comparator,"
+    " h.unit_canonical, h.flag, h.raw_value, h.raw_unit"
+    " from unnest(cast(:codes as text[])) c(code)"
+    " cross join lateral (select lr.id, lr.test_code, lr.collected_at, lr.value_canonical,"
+    " lr.comparator, lr.unit_canonical, lr.flag::text as flag, lr.raw_value, lr.raw_unit"
+    " from lab_results lr"
+    " join lab_reports r on r.id = lr.report_id and r.patient_id = lr.patient_id"
+    " where lr.patient_id = :p and lr.test_code = c.code and r.status = 'confirmed'"
+    " and lr.collected_at is not null"
+    " order by lr.collected_at desc, r.confirmed_at desc nulls last, lr.id desc limit :n) h"
 )
 _TESTS = bound_text(
     "select code, name_mn, name_en, category from test_catalog"

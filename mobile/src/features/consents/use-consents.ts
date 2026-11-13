@@ -4,7 +4,7 @@ import bundledVersions from "@labtrack/shared/consent-versions.json";
 import { useMutation, useQuery } from "@tanstack/react-query";
 
 import { api } from "@/lib/api";
-import { dropPersistedHealthData } from "@/lib/persist";
+import { dropPersistedHealthData, stopCachePersistence } from "@/lib/persist";
 import { queryClient } from "@/lib/query-client";
 import { apiError } from "@/lib/use-error-text";
 
@@ -73,6 +73,8 @@ export function useGiveConsents() {
     onSuccess: (_, items) => {
       // a required consent withdrawn: no health data may stay cached (memory or disk)
       if (items.some((i) => (REQUIRED_KINDS as readonly string[]).includes(i.kind) && !i.granted)) {
+        // the saver stops too; (app)/_layout starts it again once the consents are given
+        stopCachePersistence();
         void dropPersistedHealthData();
       }
     },
