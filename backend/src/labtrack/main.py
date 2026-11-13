@@ -17,6 +17,7 @@ from labtrack.api import (
     me,
     patients,
     records,
+    timeline,
     trends,
 )
 from labtrack.api.errors import install_error_handlers
@@ -87,6 +88,7 @@ def create_app() -> FastAPI:
     app.include_router(lab_reports.tests_router, prefix=settings.api_prefix)
     app.include_router(dashboard.router, prefix=settings.api_prefix)
     app.include_router(trends.router, prefix=settings.api_prefix)
+    app.include_router(timeline.router, prefix=settings.api_prefix)
     app.include_router(emergency_card.router, prefix=settings.api_prefix)
     app.include_router(caregivers.router, prefix=settings.api_prefix)
     app.include_router(caregivers.me_router, prefix=settings.api_prefix)

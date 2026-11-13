@@ -105,6 +105,7 @@
     "review.open_issues",
     "review.too_many_rows",
     "review.unknown_test",
+    "timeline.bad_cursor",
     "timezone.too_many",
     "transplant.not_found",
     "trend.bad_range",

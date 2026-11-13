@@ -1441,6 +1441,9 @@
       "bad_range": "The start of the period must be before its end.",
       "unknown_test": "This test is not in the list.",
       "unknown_transplant": "The chosen transplant was not found."
+    },
+    "timeline": {
+      "bad_cursor": "The list position is not valid. Please reload."
     }
   },
   "import": {

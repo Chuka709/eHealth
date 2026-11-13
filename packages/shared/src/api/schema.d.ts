@@ -1174,6 +1174,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/patients/{patient_id}/timeline": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Timeline */
+        get: operations["get_timeline_api_v1_patients__patient_id__timeline_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/patients/{patient_id}/timeline/labs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Labs */
+        get: operations["get_labs_api_v1_patients__patient_id__timeline_labs_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/patients/{patient_id}/emergency-card": {
         parameters: {
             query?: never;
@@ -2611,6 +2645,15 @@ export interface components {
             /** Username */
             username: string;
         };
+        /** LabOut */
+        LabOut: {
+            /** Lab Name */
+            lab_name: string;
+            /** Reports */
+            reports: number;
+            /** Latest */
+            latest: string | null;
+        };
         /** LabReportOut */
         LabReportOut: {
             /**
@@ -3497,6 +3540,51 @@ export interface components {
             open: number;
             /** Percent Taken */
             percent_taken: string | null;
+        };
+        /** TimelineItem */
+        TimelineItem: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "transplant" | "medication_started" | "medication_stopped" | "regimen_changed" | "event" | "report";
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Day
+             * Format: date
+             */
+            day: string;
+            /** Precision */
+            precision: string;
+            /** At */
+            at: string | null;
+            /** Title */
+            title: string | null;
+            /** Detail */
+            detail: string | null;
+            /** Ref Id */
+            ref_id: string | null;
+            /** Until */
+            until: string | null;
+            /** Results */
+            results: number | null;
+            /** Flagged */
+            flagged: number | null;
+            /** Unflagged */
+            unflagged: number | null;
+            /** Planned */
+            planned: boolean;
+        };
+        /** TimelinePage */
+        TimelinePage: {
+            /** Items */
+            items: components["schemas"]["TimelineItem"][];
+            /** Next */
+            next: string | null;
         };
         /** TokenOut */
         TokenOut: {
@@ -10734,6 +10822,145 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TrendOut"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    get_timeline_api_v1_patients__patient_id__timeline_get: {
+        parameters: {
+            query?: {
+                kinds?: ("transplant" | "medication_started" | "medication_stopped" | "regimen_changed" | "event" | "report")[] | null;
+                lab?: string | null;
+                cursor?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                patient_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TimelinePage"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    get_labs_api_v1_patients__patient_id__timeline_labs_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                patient_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LabOut"][];
                 };
             };
             /** @description Unauthorized */
