@@ -2,6 +2,7 @@ import { fireEvent, renderRouter, screen, waitFor } from "expo-router/testing-li
 import { Alert } from "react-native";
 
 import { clearAccessToken, setStatus } from "@/features/auth/session-store";
+import { localDay } from "@/features/meds/use-today";
 import { apiBaseUrl } from "@/lib/api-base";
 import { queryClient } from "@/lib/query-client";
 
@@ -445,9 +446,11 @@ test("Android without exact alarms: Medicines says reminders may be late, Home d
 });
 
 // 08:00 in Ulaanbaatar today (UTC+8): midnight UTC of the Ulaanbaatar date
+// 08:00 in Ulaanbaatar (00:00Z) on the phone's own day, as the list plans it (localDay): the
+// UB date is the next day for part of a UTC day (CI runs in UTC).
 const morningDose = () => {
-  const ubDate = new Date(Date.now() + 8 * 3_600_000).toISOString().slice(0, 10);
-  return `${ubDate}T00:00:00.000Z`;
+  const { start } = localDay(new Date());
+  return new Date(Math.ceil(start / 86_400_000) * 86_400_000).toISOString();
 };
 
 test("Q24: who logged a dose, and another log of it, show as facts", async () => {
