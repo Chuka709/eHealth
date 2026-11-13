@@ -1116,6 +1116,47 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/patients/{patient_id}/dashboard": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Dashboard */
+        get: operations["get_dashboard_api_v1_patients__patient_id__dashboard_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/patients/{patient_id}/dashboard/cards": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Put Cards
+         * @description The profile's own cards, in order (an empty list: none).
+         */
+        put: operations["put_cards_api_v1_patients__patient_id__dashboard_cards_put"];
+        post?: never;
+        /**
+         * Reset Cards
+         * @description Back to the organ's cards.
+         */
+        delete: operations["reset_cards_api_v1_patients__patient_id__dashboard_cards_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/patients/{patient_id}/emergency-card": {
         parameters: {
             query?: never;
@@ -1831,6 +1872,16 @@ export interface components {
             /** Updated At */
             updated_at: string | null;
         };
+        /** AttentionOut */
+        AttentionOut: {
+            /** Test Code */
+            test_code: string;
+            /** Name Mn */
+            name_mn: string;
+            /** Name En */
+            name_en: string;
+            latest: components["schemas"]["ValueOut"];
+        };
         /** Body_upload_document_api_v1_patients__patient_id__documents_post */
         Body_upload_document_api_v1_patients__patient_id__documents_post: {
             /** File */
@@ -1921,6 +1972,21 @@ export interface components {
             /** Brand */
             brand: string | null;
         };
+        /** CardOut */
+        CardOut: {
+            /** Test Code */
+            test_code: string;
+            /** Name Mn */
+            name_mn: string;
+            /** Name En */
+            name_en: string;
+            latest: components["schemas"]["ValueOut"] | null;
+            change: components["schemas"]["ChangeOut"] | null;
+            /** Spark */
+            spark: components["schemas"]["SparkPoint"][];
+            /** Spark Unit */
+            spark_unit: string | null;
+        };
         /** CardPatient */
         CardPatient: {
             /** Full Name */
@@ -1958,6 +2024,11 @@ export interface components {
             follow_up_center: string | null;
             /** Follow Up Doctor */
             follow_up_doctor: string | null;
+        };
+        /** CardsIn */
+        CardsIn: {
+            /** Test Codes */
+            test_codes: string[];
         };
         /** CaregiverOut */
         CaregiverOut: {
@@ -1998,6 +2069,18 @@ export interface components {
             category: string;
             /** Forms */
             forms: string[];
+        };
+        /** ChangeOut */
+        ChangeOut: {
+            /** Percent */
+            percent: string;
+            /** Previous Value */
+            previous_value: string;
+            /**
+             * Previous Collected At
+             * Format: date-time
+             */
+            previous_collected_at: string;
         };
         /** ChangePasswordRequest */
         ChangePasswordRequest: {
@@ -2139,6 +2222,15 @@ export interface components {
              * Format: uuid
              */
             id: string;
+        };
+        /** DashboardOut */
+        DashboardOut: {
+            /** Custom */
+            custom: boolean;
+            /** Cards */
+            cards: components["schemas"]["CardOut"][];
+            /** Attention */
+            attention: components["schemas"]["AttentionOut"][];
         };
         /** DeleteRequest */
         DeleteRequest: {
@@ -3307,6 +3399,18 @@ export interface components {
             /** Current */
             current: boolean;
         };
+        /** SparkPoint */
+        SparkPoint: {
+            /**
+             * Collected At
+             * Format: date-time
+             */
+            collected_at: string;
+            /** Value */
+            value: string;
+            /** Comparator */
+            comparator: string | null;
+        };
         /** StatusRequest */
         StatusRequest: {
             /**
@@ -3701,6 +3805,51 @@ export interface components {
             input?: unknown;
             /** Context */
             ctx?: Record<string, never>;
+        };
+        /** ValueOut */
+        ValueOut: {
+            /**
+             * Result Id
+             * Format: uuid
+             */
+            result_id: string;
+            /**
+             * Report Id
+             * Format: uuid
+             */
+            report_id: string;
+            /**
+             * Collected At
+             * Format: date-time
+             */
+            collected_at: string;
+            /** Raw Value */
+            raw_value: string;
+            /** Raw Unit */
+            raw_unit: string | null;
+            /** Comparator */
+            comparator: string | null;
+            /** Value Text */
+            value_text: string | null;
+            /** Qualitative */
+            qualitative: string | null;
+            /** Value */
+            value: string | null;
+            /** Unit */
+            unit: string | null;
+            /** Ref Text */
+            ref_text: string | null;
+            /** Ref Low */
+            ref_low: string | null;
+            /** Ref High */
+            ref_high: string | null;
+            /** Flag */
+            flag: string;
+            /**
+             * Possibly Critical
+             * @description The lab marked it critical, or its printed critical range could not be used: shown as 'check the document', never called critical (Q60).
+             */
+            possibly_critical: boolean;
         };
         /** VitalItemIn */
         VitalItemIn: {
@@ -10132,6 +10281,207 @@ export interface operations {
             };
             /** @description Conflict */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    get_dashboard_api_v1_patients__patient_id__dashboard_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                patient_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DashboardOut"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    put_cards_api_v1_patients__patient_id__dashboard_cards_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                patient_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CardsIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    reset_cards_api_v1_patients__patient_id__dashboard_cards_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                patient_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

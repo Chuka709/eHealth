@@ -51,6 +51,7 @@
     "consent.required",
     "consent.version_outdated",
     "contact.not_found",
+    "dashboard.bad_cards",
     "document.conflict",
     "document.not_available",
     "document.not_found",
