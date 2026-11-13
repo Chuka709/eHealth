@@ -1432,6 +1432,9 @@
       "critical_needs_ack": "This result may hold a value that needs prompt review. Confirm you have seen it before deleting or rejecting.",
       "move_confirmed": "A document with a confirmed result cannot be moved to another profile.",
       "move_target": "You cannot move it to that profile."
+    },
+    "dashboard": {
+      "bad_cards": "The card list is not valid: a test is repeated, not in the list, or there are more than 24."
     }
   },
   "import": {

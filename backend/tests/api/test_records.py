@@ -381,13 +381,14 @@ async def test_catalog_search_and_listing_order(
                 )
             )
         found = (await c.get("/api/v1/medication-catalog?q=так", headers=h)).json()
-        assert [i["code"] for i in found] == ["TEST_TAC"]
+        # other tests may seed the real catalog (6.3): only our row is asserted
+        assert "TEST_TAC" in [i["code"] for i in found]
         by_brand = (await c.get("/api/v1/medication-catalog?q=prog", headers=h)).json()
-        assert [i["code"] for i in by_brand] == ["TEST_TAC"]
+        assert "TEST_TAC" in [i["code"] for i in by_brand]
         # LIKE wildcards are literal
         assert (await c.get("/api/v1/medication-catalog?q=%25", headers=h)).json() == []
         assert any(i["category"] == "immunosuppressant" for i in found)
-        code = found[0]["code"]
+        code = "TEST_TAC"
         await c.post(f"{base}/medications", json=_medication(name="Витамин Д"), headers=h)
         await c.post(
             f"{base}/medications",

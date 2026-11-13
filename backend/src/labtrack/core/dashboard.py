@@ -45,6 +45,7 @@ LEVEL = "@level"  # placeholder in a default list: the drug-level card(s)
 # the inhibitor levels a default card may show, in this order (docs/06 §1; MPA is not
 # routinely followed, so it is a card only when the person pins it)
 LEVEL_TESTS: tuple[str, ...] = ("TAC", "CSA", "EVR", "SIR")
+MAX_CARDS = 24  # as the database checks (0038)
 SPARK_POINTS = 10
 MAX_ATTENTION = 5
 ATTENTION_DAYS = 90
