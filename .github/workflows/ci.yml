@@ -59,6 +59,9 @@ jobs:
       - name: Typecheck (shared, mobile, web)
         run: pnpm -r typecheck
       - name: Tests (node:test, jest, vitest)
+        # every suite passed but Jest (mobile) did not exit afterwards and the job ran into its
+        # 20-minute limit (since 2026-11-04): `--forceExit` in mobile; a step limit of its own
+        timeout-minutes: 10
         run: pnpm -r test
       - name: Expo doctor
         working-directory: mobile
