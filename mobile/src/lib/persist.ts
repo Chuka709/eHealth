@@ -6,8 +6,10 @@ import { queryClient } from "./query-client";
 
 /**
  * The query cache, kept in the encrypted local store so the app shows the user's records
- * offline (docs/08). Opt-in per query - `meta: { persist: true }` - so account and session
- * data are never written to disk; health-data queries opt in as they are added.
+ * offline (docs/08). Opt-in per query - `meta: { persist: true }` - so credentials, tokens
+ * and session data are never written to disk; health-data queries opt in as they are added.
+ * The only account item kept is the consent state (kind, version, granted - no PHI; 6.10, H35),
+ * the guard in front of them on a cold start: weigh again if ConsentOut gains fields.
  */
 
 const CACHE_KEY = "query-cache";
@@ -65,6 +67,13 @@ async function start(): Promise<void> {
     unsubscribe();
   };
   await restored;
+  // stopped while restoring (a consent found missing, a wipe): what the restore put back in
+  // memory leaves again
+  if (started !== generation) {
+    queryClient.removeQueries({
+      predicate: (query) => query.meta?.account !== true && query.meta?.persist === true,
+    });
+  }
 }
 
 /**
@@ -88,7 +97,11 @@ export function healthDropCount(): number {
 export async function dropPersistedHealthData(): Promise<void> {
   drops += 1;
   queryClient.removeQueries({
-    predicate: (query) => query.meta?.persist === true || query.meta?.snapshot === true,
+    // not the consent state (`meta.account`): it is no health data, and the guard reads it to
+    // bring the consents screen back - it leaves the disk with the rest of the saved cache
+    predicate: (query) =>
+      query.meta?.account !== true &&
+      (query.meta?.persist === true || query.meta?.snapshot === true),
   });
   const store = openLocalStore() ?? (await localStore().catch(() => null));
   store?.remove(CACHE_KEY);

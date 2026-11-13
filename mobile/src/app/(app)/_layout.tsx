@@ -6,8 +6,15 @@ import { needsConsent, useConsents } from "@/features/consents/use-consents";
 import { useBiometricState } from "@/features/lock/biometric";
 import { useWizardActive } from "@/features/records/onboarding-store";
 import { ownProfile, usePatients } from "@/features/records/use-profile";
-import { startCachePersistence } from "@/lib/persist";
+import {
+  dropPersistedHealthData,
+  startCachePersistence,
+  stopCachePersistence,
+} from "@/lib/persist";
 import { useErrorText } from "@/lib/use-error-text";
+
+// The app's start: a consent state older than this came from the saved cache (H35).
+const APP_START = Date.now();
 
 /**
  * Signed-in area. Until the required consents are given for the current text versions, the
@@ -23,16 +30,31 @@ export default function AppLayout() {
   // health data (the profiles) only once the consents are given (server: 403 before)
   const patients = usePatients({ enabled: consented });
   const wizardActive = useWizardActive();
-  // The saved records (encrypted, `meta.persist`) as soon as the consents are known to be
-  // given, not only once Home is up: Home then opens on them while the network refreshes
-  // them (Phase 6 DoD - Home p95 < 1.5 s). useLocalData in (main) awaits the same start.
+  // The saved records (encrypted, `meta.persist`, with the last consent state) as soon as
+  // this signed-in, unlocked area mounts - not after the session refresh and the consents
+  // request: Home opens on them while the network refreshes them (Phase 6 DoD - Home p95 <
+  // 1.5 s; H35). Consents known to be missing (withdrawn here, elsewhere, or a newer required
+  // text): the saver stops and the health data leaves memory and disk. useLocalData in (main)
+  // awaits the same start.
+  const consentsKnownMissing = Boolean(consents.data) && !consented;
   useEffect(() => {
-    if (consented) void startCachePersistence().catch(() => undefined);
-  }, [consented]);
+    if (consentsKnownMissing) {
+      stopCachePersistence();
+      void dropPersistedHealthData();
+    } else {
+      void startCachePersistence().catch(() => undefined);
+    }
+  }, [consentsKnownMissing]);
+  // Only the saved state, and the server cannot be asked (offline, or the request failed):
+  // fail closed as before 6.10 - a revoked session on an offline phone shows nothing.
+  const savedOnly = consents.dataUpdatedAt < APP_START;
+  const unconfirmed =
+    savedOnly &&
+    (consents.isError || consents.failureCount > 0 || consents.fetchStatus === "paused");
 
   if (consents.isPending || biometric.isPending) return <LoadingView />;
   // Fail closed without known consent state; a failed background refresh keeps the last one.
-  if (!consents.data) {
+  if (!consents.data || unconfirmed) {
     return <RetryView text={errorText(consents.error)} onRetry={() => void consents.refetch()} />;
   }
   const mustConsent = needsConsent(consents.data);

@@ -1,4 +1,4 @@
-import { fireEvent, renderRouter, screen } from "expo-router/testing-library";
+import { fireEvent, renderRouter, screen, waitFor } from "expo-router/testing-library";
 import { Alert } from "react-native";
 
 import { clearAccessToken, setStatus } from "@/features/auth/session-store";
@@ -171,6 +171,56 @@ test("a changed text version asks again and says why", async () => {
   );
   await app();
   expect(await screen.findByText(/Нөхцөл шинэчлэгдсэн/)).toBeOnTheScreen();
+});
+
+test("a saved consent state the server no longer accepts brings the consent screen back (H35)", async () => {
+  // a cold start: the encrypted cache restored the last state (all given, older text)
+  const old = "draft-2026-09";
+  queryClient.setQueryData(
+    ["me", "consents"],
+    states({ terms: old, privacy: old, sensitive_data: old }, old),
+    { updatedAt: 0 },
+  );
+  consentState = states({ terms: old, privacy: old, sensitive_data: old }, "draft-2026-10");
+  await app();
+  expect(await screen.findByText(/Нөхцөл шинэчлэгдсэн/)).toBeOnTheScreen();
+});
+
+test("a saved consent state withdrawn elsewhere: the consents screen, the saved records dropped (H35)", async () => {
+  const now = "draft-2026-10";
+  queryClient.setQueryData(
+    ["me", "consents"],
+    states({ terms: now, privacy: now, sensitive_data: now }),
+    { updatedAt: 0 },
+  );
+  // a saved health record, as the encrypted cache restores it
+  queryClient
+    .getQueryCache()
+    .build(queryClient, { queryKey: ["patients"], meta: { persist: true } });
+  queryClient.setQueryData(["patients"], [], { updatedAt: 0 });
+  consentState = states({ privacy: now, sensitive_data: now }); // terms withdrawn on the web
+  await app();
+  expect(await screen.findByText(/доорх нөхцөлүүдийг уншаад зөвшөөрнө үү/)).toBeOnTheScreen();
+  await waitFor(() => expect(queryClient.getQueryData(["patients"])).toBeUndefined());
+});
+
+test("only a saved consent state and no server: closed as before, never Home (H35)", async () => {
+  const now = "draft-2026-10";
+  queryClient.setQueryData(
+    ["me", "consents"],
+    states({ terms: now, privacy: now, sensitive_data: now }),
+    { updatedAt: 0 },
+  );
+  route({
+    "/api/v1/me/consents": () => {
+      throw new TypeError("Network request failed");
+    },
+  });
+  await app();
+  expect(
+    await screen.findByRole("button", { name: /Дахин оролдох/ }, { timeout: 15000 }),
+  ).toBeOnTheScreen();
+  expect(screen.queryByTestId("home-screen")).toBeNull();
 });
 
 test("declining explains why the app cannot be used and offers sign-out", async () => {

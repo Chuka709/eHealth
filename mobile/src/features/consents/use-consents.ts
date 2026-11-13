@@ -27,6 +27,11 @@ export function useConsents() {
       if (!data) throw apiError(error);
       return data;
     },
+    // Kept with the saved records (encrypted, no health data in it): a cold start passes the
+    // consent guard on the last known state and shows the saved records at once, while this
+    // query and the session refresh run (Phase 6.10). A withdrawal drops it with the records;
+    // a newer required version from the server still brings the consent screen back.
+    meta: { persist: true, account: true },
   });
 }
 
