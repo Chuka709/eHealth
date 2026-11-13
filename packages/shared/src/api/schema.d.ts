@@ -1157,6 +1157,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/patients/{patient_id}/trends/{test_code}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Trend */
+        get: operations["get_trend_api_v1_patients__patient_id__trends__test_code__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/patients/{patient_id}/emergency-card": {
         parameters: {
             query?: never;
@@ -2290,6 +2307,45 @@ export interface components {
             medication_name: string;
             /** Recorded */
             recorded: ("taken" | "skipped") | null;
+        };
+        /** DoseOut */
+        DoseOut: {
+            /**
+             * Medication Id
+             * Format: uuid
+             */
+            medication_id: string;
+            /** Name */
+            name: string;
+            /** Series */
+            series: components["schemas"]["DoseSeriesOut"][];
+        };
+        /** DoseSeriesOut */
+        DoseSeriesOut: {
+            /** Unit */
+            unit: string | null;
+            /** Unit Text */
+            unit_text: string | null;
+            /** Steps */
+            steps: components["schemas"]["DoseStepOut"][];
+        };
+        /** DoseStepOut */
+        DoseStepOut: {
+            /**
+             * Starts On
+             * Format: date
+             */
+            starts_on: string;
+            /** Ends Before */
+            ends_before: string | null;
+            /** Amount */
+            amount: string | null;
+            /** Schedule Type */
+            schedule_type: string;
+            /** Days */
+            days: number[];
+            /** Planned */
+            planned: boolean;
         };
         /**
          * Elapsed
@@ -3730,6 +3786,152 @@ export interface components {
             created_at: string;
             /** Updated At */
             updated_at: string | null;
+        };
+        /** TrendAxisOut */
+        TrendAxisOut: {
+            /**
+             * Transplant Id
+             * Format: uuid
+             */
+            transplant_id: string;
+            /**
+             * Day Zero
+             * Format: date
+             */
+            day_zero: string;
+            /** Approximate */
+            approximate: boolean;
+        };
+        /** TrendEventOut */
+        TrendEventOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Kind */
+            kind: string;
+            /** Title */
+            title: string;
+            /**
+             * Started On
+             * Format: date
+             */
+            started_on: string;
+            /** Ended On */
+            ended_on: string | null;
+        };
+        /** TrendOut */
+        TrendOut: {
+            test: components["schemas"]["TrendTestOut"];
+            /** Points */
+            points: components["schemas"]["TrendPointOut"][];
+            /** Truncated */
+            truncated: boolean;
+            /** Doses */
+            doses: components["schemas"]["DoseOut"][];
+            /** Transplants */
+            transplants: components["schemas"]["TrendTransplantOut"][];
+            /** Events */
+            events: components["schemas"]["TrendEventOut"][];
+            axis: components["schemas"]["TrendAxisOut"] | null;
+        };
+        /** TrendPointOut */
+        TrendPointOut: {
+            /**
+             * Result Id
+             * Format: uuid
+             */
+            result_id: string;
+            /**
+             * Report Id
+             * Format: uuid
+             */
+            report_id: string;
+            /** Document Id */
+            document_id: string | null;
+            /** Lab Name */
+            lab_name: string | null;
+            /**
+             * Collected At
+             * Format: date-time
+             */
+            collected_at: string;
+            /** Collected Precision */
+            collected_precision: string;
+            /** Days Since Transplant */
+            days_since_transplant: number | null;
+            /** Around Transplant */
+            around_transplant: boolean;
+            /** Raw Value */
+            raw_value: string;
+            /** Raw Unit */
+            raw_unit: string | null;
+            /** Comparator */
+            comparator: string | null;
+            /** Value Text */
+            value_text: string | null;
+            /** Qualitative */
+            qualitative: string | null;
+            /** Value */
+            value: string | null;
+            /** Unit */
+            unit: string | null;
+            /** Ref Text */
+            ref_text: string | null;
+            /** Ref Low */
+            ref_low: string | null;
+            /** Ref High */
+            ref_high: string | null;
+            /** Critical Text */
+            critical_text: string | null;
+            /** Critical Low */
+            critical_low: string | null;
+            /** Critical High */
+            critical_high: string | null;
+            /** Flag */
+            flag: string;
+            /**
+             * Possibly Critical
+             * @description The lab marked it critical, or its printed critical range could not be used: shown as 'check the document', never called critical (Q60).
+             */
+            possibly_critical: boolean;
+        };
+        /** TrendTestOut */
+        TrendTestOut: {
+            /** Code */
+            code: string;
+            /** Name Mn */
+            name_mn: string;
+            /** Name En */
+            name_en: string;
+            /** Unit */
+            unit: string | null;
+            /** Decimals */
+            decimals: number;
+            /** Kind */
+            kind: string;
+            /** Category */
+            category: string;
+        };
+        /** TrendTransplantOut */
+        TrendTransplantOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Organ */
+            organ: string;
+            /**
+             * Transplant Date
+             * Format: date
+             */
+            transplant_date: string;
+            /** Date Precision */
+            date_precision: string;
+            /** Graft Status */
+            graft_status: string;
         };
         /** UserDetailOut */
         UserDetailOut: {
@@ -10461,6 +10663,78 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    get_trend_api_v1_patients__patient_id__trends__test_code__get: {
+        parameters: {
+            query?: {
+                since?: string | null;
+                until?: string | null;
+                transplant_id?: string | null;
+            };
+            header?: never;
+            path: {
+                patient_id: string;
+                test_code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TrendOut"];
+                };
             };
             /** @description Unauthorized */
             401: {

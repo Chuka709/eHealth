@@ -10,7 +10,6 @@ Numbers are strings (rule 7). Nothing here judges a value (rule 10b).
 """
 
 from datetime import UTC, datetime
-from decimal import Decimal
 from typing import Annotated
 from uuid import UUID
 
@@ -19,6 +18,7 @@ from pydantic import BaseModel, Field
 
 from labtrack.api.deps import PatientReadDb, PatientWriteDb
 from labtrack.api.errors import AppError, ErrorBody
+from labtrack.api.numbers import num
 from labtrack.api.ratelimit import per_user
 from labtrack.config import get_settings
 from labtrack.core import dashboard as core
@@ -35,14 +35,6 @@ _WRITE_LIMIT = Depends(
     per_user("dashboard_write", lambda: get_settings().rate_lab_review_per_minute)
 )
 TestCode = Annotated[str, Field(pattern=r"^[A-Z0-9_]{1,32}$")]
-
-
-def _num(value: Decimal | None) -> str | None:
-    """Plain notation (never "1E-7"), and no "-0"."""
-    if value is None:
-        return None
-    text = format(value, "f")
-    return text.lstrip("-") if value.is_zero() else text
 
 
 class ValueOut(BaseModel):
@@ -115,11 +107,11 @@ def _value_out(v: service.Value) -> ValueOut:
         comparator=v.comparator,
         value_text=v.value_text,
         qualitative=v.qualitative,
-        value=_num(v.value),
+        value=num(v.value),
         unit=v.unit,
         ref_text=v.ref_text,
-        ref_low=_num(v.ref_low),
-        ref_high=_num(v.ref_high),
+        ref_low=num(v.ref_low),
+        ref_high=num(v.ref_high),
         flag=v.flag,
         possibly_critical=v.possibly_critical,
     )
@@ -129,8 +121,8 @@ def _change_out(c: core.Change | None) -> ChangeOut | None:
     if c is None or c.previous.value is None:
         return None
     return ChangeOut(
-        percent=_num(c.percent) or "0",
-        previous_value=_num(c.previous.value) or "0",
+        percent=num(c.percent) or "0",
+        previous_value=num(c.previous.value) or "0",
         previous_collected_at=c.previous.collected_at,
     )
 
@@ -151,7 +143,7 @@ async def get_dashboard(patient_id: UUID, db: PatientReadDb) -> DashboardOut:
                 spark=[
                     SparkPoint(
                         collected_at=p.collected_at,
-                        value=_num(p.value) or "0",
+                        value=num(p.value) or "0",
                         comparator=p.comparator,
                     )
                     for p in c.spark

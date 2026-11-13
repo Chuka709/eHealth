@@ -1435,6 +1435,12 @@
     },
     "dashboard": {
       "bad_cards": "The card list is not valid: a test is repeated, not in the list, or there are more than 24."
+    },
+    "trend": {
+      "naive_time": "Send times with their time zone.",
+      "bad_range": "The start of the period must be before its end.",
+      "unknown_test": "This test is not in the list.",
+      "unknown_transplant": "The chosen transplant was not found."
     }
   },
   "import": {

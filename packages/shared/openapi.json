@@ -8857,6 +8857,155 @@
         }
       }
     },
+    "/api/v1/patients/{patient_id}/trends/{test_code}": {
+      "get": {
+        "tags": [
+          "trends"
+        ],
+        "summary": "Get Trend",
+        "operationId": "get_trend_api_v1_patients__patient_id__trends__test_code__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "patient_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Patient Id"
+            }
+          },
+          {
+            "name": "test_code",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Z0-9_]{1,32}$",
+              "title": "Test Code"
+            }
+          },
+          {
+            "name": "since",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Since"
+            }
+          },
+          {
+            "name": "until",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Until"
+            }
+          },
+          {
+            "name": "transplant_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Transplant Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrendOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          }
+        }
+      }
+    },
     "/api/v1/patients/{patient_id}/emergency-card": {
       "get": {
         "tags": [
@@ -13774,6 +13923,130 @@
         ],
         "title": "DoseAlertOut",
         "description": "What a dose alert was about, and what is recorded for that dose now (decision 3: a push\nalready sent is not withdrawn; the app shows the current state instead)."
+      },
+      "DoseOut": {
+        "properties": {
+          "medication_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Medication Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "series": {
+            "items": {
+              "$ref": "#/components/schemas/DoseSeriesOut"
+            },
+            "type": "array",
+            "title": "Series"
+          }
+        },
+        "type": "object",
+        "required": [
+          "medication_id",
+          "name",
+          "series"
+        ],
+        "title": "DoseOut"
+      },
+      "DoseSeriesOut": {
+        "properties": {
+          "unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unit"
+          },
+          "unit_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unit Text"
+          },
+          "steps": {
+            "items": {
+              "$ref": "#/components/schemas/DoseStepOut"
+            },
+            "type": "array",
+            "title": "Steps"
+          }
+        },
+        "type": "object",
+        "required": [
+          "unit",
+          "unit_text",
+          "steps"
+        ],
+        "title": "DoseSeriesOut"
+      },
+      "DoseStepOut": {
+        "properties": {
+          "starts_on": {
+            "type": "string",
+            "format": "date",
+            "title": "Starts On"
+          },
+          "ends_before": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ends Before"
+          },
+          "amount": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Amount"
+          },
+          "schedule_type": {
+            "type": "string",
+            "title": "Schedule Type"
+          },
+          "days": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Days"
+          },
+          "planned": {
+            "type": "boolean",
+            "title": "Planned"
+          }
+        },
+        "type": "object",
+        "required": [
+          "starts_on",
+          "ends_before",
+          "amount",
+          "schedule_type",
+          "days",
+          "planned"
+        ],
+        "title": "DoseStepOut"
       },
       "Elapsed": {
         "properties": {
@@ -18694,6 +18967,452 @@
           "updated_at"
         ],
         "title": "TransplantOut"
+      },
+      "TrendAxisOut": {
+        "properties": {
+          "transplant_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Transplant Id"
+          },
+          "day_zero": {
+            "type": "string",
+            "format": "date",
+            "title": "Day Zero"
+          },
+          "approximate": {
+            "type": "boolean",
+            "title": "Approximate"
+          }
+        },
+        "type": "object",
+        "required": [
+          "transplant_id",
+          "day_zero",
+          "approximate"
+        ],
+        "title": "TrendAxisOut"
+      },
+      "TrendEventOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "kind": {
+            "type": "string",
+            "title": "Kind"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "started_on": {
+            "type": "string",
+            "format": "date",
+            "title": "Started On"
+          },
+          "ended_on": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ended On"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "title",
+          "started_on",
+          "ended_on"
+        ],
+        "title": "TrendEventOut"
+      },
+      "TrendOut": {
+        "properties": {
+          "test": {
+            "$ref": "#/components/schemas/TrendTestOut"
+          },
+          "points": {
+            "items": {
+              "$ref": "#/components/schemas/TrendPointOut"
+            },
+            "type": "array",
+            "title": "Points"
+          },
+          "truncated": {
+            "type": "boolean",
+            "title": "Truncated"
+          },
+          "doses": {
+            "items": {
+              "$ref": "#/components/schemas/DoseOut"
+            },
+            "type": "array",
+            "title": "Doses"
+          },
+          "transplants": {
+            "items": {
+              "$ref": "#/components/schemas/TrendTransplantOut"
+            },
+            "type": "array",
+            "title": "Transplants"
+          },
+          "events": {
+            "items": {
+              "$ref": "#/components/schemas/TrendEventOut"
+            },
+            "type": "array",
+            "title": "Events"
+          },
+          "axis": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TrendAxisOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "test",
+          "points",
+          "truncated",
+          "doses",
+          "transplants",
+          "events",
+          "axis"
+        ],
+        "title": "TrendOut"
+      },
+      "TrendPointOut": {
+        "properties": {
+          "result_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Result Id"
+          },
+          "report_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Report Id"
+          },
+          "document_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Document Id"
+          },
+          "lab_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lab Name"
+          },
+          "collected_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Collected At"
+          },
+          "collected_precision": {
+            "type": "string",
+            "title": "Collected Precision"
+          },
+          "days_since_transplant": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Days Since Transplant"
+          },
+          "around_transplant": {
+            "type": "boolean",
+            "title": "Around Transplant"
+          },
+          "raw_value": {
+            "type": "string",
+            "title": "Raw Value"
+          },
+          "raw_unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Raw Unit"
+          },
+          "comparator": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comparator"
+          },
+          "value_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value Text"
+          },
+          "qualitative": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Qualitative"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          },
+          "unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unit"
+          },
+          "ref_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ref Text"
+          },
+          "ref_low": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ref Low"
+          },
+          "ref_high": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ref High"
+          },
+          "critical_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Critical Text"
+          },
+          "critical_low": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Critical Low"
+          },
+          "critical_high": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Critical High"
+          },
+          "flag": {
+            "type": "string",
+            "title": "Flag"
+          },
+          "possibly_critical": {
+            "type": "boolean",
+            "title": "Possibly Critical",
+            "description": "The lab marked it critical, or its printed critical range could not be used: shown as 'check the document', never called critical (Q60)."
+          }
+        },
+        "type": "object",
+        "required": [
+          "result_id",
+          "report_id",
+          "document_id",
+          "lab_name",
+          "collected_at",
+          "collected_precision",
+          "days_since_transplant",
+          "around_transplant",
+          "raw_value",
+          "raw_unit",
+          "comparator",
+          "value_text",
+          "qualitative",
+          "value",
+          "unit",
+          "ref_text",
+          "ref_low",
+          "ref_high",
+          "critical_text",
+          "critical_low",
+          "critical_high",
+          "flag",
+          "possibly_critical"
+        ],
+        "title": "TrendPointOut"
+      },
+      "TrendTestOut": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "name_mn": {
+            "type": "string",
+            "title": "Name Mn"
+          },
+          "name_en": {
+            "type": "string",
+            "title": "Name En"
+          },
+          "unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unit"
+          },
+          "decimals": {
+            "type": "integer",
+            "title": "Decimals"
+          },
+          "kind": {
+            "type": "string",
+            "title": "Kind"
+          },
+          "category": {
+            "type": "string",
+            "title": "Category"
+          }
+        },
+        "type": "object",
+        "required": [
+          "code",
+          "name_mn",
+          "name_en",
+          "unit",
+          "decimals",
+          "kind",
+          "category"
+        ],
+        "title": "TrendTestOut"
+      },
+      "TrendTransplantOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "organ": {
+            "type": "string",
+            "title": "Organ"
+          },
+          "transplant_date": {
+            "type": "string",
+            "format": "date",
+            "title": "Transplant Date"
+          },
+          "date_precision": {
+            "type": "string",
+            "title": "Date Precision"
+          },
+          "graft_status": {
+            "type": "string",
+            "title": "Graft Status"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "organ",
+          "transplant_date",
+          "date_precision",
+          "graft_status"
+        ],
+        "title": "TrendTransplantOut"
       },
       "UserDetailOut": {
         "properties": {
