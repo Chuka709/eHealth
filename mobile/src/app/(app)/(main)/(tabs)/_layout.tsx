@@ -10,7 +10,7 @@ import { NotificationsButton } from "@/features/notices/notifications-button";
 import { usePalette } from "@/theme/use-palette";
 
 /**
- * The main tabs: Нүүр · Эм · Тохиргоо. Each tab names itself in its header; the tab bar
+ * The main tabs: Нүүр · Хандлага · Эм · Профайл · Тохиргоо. Each tab names itself in its header; the tab bar
  * reads its labels (the glyphs are decoration, hidden from screen readers).
  */
 function HeaderTitle({ children, color }: { children: string; color: string }) {
@@ -63,6 +63,14 @@ export default function TabsLayout() {
             </View>
           ),
           tabBarIcon: ({ color }) => <TabIcon name="home-variant-outline" color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="trends"
+        options={{
+          title: t("trends.title"),
+          tabBarLabel: t("tabs.trends"),
+          tabBarIcon: ({ color }) => <TabIcon name="chart-line" color={color} />,
         }}
       />
       <Tabs.Screen

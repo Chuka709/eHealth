@@ -123,9 +123,9 @@ jest.mock("expo-share-intent", () => ({
 }));
 // Charts (Phase 6.6): echarts/zrender are ESM and draw through react-native-svg. Tests check what a
 // screen asks the chart to draw (the option), not the SVG: the instance records its last option.
-jest.mock("@wuba/react-native-echarts", () => {
+jest.mock("@wuba/react-native-echarts/svgChart", () => {
   const { View } = require("react-native");
-  return { SvgChart: View, SVGRenderer: {} };
+  return { __esModule: true, default: View, SVGRenderer: {} };
 });
 jest.mock("echarts/charts", () => ({ LineChart: {}, ScatterChart: {} }));
 jest.mock("echarts/components", () => ({

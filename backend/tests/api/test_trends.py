@@ -172,3 +172,17 @@ async def test_a_reader_sees_the_trend(client: AsyncClient, owner_engine: AsyncE
     assert [p["value"] for p in body["points"]] == ["7.0"]
     assert len(body["doses"]) == 1
     assert body["axis"] is not None
+
+
+async def test_the_tested_list_has_confirmed_tests_only(
+    client: AsyncClient, owner_engine: AsyncEngine
+) -> None:
+    _, h, base = await _profile(client, owner_engine)
+    t0 = datetime(2025, 3, 1, 8, tzinfo=UTC)
+    await _value(owner_engine, base, t0, "7.2")
+    await _value(owner_engine, base, t0 + timedelta(days=5), "7.9")
+    await _value(owner_engine, base, t0 + timedelta(days=9), "1.0", test="CREA")
+    await _value(owner_engine, base, t0 + timedelta(days=20), "5", test="K", status="needs_review")
+    r = await client.get(f"{base}/trends", headers=h)
+    assert r.status_code == 200, r.text
+    assert [(x["test_code"], x["results"]) for x in r.json()] == [("CREA", 1), ("TAC", 2)]

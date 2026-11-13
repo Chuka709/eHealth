@@ -20,7 +20,7 @@ from labtrack.api.errors import AppError, ErrorBody
 from labtrack.api.numbers import num
 from labtrack.api.ratelimit import per_user
 from labtrack.config import get_settings
-from labtrack.trends import service
+from labtrack.trends import repository, service
 
 router = APIRouter(prefix="/patients/{patient_id}/trends", tags=["trends"])
 
@@ -121,6 +121,31 @@ class TrendOut(BaseModel):
     transplants: list[TrendTransplantOut]
     events: list[TrendEventOut]
     axis: TrendAxisOut | None
+
+
+class TestedOut(BaseModel):
+    test_code: str
+    name_mn: str
+    name_en: str
+    category: str
+    results: int  # confirmed values
+    latest: datetime
+
+
+@router.get("", response_model=list[TestedOut], responses=_ERRORS, dependencies=[_LIMIT])
+async def list_tested(patient_id: UUID, db: PatientReadDb) -> list[TestedOut]:
+    """The tests the profile has confirmed values of, most recent first (rule 4)."""
+    return [
+        TestedOut(
+            test_code=r.test_code,
+            name_mn=r.name_mn,
+            name_en=r.name_en,
+            category=r.category,
+            results=r.results,
+            latest=r.latest,
+        )
+        for r in await repository.tested(db, patient_id)
+    ]
 
 
 @router.get("/{test_code}", response_model=TrendOut, responses=_ERRORS, dependencies=[_LIMIT])

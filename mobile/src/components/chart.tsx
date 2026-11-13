@@ -1,4 +1,5 @@
-import { SVGRenderer, SvgChart } from "@wuba/react-native-echarts";
+// the SVG entry only: the package root also imports the Skia chart (no Skia module here)
+import SvgChart, { SVGRenderer } from "@wuba/react-native-echarts/svgChart";
 import { LineChart, ScatterChart } from "echarts/charts";
 import {
   DataZoomComponent,

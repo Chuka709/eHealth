@@ -427,7 +427,8 @@
       "home": "Home",
       "meds": "Medicines",
       "settings": "Settings",
-      "profile": "Profile"
+      "profile": "Profile",
+      "trends": "Trends"
     },
     "meds": {
       "title": "Medicines",
@@ -1259,6 +1260,58 @@
         "possibleCritical": "May need prompt review",
         "typedNotice": "This is a draft typed in by hand. Check each value against the result again. Only confirmed values go into the history and charts."
       }
+    },
+    "trends": {
+      "title": "Trends",
+      "search": "Search tests",
+      "empty": "No confirmed lab results yet. Trends appear here once you add and confirm results.",
+      "noMatch": "No test matches the search.",
+      "count": "{count} results · latest {date}",
+      "period": "Period",
+      "periods": {
+        "3m": "3 months",
+        "6m": "6 months",
+        "1y": "1 year",
+        "5y": "5 years",
+        "all": "All"
+      },
+      "axis": "Axis",
+      "axes": {
+        "date": "Date",
+        "days": "Since transplant (days)"
+      },
+      "daysApprox": "The transplant date is known only to the month or year, so the day count is approximate (never more than the real time).",
+      "chartLabel": "Trend chart of {name}, {count} results. Every value is in the list below.",
+      "legend": "Thin grey steps: the reference range printed on each result (it may change with the lab). Red dashed: the critical limit printed on the result. Point shapes: ● within range, ▲ outside range, ◆ critical, hollow - no range, or a \"<\"/\">\" value. Dotted vertical lines: transplant, events.",
+      "legendDose": "Dashed steps (right axis): the recorded daily dose of {medicine}.",
+      "doseNote": "Doses are shown as recorded. Your doctor interprets how dose and results relate; talk to your doctor about any dose change.",
+      "aroundTransplant": "around the transplant (date not exact)",
+      "daysAfter": "{days} days after the transplant",
+      "daysBefore": "{days} days before the transplant",
+      "values": "Results",
+      "openSource": "Open the source result",
+      "lab": "Lab: {lab}",
+      "truncated": "The latest {limit} results are shown. Choose a shorter period.",
+      "noValues": "No results in this period.",
+      "doses": "Dose history ({medicine})",
+      "doseStep": "From {from}: {amount} {unit} a day",
+      "doseStepWeekly": "From {from}: {amount} {unit} on dosing days",
+      "doseNone": "From {from}: no dose recorded",
+      "dosePlanned": "Planned",
+      "seriesLabels": {
+        "value": "Result",
+        "refLow": "Reference low",
+        "refHigh": "Reference high",
+        "criticalLow": "Critical low",
+        "criticalHigh": "Critical high",
+        "dose": "Dose",
+        "days": "days"
+      },
+      "doseNotDrawn": "Doses planned ahead, on a weekly schedule or in another unit are not on the chart - they are in the dose history.",
+      "daysAfterApprox": "≈ {days} days after the transplant",
+      "daysBeforeApprox": "≈ {days} days before the transplant",
+      "notDrawn": "Not on the chart (the unit cannot be converted)",
+      "noProfile": "Choose a profile."
     }
   },
   "status": {

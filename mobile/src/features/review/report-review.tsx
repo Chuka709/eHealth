@@ -1,4 +1,4 @@
-import { type Flag, feedbackGlyph, flagGlyph, fontSize, radius, space } from "@labtrack/shared";
+import { feedbackGlyph, flagGlyph, fontSize, radius, space } from "@labtrack/shared";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import { Alert, Linking, StyleSheet, View } from "react-native";
@@ -13,6 +13,8 @@ import { knownIssues, type LabReport, type LabResult } from "@/features/upload/u
 import { formatDate, formatDateTime } from "@/lib/dates";
 import { useErrorText } from "@/lib/use-error-text";
 import { usePalette } from "@/theme/use-palette";
+
+import { CRITICAL_FLAGS, FLAGS, flagToken } from "./flag";
 
 import { localMoment } from "./moments";
 import { useReviewActions } from "./use-review";
@@ -29,7 +31,6 @@ import { useReviewActions } from "./use-review";
 // on every row, but about the report: shown once, above the rows
 const REPORT_ISSUES = new Set(["name_mismatch", "name_missing", "date_old", "date_inconsistent"]);
 const DATE_TO_PICK = new Set(["date_missing", "date_ambiguous", "date_future"]);
-const CRITICAL_FLAGS = new Set(["critical_low", "critical_high"]);
 
 export function isCritical(row: LabResult): boolean {
   return (
@@ -58,24 +59,8 @@ export function openRowCount(report: LabReport): number {
   return rows.length + about.size;
 }
 
-const FLAGS = new Set([
-  "normal",
-  "low",
-  "high",
-  "critical_low",
-  "critical_high",
-  "abnormal",
-  "no_reference",
-  "unknown",
-]);
 // accepted as matching the printout, but still about a possibly critical value: not "✓"
 const STILL_CRITICAL = new Set(["possible_critical", "critical_edited"]);
-
-function flagToken(flag: string): Flag {
-  if (CRITICAL_FLAGS.has(flag)) return "critical";
-  if (flag === "normal" || flag === "low" || flag === "high" || flag === "abnormal") return flag;
-  return "no_reference";
-}
 
 function collectedText(report: LabReport): string | null {
   if (!report.collected_at) return null;

@@ -1157,6 +1157,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/patients/{patient_id}/trends": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Tested
+         * @description The tests the profile has confirmed values of, most recent first (rule 4).
+         */
+        get: operations["list_tested_api_v1_patients__patient_id__trends_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/patients/{patient_id}/trends/{test_code}": {
         parameters: {
             query?: never;
@@ -3540,6 +3560,24 @@ export interface components {
             open: number;
             /** Percent Taken */
             percent_taken: string | null;
+        };
+        /** TestedOut */
+        TestedOut: {
+            /** Test Code */
+            test_code: string;
+            /** Name Mn */
+            name_mn: string;
+            /** Name En */
+            name_en: string;
+            /** Category */
+            category: string;
+            /** Results */
+            results: number;
+            /**
+             * Latest
+             * Format: date-time
+             */
+            latest: string;
         };
         /** TimelineItem */
         TimelineItem: {
@@ -10751,6 +10789,73 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    list_tested_api_v1_patients__patient_id__trends_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                patient_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TestedOut"][];
+                };
             };
             /** @description Unauthorized */
             401: {

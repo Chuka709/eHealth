@@ -15,6 +15,17 @@ from labtrack.db.sql import bound_text
 MAX_POINTS = 2000  # one test over decades of monthly tests, with room to spare
 MAX_EVENTS = 500
 
+# the tests the profile has confirmed values of, most recent first (the Trends tab)
+_TESTED = bound_text(
+    "select lr.test_code, t.name_mn, t.name_en, t.category, count(*)::int as results,"
+    " max(lr.collected_at) as latest"
+    " from lab_results lr"
+    " join lab_reports r on r.id = lr.report_id and r.patient_id = lr.patient_id"
+    " join test_catalog t on t.code = lr.test_code"
+    " where lr.patient_id = :p and r.status = 'confirmed' and lr.collected_at is not null"
+    " group by lr.test_code, t.name_mn, t.name_en, t.category"
+    " order by max(lr.collected_at) desc, lr.test_code limit 300"
+)
 _TEST = bound_text(
     "select code, name_mn, name_en, canonical_unit, decimals, kind::text as kind, category"
     " from test_catalog where code = :c"
@@ -54,6 +65,10 @@ _REGIMENS = bound_text(
     " from medication_regimens where patient_id = :p"
     " and medication_id = any(cast(:m as uuid[]))"
 )
+
+
+async def tested(db: AsyncSession, patient_id: UUID) -> Sequence[Row[Any]]:
+    return (await db.execute(_TESTED, {"p": patient_id})).all()
 
 
 async def test(db: AsyncSession, code: str) -> Row[Any] | None:

@@ -23,6 +23,7 @@ Accounts (username - what it is for):
 """
 
 import argparse
+import random
 import secrets
 import subprocess
 import sys
@@ -162,6 +163,9 @@ class User:
 
     def put(self, path: str, body: dict[str, Any]) -> Any:
         return _ok(self.c.put(f"/api/v1{path}", json=body, headers=self.h))
+
+    def patch(self, path: str, body: dict[str, Any]) -> Any:
+        return _ok(self.c.patch(f"/api/v1{path}", json=body, headers=self.h))
 
     def consent(self, *, caregiver: bool = False, patient_id: str | None = None) -> None:
         current = {i["kind"]: i["current_version"] for i in self.get("/me/consents")}
@@ -333,6 +337,47 @@ def _kidney(u: User) -> None:
     )
 
 
+def _lab_history(u: User, pid: str, months: int) -> None:
+    """Monthly confirmed results (typed in and confirmed through the API, as a person would):
+    creatinine, tacrolimus, potassium, haemoglobin; the lab changes halfway (another printed
+    reference range - the chart shows it as a step). Values are made up, for demo only."""
+    if u.get(f"/patients/{pid}/timeline?kinds=report&limit=1")["items"]:
+        return  # already there
+    rnd = random.Random(7)  # noqa: S311 - made-up demo values, not a secret
+    start = _today() - timedelta(days=30 * months)
+    for n in range(months):
+        day = start + timedelta(days=30 * n)
+        second_lab = n >= months // 2
+        rows = [
+            ("Креатинин", f"{rnd.uniform(95, 135):.0f}", "мкмоль/л",
+             "62-106" if second_lab else "53-115", "CREA"),
+            ("Такролимус", f"{rnd.uniform(4.5, 11.5):.1f}", "нг/мл", "5-10", "TAC"),
+            ("Кали", f"{rnd.uniform(3.6, 5.6):.1f}", "ммоль/л", "3.5-5.1", "K"),
+            ("Гемоглобин", f"{rnd.uniform(112, 150):.0f}", "г/л", "120-160", "HGB"),
+        ]  # fmt: skip
+        report = u.post(
+            f"/patients/{pid}/reports",
+            {
+                "lab_name": "Хувийн лаб" if second_lab else "УНТЭ",
+                "collected_at": _ub(day, "08:30"),
+                "collected_precision": "minute",
+                "results": [
+                    {"raw_name": name, "raw_value": value, "raw_unit": unit,
+                     "ref_text": ref, "test_code": code}
+                    for name, value, unit, ref, code in rows
+                ],
+            },
+        )  # fmt: skip
+        for row in report["results"]:
+            for issue in row["issues"]:
+                if issue not in row["acknowledged"]:
+                    u.patch(
+                        f"/patients/{pid}/reports/{report['id']}/results/{row['id']}",
+                        {"acknowledge": [issue]},
+                    )
+        u.post(f"/patients/{pid}/reports/{report['id']}/confirm", {})
+
+
 def _liver(u: User) -> None:
     pid = u.profile("Оюун Ганбат")
     u.post(
@@ -419,6 +464,10 @@ def main() -> int:
     _require_dev_stack()
     parser = argparse.ArgumentParser()
     parser.add_argument("--reset", action="store_true", help="retire the demo accounts first")
+    parser.add_argument(
+        "--labs", type=int, default=0, metavar="MONTHS",
+        help="add monthly confirmed lab results to demo_kidney (Phase 6 charts)",
+    )  # fmt: skip
     args = parser.parse_args()
     if args.reset:
         _retire()
@@ -463,6 +512,9 @@ def main() -> int:
                 f"/patients/{pid}/caregiver-alerts",
                 {"missed_dose_after_min": 30, "critical_result": False},
             )
+        if args.labs:
+            owner = users["demo_kidney"]
+            _lab_history(owner, owner.profile("Батболд Дорж"), args.labs)
         # demo_pending: registered, never activated - a fresh token on every run
         uid = admin.register("demo_pending", "Идэвхжүүлээгүй")
         if uid is None:

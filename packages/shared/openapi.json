@@ -8857,6 +8857,99 @@
         }
       }
     },
+    "/api/v1/patients/{patient_id}/trends": {
+      "get": {
+        "tags": [
+          "trends"
+        ],
+        "summary": "List Tested",
+        "description": "The tests the profile has confirmed values of, most recent first (rule 4).",
+        "operationId": "list_tested_api_v1_patients__patient_id__trends_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "patient_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Patient Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TestedOut"
+                  },
+                  "title": "Response List Tested Api V1 Patients  Patient Id  Trends Get"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          }
+        }
+      }
+    },
     "/api/v1/patients/{patient_id}/trends/{test_code}": {
       "get": {
         "tags": [
@@ -18050,6 +18143,45 @@
         ],
         "title": "SummaryOut",
         "description": "Counts only: no \"on time\" threshold, no colour, no judgement (Q23, rule 10)."
+      },
+      "TestedOut": {
+        "properties": {
+          "test_code": {
+            "type": "string",
+            "title": "Test Code"
+          },
+          "name_mn": {
+            "type": "string",
+            "title": "Name Mn"
+          },
+          "name_en": {
+            "type": "string",
+            "title": "Name En"
+          },
+          "category": {
+            "type": "string",
+            "title": "Category"
+          },
+          "results": {
+            "type": "integer",
+            "title": "Results"
+          },
+          "latest": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Latest"
+          }
+        },
+        "type": "object",
+        "required": [
+          "test_code",
+          "name_mn",
+          "name_en",
+          "category",
+          "results",
+          "latest"
+        ],
+        "title": "TestedOut"
       },
       "TimelineItem": {
         "properties": {
