@@ -19,7 +19,6 @@ import { formatDateTime } from "@/lib/dates";
 import { localStore } from "@/lib/local-store";
 import { useErrorText } from "@/lib/use-error-text";
 import { usePalette } from "@/theme/use-palette";
-
 import { useRecordProfile } from "./record-screens";
 import {
   dismissFailedVital,
@@ -30,6 +29,7 @@ import {
   useVitals,
   type Vital,
 } from "./use-health";
+import { VitalsChart } from "./vitals-chart";
 
 /** What the user picks to enter; "bp" is one reading of upper + lower (+ pulse). */
 export const ENTRY_KINDS = [
@@ -140,6 +140,7 @@ export function VitalsScreen() {
           ))}
         </View>
       )}
+      <VitalsChart vitals={vitals.data} />
       <Title>{t("latest")}</Title>
       {latest.size === 0 && <Paragraph>{t("noValue")}</Paragraph>}
       {[...latest.values()].map((r) => (

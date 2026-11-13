@@ -822,7 +822,11 @@
         "glucoseUnitIs": "You noted that your meter shows mmol/L.",
         "glucoseChange": "Change the unit",
         "pendingSome": "{n, plural, one {# reading} other {# readings}} will be sent once connected.",
-        "waiting": "Waiting to be sent"
+        "waiting": "Waiting to be sent",
+        "chartKind": "Which reading",
+        "chartLabel": "Chart of {kind}, {count} readings. Every reading is in the list below.",
+        "chartBpLegend": "Solid line, circles: systolic; dashed line, triangles: diastolic.",
+        "chartPeriod": "Readings of the last 90 days. One-off urine and fluid amounts are not charted - they are in the list."
       },
       "loadFailed": "Could not load",
       "deleteTitle": "Delete “{name}”?",
@@ -1351,6 +1355,53 @@
       "daysBeforeApprox": "≈ {days} days before the transplant",
       "notDrawn": "Not on the chart (the unit cannot be converted)",
       "noProfile": "Choose a profile."
+    },
+    "timeline": {
+      "title": "Timeline",
+      "rowHint": "Transplant, medicines, events and lab results in one place",
+      "show": "Show",
+      "groups": {
+        "transplant": "Transplant",
+        "medication": "Medicines",
+        "event": "Treatments, events",
+        "report": "Lab results"
+      },
+      "lab": "Lab",
+      "allLabs": "All labs",
+      "noneShown": "Choose what to show.",
+      "empty": "Nothing recorded yet.",
+      "month": "{month}/{year}",
+      "year": "{year}",
+      "dayYear": "{year} (month and day not known)",
+      "dayMonth": "{year}.{month} (day not known)",
+      "planned": "Planned",
+      "transplant": "Transplant: {organ}",
+      "graft": "Graft status: {status}",
+      "started": "{name} - started",
+      "stopped": "{name} - not taken from this day",
+      "changed": "{name} - dose or schedule updated",
+      "until": "Ended: {date}",
+      "report": "Lab result",
+      "results": "{count} values",
+      "flagged": "Marked outside the range: {flagged} / {count}",
+      "unflagged": "Not checked against a range: {count}",
+      "typed": "Typed in",
+      "compare": "Compare two results",
+      "pickTwo": "Choose the two results to compare from the list.",
+      "compareGo": "Compare ({n}/2)",
+      "compareCancel": "Cancel",
+      "compareScreen": {
+        "title": "Compare results",
+        "note": "Each value is as its result printed it. Another lab may print another range or unit.",
+        "noDate": "No date",
+        "noLab": "No lab printed",
+        "absent": "Not in this result",
+        "notConfirmed": "Only confirmed results are compared."
+      },
+      "startsAhead": "{name} - starts",
+      "stopsAhead": "{name} - not taken from this day",
+      "changesAhead": "{name} - dose or schedule changes",
+      "untilAhead": "Ends: {date}"
     }
   },
   "status": {

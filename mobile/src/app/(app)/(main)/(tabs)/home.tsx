@@ -50,6 +50,15 @@ export default function HomeScreen() {
           testID="home-results"
         />
       )}
+      {active && (
+        <NavRow
+          icon="timeline-text-outline"
+          label={t("app.timeline.title")}
+          hint={t("app.timeline.rowHint")}
+          onPress={() => router.push("/timeline")}
+          testID="home-timeline"
+        />
+      )}
       <EmergencyCardOffer />
       {/* the server connection only when it is a problem (2.12): no developer status on Home */}
       <HealthStatus problemsOnly />
