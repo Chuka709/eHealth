@@ -8,6 +8,7 @@ from labtrack.api import (
     admin,
     auth,
     caregivers,
+    clinicians,
     dashboard,
     documents,
     emergency_card,
@@ -96,6 +97,8 @@ def create_app() -> FastAPI:
     app.include_router(caregivers.me_router, prefix=settings.api_prefix)
     app.include_router(shares.router, prefix=settings.api_prefix)
     app.include_router(shares.me_router, prefix=settings.api_prefix)
+    app.include_router(clinicians.router, prefix=settings.api_prefix)
+    app.include_router(clinicians.me_router, prefix=settings.api_prefix)
     app.include_router(share_links.router, prefix=settings.api_prefix)
     app.include_router(share_links.public_router, prefix=settings.api_prefix)
     app.include_router(admin.router, prefix=settings.api_prefix)

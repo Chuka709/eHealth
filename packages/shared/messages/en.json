@@ -1670,6 +1670,19 @@
       "link_not_found": "Link not found. Refresh the list and try again.",
       "open_failed": "The link or PIN is wrong, or the link has ended. Ask the profile's owner to check.",
       "session_invalid": "Viewing time is over. Open the link again with its PIN."
+    },
+    "clinician": {
+      "not_treating": "You cannot write on this profile as a doctor. Check that the owner invited you as a doctor.",
+      "no_unit": "The catalog has no unit to set a target for this test.",
+      "target_conflict": "A target starting on or after this day already exists.",
+      "target_not_found": "Target not found or already ended.",
+      "note_not_found": "Note not found.",
+      "invalid_number": "Enter a valid number.",
+      "target_empty": "Enter a lower or an upper limit.",
+      "target_order": "The lower limit cannot exceed the upper limit.",
+      "target_day": "A target cannot start before yesterday or more than a year ahead.",
+      "target_implausible": "This value is beyond what the test can show. Please check the number.",
+      "not_a_level_test": "Level statistics are not given for this test."
     }
   },
   "import": {

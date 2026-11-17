@@ -82,6 +82,14 @@ EXECUTE_MATRIX: dict[str, set[str]] = {
         "respond_access_invitation(uuid,boolean)",
         "revoke_access_invitation(uuid)",
         "revoke_share(uuid,uuid)",
+        # 0043: a doctor's targets and notes
+        "add_doctor_note(uuid,text)",
+        "end_patient_target(uuid,date)",
+        "is_treating_doctor(uuid)",
+        "profile_doctor_notes(uuid)",
+        "profile_targets(uuid)",
+        "remove_doctor_note(uuid)",
+        "set_patient_target(uuid,text,numeric,numeric,date,text)",
         # 0041: share links
         "create_share_link(uuid,text,text,text[],date,date,integer,integer)",
         "owner_share_link_views(uuid)",
