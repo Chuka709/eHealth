@@ -93,7 +93,7 @@ async def test_level_stats_are_numbers_only_with_a_reason_when_too_few(
     owner_engine: AsyncEngine, client_from: ClientFactory
 ) -> None:
     async with client_from() as c:
-        owner, base, _ = await _doctor_on(c, owner_engine)
+        owner, base, doc = await _doctor_on(c, owner_engine)
         pid = UUID(base.rsplit("/", 1)[1])
         r = await c.get(f"{base}/level-stats/TAC", headers=owner)
         assert r.status_code == 200
@@ -127,12 +127,22 @@ async def test_level_stats_are_numbers_only_with_a_reason_when_too_few(
                     ),
                     {"r": report, "p": pid, "v": v, "at": at},
                 )
-        body = (await c.get(f"{base}/level-stats/TAC", headers=owner)).json()
+        body = (await c.get(f"{base}/level-stats/TAC", headers=doc)).json()
         assert body["reason"] is None
         assert body["n"] == 6
         assert body["cv_percent"] is not None
         assert isinstance(body["mean"], str)
+        assert isinstance(body["sd"], str)
         assert len(body["values"]) == 6
+        assert {v["lab"] for v in body["values"]} == {"lab"}
+        assert body["labs"] == ["lab"]
+        assert body["lab_unknown"] == 0
+        assert body["settle_months"] == 6
         assert body["in_target_percent"] is None  # no target set
+        # the patient gets CV% alone: no mean, SD or values (Q63-7)
+        mine = (await c.get(f"{base}/level-stats/TAC", headers=owner)).json()
+        assert mine["cv_percent"] == body["cv_percent"]
+        assert (mine["mean"], mine["sd"], mine["values"]) == (None, None, [])
+        assert (mine["with_target"], mine["in_target_percent"], mine["labs"]) == (0, None, [])
         # only tacrolimus for now (Q63): another test gives no number
         assert (await c.get(f"{base}/level-stats/CREA", headers=owner)).status_code == 422

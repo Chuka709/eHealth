@@ -3301,6 +3301,8 @@ export interface components {
         /**
          * LevelStatsOut
          * @description Numbers only (H15): no threshold, colour or judgement - the app adds the reviewed text.
+         *     The mean, SD and the values themselves go to a doctor only; everyone else gets CV% (Q63-7,
+         *     physician 2026-11-18).
          */
         LevelStatsOut: {
             /** Test Code */
@@ -3328,6 +3330,8 @@ export interface components {
             in_target_percent: string | null;
             /** Counted From */
             counted_from: string | null;
+            /** Settle Months */
+            settle_months: number;
             /** Bounds Left Out */
             bounds_left_out: number;
             /** Not Numeric Left Out */
@@ -3344,6 +3348,10 @@ export interface components {
             same_day_left_out: number;
             /** Reason */
             reason: string | null;
+            /** Labs */
+            labs: string[];
+            /** Lab Unknown */
+            lab_unknown: number;
             /** Values */
             values: components["schemas"]["LevelValueOut"][];
         };
@@ -3360,6 +3368,8 @@ export interface components {
             target_low: string | null;
             /** Target High */
             target_high: string | null;
+            /** Lab */
+            lab: string | null;
         };
         /** LiveTokenOut */
         LiveTokenOut: {

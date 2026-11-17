@@ -18311,6 +18311,10 @@
             ],
             "title": "Counted From"
           },
+          "settle_months": {
+            "type": "integer",
+            "title": "Settle Months"
+          },
           "bounds_left_out": {
             "type": "integer",
             "title": "Bounds Left Out"
@@ -18350,6 +18354,17 @@
             ],
             "title": "Reason"
           },
+          "labs": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Labs"
+          },
+          "lab_unknown": {
+            "type": "integer",
+            "title": "Lab Unknown"
+          },
           "values": {
             "items": {
               "$ref": "#/components/schemas/LevelValueOut"
@@ -18371,6 +18386,7 @@
           "in_target",
           "in_target_percent",
           "counted_from",
+          "settle_months",
           "bounds_left_out",
           "not_numeric_left_out",
           "other_unit_left_out",
@@ -18379,10 +18395,12 @@
           "duplicates_left_out",
           "same_day_left_out",
           "reason",
+          "labs",
+          "lab_unknown",
           "values"
         ],
         "title": "LevelStatsOut",
-        "description": "Numbers only (H15): no threshold, colour or judgement - the app adds the reviewed text."
+        "description": "Numbers only (H15): no threshold, colour or judgement - the app adds the reviewed text.\nThe mean, SD and the values themselves go to a doctor only; everyone else gets CV% (Q63-7,\nphysician 2026-11-18)."
       },
       "LevelValueOut": {
         "properties": {
@@ -18416,6 +18434,17 @@
               }
             ],
             "title": "Target High"
+          },
+          "lab": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lab"
           }
         },
         "type": "object",
@@ -18423,7 +18452,8 @@
           "collected_on",
           "value",
           "target_low",
-          "target_high"
+          "target_high",
+          "lab"
         ],
         "title": "LevelValueOut"
       },

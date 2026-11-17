@@ -119,7 +119,7 @@ function LevelCard({ patientId }: { patientId: string }) {
   return (
     <View style={card} testID="level-stats">
       <Title>{t("title")}</Title>
-      <Paragraph muted>{t("what")}</Paragraph>
+      <Paragraph muted>{t("what", { months: stats.data?.settle_months ?? 6 })}</Paragraph>
       <Segmented
         label={t("period")}
         options={MONTHS}
@@ -180,9 +180,16 @@ function LevelNumbers({ stats }: { stats: LevelStats }) {
       </Paragraph>
       {leftOut.map((k) => (
         <Paragraph muted key={k}>
-          {t(`leftOut.${k}`, { n: stats[k] })}
+          {t(`leftOut.${k}`, { n: stats[k], months: stats.settle_months })}
         </Paragraph>
       ))}
+      {/* values from different labs may come from different methods (Q63-6) */}
+      {stats.labs.length > 1 && (
+        <FormMessage kind="warning" text={t("labsMixed", { labs: stats.labs.join(", ") })} />
+      )}
+      {stats.lab_unknown > 0 && (
+        <FormMessage kind="warning" text={t("labUnknown", { n: stats.lab_unknown })} />
+      )}
       {/* the counted values themselves, so the doctor can check what went into the numbers */}
       {stats.values.length > 0 && (
         <Button
@@ -195,7 +202,11 @@ function LevelNumbers({ stats }: { stats: LevelStats }) {
         stats.values.map((v) => (
           <Row
             key={v.collected_on}
-            label={formatDate(`${v.collected_on}T12:00:00Z`)}
+            label={
+              v.lab
+                ? `${formatDate(`${v.collected_on}T12:00:00Z`)} · ${v.lab}`
+                : formatDate(`${v.collected_on}T12:00:00Z`)
+            }
             value={`${v.value} ${unit}`}
           />
         ))}

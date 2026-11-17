@@ -7,8 +7,9 @@ the share of values inside the doctor's target - numbers only. No threshold, no 
 - confirmed values with an exact number, in the test's catalog unit; whatever is left out is
   counted by its reason (a bound like "< 2", text, another unit, the early weeks, a value
   entered twice, a second value on the same day - only the day's first counts, Q63);
-- taken at least 3 months after the latest transplant - on the latest day it may have been
-  when only its month or year is known (the early weeks are expected to swing);
+- taken at least 6 months after the latest transplant (Q63-3, physician 2026-11-18) - from
+  the latest day it may have been when only its month or year is known (the early months are
+  expected to swing);
 - at least 5 such values; fewer, and the reason is given instead of a number;
 - for tacrolimus only, for now (LEVEL_STATS_TESTS): which level tests and which samples
   (trough) a doctor decides (Q63).
@@ -29,7 +30,7 @@ from labtrack.core.lab_values import Value
 _UB = ZoneInfo("Asia/Ulaanbaatar")
 MIN_VALUES = 5
 LEVEL_STATS_TESTS: tuple[str, ...] = ("TAC",)
-SETTLE_DAYS = 90  # "≥ 3 сарын дараах"
+SETTLE_MONTHS = 6  # "≥ 6 сарын дараах" (Q63-3)
 
 Reason = Literal["no_transplant", "too_few", "zero_mean"]
 
@@ -42,6 +43,7 @@ class LevelPoint:
     unit: str | None
     target_low: Decimal | None = None  # the doctor's target in force that day
     target_high: Decimal | None = None
+    lab: str | None = None  # the lab that printed it (Q63-6: methods differ between labs)
 
     @property
     def collected_on(self) -> date:
@@ -57,19 +59,40 @@ class LevelStats:
     with_target: int  # values that had a target in force
     in_target: int
     in_target_percent: Decimal | None
-    counted_from: date | None  # the first day that could count (3 months after the transplant)
+    counted_from: date | None  # the first day that could count (6 months after the transplant)
     bounds_left_out: int  # "< x" / "> x" values
     not_numeric_left_out: int  # printed text that is not a number
     other_unit_left_out: int  # not in the catalog unit
-    early_left_out: int  # within 3 months of the transplant
+    early_left_out: int  # within 6 months of the transplant
     duplicates_left_out: int  # the same value at the same time (entered twice)
     same_day_left_out: int  # a second value on one day: only the day's first counts (Q63)
     used: tuple[LevelPoint, ...]
     reason: Reason | None  # why no number is given
 
+    @property
+    def labs(self) -> tuple[str, ...]:
+        """The labs of the counted values (named ones), so mixed labs can be shown (Q63-6).
+        A lab name is read from the report: spacing and letter case do not make another lab."""
+        named: dict[str, str] = {}
+        for p in self.used:
+            if p.lab and p.lab.strip():
+                named.setdefault(lab_key(p.lab), " ".join(p.lab.split()))
+        return tuple(sorted(named.values()))
+
+    @property
+    def lab_unknown(self) -> int:
+        """Counted values whose lab is not named: they may come from another lab."""
+        return sum(1 for p in self.used if not (p.lab and p.lab.strip()))
+
+
+def lab_key(name: str) -> str:
+    """One key per lab name as printed: spacing and letter case ignored."""
+    return " ".join(name.split()).casefold()
+
 
 def settled_from(transplant_day: date, precision: str) -> date:
-    """The first day counted: 3 months after the latest day the transplant may have been."""
+    """The first day counted: 6 months after the latest day the transplant may have been
+    (the same day of the month, or the month's last day when it has none)."""
     if precision == "year":
         latest = date(transplant_day.year, 12, 31)
     elif precision == "month":
@@ -79,7 +102,10 @@ def settled_from(transplant_day: date, precision: str) -> date:
         latest = nxt - timedelta(days=1)
     else:
         latest = transplant_day
-    return latest + timedelta(days=SETTLE_DAYS)
+    month = latest.month - 1 + SETTLE_MONTHS
+    year, month = latest.year + month // 12, month % 12 + 1
+    last = (date(year + month // 12, month % 12 + 1, 1) - timedelta(days=1)).day
+    return date(year, month, min(latest.day, last))
 
 
 def _round(x: Decimal, places: str = "0.1") -> Decimal:
@@ -92,7 +118,7 @@ def level_stats(
     unit: str,
     transplants: list[tuple[date, str]],
 ) -> LevelStats:
-    """The numbers for these points (any order); `unit` is the catalog unit. Counting starts 3
+    """The numbers for these points (any order); `unit` is the catalog unit. Counting starts 6
     months after the latest transplant (the one whose first countable day is latest)."""
     if not transplants:
         return LevelStats(

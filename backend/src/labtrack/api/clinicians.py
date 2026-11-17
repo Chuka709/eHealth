@@ -23,7 +23,13 @@ from labtrack.api.errors import AppError, ErrorBody
 from labtrack.api.numbers import num
 from labtrack.api.ratelimit import per_user
 from labtrack.config import get_settings
-from labtrack.core.level_stats import LEVEL_STATS_TESTS, LevelPoint, collected_day, level_stats
+from labtrack.core.level_stats import (
+    LEVEL_STATS_TESTS,
+    SETTLE_MONTHS,
+    LevelPoint,
+    collected_day,
+    level_stats,
+)
 from labtrack.db.sql import bound_text
 
 _UB = ZoneInfo("Asia/Ulaanbaatar")
@@ -74,22 +80,26 @@ class LevelValueOut(BaseModel):
     value: str
     target_low: str | None
     target_high: str | None
+    lab: str | None  # the lab that printed it (Q63-6)
 
 
 class LevelStatsOut(BaseModel):
-    """Numbers only (H15): no threshold, colour or judgement - the app adds the reviewed text."""
+    """Numbers only (H15): no threshold, colour or judgement - the app adds the reviewed text.
+    The mean, SD and the values themselves go to a doctor only; everyone else gets CV% (Q63-7,
+    physician 2026-11-18)."""
 
     test_code: str
     unit: str | None
     since: date
     n: int
-    mean: str | None
-    sd: str | None
+    mean: str | None  # a doctor only
+    sd: str | None  # a doctor only
     cv_percent: str | None
-    with_target: int
-    in_target: int
-    in_target_percent: str | None
-    counted_from: date | None  # the first countable day (3 months after the transplant)
+    with_target: int  # a doctor only (0 for anyone else)
+    in_target: int  # a doctor only
+    in_target_percent: str | None  # a doctor only
+    counted_from: date | None  # the first countable day (6 months after the transplant)
+    settle_months: int  # how long after the transplant counting starts (Q63-3)
     bounds_left_out: int
     not_numeric_left_out: int
     other_unit_left_out: int
@@ -98,7 +108,9 @@ class LevelStatsOut(BaseModel):
     duplicates_left_out: int
     same_day_left_out: int
     reason: str | None  # no_transplant | too_few | zero_mean | no_unit: why no number
-    values: list[LevelValueOut]
+    labs: list[str]  # a doctor only: the labs of the counted values (methods may differ)
+    lab_unknown: int  # a doctor only: counted values whose lab is not named
+    values: list[LevelValueOut]  # a doctor only
 
 
 class TargetIn(_Strict):
@@ -164,7 +176,7 @@ async def notes(patient_id: UUID, db: PatientReadDb) -> list[NoteOut]:
 
 
 _LEVEL_ROWS = bound_text(
-    "select lr.collected_at, lr.value_canonical, lr.comparator, lr.unit_canonical"
+    "select lr.collected_at, lr.value_canonical, lr.comparator, lr.unit_canonical, r.lab_name"
     " from lab_results lr"
     " join lab_reports r on r.id = lr.report_id and r.patient_id = lr.patient_id"
     " where lr.patient_id = :p and lr.test_code = :t and r.status = 'confirmed'"
@@ -181,6 +193,12 @@ _NO_DATE = bound_text(
     " and lr.collected_at is null and r.created_at >= :since"  # entered within the window
 )
 _UNIT = bound_text("select canonical_unit from test_catalog where code = :t")
+_IS_DOCTOR = bound_text(
+    "select exists (select 1 from patient_access a join users u on u.id = a.user_id"
+    " where a.patient_id = :p and a.user_id = app_user_id() and a.level = 'doctor'"
+    " and u.role = 'doctor' and a.revoked_at is null"
+    " and (a.expires_at is null or a.expires_at > now()))"
+)
 _TARGETS = bound_text(
     "select low, high, valid_from, valid_to from patient_targets"
     " where patient_id = :p and test_code = :t order by valid_from desc"
@@ -227,15 +245,20 @@ async def stats(
     ):
         low, high = target_on(collected_day(r.collected_at))
         points.append(
-            LevelPoint(r.collected_at, r.value_canonical, r.comparator, r.unit_canonical, low, high)
-        )
+            LevelPoint(
+                r.collected_at, r.value_canonical, r.comparator, r.unit_canonical, low, high,
+                r.lab_name,
+            )
+        )  # fmt: skip
+    doctor = bool((await db.execute(_IS_DOCTOR, {"p": patient_id})).scalar_one())
     if unit is None:
         return LevelStatsOut(
             test_code=test_code, unit=None, since=since, n=0, mean=None, sd=None,
             cv_percent=None, with_target=0, in_target=0, in_target_percent=None,
-            counted_from=None, bounds_left_out=0, not_numeric_left_out=0, other_unit_left_out=0,
-            no_date_left_out=no_date, early_left_out=0, duplicates_left_out=0,
-            same_day_left_out=0, reason="no_unit", values=[],
+            counted_from=None, settle_months=SETTLE_MONTHS, bounds_left_out=0,
+            not_numeric_left_out=0, other_unit_left_out=0, no_date_left_out=no_date,
+            early_left_out=0, duplicates_left_out=0, same_day_left_out=0, reason="no_unit",
+            labs=[], lab_unknown=0, values=[],
         )  # fmt: skip
     s = level_stats(points, unit=unit, transplants=txs)
     return LevelStatsOut(
@@ -243,13 +266,14 @@ async def stats(
         unit=unit,
         since=since,
         n=s.n,
-        mean=num(s.mean),
-        sd=num(s.sd),
+        mean=num(s.mean) if doctor else None,
+        sd=num(s.sd) if doctor else None,
         cv_percent=num(s.cv_percent),
-        with_target=s.with_target,
-        in_target=s.in_target,
-        in_target_percent=num(s.in_target_percent),
+        with_target=s.with_target if doctor else 0,
+        in_target=s.in_target if doctor else 0,
+        in_target_percent=num(s.in_target_percent) if doctor else None,
         counted_from=s.counted_from,
+        settle_months=SETTLE_MONTHS,
         bounds_left_out=s.bounds_left_out,
         not_numeric_left_out=s.not_numeric_left_out,
         other_unit_left_out=s.other_unit_left_out,
@@ -258,14 +282,17 @@ async def stats(
         duplicates_left_out=s.duplicates_left_out,
         same_day_left_out=s.same_day_left_out,
         reason=s.reason,
+        labs=list(s.labs) if doctor else [],
+        lab_unknown=s.lab_unknown if doctor else 0,
         values=[
             LevelValueOut(
                 collected_on=p.collected_on,
                 value=num(p.value) or "",
                 target_low=num(p.target_low),
                 target_high=num(p.target_high),
+                lab=p.lab,
             )
-            for p in s.used
+            for p in (s.used if doctor else ())
         ],
     )
 

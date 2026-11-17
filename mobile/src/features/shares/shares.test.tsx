@@ -265,7 +265,18 @@ for (const p of [OWN, PATIENT]) {
       duplicates_left_out: 0,
       same_day_left_out: 0,
       reason: null,
-      values: [{ collected_on: "2026-11-01", value: "6.1", target_low: "5", target_high: "8" }],
+      settle_months: 6,
+      labs: ["Интермед", "УНТЭ"],
+      lab_unknown: 1,
+      values: [
+        {
+          collected_on: "2026-11-01",
+          value: "6.1",
+          target_low: "5",
+          target_high: "8",
+          lab: "УНТЭ",
+        },
+      ],
     });
   handlers[`GET ${base}/transplants`] = () => json(200, []);
   handlers[`GET ${base}/medications`] = () => json(200, []);
@@ -445,9 +456,12 @@ test("a doctor sets a target, ends one, and adds and removes a note", async () =
   expect(await screen.findByText("Стандарт хазайлт")).toBeOnTheScreen();
   expect(screen.getByText("18.8%")).toBeOnTheScreen();
   expect(screen.getByText("5/6 (83.3%)")).toBeOnTheScreen();
-  expect(screen.getByText(/2 утгыг хассан: шилжүүлэн суулгалтаас 3 сарын дотор/)).toBeOnTheScreen();
+  expect(screen.getByText(/2 утгыг хассан: шилжүүлэн суулгалтаас 6 сарын дотор/)).toBeOnTheScreen();
   await fireEvent.press(screen.getByRole("button", { name: "Тоолсон 1 утгыг харах" }));
   expect(screen.getByText("6.1 ng/mL")).toBeOnTheScreen();
+  expect(screen.getByText(/· УНТЭ$/)).toBeOnTheScreen();
+  expect(screen.getByText(/Утгууд өөр лабуудаас \(Интермед, УНТЭ\)/)).toBeOnTheScreen();
+  expect(screen.getByText(/1 утгын лаб тодорхойгүй/)).toBeOnTheScreen();
   await fireEvent.changeText(screen.getByTestId("target-search"), "креа");
   await fireEvent.press(await screen.findByRole("radio", { name: "Креатинин (µmol/L)" }));
   await fireEvent.changeText(screen.getByTestId("target-high"), "120,5");

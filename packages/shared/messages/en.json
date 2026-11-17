@@ -1554,7 +1554,7 @@
       "introDoctor": "You can write targets and notes on this profile. The owner and the people it is shared with see them under your name. The app only marks values against the target.",
       "level": {
         "title": "Tacrolimus level (numbers)",
-        "what": "Mean, variability (CV% = standard deviation ÷ mean × 100) and the number of values inside the doctor's target, from confirmed tacrolimus results. Only values from 3 months after the transplant, with an exact number, and the first value of each day count.",
+        "what": "Mean, variability (CV% = standard deviation ÷ mean × 100) and the number of values inside the doctor's target, from confirmed tacrolimus results. Only values from {months} months after the transplant (from its latest possible day when only the month or year is known), with an exact number, and the first value of each day count.",
         "period": "Period",
         "months": "Last {n} months",
         "n": "Values counted",
@@ -1576,13 +1576,15 @@
           "not_numeric_left_out": "{n} left out: not a number",
           "other_unit_left_out": "{n} left out: another unit",
           "no_date_left_out": "{n} left out: no sample date",
-          "early_left_out": "{n} left out: within 3 months of the transplant",
+          "early_left_out": "{n} left out: within {months} months of the transplant",
           "duplicates_left_out": "{n} left out: entered twice",
           "same_day_left_out": "{n} left out: a second value on the same day"
         },
         "inTargetCount": "{n}/{of}",
         "showValues": "Show the {n} counted values",
-        "hideValues": "Hide the counted values"
+        "hideValues": "Hide the counted values",
+        "labsMixed": "Values come from different labs ({labs}) — their methods may differ, which can affect CV%.",
+        "labUnknown": "{n, plural, one {# value has} other {# values have}} no lab named — it may come from another lab."
       },
       "targets": {
         "title": "Doctor's targets",

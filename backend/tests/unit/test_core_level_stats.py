@@ -37,13 +37,15 @@ def test_no_transplant_no_number() -> None:
     assert stats.cv_percent is None
 
 
-def test_the_first_three_months_are_left_out_and_counted() -> None:
+def test_the_first_six_months_are_left_out_and_counted() -> None:
     early = [_p(date(2025, 2, d), "15") for d in range(1, 6)]
+    early.append(_p(date(2025, 7, 9), "15"))  # the day before 6 months after 2025-01-10
     late = [
-        _p(date(2025, 6, d), v) for d, v in zip(range(1, 6), ["6", "7", "8", "7", "7"], strict=True)
+        _p(date(2025, 7, 10 + d), v)
+        for d, v in zip(range(1, 6), ["6", "7", "8", "7", "7"], strict=True)
     ]
     stats = level_stats(early + late, unit=UNIT, transplants=TX)
-    assert stats.early_left_out == 5
+    assert stats.early_left_out == 6
     assert stats.n == 5
     assert stats.mean == Decimal("7.00")
 
@@ -89,9 +91,11 @@ def test_time_in_target_uses_the_target_of_each_day() -> None:
 
 
 def test_a_month_or_year_only_transplant_counts_from_its_latest_day() -> None:
-    assert settled_from(date(2025, 3, 1), "month") == date(2025, 3, 31) + timedelta(days=90)
-    assert settled_from(date(2025, 1, 1), "year") == date(2025, 12, 31) + timedelta(days=90)
-    assert settled_from(date(2025, 12, 1), "month") == date(2025, 12, 31) + timedelta(days=90)
+    assert settled_from(date(2025, 3, 1), "month") == date(2025, 9, 30)
+    assert settled_from(date(2025, 1, 1), "year") == date(2026, 6, 30)
+    assert settled_from(date(2025, 12, 1), "month") == date(2026, 6, 30)
+    assert settled_from(date(2025, 8, 31), "day") == date(2026, 2, 28)  # no 31st in February
+    assert settled_from(date(2025, 1, 10), "day") == date(2025, 7, 10)
 
 
 def test_the_day_of_a_collection_is_ulaanbaatars() -> None:
@@ -142,5 +146,33 @@ def test_the_latest_transplant_and_text_values_and_units_are_reported() -> None:
     points = [_p(date(2026, 1, d), "7") for d in range(1, 6)]
     points += [_p(date(2026, 1, 6), None), _p(date(2026, 1, 7), "7", unit="nmol/L")]
     stats = level_stats(points, unit=UNIT, transplants=txs)
-    assert stats.counted_from == date(2025, 6, 30) + timedelta(days=90)
+    assert stats.counted_from == date(2025, 12, 30)
     assert (stats.not_numeric_left_out, stats.other_unit_left_out) == (1, 1)
+
+
+def test_the_labs_of_the_counted_values_are_named() -> None:
+    points = [
+        LevelPoint(
+            datetime.combine(date(2026, 1, d), time(1, 0), UTC), Decimal("7"), None, UNIT, lab=lab
+        )
+        for d, lab in zip(
+            range(1, 7), ["УНТЭ", "УНТЭ", "Интермед", None, "УНТЭ", "УНТЭ"], strict=True
+        )
+    ]
+    stats = level_stats(points, unit=UNIT, transplants=TX)
+    assert stats.labs == ("Интермед", "УНТЭ")
+    assert stats.lab_unknown == 1
+    one = [p for p in points if p.lab != "Интермед"]
+    assert level_stats(one, unit=UNIT, transplants=TX).labs == ("УНТЭ",)
+
+
+def test_spacing_and_case_do_not_make_another_lab() -> None:
+    points = [
+        LevelPoint(
+            datetime.combine(date(2026, 1, d), time(1, 0), UTC), Decimal("7"), None, UNIT, lab=lab
+        )
+        for d, lab in zip(range(1, 6), ["УНТЭ", " унтэ ", "УНТЭ", "Унтэ", "УНТЭ"], strict=True)
+    ]
+    stats = level_stats(points, unit=UNIT, transplants=TX)
+    assert len(stats.labs) == 1
+    assert stats.lab_unknown == 0
