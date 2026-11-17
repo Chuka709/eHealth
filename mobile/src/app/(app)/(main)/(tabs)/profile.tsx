@@ -27,6 +27,9 @@ export default function ProfileScreen() {
   const tg = useTranslations("app.caregivers");
   const tu = useTranslations("app.upload");
   const ts = useTranslations("app.shares");
+  const tl = useTranslations("app.shareLinks");
+  const td = useTranslations("app.clinician");
+  const tx = useTranslations("app.summaryExport");
   const tc = useTranslations("app.common");
   const router = useRouter();
   const { own } = useRecordProfile();
@@ -130,6 +133,20 @@ export default function ProfileScreen() {
           onPress={go("/questions")}
           testID="profile-questions"
         />
+        <NavRow
+          icon="stethoscope"
+          label={td("row")}
+          hint={td("rowHint")}
+          onPress={go("/doctor")}
+          testID="profile-doctor"
+        />
+        <NavRow
+          icon="file-pdf-box"
+          label={tx("row")}
+          hint={tx("rowHint")}
+          onPress={go("/summary")}
+          testID="profile-summary"
+        />
       </NavGroup>
       <NavGroup title={t("groups.people")}>
         <NavRow
@@ -157,6 +174,15 @@ export default function ProfileScreen() {
             hint={ts("rowOwnerHint")}
             onPress={go("/shares")}
             testID="profile-shares"
+          />
+        )}
+        {own?.access_level === "owner" && (
+          <NavRow
+            icon="qrcode"
+            label={tl("row")}
+            hint={tl("rowHint")}
+            onPress={go("/shares/links")}
+            testID="profile-share-links"
           />
         )}
         {(own?.access_level === "doctor" || own?.access_level === "viewer") && (

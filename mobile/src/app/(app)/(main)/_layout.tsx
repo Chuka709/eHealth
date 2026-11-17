@@ -35,6 +35,9 @@ export default function MainLayout() {
       <Stack.Screen name="dashboard/cards" options={{ title: t("home.cardsEditor.title") }} />
       <Stack.Screen name="caregivers/index" options={{ title: t("caregivers.title") }} />
       <Stack.Screen name="shares/index" options={{ title: t("shares.title") }} />
+      <Stack.Screen name="shares/links" options={{ title: t("shareLinks.row") }} />
+      <Stack.Screen name="doctor/index" options={{ title: t("clinician.row") }} />
+      <Stack.Screen name="summary" options={{ title: t("summaryExport.row") }} />
       <Stack.Screen
         name="caregivers/invitations"
         options={{ title: t("caregivers.invitations.title") }}

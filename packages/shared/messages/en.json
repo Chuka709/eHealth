@@ -747,10 +747,10 @@
         "notes": "Notes (optional)",
         "remind": "Remind me",
         "offsets": {
-          "1440": "1 day before",
-          "120": "2 hours before",
+          "0": "At the time",
           "60": "1 hour before",
-          "0": "At the time"
+          "120": "2 hours before",
+          "1440": "1 day before"
         },
         "status": "Status",
         "statuses": {
@@ -1475,6 +1475,181 @@
         "confirm": "Stop"
       },
       "pendingRow": "{level} · {duration}"
+    },
+    "shareLinks": {
+      "row": "Share by link or QR code",
+      "rowHint": "Chosen sections, with a time limit and a PIN",
+      "ownerOnly": "Only the profile's owner manages share links.",
+      "intro": "Make a read-only link to chosen sections for a doctor or clinic without the app. Give the link by QR code or message, and the 6-digit PIN separately (for example, say it aloud). The link works until the chosen time ends, the number of opens is reached, or you revoke it. What was already seen or copied cannot be taken back.",
+      "scope": {
+        "summary": "Summary",
+        "labs": "Lab results",
+        "meds": "Medicines",
+        "transplant": "Transplant",
+        "events": "Events",
+        "vitals": "Vital signs"
+      },
+      "days": "{n, plural, =1 {24 hours} other {# days}}",
+      "views": {
+        "any": "No limit",
+        "n": "{n, plural, =1 {Once} other {# times}}"
+      },
+      "period": {
+        "all": "All time",
+        "months": "Last {n} months"
+      },
+      "create": {
+        "title": "New link",
+        "sections": "Sections to share",
+        "noSections": "Choose at least one section.",
+        "days": "Valid for",
+        "views": "Number of opens",
+        "period": "Records from",
+        "periodHint": "Lab results, events and vital signs are limited to this period. Current medicines and the transplant are always shown.",
+        "button": "Make a link",
+        "checkTitle": "Make this link?",
+        "checkBody": "Sections: {sections}. Valid for: {days}. Opens: {views}. Records: {period}. Anyone who has both the link and the PIN can see these sections.",
+        "confirm": "Make"
+      },
+      "listTitle": "Your links",
+      "none": "No links yet.",
+      "state": {
+        "active": "Active",
+        "expired": "Expired",
+        "used_up": "No opens left",
+        "revoked": "Revoked",
+        "pin_locked": "Closed after wrong PINs"
+      },
+      "until": "Until {date}",
+      "made": "Made {date}",
+      "opens": "{n, plural, =0 {Not opened yet} one {Opened once} other {Opened # times}}",
+      "opensOf": "Opened {n} of {max} times",
+      "lastOpened": "Last opened {date}",
+      "showViews": "Show when it was opened",
+      "hideViews": "Hide when it was opened",
+      "revoke": {
+        "button": "Revoke link",
+        "title": "Revoke this link?",
+        "body": "The link and PIN will no longer open. What was already seen or copied cannot be taken back.",
+        "confirm": "Revoke"
+      },
+      "created": {
+        "title": "Your link is ready",
+        "how": "The doctor scans the QR code with their phone camera, or send the link by message. It asks for the PIN when opened.",
+        "qrLabel": "QR code of the share link",
+        "send": "Send the link",
+        "pin": "PIN",
+        "pinLabel": "PIN: {pin}",
+        "pinHint": "Do not send the PIN in the same message as the link — say it aloud or give it separately. Five wrong PINs close the link.",
+        "until": "Valid until {date}",
+        "once": "Once you leave this screen, the link and PIN cannot be shown again. Make a new link if needed.",
+        "done": "Done",
+        "urlLabel": "Share link (same as the QR code)"
+      }
+    },
+    "clinician": {
+      "row": "Doctor's targets and notes",
+      "rowHint": "Lab targets and notes from your doctor",
+      "intro": "Lab targets and notes from a doctor you shared your profile with appear here. Only the doctor writes them. Ask your doctor if you have questions.",
+      "introDoctor": "You can write targets and notes on this profile. The owner and the people it is shared with see them under your name. The app only marks values against the target.",
+      "level": {
+        "title": "Tacrolimus level (numbers)",
+        "what": "Mean, variability (CV% = standard deviation ÷ mean × 100) and the number of values inside the doctor's target, from confirmed tacrolimus results. Only values from 3 months after the transplant, with an exact number, and the first value of each day count.",
+        "period": "Period",
+        "months": "Last {n} months",
+        "n": "Values counted",
+        "mean": "Mean",
+        "sd": "Standard deviation",
+        "cv": "Variability (CV%)",
+        "inTarget": "Inside the doctor's target",
+        "inTargetValue": "{n}/{of} ({pct}%)",
+        "countedFrom": "Counted from {date}",
+        "notAVerdict": "Numbers only — the app gives no threshold, judgement or dose suggestion.",
+        "reason": {
+          "no_transplant": "Not calculated: no transplant date is recorded.",
+          "too_few": "Not enough values to calculate (at least 5 are needed).",
+          "zero_mean": "No number can be calculated from these values.",
+          "no_unit": "Not calculated: this test has no unit in the catalog."
+        },
+        "leftOut": {
+          "bounds_left_out": "{n} left out: a bound such as \"< 2\", not an exact number",
+          "not_numeric_left_out": "{n} left out: not a number",
+          "other_unit_left_out": "{n} left out: another unit",
+          "no_date_left_out": "{n} left out: no sample date",
+          "early_left_out": "{n} left out: within 3 months of the transplant",
+          "duplicates_left_out": "{n} left out: entered twice",
+          "same_day_left_out": "{n} left out: a second value on the same day"
+        },
+        "inTargetCount": "{n}/{of}",
+        "showValues": "Show the {n} counted values",
+        "hideValues": "Hide the counted values"
+      },
+      "targets": {
+        "title": "Doctor's targets",
+        "hint": "For a test with a target, a value outside it is marked \"outside target\" besides the lab's reference range.",
+        "none": "No targets set by a doctor.",
+        "between": "{low} – {high} {unit}",
+        "atLeast": "Lower limit {low} {unit}",
+        "atMost": "Upper limit {high} {unit}",
+        "since": "From {from}",
+        "period": "{from} – {to}",
+        "by": "Set by {name}",
+        "end": "End target",
+        "endLabel": "End the target for {name}",
+        "endBody": "The target ends today. Earlier values keep their marks.",
+        "form": {
+          "title": "New target",
+          "search": "Find a test (name or code)",
+          "test": "Test",
+          "low": "Lower limit ({unit})",
+          "high": "Upper limit ({unit})",
+          "from": "Starts on",
+          "note": "Note (optional)",
+          "save": "Save target",
+          "checkTitle": "Check the target",
+          "checkBody": "{name}: lower {low}, upper {high} {unit}, from {from}. Save?",
+          "saved": "Target saved.",
+          "number": "Enter a valid number (for example 7.5).",
+          "order": "The lower limit cannot be above the upper limit."
+        },
+        "formerDoctor": "A former doctor"
+      },
+      "notes": {
+        "title": "Doctor's notes",
+        "none": "No notes.",
+        "meta": "{name} · {date}",
+        "formerDoctor": "A former doctor",
+        "remove": "Delete note",
+        "removeTitle": "Delete this note?",
+        "new": "New note",
+        "newHint": "The owner and the people the profile is shared with see it under your name.",
+        "add": "Add note"
+      }
+    },
+    "summaryExport": {
+      "row": "Summary for the doctor, export",
+      "rowHint": "PDF summary; all your data as a file",
+      "summary": {
+        "title": "Summary for the doctor (PDF)",
+        "what": "Your questions for the doctor, the transplant, allergies, current medicines, confirmed lab results of the chosen period (as the lab printed them), the doctor's targets, recent events and vital signs on A4 pages. You choose whether to print, save or send it.",
+        "months": "Lab results from",
+        "monthsN": "Last {n} months",
+        "lang": "Language",
+        "langs": {
+          "mn": "Монгол",
+          "en": "English"
+        },
+        "button": "Make the PDF"
+      },
+      "export": {
+        "title": "All your data as a file",
+        "what": "Every record of this profile (lab results, medicines, transplant, events, vital signs and more) in one file — to keep elsewhere or move.",
+        "care": "The file is not encrypted and holds all the health data. Take care where you keep it and whom you give it to.",
+        "json": "Get a JSON file",
+        "fhir": "Get a FHIR (R4) file",
+        "fhirHint": "FHIR is the international standard health systems use to exchange data."
+      },
+      "unavailable": "Sharing files is not available on this device."
     }
   },
   "status": {

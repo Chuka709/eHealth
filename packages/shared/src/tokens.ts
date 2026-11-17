@@ -126,3 +126,6 @@ export const emergencyWallpaper = {
   text: "#FFFFFF",
   accent: "#FCA5A5",
 } as const;
+
+/** A QR code is dark on light whatever the app theme: every camera reads it. */
+export const qrColors = { light: "#FFFFFF", dark: "#000000" } as const;

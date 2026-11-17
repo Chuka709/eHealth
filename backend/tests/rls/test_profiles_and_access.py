@@ -398,3 +398,47 @@ async def test_minor_status_is_no_oracle_and_relation_is_fixed(
             await conn.execute(
                 bound_text("update patients set relation = 'self' where id = :p"), {"p": child}
             )
+
+
+async def test_owner_profile_consents_reach_only_a_doctor_or_viewer_on_a_minors_profile(
+    app_engine: AsyncEngine, owner_engine: AsyncEngine, admin_engine: AsyncEngine
+) -> None:
+    """0044: the owner's required consents for a child's profile, to a doctor or a viewer it is
+    shared with (in force) - no rows for an adult's profile, a caregiver, an expired share or a
+    stranger, and never a consent kind the gate does not need."""
+    owner = await make_user(owner_engine)
+    doctor, viewer = await make_user(owner_engine, "doctor"), await make_user(owner_engine)
+    carer, late, stranger = (
+        await make_user(owner_engine),
+        await make_user(owner_engine, "doctor"),
+        await make_user(owner_engine),
+    )
+    adult = await make_patient(app_engine, owner)
+    child = await make_patient(app_engine, owner, minor=True)
+    async with as_user(app_engine, owner) as conn:
+        for kind in ("terms", "privacy", "sensitive_data", "research"):
+            await conn.execute(
+                bound_text(
+                    "insert into consents (user_id, patient_id, kind, version, granted)"
+                    " values (:u, :p, :k, '1', true)"
+                ),
+                {"u": owner, "p": child, "k": kind},
+            )
+    await grant(app_engine, owner, child, doctor, "doctor")
+    await grant(app_engine, owner, child, viewer, "viewer")
+    await grant(app_engine, owner, adult, doctor, "doctor")
+    await grant(app_engine, owner, adult, carer, "caregiver")
+    await grant(app_engine, owner, child, late, "doctor", expires=datetime(2020, 1, 1, tzinfo=UTC))
+    rows = bound_text("select kind from owner_profile_consents(:p) order by kind")
+
+    async def kinds(user: UUID, patient: UUID) -> list[str]:
+        async with as_user(app_engine, user) as conn:
+            return list((await conn.execute(rows, {"p": patient})).scalars())
+
+    assert await kinds(doctor, child) == ["privacy", "sensitive_data", "terms"]
+    assert await kinds(viewer, child) == ["privacy", "sensitive_data", "terms"]
+    assert await kinds(doctor, adult) == []
+    assert await kinds(carer, adult) == []
+    assert await kinds(late, child) == []
+    assert await kinds(stranger, child) == []
+    assert await kinds(owner, child) == []  # the owner reads their own rows directly

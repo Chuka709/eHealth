@@ -84,11 +84,17 @@ export function writeForSharing(
 /** "dropped": the session ended meanwhile (nothing to say); "unavailable": no share sheet. */
 export type ShareResult = "shared" | "unavailable" | "dropped";
 
+const UTI = {
+  "application/pdf": "com.adobe.pdf",
+  "image/png": "public.png",
+  "application/json": "public.json",
+} as const;
+
 /** Opens the share sheet, if the export is still valid. */
 export async function shareFile(
   ticket: ExportTicket,
   file: File | null,
-  mimeType: "application/pdf" | "image/png",
+  mimeType: "application/pdf" | "image/png" | "application/json",
 ): Promise<ShareResult> {
   if (!file || !stillValid(ticket)) {
     clearExports();
@@ -97,7 +103,7 @@ export async function shareFile(
   if (!(await Sharing.isAvailableAsync())) return "unavailable";
   await Sharing.shareAsync(file.uri, {
     mimeType,
-    UTI: mimeType === "application/pdf" ? "com.adobe.pdf" : "public.png",
+    UTI: UTI[mimeType],
   });
   return "shared";
 }

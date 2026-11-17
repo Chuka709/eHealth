@@ -129,6 +129,7 @@ async def require_for_patient(db: AsyncSession, patient_id: object) -> None:
             bound_text(
                 "select level::text from patient_access where patient_id = :p"
                 " and user_id = app_user_id() and revoked_at is null"
+                " and (expires_at is null or expires_at > now())"
             ),
             {"p": patient_id},
         )

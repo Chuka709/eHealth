@@ -3,8 +3,9 @@
 A minor's profile is open only while its owner's consents for that profile are in force (the
 API's profile gate). Those consents are readable only by the owner (row policies), so a doctor
 or a viewer the owner shared the profile with was always refused (403). This function returns
-the owner's latest consent per kind for the profile - kind, version, granted, nothing else -
-to anyone who can read the profile, so the gate can check them for every reader.
+the owner's latest required consent per kind (terms, privacy, sensitive_data) for a minor's
+profile - kind, version, granted, nothing else - to a doctor or a viewer it is shared with
+(in force), so the gate can check them; anyone else gets no rows.
 
 Revision ID: 0044
 Revises: 0043
@@ -33,7 +34,13 @@ def upgrade() -> None:
           from public.consents c
           join public.patient_access a on a.patient_id = p and a.user_id = c.user_id
             and a.level = 'owner' and a.revoked_at is null
-          where public.can_read_patient(p) and c.patient_id = p
+          where public.can_read_patient(p) and public.is_minor_patient(p) and c.patient_id = p
+            and c.kind in ('terms', 'privacy', 'sensitive_data')
+            and exists (
+              select 1 from public.patient_access me
+              where me.patient_id = p and me.user_id = public.app_user_id()
+                and me.level in ('doctor', 'viewer') and me.revoked_at is null
+                and (me.expires_at is null or me.expires_at > now()))
           order by c.kind, c.id desc
         $$
         """

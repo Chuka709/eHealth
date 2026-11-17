@@ -16,6 +16,7 @@ export function Segmented<T extends string>({
   labelOf,
   onSelect,
   testID,
+  showLabel = false,
 }: {
   label: string;
   options: readonly T[];
@@ -23,9 +24,11 @@ export function Segmented<T extends string>({
   labelOf: (option: T) => string;
   onSelect: (option: T) => void;
   testID?: string;
+  /** the question as visible text above the row (VoiceOver reads it, not the group label) */
+  showLabel?: boolean;
 }) {
   const p = usePalette();
-  return (
+  const row = (
     <View
       accessibilityRole="radiogroup"
       accessibilityLabel={label}
@@ -57,9 +60,18 @@ export function Segmented<T extends string>({
       })}
     </View>
   );
+  if (!showLabel) return row;
+  return (
+    <View style={styles.group}>
+      <Text style={[styles.label, { color: p.text }]}>{label}</Text>
+      {row}
+    </View>
+  );
 }
 
 const styles = StyleSheet.create({
+  group: { gap: space.sm },
+  label: { fontSize: fontSize.body, fontWeight: "600" },
   row: { flexDirection: "row", flexWrap: "wrap", gap: space.xs },
   item: {
     flexGrow: 1,
