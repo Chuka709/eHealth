@@ -147,3 +147,37 @@ async def test_decline_cancel_end_and_leave(
             )
         ).status_code == 204
         assert (await c.get(f"{base}/transplants", headers=doc)).status_code == 404
+
+
+async def test_a_doctor_opens_a_childs_shared_profile_while_the_parents_consents_stand(
+    owner_engine: AsyncEngine, client_from: ClientFactory
+) -> None:
+    from .test_patients import REQUIRED, _child_birth  # noqa: PLC0415
+
+    async with client_from() as c:
+        _, parent = await _signed_in(c, owner_engine)
+        await _create(c, parent, full_name="Аав", relation="self")
+        _, child = await _create(
+            c, parent, full_name="Хүү", relation="child", birth_date=_child_birth()
+        )
+        base = f"/api/v1/patients/{child['id']}"
+        body = {"items": REQUIRED, "patient_id": child["id"]}
+        assert (await c.post("/api/v1/me/consents", json=body, headers=parent)).status_code == 204
+        doc_id, doc = await _signed_in(c, owner_engine)
+        await c.post(
+            f"{base}/share-invitations",
+            json={"username": await _username(owner_engine, doc_id), "level": "doctor", "days": 7},
+            headers=parent,
+        )
+        [inv] = (await c.get("/api/v1/me/share-invitations", headers=doc)).json()
+        await c.post(
+            "/api/v1/me/share-invitations/respond",
+            json={"invitation_id": inv["id"], "accept": True},
+            headers=doc,
+        )
+        assert (await c.get(f"{base}/transplants", headers=doc)).status_code == 200
+        # the parent withdraws a required consent for the child: closed to the doctor too
+        body = {"items": [{**REQUIRED[0], "granted": False}], "patient_id": child["id"]}
+        assert (await c.post("/api/v1/me/consents", json=body, headers=parent)).status_code == 204
+        r = await c.get(f"{base}/transplants", headers=doc)
+        assert r.json()["code"] == "consent.profile_required"

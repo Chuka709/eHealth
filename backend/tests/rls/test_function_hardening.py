@@ -82,6 +82,8 @@ EXECUTE_MATRIX: dict[str, set[str]] = {
         "respond_access_invitation(uuid,boolean)",
         "revoke_access_invitation(uuid)",
         "revoke_share(uuid,uuid)",
+        # 0044: a minor's profile shared with a doctor or a viewer
+        "owner_profile_consents(uuid)",
         # 0043: a doctor's targets and notes
         "add_doctor_note(uuid,text)",
         "end_patient_target(uuid,date)",
