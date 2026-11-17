@@ -73,6 +73,7 @@
     "document.too_many",
     "document.unreadable",
     "event.not_found",
+    "export.too_large",
     "health.delete_not_allowed",
     "intake.delete_not_allowed",
     "intake.has_other_records",

@@ -20,7 +20,7 @@ from typing import Final
 
 import pypdfium2 as pdfium
 import pypdfium2.raw as pdfium_c
-from PIL import Image, ImageOps
+from PIL import Image, ImageFile, ImageOps
 from pillow_heif import register_heif_opener
 
 register_heif_opener()
@@ -255,6 +255,8 @@ def _clean_image(data: bytes, fmt: str) -> tuple[bytes, str]:
     except (OSError, ValueError, SyntaxError) as exc:
         raise FileRejectedError("document.unreadable") from exc
     with opened:
+        # never decode a cut-off image, whatever another library set globally (WeasyPrint does)
+        ImageFile.LOAD_TRUNCATED_IMAGES = False
         width, height = opened.size
         if width * height > MAX_PIXELS:  # before any pixel is decoded
             raise FileRejectedError("document.too_large")

@@ -46,6 +46,8 @@ class Settings(BaseSettings):
     rate_share_open_per_minute: int = 10
     # Share links made per account.
     rate_share_link_per_minute: int = 10
+    # Summary PDFs and exports per account (each reads a whole profile).
+    rate_export_per_minute: int = 6
 
     # Expo push (worker/push.py). Off until the Expo/FCM/APNs credentials exist (PROGRESS 2.8
     # decision (c)): the worker then sends nothing and marks nothing as sent.

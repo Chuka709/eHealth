@@ -1683,6 +1683,9 @@
       "target_day": "A target cannot start before yesterday or more than a year ahead.",
       "target_implausible": "This value is beyond what the test can show. Please check the number.",
       "not_a_level_test": "Level statistics are not given for this test."
+    },
+    "export": {
+      "too_large": "This profile has too many records for one file. Please contact support."
     }
   },
   "import": {
