@@ -192,9 +192,9 @@ function LevelNumbers({ stats }: { stats: LevelStats }) {
         />
       )}
       {listed &&
-        stats.values.map((v, i) => (
+        stats.values.map((v) => (
           <Row
-            key={`${v.collected_on}-${i}`}
+            key={v.collected_on}
             label={formatDate(`${v.collected_on}T12:00:00Z`)}
             value={`${v.value} ${unit}`}
           />

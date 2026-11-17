@@ -272,8 +272,8 @@ function LinkCard({
       {showViews && views.isPending && <LoadingInline />}
       {showViews && views.isError && <FormMessage kind="error" text={errorText(views.error)} />}
       {showViews &&
-        views.data?.map((v, i) => (
-          <Paragraph key={`${v.opened_at}-${i}`}>{formatDateTime(v.opened_at)}</Paragraph>
+        views.data?.map((v) => (
+          <Paragraph key={v.opened_at}>{formatDateTime(v.opened_at)}</Paragraph>
         ))}
       {state === "active" && (
         <Button
