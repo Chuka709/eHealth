@@ -53,6 +53,11 @@ _BODY: Final[Mapping[str, Mapping[Locale, str]]] = {
     },
     # to a caregiver; the server cannot know the dose was missed, only that it is not recorded
     # ("not logged", never "not taken"; nothing that reads as "check the dose amount")
+    # to the owner: a link was closed after wrong PINs (names nothing; 0041)
+    "share_link_locked": {
+        "mn": "Хуваалцах линк буруу PIN-ээр олон удаа нээх оролдлогын улмаас хаагдлаа.",
+        "en": "A share link was closed after too many wrong PINs.",
+    },
     "dose_overdue": {
         "mn": "Эм уусан тэмдэглэл хараахан бүртгэгдээгүй байна. Аппаас шалгана уу.",
         "en": "A dose has not been logged yet. Please check the app.",

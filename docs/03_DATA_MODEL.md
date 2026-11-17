@@ -512,9 +512,9 @@ create table share_links (
   scopes text[] not null,                       -- 'summary','labs','meds','transplant','events','vitals'
   date_from date, date_to date,
   expires_at timestamptz not null, max_views int, view_count int not null default 0,
-  pin_hash text,                                -- сонголттой 6 оронтой PIN (argon2id)
+  pin_hash text not null,                       -- 6 оронтой PIN, сервер үүсгэнэ, заавал (argon2id; Q62)
   pin_failed_count int not null default 0,      -- 5 буруу → линк автоматаар цуцлагдана + эзэнд мэдэгдэл; тоолуурыг verify-ээс ӨМНӨ атомаар нэмнэ (04 §6.7)
-  created_by uuid not null references users, revoked_at timestamptz,
+  created_by uuid not null references users, revoked_at timestamptz,  -- 0041: revoked_reason ('owner','pin_locked'), max_views 1–100; pin_wrong_total (≤10), owner_token_version; share_sessions(link_id, token_hash, 30 мин) — нээлт бүр; сесс зөвхөн definer функцээр уншина (share_profile, 7.3-ын хэсгүүд), share_link_owner_ok
   created_at timestamptz not null default now()
 );
 
@@ -581,7 +581,7 @@ API нь хэзээ ч owner URL ашиглахгүй — шинэ auth үйлд
   - `patient_access`: SELECT өөрийн мөр эсвэл `is_owner(patient_id)`; INSERT/UPDATE/DELETE зөвхөн owner, **өөрийгөө owner болгох хориотой**; recursion-оос сэргийлж `is_owner()` definer функц.
   - `test_synonyms`: SELECT `user_id is null or user_id = app_user_id()` (бусдын сурсан синоним задрахгүй). Бусад каталог: бүгд SELECT.
   - `audit_logs`: шууд INSERT/SELECT **хориотой** — `audit_write(action, entity, entity_id, patient_id, diff)` (`actor_id := app_user_id()` хүчээр; `admin_*` үйлдлийг зөвхөн `labtrack_admin`), `my_admin_actions()`, `patient_access_log(p)` (зөвхөн owner, бусдын ip/user_agent-гүй). `REVOKE TRUNCATE`.
-  - `extraction_runs` (raw_output = PHI), `pending_uploads`, `share_links`: `can_read_patient`/`can_write_patient`-аар; аккаунтгүй үзэгч — `share_view(token_hash, pin)` definer функц.
+  - `extraction_runs` (raw_output = PHI), `pending_uploads`: `can_read_patient`/`can_write_patient`-аар; `share_links`/`share_sessions` — app-д эрхгүй, зөвхөн definer функц (0041); аккаунтгүй үзэгч — PIN-ээр сесс, хэсэг бүр өөрийн функцээр.
   - `product_events`: зөвхөн INSERT.
 
 ```sql

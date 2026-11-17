@@ -155,6 +155,9 @@ _ANONYMOUS = {
     "/api/v1/auth/activate",
     "/api/v1/auth/refresh",
     "/api/v1/auth/logout",
+    # a share link's viewer has no account: the link's own session, never a user token (0041)
+    "/api/v1/share/open",
+    "/api/v1/share/profile",
 }
 # A well-formed value per path parameter type, so the request reaches the auth check.
 _PATH_SAMPLES = {"uuid": "00000000-0000-0000-0000-000000000000", "integer": "1", "string": "x"}

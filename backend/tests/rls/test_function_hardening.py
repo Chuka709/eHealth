@@ -82,6 +82,16 @@ EXECUTE_MATRIX: dict[str, set[str]] = {
         "respond_access_invitation(uuid,boolean)",
         "revoke_access_invitation(uuid)",
         "revoke_share(uuid,uuid)",
+        # 0041: share links
+        "create_share_link(uuid,text,text,text[],date,date,integer,integer)",
+        "owner_share_link_views(uuid)",
+        "owner_share_links(uuid)",
+        "revoke_share_link(uuid)",
+        "share_link_attempt(text)",
+        "share_link_failed(uuid)",
+        "share_link_open(text,text)",
+        "share_profile(text)",
+        "share_session_scope(text)",
     },
     "labtrack_admin": {
         "admin_cancel_deletion(uuid,text)",
@@ -112,6 +122,7 @@ EXECUTE_MATRIX: dict[str, set[str]] = {
         "maint_sweep_extractions()",
         "maint_purge_deleted_users(integer)",
         "maint_prune_profile_views()",
+        "maint_prune_share_links()",
     },
     # 0028: the push worker's own role
     "labtrack_push": {

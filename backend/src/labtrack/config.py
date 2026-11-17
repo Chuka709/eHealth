@@ -42,6 +42,10 @@ class Settings(BaseSettings):
     rate_push_token_per_minute: int = 10
     # Caregiver invitations per account (the database also caps lookups at 30 an hour).
     rate_caregiver_invite_per_minute: int = 10
+    # Opening a share link with its PIN, per client address (the PIN itself locks after 5).
+    rate_share_open_per_minute: int = 10
+    # Share links made per account.
+    rate_share_link_per_minute: int = 10
 
     # Expo push (worker/push.py). Off until the Expo/FCM/APNs credentials exist (PROGRESS 2.8
     # decision (c)): the worker then sends nothing and marks nothing as sent.

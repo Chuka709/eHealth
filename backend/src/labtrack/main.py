@@ -17,6 +17,7 @@ from labtrack.api import (
     me,
     patients,
     records,
+    share_links,
     shares,
     timeline,
     trends,
@@ -95,5 +96,7 @@ def create_app() -> FastAPI:
     app.include_router(caregivers.me_router, prefix=settings.api_prefix)
     app.include_router(shares.router, prefix=settings.api_prefix)
     app.include_router(shares.me_router, prefix=settings.api_prefix)
+    app.include_router(share_links.router, prefix=settings.api_prefix)
+    app.include_router(share_links.public_router, prefix=settings.api_prefix)
     app.include_router(admin.router, prefix=settings.api_prefix)
     return app

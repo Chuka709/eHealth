@@ -957,7 +957,8 @@
         "review_ready": "A new result is ready to review",
         "critical_pending": "A new result may contain a value that needs prompt review",
         "other": "New notification",
-        "access_invite": "You have an invitation to view a profile"
+        "access_invite": "You have an invitation to view a profile",
+        "share_link_locked": "A share link was closed after too many wrong PINs"
       },
       "dose": {
         "title": "Dose log",
@@ -1664,7 +1665,11 @@
       "too_many": "Too many invitations sent. Please wait a while and try again.",
       "invitation_not_found": "The invitation was not found or is no longer valid. Ask the profile's owner to send a new one.",
       "not_found": "This person was not found. Refresh the list and try again.",
-      "not_shared": "This profile is not shared with you. Ask the profile's owner for an invitation if you need to see it."
+      "not_shared": "This profile is not shared with you. Ask the profile's owner for an invitation if you need to see it.",
+      "too_many_links": "Too many active links. Revoke the ones no longer needed and try again.",
+      "link_not_found": "Link not found. Refresh the list and try again.",
+      "open_failed": "The link or PIN is wrong, or the link has ended. Ask the profile's owner to check.",
+      "session_invalid": "Viewing time is over. Open the link again with its PIN."
     }
   },
   "import": {

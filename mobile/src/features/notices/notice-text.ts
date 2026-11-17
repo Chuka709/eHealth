@@ -8,6 +8,7 @@ const KNOWN = new Set([
   "admin_action",
   "review_ready",
   "critical_pending",
+  "share_link_locked",
 ]);
 
 export function noticeKey(notice: Pick<Notice, "kind" | "title_key">): string {
