@@ -10,7 +10,11 @@ const KNOWN = new Set([
   "critical_pending",
 ]);
 
-export function noticeKey(notice: Pick<Notice, "kind">): string {
+export function noticeKey(notice: Pick<Notice, "kind" | "title_key">): string {
+  // a doctor's or a viewer's invitation (7.1) shares the kind with a caregiver's
+  if (notice.kind === "share_invite" && notice.title_key === "notification.share_invite") {
+    return "kind.access_invite";
+  }
   return KNOWN.has(notice.kind) ? `kind.${notice.kind}` : "kind.other";
 }
 

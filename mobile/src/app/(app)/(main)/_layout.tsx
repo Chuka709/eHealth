@@ -34,6 +34,7 @@ export default function MainLayout() {
       <Stack.Screen name="reports/compare" options={{ title: t("timeline.compareScreen.title") }} />
       <Stack.Screen name="dashboard/cards" options={{ title: t("home.cardsEditor.title") }} />
       <Stack.Screen name="caregivers/index" options={{ title: t("caregivers.title") }} />
+      <Stack.Screen name="shares/index" options={{ title: t("shares.title") }} />
       <Stack.Screen
         name="caregivers/invitations"
         options={{ title: t("caregivers.invitations.title") }}

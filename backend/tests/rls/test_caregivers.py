@@ -215,16 +215,11 @@ async def test_the_owner_cannot_make_a_caregiver_or_revive_one_directly(
                 ),
                 {"p": patient, "u": carer},
             )
+    # ended through its function (direct writes of a shared row are refused since 0040)
     async with as_user(app_engine, owner) as conn:
-        await conn.execute(
-            bound_text(
-                "update patient_access set revoked_at = now()"
-                " where patient_id = :p and user_id = :u"
-            ),
-            {"p": patient, "u": carer},
-        )
+        await conn.execute(bound_text("select revoke_share(:p, :u)"), {"p": patient, "u": carer})
     async with as_user(app_engine, owner) as conn:
-        with pytest.raises(DBAPIError, match="not revived"):
+        with pytest.raises(DBAPIError, match=r"not revived|through its functions"):
             await conn.execute(
                 bound_text(
                     "update patient_access set revoked_at = null"

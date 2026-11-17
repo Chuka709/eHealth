@@ -140,6 +140,10 @@ async def _patient_gate(db: AsyncSession, patient_id: UUID, *, write: bool) -> A
     if write and not access.w:
         raise AppError(403, "patient.read_only")
     await consents.require_for_patient(db, patient_id)
+    # a doctor's or a viewer's read, by day, for the owner's "who opened it" (7.1, 0040);
+    # nothing for the owner or a caregiver
+    if not access.w:
+        await db.execute(bound_text("select note_profile_view(:p)"), {"p": patient_id})
     return db
 
 

@@ -1,5 +1,7 @@
 import { useRouter } from "expo-router";
+import { Alert } from "react-native";
 import { useTranslations } from "use-intl";
+import { FormMessage } from "@/components/form-message";
 import { NavGroup, NavRow } from "@/components/nav-row";
 import { Screen } from "@/components/screen";
 import { useRecordProfile } from "@/features/health/record-screens";
@@ -15,15 +17,37 @@ import {
   useRecords,
 } from "@/features/health/use-health";
 import { ProfileSwitcher } from "@/features/records/profile-switcher";
+import { useLeaveShare } from "@/features/shares/use-shares";
 import { formatDateTime } from "@/lib/dates";
+import { useErrorText } from "@/lib/use-error-text";
 
 /** The health profile: one place for everything the user keeps about their care. */
 export default function ProfileScreen() {
   const t = useTranslations("app.health");
   const tg = useTranslations("app.caregivers");
   const tu = useTranslations("app.upload");
+  const ts = useTranslations("app.shares");
+  const tc = useTranslations("app.common");
   const router = useRouter();
   const { own } = useRecordProfile();
+  const errorText = useErrorText();
+  const leave = useLeaveShare();
+  // a doctor or a viewer steps back from a profile shared with them (7.1): the profile is the
+  // one on screen when the row was pressed, whatever the screen shows by the time it is confirmed
+  const confirmLeave = (profileId: string) => () =>
+    Alert.alert(
+      ts("leave.title"),
+      ts("leave.body"),
+      [
+        { text: tc("cancel"), style: "cancel" },
+        {
+          text: ts("leave.confirm"),
+          style: "destructive",
+          onPress: () => leave.mutate(profileId),
+        },
+      ],
+      { cancelable: true },
+    );
   const appointments = useRecords(APPOINTMENTS, own?.id);
   const allergies = useRecords(ALLERGIES, own?.id);
   const contacts = useRecords(CONTACTS, own?.id);
@@ -41,6 +65,7 @@ export default function ProfileScreen() {
   return (
     <Screen>
       <ProfileSwitcher />
+      {leave.isError && <FormMessage kind="error" text={errorText(leave.error)} />}
       <NavGroup title={t("groups.care")}>
         <NavRow
           icon="heart-plus-outline"
@@ -123,6 +148,26 @@ export default function ProfileScreen() {
             hint={tg("rowOwnerHint")}
             onPress={go("/caregivers")}
             testID="profile-caregivers"
+          />
+        )}
+        {own?.access_level === "owner" && (
+          <NavRow
+            icon="stethoscope"
+            label={ts("rowOwner")}
+            hint={ts("rowOwnerHint")}
+            onPress={go("/shares")}
+            testID="profile-shares"
+          />
+        )}
+        {(own?.access_level === "doctor" || own?.access_level === "viewer") && (
+          <NavRow
+            icon="logout-variant"
+            label={ts("leave.row")}
+            hint={ts("leave.rowHint")}
+            onPress={() => {
+              if (!leave.isPending) confirmLeave(own.id)();
+            }}
+            testID="profile-leave-share"
           />
         )}
         {own?.access_level === "caregiver" && (

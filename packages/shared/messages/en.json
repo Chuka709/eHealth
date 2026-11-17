@@ -956,7 +956,8 @@
         "admin_action": "An admin changed your account",
         "review_ready": "A new result is ready to review",
         "critical_pending": "A new result may contain a value that needs prompt review",
-        "other": "New notification"
+        "other": "New notification",
+        "access_invite": "You have an invitation to view a profile"
       },
       "dose": {
         "title": "Dose log",
@@ -1402,6 +1403,77 @@
       "stopsAhead": "{name} - not taken from this day",
       "changesAhead": "{name} - dose or schedule changes",
       "untilAhead": "Ends: {date}"
+    },
+    "shares": {
+      "title": "Share with a doctor or viewer",
+      "rowOwner": "Share with a doctor or viewer",
+      "rowOwnerHint": "View-only, for a set time; see who opened it on which days",
+      "ownerOnly": "Only the profile's owner manages sharing.",
+      "intro": "Invite a registered doctor or a family member by username. Only after they accept can they view this whole profile (results, medicines, transplant, vitals, timeline) — they cannot add, change, delete or share anything further. You can revoke it at any time. What they have already seen or copied cannot be taken back.",
+      "listTitle": "Shared with",
+      "none": "Not shared with anyone yet.",
+      "level": {
+        "doctor": "Doctor",
+        "viewer": "Viewer"
+      },
+      "levelHint": {
+        "doctor": "Doctor — for a registered doctor. View-only for now.",
+        "viewer": "Viewer — a family member, for example. View-only."
+      },
+      "duration": {
+        "days": "{n, plural, =1 {24 hours} other {# days}}",
+        "open": "Until revoked"
+      },
+      "until": "Until {date}",
+      "untilRevoked": "Until revoked",
+      "lastViewed": "Last opened: {date}",
+      "notViewed": "Not opened yet",
+      "end": {
+        "button": "Revoke access",
+        "title": "Revoke {name}'s access?",
+        "body": "They will no longer see this profile. What they have already seen or copied cannot be taken back.",
+        "confirm": "Revoke"
+      },
+      "pendingTitle": "Waiting for an answer",
+      "expires": "Invitation valid until {date}",
+      "cancelInvite": "Cancel invitation",
+      "cancelInviteLabel": "Cancel the invitation sent to {username}",
+      "invite": {
+        "title": "Invite someone",
+        "hint": "Ask the person for their username and type it exactly. The answer is the same whoever it is — the list above shows whether it reached someone.",
+        "username": "Username",
+        "invalid": "3–32 characters: lowercase Latin letters, digits, dot, underscore.",
+        "level": "Access",
+        "duration": "Duration (from acceptance)",
+        "button": "Invite",
+        "checkTitle": "Check the username",
+        "checkBody": "Invite “{username}” as {level} for {duration}? A wrong username may send your name to someone else.",
+        "send": "Send",
+        "sent": "Request received. It shows here once that person accepts."
+      },
+      "views": {
+        "title": "Who opened it, and when",
+        "hint": "Days in the last 90 when people you share with opened the profile (first and last time that day).",
+        "none": "Nobody opened it in the last 90 days.",
+        "row": "{name} — {day}: {first} – {last}"
+      },
+      "invitations": {
+        "from": "{name} invites you as {level}",
+        "acceptTitle": "Accept {name}'s invitation?",
+        "acceptBody": {
+          "doctor": "You will be able to view this profile as a doctor. You cannot change, add or share anything; the days you open it are shown to the profile's owner.",
+          "viewer": "You will be able to view this profile. You cannot change, add or share anything; the days you open it are shown to the profile's owner."
+        },
+        "acceptLabel": "Accept the invitation — {name}"
+      },
+      "leave": {
+        "row": "Stop viewing this profile",
+        "rowHint": "Leave a profile shared with you",
+        "title": "Stop viewing this profile?",
+        "body": "To see it again, ask the owner for a new invitation.",
+        "confirm": "Stop"
+      },
+      "pendingRow": "{level} · {duration}"
     }
   },
   "status": {
@@ -1587,6 +1659,12 @@
     },
     "timeline": {
       "bad_cursor": "The list position is not valid. Please reload."
+    },
+    "share": {
+      "too_many": "Too many invitations sent. Please wait a while and try again.",
+      "invitation_not_found": "The invitation was not found or is no longer valid. Ask the profile's owner to send a new one.",
+      "not_found": "This person was not found. Refresh the list and try again.",
+      "not_shared": "This profile is not shared with you. Ask the profile's owner for an invitation if you need to see it."
     }
   },
   "import": {

@@ -116,7 +116,7 @@ async def test_owner_cannot_create_a_second_owner(
     owner, other = await make_user(owner_engine), await make_user(owner_engine)
     patient = await make_patient(app_engine, owner)
     with pytest.raises(DBAPIError, match="row-level security"):
-        await grant(app_engine, owner, patient, other, "owner")
+        await grant(app_engine, owner, patient, other, "owner", direct=True)
 
 
 async def test_caregiver_cannot_escalate_or_regrant(
@@ -126,7 +126,7 @@ async def test_caregiver_cannot_escalate_or_regrant(
     patient = await make_patient(app_engine, owner)
     await grant(app_engine, owner, patient, carer, "caregiver")
     with pytest.raises(DBAPIError, match="row-level security"):
-        await grant(app_engine, carer, patient, friend, "viewer")
+        await grant(app_engine, carer, patient, friend, "viewer", direct=True)
     async with as_user(app_engine, carer) as conn:
         r = await conn.execute(
             bound_text(

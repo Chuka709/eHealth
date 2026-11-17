@@ -215,8 +215,10 @@ async def notifications(
             # a notice about a profile stays only while the user can open it (as 0024 does for
             # push); an invitation's is for someone who has no access yet
             " and (patient_id is null or can_read_patient(patient_id)"
-            " or (kind = 'share_invite' and exists (select 1 from my_caregiver_invitations() i"
-            " where i.id::text = notifications.entity_id)))"
+            " or (kind = 'share_invite' and (exists (select 1 from my_caregiver_invitations() i"
+            " where i.id::text = notifications.entity_id)"
+            " or exists (select 1 from my_access_invitations() j"
+            " where j.id::text = notifications.entity_id))))"
             " order by created_at desc limit :n"
         ),
         {"u": unread_only, "n": limit},

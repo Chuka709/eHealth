@@ -71,6 +71,17 @@ EXECUTE_MATRIX: dict[str, set[str]] = {
         "session_rotate(text,text,interval)",
         "set_caregiver_alerts(uuid,integer,boolean)",
         "set_session_push_token(uuid,text)",
+        # 0040: sharing with a doctor or a viewer
+        "invite_access(uuid,text,text,integer)",
+        "leave_share(uuid)",
+        "my_access_invitations()",
+        "note_profile_view(uuid)",
+        "owner_access_invitations(uuid)",
+        "owner_profile_views(uuid)",
+        "owner_shares(uuid)",
+        "respond_access_invitation(uuid,boolean)",
+        "revoke_access_invitation(uuid)",
+        "revoke_share(uuid,uuid)",
     },
     "labtrack_admin": {
         "admin_cancel_deletion(uuid,text)",
@@ -100,6 +111,7 @@ EXECUTE_MATRIX: dict[str, set[str]] = {
         "maint_live_document_keys(text[])",
         "maint_sweep_extractions()",
         "maint_purge_deleted_users(integer)",
+        "maint_prune_profile_views()",
     },
     # 0028: the push worker's own role
     "labtrack_push": {

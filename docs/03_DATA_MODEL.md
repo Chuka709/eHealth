@@ -491,6 +491,19 @@ create table consents (
   created_at timestamptz not null default now()
 );
 
+-- ============ НЭРЭЭР ХУВААЛЦАХ (эмч, үзэгч; 0040, 7.1) ============
+create table access_invitations (               -- урилга; хүлээн авснаар patient_access (doctor|viewer, expires_at)
+  id uuid primary key, patient_id uuid not null, invited_user_id uuid not null, invited_by uuid not null,
+  level access_level check (level in ('doctor','viewer')), access_days int check (access_days in (1,7,30)), -- null = цуцлах хүртэл
+  status text check (status in ('pending','accepted','declined','revoked')), created_at, expires_at (14 хоног), responded_at
+);
+create table profile_views (                    -- эмч/үзэгчийн уншилт, УБ-ын өдөр бүр нэг мөр; зөвхөн definer функцээр
+  patient_id uuid, user_id uuid, day date, first_at timestamptz, last_at timestamptz, primary key (patient_id, user_id, day)
+);
+-- функц: invite_access, respond_access_invitation, revoke_access_invitation, revoke_share, leave_share,
+-- owner_shares, owner_access_invitations, my_access_invitations, note_profile_view (API-ийн профайлын gate),
+-- owner_profile_views (90 хоног), maint_prune_profile_views (400 хоног). Q61.
+
 -- ============ ХУВААЛЦАХ ЛИНК ============
 create table share_links (
   id uuid primary key default gen_random_uuid(),
