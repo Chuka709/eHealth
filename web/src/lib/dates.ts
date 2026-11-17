@@ -15,6 +15,15 @@ export function formatDate(iso: string, withTime = false): string {
   return withTime ? `${date} ${p.hour}:${p.minute}` : date;
 }
 
+/** A date known only to the month or the year shows only that: "2024.03", "2024"
+ * (the stored day is a placeholder, never shown). */
+export function formatPartial(isoDate: string, precision: string): string {
+  const [y, m] = isoDate.slice(0, 10).split("-");
+  if (precision === "year") return y;
+  if (precision === "month") return `${y}.${m}`;
+  return formatDate(isoDate);
+}
+
 /** 900 -> "15:00" */
 export function minutesSeconds(seconds: number): string {
   const s = Math.max(0, seconds);

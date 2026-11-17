@@ -12,7 +12,7 @@ and applies the link's sections and dates in the database (0041; 7.3 adds the se
 import secrets
 from dataclasses import dataclass
 from datetime import date, datetime
-from typing import Annotated, Literal
+from typing import Annotated, Any, Literal
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Header, Response, status
@@ -23,6 +23,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from labtrack.api.caregivers import _owner_only
 from labtrack.api.deps import AnonymousDb, PatientReadDb, PatientWriteDb
 from labtrack.api.errors import AppError, ErrorBody
+from labtrack.api.numbers import num
 from labtrack.api.ratelimit import per_ip, per_user
 from labtrack.auth.service import run_hashing
 from labtrack.config import get_settings
@@ -302,6 +303,13 @@ async def share_context(
 Share = Annotated[ShareContext, Depends(share_context)]
 
 
+@public_router.post("/close", status_code=status.HTTP_204_NO_CONTENT, responses=_ERRORS)
+async def close_session(share: Share) -> Response:
+    """The viewer finishes: the session ends on the server too."""
+    await share.db.execute(bound_text("select share_session_end(:s)"), {"s": share.session_hash})
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
 @public_router.get("/profile", response_model=SharedProfileOut, responses=_ERRORS)
 async def shared_profile(share: Share) -> SharedProfileOut:
     """Whose record this is and what the link shows."""
@@ -317,3 +325,182 @@ async def shared_profile(share: Share) -> SharedProfileOut:
         date_to=share.date_to,
         expires_at=share.expires_at,
     )
+
+
+# --- what the link shows (Phase 7.3; 0042) ------------------------------------------------
+
+
+class SharedAllergyOut(BaseModel):
+    substance: str
+    reaction: str | None
+    severity: str | None
+    noted_on: date | None
+
+
+class SharedSummaryOut(BaseModel):
+    full_name: str
+    birth_date: date | None
+    sex: str
+    allergies: list[SharedAllergyOut]
+
+
+class SharedLabOut(BaseModel):
+    collected_at: datetime
+    collected_precision: str  # 'day': no time of day is known
+    lab_name: str | None
+    test_code: str | None
+    test_name_mn: str | None
+    test_name_en: str | None
+    raw_name: str
+    raw_value: str | None  # as printed
+    raw_unit: str | None
+    ref_text: str | None  # the lab's own range, as printed
+    critical_text: str | None
+    flag: str | None
+    lab_flag: str | None
+
+
+class SharedRegimenOut(BaseModel):
+    effective_from: date
+    dose_amount: str | None
+    dose_unit: str | None
+    dose_unit_text: str | None
+    schedule: dict[str, object] | list[object] | None
+    instructions: str | None
+
+
+class SharedMedicationOut(BaseModel):
+    name: str
+    brand: str | None
+    form: str | None
+    strength: str | None
+    route: str | None
+    purpose: str | None
+    started_on: date | None
+    stopped_on: date | None
+    planned_end_on: date | None
+    regimens: list[SharedRegimenOut]
+
+
+class SharedTransplantOut(BaseModel):
+    organ: str
+    organ_detail: str | None
+    transplant_date: date | None
+    date_precision: str
+    country: str | None
+    hospital: str | None
+    transplant_number: int | None
+    donor_type: str | None
+    recipient_blood_type: str | None
+    donor_blood_type: str | None
+    abo_incompatible: bool | None
+    cmv_donor: str | None
+    cmv_recipient: str | None
+    ebv_donor: str | None
+    ebv_recipient: str | None
+    primary_disease: str | None
+    induction_therapy: str | None
+    graft_status: str | None
+    graft_status_date: date | None
+    follow_up_center: str | None
+    follow_up_doctor: str | None
+
+
+class SharedEventOut(BaseModel):
+    kind: str
+    title: str | None
+    started_on: date
+    ended_on: date | None
+    place: str | None
+    outcome: str | None
+
+
+class SharedVitalOut(BaseModel):
+    kind: str
+    value: str
+    unit: str | None
+    measured_at: datetime
+    group_no: int | None  # the parts of one reading share it
+
+
+class SharedRecordOut(BaseModel):
+    """Only the sections the link includes are present (the others are null)."""
+
+    full_name: str
+    scopes: list[Scope]
+    date_from: date | None
+    date_to: date | None
+    expires_at: datetime
+    summary: SharedSummaryOut | None = None
+    labs: list[SharedLabOut] | None = None
+    medications: list[SharedMedicationOut] | None = None
+    transplants: list[SharedTransplantOut] | None = None
+    events: list[SharedEventOut] | None = None
+    vitals: list[SharedVitalOut] | None = None
+
+
+_SECTION_SQL = {
+    name: bound_text(f"select * from {name}(:s)")  # noqa: S608 - constant names only
+    for name in (
+        "share_summary",
+        "share_allergies",
+        "share_labs",
+        "share_medications",
+        "share_transplants",
+        "share_events",
+        "share_vitals",
+    )
+}
+
+
+async def _rows(share: ShareContext, function: str) -> list[dict[str, Any]]:
+    rows = await share.db.execute(_SECTION_SQL[function], {"s": share.session_hash})
+    return [dict(r._mapping) for r in rows]
+
+
+@public_router.get("/record", response_model=SharedRecordOut, responses=_ERRORS)
+async def shared_record(share: Share) -> SharedRecordOut:
+    """Everything the link shows, each section read by its own database function (which
+    checks the session, the section and the dates again)."""
+    name = (
+        await share.db.execute(bound_text("select share_profile(:s)"), {"s": share.session_hash})
+    ).scalar_one_or_none()
+    if name is None:
+        raise AppError(401, "share.session_invalid")
+    out = SharedRecordOut(
+        full_name=name,
+        scopes=list(share.scopes),
+        date_from=share.date_from,
+        date_to=share.date_to,
+        expires_at=share.expires_at,
+    )
+    if "summary" in share.scopes:
+        people = await _rows(share, "share_summary")
+        if people:
+            person = people[0]
+            out.summary = SharedSummaryOut(
+                **person,
+                allergies=[SharedAllergyOut(**a) for a in await _rows(share, "share_allergies")],
+            )
+    if "labs" in share.scopes:
+        out.labs = [SharedLabOut(**r) for r in await _rows(share, "share_labs")]
+    if "meds" in share.scopes:
+        out.medications = [
+            SharedMedicationOut(
+                **{k: v for k, v in m.items() if k != "regimens"},
+                regimens=[SharedRegimenOut(**g) for g in m["regimens"]],
+            )
+            for m in await _rows(share, "share_medications")
+        ]
+    if "transplant" in share.scopes:
+        out.transplants = [
+            SharedTransplantOut(**r) for r in await _rows(share, "share_transplants")
+        ]
+    if "events" in share.scopes:
+        out.events = [SharedEventOut(**r) for r in await _rows(share, "share_events")]
+    if "vitals" in share.scopes:
+        out.vitals = [
+            SharedVitalOut(**{**r, "value": num(r["value"])})
+            for r in await _rows(share, "share_vitals")
+        ]
+    return out

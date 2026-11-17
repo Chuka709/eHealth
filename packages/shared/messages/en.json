@@ -1900,5 +1900,64 @@
       "national_id": "national ID",
       "role": "role"
     }
+  },
+  "web": {
+    "share": {
+      "title": "Shared health record",
+      "intro": "Enter the 6-digit PIN you got from the profile's owner.",
+      "pin": "PIN",
+      "pinHint": "The PIN is given separately from the link (for example, said aloud). The link closes after 5 wrong PINs.",
+      "open": "Open",
+      "opening": "Opening…",
+      "openFailed": "The link or PIN is wrong, or the link has ended. Ask the profile's owner to check.",
+      "tooMany": "Too many attempts. Please wait a while and try again.",
+      "noLink": "The link is incomplete. Open the whole link you got from the profile's owner.",
+      "endedTitle": "Viewing has ended",
+      "ended": "You finished viewing. To see it again, open the link with its PIN.",
+      "noSession": "Viewing time is over or the link was closed. Open the link again with its PIN.",
+      "recordOf": "{name} — shared record",
+      "until": "Viewable until {time}",
+      "range": "Records from {from} to {to}",
+      "disclaimer": "This information was entered by the patient, who also checked and confirmed the lab results. Flags compare each value with that lab's own range — they are not an assessment. For clinical decisions, check against the source documents and the lab's own reports.",
+      "end": "Finish viewing",
+      "sections": {
+        "summary": "Summary",
+        "labs": "Lab results",
+        "meds": "Medicines",
+        "transplant": "Transplant",
+        "events": "Events",
+        "vitals": "Vital signs"
+      },
+      "birthDate": "Date of birth",
+      "allergies": "Allergies",
+      "noAllergies": "No allergy recorded.",
+      "none": "Nothing recorded.",
+      "organ": "Organ",
+      "date": "Date",
+      "transplantField": {
+        "hospital": "Hospital",
+        "donor": "Donor type",
+        "bloodTypes": "Blood group (recipient / donor)",
+        "cmv": "CMV (recipient / donor)",
+        "ebv": "EBV (recipient / donor)",
+        "primaryDisease": "Primary disease",
+        "induction": "Induction therapy",
+        "graft": "Graft status",
+        "followUp": "Follow-up centre, doctor"
+      },
+      "medDates": "{from} – {to}",
+      "doseFrom": "{date} · {dose}",
+      "when": "When",
+      "test": "Test",
+      "value": "Value (as printed)",
+      "reference": "Lab's range",
+      "flag": "Against the lab's range",
+      "measure": "Measure",
+      "critical": "Critical: {text}",
+      "medSince": "Since {from}",
+      "rangeFrom": "Records from {from}",
+      "rangeTo": "Records up to {to}",
+      "notShared": "Not shared by this link: {sections}."
+    }
   }
 }

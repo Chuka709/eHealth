@@ -1664,6 +1664,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/share/close": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Close Session
+         * @description The viewer finishes: the session ends on the server too.
+         */
+        post: operations["close_session_api_v1_share_close_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/share/profile": {
         parameters: {
             query?: never;
@@ -1676,6 +1696,27 @@ export interface paths {
          * @description Whose record this is and what the link shows.
          */
         get: operations["shared_profile_api_v1_share_profile_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/share/record": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Shared Record
+         * @description Everything the link shows, each section read by its own database function (which
+         *     checks the session, the section and the dates again).
+         */
+        get: operations["shared_record_api_v1_share_record_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3990,6 +4031,90 @@ export interface components {
              */
             last_at: string;
         };
+        /** SharedAllergyOut */
+        SharedAllergyOut: {
+            /** Substance */
+            substance: string;
+            /** Reaction */
+            reaction: string | null;
+            /** Severity */
+            severity: string | null;
+            /** Noted On */
+            noted_on: string | null;
+        };
+        /** SharedEventOut */
+        SharedEventOut: {
+            /** Kind */
+            kind: string;
+            /** Title */
+            title: string | null;
+            /**
+             * Started On
+             * Format: date
+             */
+            started_on: string;
+            /** Ended On */
+            ended_on: string | null;
+            /** Place */
+            place: string | null;
+            /** Outcome */
+            outcome: string | null;
+        };
+        /** SharedLabOut */
+        SharedLabOut: {
+            /**
+             * Collected At
+             * Format: date-time
+             */
+            collected_at: string;
+            /** Collected Precision */
+            collected_precision: string;
+            /** Lab Name */
+            lab_name: string | null;
+            /** Test Code */
+            test_code: string | null;
+            /** Test Name Mn */
+            test_name_mn: string | null;
+            /** Test Name En */
+            test_name_en: string | null;
+            /** Raw Name */
+            raw_name: string;
+            /** Raw Value */
+            raw_value: string | null;
+            /** Raw Unit */
+            raw_unit: string | null;
+            /** Ref Text */
+            ref_text: string | null;
+            /** Critical Text */
+            critical_text: string | null;
+            /** Flag */
+            flag: string | null;
+            /** Lab Flag */
+            lab_flag: string | null;
+        };
+        /** SharedMedicationOut */
+        SharedMedicationOut: {
+            /** Name */
+            name: string;
+            /** Brand */
+            brand: string | null;
+            /** Form */
+            form: string | null;
+            /** Strength */
+            strength: string | null;
+            /** Route */
+            route: string | null;
+            /** Purpose */
+            purpose: string | null;
+            /** Started On */
+            started_on: string | null;
+            /** Stopped On */
+            stopped_on: string | null;
+            /** Planned End On */
+            planned_end_on: string | null;
+            /** Regimens */
+            regimens: components["schemas"]["SharedRegimenOut"][];
+        };
         /** SharedProfileOut */
         SharedProfileOut: {
             /** Full Name */
@@ -4005,6 +4130,128 @@ export interface components {
              * Format: date-time
              */
             expires_at: string;
+        };
+        /**
+         * SharedRecordOut
+         * @description Only the sections the link includes are present (the others are null).
+         */
+        SharedRecordOut: {
+            /** Full Name */
+            full_name: string;
+            /** Scopes */
+            scopes: ("summary" | "labs" | "meds" | "transplant" | "events" | "vitals")[];
+            /** Date From */
+            date_from: string | null;
+            /** Date To */
+            date_to: string | null;
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+            summary?: components["schemas"]["SharedSummaryOut"] | null;
+            /** Labs */
+            labs?: components["schemas"]["SharedLabOut"][] | null;
+            /** Medications */
+            medications?: components["schemas"]["SharedMedicationOut"][] | null;
+            /** Transplants */
+            transplants?: components["schemas"]["SharedTransplantOut"][] | null;
+            /** Events */
+            events?: components["schemas"]["SharedEventOut"][] | null;
+            /** Vitals */
+            vitals?: components["schemas"]["SharedVitalOut"][] | null;
+        };
+        /** SharedRegimenOut */
+        SharedRegimenOut: {
+            /**
+             * Effective From
+             * Format: date
+             */
+            effective_from: string;
+            /** Dose Amount */
+            dose_amount: string | null;
+            /** Dose Unit */
+            dose_unit: string | null;
+            /** Dose Unit Text */
+            dose_unit_text: string | null;
+            /** Schedule */
+            schedule: {
+                [key: string]: unknown;
+            } | unknown[] | null;
+            /** Instructions */
+            instructions: string | null;
+        };
+        /** SharedSummaryOut */
+        SharedSummaryOut: {
+            /** Full Name */
+            full_name: string;
+            /** Birth Date */
+            birth_date: string | null;
+            /** Sex */
+            sex: string;
+            /** Allergies */
+            allergies: components["schemas"]["SharedAllergyOut"][];
+        };
+        /** SharedTransplantOut */
+        SharedTransplantOut: {
+            /** Organ */
+            organ: string;
+            /** Organ Detail */
+            organ_detail: string | null;
+            /** Transplant Date */
+            transplant_date: string | null;
+            /** Date Precision */
+            date_precision: string;
+            /** Country */
+            country: string | null;
+            /** Hospital */
+            hospital: string | null;
+            /** Transplant Number */
+            transplant_number: number | null;
+            /** Donor Type */
+            donor_type: string | null;
+            /** Recipient Blood Type */
+            recipient_blood_type: string | null;
+            /** Donor Blood Type */
+            donor_blood_type: string | null;
+            /** Abo Incompatible */
+            abo_incompatible: boolean | null;
+            /** Cmv Donor */
+            cmv_donor: string | null;
+            /** Cmv Recipient */
+            cmv_recipient: string | null;
+            /** Ebv Donor */
+            ebv_donor: string | null;
+            /** Ebv Recipient */
+            ebv_recipient: string | null;
+            /** Primary Disease */
+            primary_disease: string | null;
+            /** Induction Therapy */
+            induction_therapy: string | null;
+            /** Graft Status */
+            graft_status: string | null;
+            /** Graft Status Date */
+            graft_status_date: string | null;
+            /** Follow Up Center */
+            follow_up_center: string | null;
+            /** Follow Up Doctor */
+            follow_up_doctor: string | null;
+        };
+        /** SharedVitalOut */
+        SharedVitalOut: {
+            /** Kind */
+            kind: string;
+            /** Value */
+            value: string;
+            /** Unit */
+            unit: string | null;
+            /**
+             * Measured At
+             * Format: date-time
+             */
+            measured_at: string;
+            /** Group No */
+            group_no: number | null;
         };
         /** SharesOut */
         SharesOut: {
@@ -13387,6 +13634,71 @@ export interface operations {
             };
         };
     };
+    close_session_api_v1_share_close_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-share-session"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
     shared_profile_api_v1_share_profile_get: {
         parameters: {
             query?: never;
@@ -13405,6 +13717,73 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SharedProfileOut"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    shared_record_api_v1_share_record_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-share-session"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SharedRecordOut"];
                 };
             };
             /** @description Unauthorized */

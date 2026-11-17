@@ -1,0 +1,12 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "web-dev",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "web", "exec", "next", "dev", "--port", "3100"],
+      "port": 3100,
+      "env": { "API_INTERNAL_URL": "http://127.0.0.1:8000" }
+    }
+  ]
+}

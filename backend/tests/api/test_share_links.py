@@ -123,3 +123,31 @@ async def test_only_the_owner_manages_links_and_input_is_checked(
         assert r.status_code == 404
         r = await c.post("/api/v1/share/open", json={"token": "short", "pin": "12"})
         assert r.status_code == 422
+
+
+async def test_the_record_shows_only_the_links_sections(
+    owner_engine: AsyncEngine, client_from: ClientFactory
+) -> None:
+    async with client_from() as c:
+        owner, base, _ = await _owner_link(c, owner_engine)
+        r = await c.post(
+            f"{base}/share-links",
+            json={"scopes": ["transplant", "vitals"], "days": 1},
+            headers=owner,
+        )
+        link = r.json()
+        r = await c.post("/api/v1/share/open", json={"token": link["token"], "pin": link["pin"]})
+        h = {"X-Share-Session": r.json()["session"]}
+        r = await c.get("/api/v1/share/record", headers=h)
+        assert r.status_code == 200
+        assert r.headers["cache-control"] == "no-store"
+        record = r.json()
+        assert record["full_name"] == "Бат"
+        assert record["transplants"] == []
+        assert record["vitals"] == []
+        for absent in ("summary", "labs", "medications", "events"):
+            assert record[absent] is None, absent
+        assert (await c.get("/api/v1/share/record")).status_code == 401
+        # the viewer finishes: the session ends on the server
+        assert (await c.post("/api/v1/share/close", headers=h)).status_code == 204
+        assert (await c.get("/api/v1/share/record", headers=h)).status_code == 401
