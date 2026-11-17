@@ -98,7 +98,12 @@
     "install": {
       "exclude": [
         "expo",
-        "expo-dev-client"
+        "expo-dev-client",
+        "@expo/ui",
+        "expo-file-system",
+        "expo-router",
+        "expo-web-browser",
+        "jest-expo"
       ]
     }
   }
