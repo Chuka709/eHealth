@@ -14,7 +14,8 @@ export type ReminderHealth = {
   notificationsOff: boolean;
   /** the OS may still ask (first time / iOS provisional) */
   canAsk: boolean;
-  /** Android: exact alarms not allowed - reminders can be ~10 min late (H18); null unknown */
+  /** Android: exact alarms not allowed - reminders can be late, up to about an hour (H18, Q48);
+   * null unknown */
   exactOff: boolean | null;
 };
 

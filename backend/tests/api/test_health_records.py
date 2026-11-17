@@ -209,6 +209,7 @@ async def test_a_blood_pressure_reading_is_one_group_with_fixed_units(
         ((("bp_systolic", "1200"), ("bp_diastolic", "80")), "vital.implausible"),
         ((("bp_systolic", "80"), ("bp_diastolic", "120")), "vital.bp_order"),  # swapped
         ((("glucose", "120"),), "vital.glucose_unit"),  # mg/dL as mmol/L
+        ((("glucose", "40"),), "vital.glucose_unit"),  # 40 mg/dL is 2.2 mmol/L (Q47)
         ((("weight", "1,000"),), "vital.format"),
         ((("pulse", "72.5"),), "vital.format"),
         ((("weight", "7.455"),), "vital.format"),

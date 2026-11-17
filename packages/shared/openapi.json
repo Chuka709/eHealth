@@ -1271,6 +1271,96 @@
         ]
       }
     },
+    "/api/v1/me/device-alarms": {
+      "put": {
+        "tags": [
+          "me"
+        ],
+        "summary": "Put Device Alarms",
+        "description": "Whether this device's medicine reminders can come on time (Q48): when none of the owner's\ndevices can, a caregiver's dose alert waits at least 90 minutes (0046). Kept per session\nfamily, so it outlives refreshes; nothing about the device but this one flag.",
+        "operationId": "put_device_alarms_api_v1_me_device_alarms_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeviceAlarmsIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/api/v1/me/report-unwanted-admin-action": {
       "post": {
         "tags": [
@@ -14897,6 +14987,10 @@
           "watched_medications": {
             "type": "integer",
             "title": "Watched Medications"
+          },
+          "late_reminders": {
+            "type": "boolean",
+            "title": "Late Reminders"
           }
         },
         "type": "object",
@@ -14905,7 +14999,8 @@
           "critical_result",
           "owner_paused",
           "chosen",
-          "watched_medications"
+          "watched_medications",
+          "late_reminders"
         ],
         "title": "AlertsOut"
       },
@@ -16523,6 +16618,20 @@
           "scheduled_for"
         ],
         "title": "DeletionOut"
+      },
+      "DeviceAlarmsIn": {
+        "properties": {
+          "exact_alarms": {
+            "type": "boolean",
+            "title": "Exact Alarms"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "exact_alarms"
+        ],
+        "title": "DeviceAlarmsIn"
       },
       "DocumentOut": {
         "properties": {
@@ -18874,6 +18983,22 @@
             ],
             "title": "Notes"
           },
+          "user_category": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "immunosuppressant",
+                  "corticosteroid",
+                  "other"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Category"
+          },
           "client_id": {
             "type": "string",
             "format": "uuid",
@@ -18926,6 +19051,17 @@
               }
             ],
             "title": "Category"
+          },
+          "user_category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Category"
           },
           "name": {
             "type": "string",
@@ -19126,6 +19262,7 @@
           "id",
           "catalog_code",
           "category",
+          "user_category",
           "name",
           "brand",
           "form",
@@ -19335,6 +19472,22 @@
               }
             ],
             "title": "Notes"
+          },
+          "user_category": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "immunosuppressant",
+                  "corticosteroid",
+                  "other"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Category"
           }
         },
         "additionalProperties": false,

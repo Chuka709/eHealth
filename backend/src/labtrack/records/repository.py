@@ -203,10 +203,12 @@ MEDICATION_FIELDS = (
     "reminders_enabled",
     "reminder_timezone_mode",
     "notes",
+    "user_category",
 )
 
 _MEDICATION_SELECT = bound_text(
-    "select m.id, m.catalog_code, c.category, m.name, m.brand, m.form, m.strength, m.route,"
+    "select m.id, m.catalog_code, coalesce(c.category, m.user_category) as category,"
+    " m.user_category, m.name, m.brand, m.form, m.strength, m.route,"
     " m.purpose, m.prescribed_by, m.transplant_id, m.started_on, m.stopped_on, m.stop_reason,"
     " m.planned_end_on, m.is_long_term, m.reminders_enabled, m.reminder_timezone_mode,"
     " m.notes, m.created_at, m.updated_at from medications m"
@@ -214,17 +216,18 @@ _MEDICATION_SELECT = bound_text(
     " where m.patient_id = :p and (cast(:i as uuid) is null or m.id = :i)"
     # current first, immunosuppressants first among them (docs/08 "Эм")
     " order by coalesce(m.stopped_on <= local_today() or m.planned_end_on < local_today(), false),"
-    " (c.category = 'immunosuppressant') desc nulls last,"
+    " (coalesce(c.category, m.user_category) = 'immunosuppressant') desc nulls last,"
     " m.name, m.created_at"
 )
 
 _MEDICATION_INSERT = bound_text(
     "insert into medications (patient_id, client_id, catalog_code, name, brand, form, strength,"
     " route, purpose, prescribed_by, transplant_id, started_on, stopped_on, stop_reason,"
-    " planned_end_on, is_long_term, reminders_enabled, reminder_timezone_mode, notes)"
+    " planned_end_on, is_long_term, reminders_enabled, reminder_timezone_mode, notes,"
+    " user_category)"
     " values (:p, :client_id, :catalog_code, :name, :brand, :form, :strength, :route, :purpose,"
     " :prescribed_by, :transplant_id, :started_on, :stopped_on, :stop_reason, :planned_end_on,"
-    " :is_long_term, :reminders_enabled, :reminder_timezone_mode, :notes)"
+    " :is_long_term, :reminders_enabled, :reminder_timezone_mode, :notes, :user_category)"
     " on conflict (patient_id, client_id) do nothing returning id"
 )
 
@@ -235,7 +238,7 @@ _MEDICATION_UPDATE = bound_text(
     " stopped_on = :stopped_on, stop_reason = :stop_reason, planned_end_on = :planned_end_on,"
     " is_long_term = :is_long_term,"
     " reminders_enabled = :reminders_enabled, reminder_timezone_mode = :reminder_timezone_mode,"
-    " notes = :notes where patient_id = :p and id = :i"
+    " notes = :notes, user_category = :user_category where patient_id = :p and id = :i"
 )
 
 
@@ -248,7 +251,7 @@ async def medications(
 _MEDICATION_LOCK = bound_text(
     "select catalog_code, name, brand, form, strength, route, purpose, prescribed_by,"
     " transplant_id, started_on, stopped_on, stop_reason, planned_end_on, is_long_term,"
-    " reminders_enabled, reminder_timezone_mode, notes from medications"
+    " reminders_enabled, reminder_timezone_mode, notes, user_category from medications"
     " where patient_id = :p and id = :i for update"
 )
 

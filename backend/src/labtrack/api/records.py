@@ -406,9 +406,13 @@ class MedicationIn(_Strict):
     reminders_enabled: bool = False
     reminder_timezone_mode: Literal["home", "local"] = "home"
     notes: Long | None = None
+    # without a catalogue entry: what the user says it is (Q34) - puts its dose on the card
+    user_category: Literal["immunosuppressant", "corticosteroid", "other"] | None = None
 
     @model_validator(mode="after")
     def _dates(self) -> "MedicationIn":
+        if self.catalog_code is not None and self.user_category is not None:
+            raise ValueError("user_category")  # the catalogue says what it is
         start = self.started_on
         if start and self.stopped_on and self.stopped_on < start:
             raise ValueError("stopped_on")
@@ -427,7 +431,8 @@ class MedicationCreate(MedicationIn):
 class MedicationOut(BaseModel):
     id: UUID
     catalog_code: str | None
-    category: str | None
+    category: str | None  # the catalogue's, or else what the user said (Q34)
+    user_category: str | None
     name: str
     brand: str | None
     form: str | None

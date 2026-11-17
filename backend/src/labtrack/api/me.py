@@ -304,6 +304,31 @@ async def delete_push_token(db: UserDb, claims: Claims) -> Response:
     return await _set_push_token(db, claims, None)
 
 
+class DeviceAlarmsIn(_Strict):
+    exact_alarms: bool  # this device can schedule exact alarms (iOS always; Android: allowed)
+
+
+@router.put(
+    "/device-alarms",
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses={**_ERRORS, 429: {"model": ErrorBody}},
+    dependencies=[_PUSH_LIMIT],
+)
+async def put_device_alarms(body: DeviceAlarmsIn, db: UserDb, claims: Claims) -> Response:
+    """Whether this device's medicine reminders can come on time (Q48): when none of the owner's
+    devices can, a caregiver's dose alert waits at least 90 minutes (0046). Kept per session
+    family, so it outlives refreshes; nothing about the device but this one flag."""
+    done = (
+        await db.execute(
+            bound_text("select set_device_exact_alarms(:s, :e)"),
+            {"s": claims.session_id, "e": body.exact_alarms},
+        )
+    ).scalar_one()
+    if not done:  # the session ended after the request was authenticated
+        raise AppError(401, "auth.session_invalid")
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
 @router.post(
     "/report-unwanted-admin-action",
     status_code=status.HTTP_204_NO_CONTENT,

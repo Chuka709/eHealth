@@ -125,6 +125,7 @@ async def test_vitals_are_never_edited(app_engine: AsyncEngine, owner_engine: As
         ("pulse", "72.5", "bpm"),
         ("temperature", "29.9", "C"),
         ("glucose", "120", "mmol_L"),  # mg/dL written as mmol/L
+        ("glucose", "35.1", "mmol_L"),  # above what home meters read (0045, Q47)
         ("spo2", "101", "percent"),
         ("weight", "0", "kg"),
         ("urine_output", "-1", "ml"),

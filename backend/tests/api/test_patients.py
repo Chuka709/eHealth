@@ -31,6 +31,7 @@ _ACCOUNT_PATHS = {
     "/api/v1/me/delete",
     # the device, not health data: an admin reset must reach it without any consent (H12)
     "/api/v1/me/push-token",
+    "/api/v1/me/device-alarms",  # one flag about this device (Q48), no health data
 }
 REQUIRED = [
     {"kind": k, "version": consents.VERSIONS[k], "granted": True} for k in consents.REQUIRED

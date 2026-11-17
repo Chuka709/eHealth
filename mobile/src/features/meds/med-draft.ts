@@ -37,8 +37,14 @@ export type ScheduleDraft = {
   instructions: string;
 };
 
+/** What a hand-typed medicine is, as the user says (Q34); "unknown" is sent as no answer. */
+export const USER_CATEGORIES = ["immunosuppressant", "corticosteroid", "other", "unknown"] as const;
+export type UserCategory = (typeof USER_CATEGORIES)[number];
+export const sentCategory = (c: UserCategory | null) => (c === null || c === "unknown" ? null : c);
+
 export type MedDraft = {
   catalogCode: string | null;
+  userCategory: UserCategory | null;
   name: string;
   brand: string;
   form: string;
@@ -68,6 +74,7 @@ export const emptySchedule = (): ScheduleDraft => ({
 
 export const emptyMedDraft = (today: string): MedDraft => ({
   catalogCode: null,
+  userCategory: null,
   name: "",
   brand: "",
   form: "",
@@ -157,6 +164,8 @@ export function createBody(
   return {
     client_id: clientId,
     catalog_code: d.catalogCode,
+    // only without a catalogue entry: the catalogue says what it is
+    user_category: d.catalogCode ? null : sentCategory(d.userCategory),
     name: d.name.trim(),
     brand: optional(d.brand),
     form: optional(d.form),

@@ -1,6 +1,7 @@
 import type { components } from "@labtrack/shared";
 import { clearExports } from "@/features/emergency/export-cleanup";
 import { setBiometricOn, setLocked } from "@/features/lock/lock-store";
+import { resetDeviceAlarmReport } from "@/features/meds/use-device-alarms";
 import { resetPushThrottle } from "@/features/push/push-token";
 import { resetActiveProfile } from "@/features/records/active-profile";
 import { setWizardActive } from "@/features/records/onboarding-store";
@@ -195,6 +196,7 @@ export async function wipeLocal(
   setLocale("mn"); // the next user starts in the default language
   setWizardActive(false); // an unfinished onboarding is not the next session's
   resetPushThrottle(); // the next account sends its token at once
+  resetDeviceAlarmReport(); // and whether its reminders can be on time (Q48)
   resetActiveProfile(); // the next account starts on its own profile
   await queryClient.cancelQueries();
   stopCachePersistence(); // before clear(): the persister must not save the emptied cache

@@ -325,3 +325,28 @@ async def test_reading_the_card_writes_nothing(
     before = await audit_count()
     assert (await client.get(f"{base}/emergency-card", headers=h)).status_code == 200
     assert await audit_count() == before
+
+
+async def test_an_uncatalogued_medicine_the_user_calls_an_immunosuppressant_shows_its_dose(
+    client: AsyncClient, owner_engine: AsyncEngine
+) -> None:
+    """Q34 (physician 2026-11-18): a hand-typed medicine is on the card with its dose only when
+    the user said what it is - never guessed from its name; a catalogue entry keeps its own."""
+    _, h, base = await _profile(client, owner_engine)
+    await _catalog(owner_engine)
+    typed = _medication(name="Такролимус (гараар)", user_category="immunosuppressant")
+    typed["regimen"] = _change(0, "1", "1")
+    r = await client.post(f"{base}/medications", json=typed, headers=h)
+    assert r.status_code == 201, r.text
+    assert (r.json()["category"], r.json()["user_category"]) == ("immunosuppressant",) * 2
+    unsure = _medication(name="Такролимус (мэдэхгүй)")
+    unsure["regimen"] = _change(0, "1", "1")
+    assert (await client.post(f"{base}/medications", json=unsure, headers=h)).status_code == 201
+    card = (await client.get(f"{base}/emergency-card", headers=h)).json()
+    [dosed] = card["dosed_medications"]
+    assert (dosed["name"], dosed["category"]) == ("Такролимус (гараар)", "immunosuppressant")
+    assert dosed["dose"] is not None
+    assert card["other_medications"] == [{"name": "Такролимус (мэдэхгүй)", "brand": None}]
+    # the catalogue says what a catalogued medicine is: no second answer
+    both = _medication(catalog_code="TEST_TAC", name="Програф", user_category="corticosteroid")
+    assert (await client.post(f"{base}/medications", json=both, headers=h)).status_code == 422

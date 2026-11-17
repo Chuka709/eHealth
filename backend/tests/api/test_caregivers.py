@@ -217,6 +217,7 @@ async def test_alerts_belong_to_the_caregiver_and_the_owner_pauses_them(
             "owner_paused": False,
             "chosen": False,
             "watched_medications": 0,
+            "late_reminders": False,
         }
         for bad in (5, 241, 14, -30):
             r = await c.put(
@@ -236,6 +237,7 @@ async def test_alerts_belong_to_the_caregiver_and_the_owner_pauses_them(
             "owner_paused": False,
             "chosen": True,
             "watched_medications": 0,
+            "late_reminders": False,
         }
         r = await c.put(
             f"{base}/caregiver-alerts",

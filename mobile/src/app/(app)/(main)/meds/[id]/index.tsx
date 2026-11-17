@@ -5,6 +5,7 @@ import { Alert, StyleSheet, View } from "react-native";
 import { useTranslations } from "use-intl";
 import { Text } from "@/components/app-text";
 import { Button } from "@/components/button";
+import { Choices } from "@/components/choices";
 import { PickerField } from "@/components/date-field";
 import { FormMessage } from "@/components/form-message";
 import { Screen } from "@/components/screen";
@@ -12,6 +13,7 @@ import { LoadingView, RetryView } from "@/components/state-view";
 import { Paragraph, Title } from "@/components/text";
 import { TextField } from "@/components/text-field";
 import { CaregiverReminderNote } from "@/features/caregivers/reminder-note";
+import { sentCategory, USER_CATEGORIES, type UserCategory } from "@/features/meds/med-draft";
 import { useRegimenText } from "@/features/meds/use-med-text";
 import {
   type Medication,
@@ -29,6 +31,9 @@ import { useErrorText } from "@/lib/use-error-text";
 import { usePalette } from "@/theme/use-palette";
 
 const day = (iso: string) => formatDate(`${iso}T12:00:00Z`);
+
+const asCategory = (c: string | null): UserCategory | null =>
+  USER_CATEGORIES.find((x) => x === c) ?? null;
 
 /** The fields a PUT keeps unchanged (the record as stored, with the given changes). */
 function fieldsOf(m: Medication, patch: Partial<MedicationFields>): MedicationFields {
@@ -50,6 +55,7 @@ function fieldsOf(m: Medication, patch: Partial<MedicationFields>): MedicationFi
     reminders_enabled: m.reminders_enabled,
     reminder_timezone_mode: m.reminder_timezone_mode === "local" ? "local" : "home",
     notes: m.notes,
+    user_category: sentCategory(asCategory(m.user_category)),
     ...patch,
   };
 }
@@ -115,6 +121,19 @@ export default function MedicationScreen() {
         {med.reminders_enabled ? t("detail.reminderOn") : t("detail.reminderOff")}
       </Paragraph>
       <CaregiverReminderNote patientId={own.id} remindersOn={med.reminders_enabled} />
+      {/* a hand-typed medicine: what the user says it is (Q34); the card shows the dose of two */}
+      {!med.catalog_code && own.access_level !== "doctor" && own.access_level !== "viewer" && (
+        <Choices
+          label={t("form.category.question")}
+          options={USER_CATEGORIES}
+          value={asCategory(med.user_category) ?? "unknown"}
+          labelOf={(c) => t(`form.category.${c}`)}
+          onSelect={(c) => update.mutate(fieldsOf(med, { user_category: sentCategory(c) }))}
+        />
+      )}
+      {!med.catalog_code && own.access_level !== "doctor" && own.access_level !== "viewer" && (
+        <Paragraph muted>{t("form.category.why")}</Paragraph>
+      )}
       {failure && <FormMessage kind="error" text={errorText(failure)} />}
 
       {med.is_current && (

@@ -84,6 +84,9 @@ EXECUTE_MATRIX: dict[str, set[str]] = {
         "revoke_share(uuid,uuid)",
         # 0044: a minor's profile shared with a doctor or a viewer
         "owner_profile_consents(uuid)",
+        # 0046: phones whose reminders may be late (Q48)
+        "owner_reminders_may_be_late(uuid)",
+        "set_device_exact_alarms(uuid,boolean)",
         # 0043: a doctor's targets and notes
         "add_doctor_note(uuid,text)",
         "end_patient_target(uuid,date)",

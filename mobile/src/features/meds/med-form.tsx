@@ -23,6 +23,7 @@ import {
   type MedDraft,
   type ScheduleErrors,
   scheduleErrors,
+  USER_CATEGORIES,
 } from "./med-draft";
 import { ScheduleEditor } from "./schedule-editor";
 import { type CatalogItem, useCatalogSearch, useCreateMedication } from "./use-medications";
@@ -91,13 +92,24 @@ export function MedicationForm({ patientId, onDone }: { patientId: string; onDon
           />
         </View>
       ) : manual ? (
-        <TextField
-          label={t("form.name")}
-          value={draft.name}
-          maxLength={200}
-          error={showErrors && nameMissing ? t("form.errors.name") : undefined}
-          onChangeText={(name) => set({ name })}
-        />
+        <View style={styles.group}>
+          <TextField
+            label={t("form.name")}
+            value={draft.name}
+            maxLength={200}
+            error={showErrors && nameMissing ? t("form.errors.name") : undefined}
+            onChangeText={(name) => set({ name })}
+          />
+          {/* the emergency card shows the dose of these two (Q34): the user says, never a guess */}
+          <Choices
+            label={t("form.category.question")}
+            options={USER_CATEGORIES}
+            value={draft.userCategory}
+            labelOf={(c) => t(`form.category.${c}`)}
+            onSelect={(userCategory) => set({ userCategory })}
+          />
+          <Text style={[styles.note, { color: p.textMuted }]}>{t("form.category.why")}</Text>
+        </View>
       ) : (
         <View style={styles.group}>
           <TextField

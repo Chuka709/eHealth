@@ -535,7 +535,15 @@
         "timeLabel": "Time {n}",
         "more": "More details (optional)",
         "amountUnit": "Dose at time {n} ({unit})",
-        "results": "{n} results"
+        "results": "{n} results",
+        "category": {
+          "question": "Is this medicine an immunosuppressant or a steroid hormone taken by mouth or injection (for example prednisolone, methylprednisolone)?",
+          "immunosuppressant": "Immunosuppressant",
+          "corticosteroid": "Steroid hormone (by mouth or injection)",
+          "other": "No, another medicine",
+          "unknown": "I don't know",
+          "why": "The app never guesses what a medicine typed by hand is from its name. Immunosuppressants and steroids are shown with their dose on the emergency card. If you are not sure, ask your doctor and choose later on the medicine's page."
+        }
       },
       "units": {
         "mg": "mg",
@@ -1070,7 +1078,8 @@
         "leaveConfirm": "Stop",
         "notCaregiver": "You are not a caregiver of this profile.",
         "changed": "The profile changed after this screen was opened. Go back and open it again.",
-        "watchedNone": "No medicines are watched right now, so no alerts will come."
+        "watchedNone": "No medicines are watched right now, so no alerts will come.",
+        "latePhone": "The profile owner's phone may not be able to show medicine reminders on time (the \"Alarms & reminders\" permission is off). So that you are not alerted before the reminder reaches them, alerts come at least 90 minutes after the scheduled time."
       },
       "reminderOffNote": "This medicine's reminders are off, so caregivers get no alerts for it.",
       "pauseTitle": "Pause alerts — {name}",

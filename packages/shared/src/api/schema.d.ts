@@ -282,6 +282,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/me/device-alarms": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Put Device Alarms
+         * @description Whether this device's medicine reminders can come on time (Q48): when none of the owner's
+         *     devices can, a caregiver's dose alert waits at least 90 minutes (0046). Kept per session
+         *     family, so it outlives refreshes; nothing about the device but this one flag.
+         */
+        put: operations["put_device_alarms_api_v1_me_device_alarms_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me/report-unwanted-admin-action": {
         parameters: {
             query?: never;
@@ -2263,6 +2285,8 @@ export interface components {
             chosen: boolean;
             /** Watched Medications */
             watched_medications: number;
+            /** Late Reminders */
+            late_reminders: boolean;
         };
         /** AllergyCreate */
         AllergyCreate: {
@@ -2781,6 +2805,11 @@ export interface components {
              * Format: date-time
              */
             scheduled_for: string;
+        };
+        /** DeviceAlarmsIn */
+        DeviceAlarmsIn: {
+            /** Exact Alarms */
+            exact_alarms: boolean;
         };
         /** DocumentOut */
         DocumentOut: {
@@ -3503,6 +3532,8 @@ export interface components {
             reminder_timezone_mode: "home" | "local";
             /** Notes */
             notes?: string | null;
+            /** User Category */
+            user_category?: ("immunosuppressant" | "corticosteroid" | "other") | null;
             /**
              * Client Id
              * Format: uuid
@@ -3521,6 +3552,8 @@ export interface components {
             catalog_code: string | null;
             /** Category */
             category: string | null;
+            /** User Category */
+            user_category: string | null;
             /** Name */
             name: string;
             /** Brand */
@@ -3616,6 +3649,8 @@ export interface components {
             reminder_timezone_mode: "home" | "local";
             /** Notes */
             notes?: string | null;
+            /** User Category */
+            user_category?: ("immunosuppressant" | "corticosteroid" | "other") | null;
         };
         /** MedicationSummaryOut */
         MedicationSummaryOut: {
@@ -6356,6 +6391,82 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    put_device_alarms_api_v1_me_device_alarms_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DeviceAlarmsIn"];
+            };
+        };
         responses: {
             /** @description Successful Response */
             204: {

@@ -121,8 +121,8 @@ class EmergencyCardOut(BaseModel):
     blood_type_withheld: Literal["conflict", "hsct"] | None
     transplants: list[CardTransplant]
     dosed_medications: list[CardDosedMedication]
-    # current, by name only. A medicine entered without the catalogue has no category and is
-    # listed here (OPEN_QUESTIONS Q34)
+    # current, by name only: neither the catalogue nor the user (Q34, user_category) calls it an
+    # immunosuppressant or a corticosteroid
     other_medications: list[CardMedication]
     # none recorded is not "no known allergies": the app must never say so (H17)
     allergies: list[CardAllergy]

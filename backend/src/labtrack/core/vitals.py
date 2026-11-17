@@ -41,7 +41,8 @@ RULES: dict[str, VitalRule] = {
     "pulse": VitalRule("bpm", Decimal(20), Decimal(300), 0),  # infant SVT
     "weight": VitalRule("kg", Decimal(1), Decimal(400), 2),  # infants: 10 g steps
     "temperature": VitalRule("C", Decimal(30), Decimal(45), 1),
-    "glucose": VitalRule("mmol_L", Decimal("0.5"), Decimal(50), 1),
+    # home meters read up to ~33.3 mmol/L; above 35 is most often mg/dL (Q47, migration 0045)
+    "glucose": VitalRule("mmol_L", Decimal("0.5"), Decimal(35), 1),
     "spo2": VitalRule("percent", Decimal(50), Decimal(100), 0),
     "urine_output": VitalRule("ml", Decimal(0), Decimal(20000), 0),  # early diuresis
     "fluid_intake": VitalRule("ml", Decimal(0), Decimal(20000), 0),

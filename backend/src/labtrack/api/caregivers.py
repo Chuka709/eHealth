@@ -96,6 +96,8 @@ class AlertsOut(BaseModel):
     # current medications with reminders on - the only ones alerts watch (2.8e): the app says
     # so, and that alerts are off for the rest, so no silence is read as "taken"
     watched_medications: int
+    # the owner's phone may show reminders late (no exact alarms, Q48): alerts wait >= 90 min
+    late_reminders: bool
 
 
 class MyInvitationOut(BaseModel):
@@ -232,6 +234,13 @@ _WATCHED = bound_text(
 
 async def _alerts(db: AsyncSession, patient_id: UUID) -> AlertsOut:
     watched = int((await db.execute(_WATCHED, {"p": patient_id})).scalar_one())
+    late = bool(
+        (
+            await db.execute(
+                bound_text("select owner_reminders_may_be_late(:p)"), {"p": patient_id}
+            )
+        ).scalar_one()
+    )
     row = (
         await db.execute(
             bound_text(
@@ -249,10 +258,13 @@ async def _alerts(db: AsyncSession, patient_id: UUID) -> AlertsOut:
             owner_paused=False,
             chosen=False,
             watched_medications=watched,
+            late_reminders=late,
         )
     # a pause before any choice leaves a row with nothing chosen (0020)
     chosen = row.missed_dose_after_min is not None or row.critical_result
-    return AlertsOut(**row._mapping, chosen=chosen, watched_medications=watched)
+    return AlertsOut(
+        **row._mapping, chosen=chosen, watched_medications=watched, late_reminders=late
+    )
 
 
 async def _caregiver_only(db: AsyncSession, patient_id: UUID) -> None:

@@ -100,6 +100,10 @@ export default function CaregiverAlertsScreen() {
         columns={2}
       />
       {(choice === 15 || choice === 20) && <FormMessage kind="warning" text={t("shortNote")} />}
+      {/* the owner's phone may show reminders late: alerts wait >= 90 minutes (Q48) */}
+      {alerts.data.late_reminders && choice !== "off" && (
+        <FormMessage kind="warning" text={t("latePhone")} />
+      )}
       <Paragraph>{t("watched", { count: alerts.data.watched_medications })}</Paragraph>
       {alerts.data.watched_medications === 0 && (
         <FormMessage kind="warning" text={t("watchedNone")} />

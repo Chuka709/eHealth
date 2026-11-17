@@ -11,6 +11,7 @@ from uuid import UUID, uuid4
 from zoneinfo import ZoneInfo
 
 import pytest
+from sqlalchemy.exc import DBAPIError
 from sqlalchemy.ext.asyncio import AsyncEngine
 
 from labtrack.db.sql import bound_text
@@ -386,3 +387,95 @@ async def test_no_alerts_for_a_deleted_owner_or_a_non_person_caregiver(
     await _run()
     assert await _alerts(owner_engine, patient) == []
     assert await _alerts(owner_engine, patient2) == []
+
+
+async def _device(owner_engine: AsyncEngine, app_engine: AsyncEngine, user: UUID, exact: bool,
+                  *, ended: bool = False) -> None:  # fmt: skip
+    """A signed-in device of `user` that told whether it can schedule exact alarms (0046)."""
+    sid = uuid4()
+    async with owner_engine.connect() as conn, conn.begin():
+        await conn.execute(
+            bound_text(
+                "insert into sessions (id, user_id, family_id, token_hash, expires_at)"
+                " values (:s, :u, gen_random_uuid(), :h, now() + interval '30 days')"
+            ),
+            {"s": sid, "u": user, "h": uuid4().hex},
+        )
+    async with as_user(app_engine, user) as conn:
+        told = await scalar(
+            conn, bound_text("select set_device_exact_alarms(:s, :e)"), {"s": sid, "e": exact}
+        )
+        assert told is True
+    if ended:
+        async with owner_engine.connect() as conn, conn.begin():
+            await conn.execute(
+                bound_text("update sessions set revoked_at = now() where id = :s"), {"s": sid}
+            )
+
+
+async def test_a_phone_whose_reminders_may_be_late_holds_the_alert_to_90_minutes(
+    app_engine: AsyncEngine, owner_engine: AsyncEngine
+) -> None:
+    """Q48: the owner's only live phone cannot schedule exact alarms - a 30-minute alert waits
+    for 90 minutes, and the caregiver is told why; a phone that can (or an ended session)
+    does not count as late."""
+    owner, carer, patient = await _alerting_family(app_engine, owner_engine)
+    await _device(owner_engine, app_engine, owner, True, ended=True)
+    await _device(owner_engine, app_engine, owner, False)
+    await _medication(app_engine, owner_engine, owner, patient, NOW - timedelta(minutes=40))
+    await _run()
+    assert await _alerts(owner_engine, patient) == []  # 40 minutes late, held to 90
+    async with as_user(app_engine, carer) as conn:
+        late = await scalar(
+            conn, bound_text("select owner_reminders_may_be_late(:p)"), {"p": patient}
+        )
+        assert late is True
+    async with as_user(app_engine, owner) as conn:  # nobody else reads the devices
+        assert await scalar(conn, bound_text("select count(*) from device_alarm_states")) == 2
+    async with as_user(app_engine, carer) as conn:
+        assert await scalar(conn, bound_text("select count(*) from device_alarm_states")) == 0
+    await _run(NOW + timedelta(minutes=55))
+    assert len(await _alerts(owner_engine, patient)) == 1
+    # another live phone of the owner that can: the caregiver's own delay again
+    await _device(owner_engine, app_engine, owner, True)
+    async with as_user(app_engine, carer) as conn:
+        late = await scalar(
+            conn, bound_text("select owner_reminders_may_be_late(:p)"), {"p": patient}
+        )
+        assert late is False
+
+
+async def test_a_device_cannot_report_for_another_session(
+    app_engine: AsyncEngine, owner_engine: AsyncEngine
+) -> None:
+    owner, carer, patient = await _alerting_family(app_engine, owner_engine)
+    sid = uuid4()
+    async with owner_engine.connect() as conn, conn.begin():
+        await conn.execute(
+            bound_text(
+                "insert into sessions (id, user_id, family_id, token_hash, expires_at)"
+                " values (:s, :u, gen_random_uuid(), :h, now() + interval '30 days')"
+            ),
+            {"s": sid, "u": owner, "h": uuid4().hex},
+        )
+    async with as_user(app_engine, carer) as conn:
+        told = await scalar(
+            conn, bound_text("select set_device_exact_alarms(:s, false)"), {"s": sid}
+        )
+        assert told is False
+    # nobody writes the table directly, and a stranger learns nothing about the owner's phones
+    stranger = await make_user(owner_engine)
+    await _device(owner_engine, app_engine, owner, False)
+    async with as_user(app_engine, stranger) as conn:
+        late = await scalar(
+            conn, bound_text("select owner_reminders_may_be_late(:p)"), {"p": patient}
+        )
+        assert late is False
+    with pytest.raises(DBAPIError):
+        async with as_user(app_engine, owner) as conn:
+            await conn.execute(
+                bound_text(
+                    "insert into device_alarm_states (family_id, user_id, exact_alarms)"
+                    " values (gen_random_uuid(), app_user_id(), true)"
+                )
+            )

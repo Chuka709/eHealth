@@ -35,6 +35,7 @@ def test_plausible_values(kind: str, text: str, value: Decimal) -> None:
     [
         ("bp_systolic", "1200", "range"),  # a typo
         ("glucose", "120", "range"),  # mg/dL written as mmol/L
+        ("glucose", "35.1", "range"),  # above what home meters read (Q47)
         ("temperature", "29.9", "range"),
         ("spo2", "101", "range"),
         ("weight", "0", "range"),
@@ -71,9 +72,9 @@ def test_every_accepted_value_is_inside_its_range_and_survives_a_round_trip(
 
 
 def test_the_migration_checks_the_same_ranges() -> None:
-    """One set of numbers: the API's messages and the database CHECK (0018) agree."""
+    """One set of numbers: the API's messages and the database CHECK (0018, glucose 0045) agree."""
     source = (
-        Path(__file__).resolve().parents[2] / "alembic/versions/0018_health_records.py"
+        Path(__file__).resolve().parents[2] / "alembic/versions/0045_glucose_upper_limit.py"
     ).read_text(encoding="utf-8")
     for kind, rule in RULES.items():
         low = re.escape(vital_text(rule.low))

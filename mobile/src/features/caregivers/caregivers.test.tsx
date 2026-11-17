@@ -177,6 +177,7 @@ beforeEach(() => {
     owner_paused: false,
     chosen: false,
     watched_medications: 2,
+    late_reminders: false,
   };
   jest.spyOn(Alert, "alert").mockImplementation((title, message, buttons) => {
     asked.push(`${title}|${message ?? ""}`);
@@ -257,6 +258,7 @@ test("a caregiver's alerts: 30 minutes offered, what is watched, what no alert m
   expect(await screen.findByRole("radio", { name: "30 минут", selected: true })).toBeOnTheScreen();
   expect(screen.getByText("Хянагдаж буй эм: 2")).toBeOnTheScreen();
   expect(screen.getByText(/Мэдэгдэл ирээгүй нь эм уусан гэсэн үг биш/)).toBeOnTheScreen();
+  expect(screen.queryByText(/хамгийн багадаа 90 минутын дараа/)).toBeNull();
   await fireEvent.press(screen.getByRole("radio", { name: "15 минут" }));
   expect(screen.getByText(/10 хүртэл минут хоцорч болох/)).toBeOnTheScreen();
   await fireEvent.press(screen.getByRole("button", { name: "Хадгалах" }));
@@ -335,4 +337,12 @@ test("a profile gone from the list leaves no saved emergency card or lock-screen
   expect(await unlockedProfiles()).toEqual([OWN.id]);
   expect(store.getString(card(MOTHER.id))).toBeUndefined();
   expect(store.getString(card(OWN.id))).toBe("{}");
+});
+
+test("a caregiver is told when the owner's phone may show reminders late (Q48)", async () => {
+  alerts = { ...alerts, late_reminders: true };
+  setActiveProfile(MOTHER.id);
+  await openTab(/^Профайл,/);
+  await fireEvent.press(await screen.findByTestId("profile-caregiver-alerts"));
+  expect(await screen.findByText(/хамгийн багадаа 90 минутын дараа/)).toBeOnTheScreen();
 });

@@ -2,6 +2,7 @@ import { Stack } from "expo-router";
 import { useTranslations } from "use-intl";
 
 import { useEmergencyCardSync } from "@/features/emergency/use-card-sync";
+import { useDeviceAlarmReport } from "@/features/meds/use-device-alarms";
 import { useReminderResponses, useReminderSync } from "@/features/meds/use-reminders";
 import { useZonePrompt } from "@/features/meds/use-zone-prompt";
 import { useLocalData } from "@/features/offline/use-local-data";
@@ -20,6 +21,8 @@ export default function MainLayout() {
   useReminderSync();
   useReminderResponses();
   useZonePrompt();
+  // whether reminders here can be on time: a caregiver's alert waits longer if not (Q48)
+  useDeviceAlarmReport();
   // the saved emergency card follows every change (the locked app and an offline phone show it)
   useEmergencyCardSync();
   // server push: this device's token on this session, again on every return (2.8f)

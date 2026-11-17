@@ -9,7 +9,7 @@
 | B2 | Expo аккаунт (компанийн) → `eas init` → `EAS_PROJECT_ID` EAS env-д | компани + Claude | ☐ |
 | B3 | Firebase project → FCM V1 service account → `eas credentials` (Android push); Expo Enhanced Push Security + `EXPO_ACCESS_TOKEN` серверт; `PUSH_ENABLED=true` | компани | ☐ |
 | B4 | Нууцлалын бодлогын хуудас (https) → `EXPO_PUBLIC_PRIVACY_URL`; аккаунт устгах **web** хуудас (Play шаарддаг) | компани + хуульч (Q12) | ☐ |
-| B5 | Зөвшөөрлийн текст хуульчаар, тайлбар текст эмчээр (Q12); Q34, Q47, Q48 эмчээр | компани | ☐ |
+| B5 | Зөвшөөрлийн текст хуульчаар, тайлбар текст эмч + лабын эмчээр (Q12 — `docs/CLINICAL_TEXTS_REVIEW.md`); Q34, Q47, Q48 — эмч шийдсэн, хэрэгжсэн (2026.11.18) | компани | ☐ |
 | B6 | Бодит утасны тест матриц (Samsung, Xiaomi, хямд Android — апп хаалттай, нислэгийн горим, Doze, reboot, цагийн бүс) — 09 «Release бүрийн шалгалт» | компани + Claude | ☐ |
 | B7 | Тусламжийн утас `EXPO_PUBLIC_SUPPORT_PHONE` (тестерүүд залгах) | компани | ☐ |
 | B8 | iOS (Apple аккаунт бэлэн болоход): `com.apple.developer.default-data-protection = NSFileProtectionComplete` entitlement; share extension-ий App Group хавтаст хуваалцсан файл үлдэхгүй байхыг шалгах (3.4 security review); share болон document scanner-ийг бодит iPhone дээр турших | Claude + компани | ☐ |

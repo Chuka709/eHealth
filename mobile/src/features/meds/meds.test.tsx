@@ -2,6 +2,7 @@ import { fireEvent, renderRouter, screen, waitFor } from "expo-router/testing-li
 import { Alert } from "react-native";
 
 import { clearAccessToken, setStatus } from "@/features/auth/session-store";
+import { resetDeviceAlarmReport } from "@/features/meds/use-device-alarms";
 import { localDay } from "@/features/meds/use-today";
 import { apiBaseUrl } from "@/lib/api-base";
 import { queryClient } from "@/lib/query-client";
@@ -110,6 +111,8 @@ let medications: Record<string, unknown>[] = [];
 let refuseIntakes = false;
 let deleted: string[] = [];
 let posts: { key: string; body: Record<string, unknown> }[] = [];
+// what the device told the server about exact alarms (Q48)
+const alarmReports: Record<string, unknown>[] = [];
 
 const handlers: Record<string, Handler> = {
   "POST /api/v1/auth/refresh": () =>
@@ -164,9 +167,14 @@ const handlers: Record<string, Handler> = {
     posts.push({ key: "medication", body });
     return json(201, TACROLIMUS);
   },
+  "PUT /api/v1/me/device-alarms": async (request) => {
+    alarmReports.push((await request.json()) as Record<string, unknown>);
+    return new Response(null, { status: 204 });
+  },
 };
 
 beforeEach(() => {
+  resetDeviceAlarmReport();
   queryClient.clear();
   clearAccessToken();
   setStatus("loading");
@@ -254,6 +262,7 @@ test("adding a medicine: catalog search, a dose per time, ambiguous numbers refu
   await waitFor(() => expect(posts).toHaveLength(1));
   expect(posts[0].body).toMatchObject({
     catalog_code: "TACROLIMUS",
+    user_category: null, // the catalogue says what it is
     name: "Такролимус",
     form: "капсул",
     reminders_enabled: true,
@@ -268,6 +277,26 @@ test("adding a medicine: catalog search, a dose per time, ambiguous numbers refu
         ],
       },
     },
+  });
+});
+
+test("a hand-typed medicine: the user says whether it is an immunosuppressant (Q34)", async () => {
+  medications = [];
+  await openMeds();
+  await press("Эм нэмэх");
+  await fireEvent.changeText(await screen.findByLabelText("Эмийн нэрээр хайх"), "Сандиммун");
+  await press("Жагсаалтад алга — гараар бичих");
+  expect(await screen.findByText(/нэрээр нь таамаглахгүй/)).toBeOnTheScreen();
+  await press("Дархлаа дарангуйлагч");
+  await fireEvent.changeText(screen.getByLabelText("1-р цагийн тун"), "50");
+  await press("Нэгж: Сонгоогүй");
+  await press("мг");
+  await press("Хадгалах");
+  await waitFor(() => expect(posts.filter((p) => p.key === "medication")).toHaveLength(1));
+  expect(posts.find((p) => p.key === "medication")?.body).toMatchObject({
+    catalog_code: null,
+    name: "Сандиммун",
+    user_category: "immunosuppressant",
   });
 });
 
@@ -439,6 +468,8 @@ test("Android without exact alarms: Medicines says reminders may be late, Home d
     await fireEvent.press(await screen.findByRole("button", { name: /^Эм/ }));
     expect(await screen.findByText(/нэг цаг, заримдаа түүнээс ч их/)).toBeOnTheScreen();
     expect(screen.getByRole("button", { name: "Тайлбар ба тохиргоо" })).toBeOnTheScreen();
+    // the server is told, so a caregiver's alert waits longer (Q48)
+    await waitFor(() => expect(alarmReports).toContainEqual({ exact_alarms: false }));
   } finally {
     rn.Platform.OS = os;
     mocked.getExactAlarmPermissionsAsync.mockResolvedValue({ granted: true, status: "granted" });
