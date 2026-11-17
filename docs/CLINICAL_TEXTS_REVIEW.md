@@ -1,6 +1,6 @@
 # Эмнэлзүйн текстийн хяналт (Q12)
 
-_Нийт 974 текст._
+_Нийт 983 текст._
 
 **Зорилго:** шилжүүлэн суулгалтын эмч + лабораторийн эмч апп-ын эмнэлзүйн текстийг нэг дор хянана (эмчийн шийдвэр 2026.11.18, ★). Одоогоор зөвхөн такролимусын CV%-ийн карт хянуулах хүртэл өвчтөнд нуугдсан; бусад текст апп-д харагдаж байгаа тул бетаг нээхээс өмнө хянагдсан байх ёстой (BETA B5).
 
@@ -10,7 +10,7 @@ _Нийт 974 текст._
 
 ## Шинжилгээний хариу хянах (ноорог, тэмдэглэгээ, критик)
 
-Хянагч: лабын эмч. Түлхүүр: `app.upload.review` (106).
+Хянагч: лабын эмч. Түлхүүр: `app.upload.review` (114).
 
 | Түлхүүр | Монгол | English | Санал |
 |---|---|---|---|
@@ -120,10 +120,18 @@ _Нийт 974 текст._
 | `moveConfirm` | Энэ хариуг «{name}» профайл руу шилжүүлэх үү? | Move this result to the profile “{name}”? | |
 | `possibleCritical` | Яаралтай хянах утга байж болзошгүй | May need prompt review | |
 | `typedNotice` | Энэ нь гараар оруулсан ноорог. Утга бүрийг хариутайгаа дахин тулгаж шалгана уу. Баталсны дараа л түүх, графикт орно. | This is a draft typed in by hand. Check each value against the result again. Only confirmed values go into the history and charts. | |
+| `retype.label` | Хэвлэсэн хариун дээрх утгыг дахин бичнэ үү | Type the value again from the printed report | |
+| `retype.hint` | Энэ утга апп-ын хүлээх хэмжээнээс хол байна — ихэнхдээ уншилт эсвэл нэгжийн алдаа. Цаасан/PDF хариугаа хараад тоог яг тэр хэвээр нь бичиж, нэгжийг ({unit}) мөн тулгана уу. Хариун дээр өөр тоо эсвэл нэгж байвал «Засах»-аар засна уу. | This value is far from what the app expects — most often a misread or a wrong unit. Look at the paper/PDF report, type the number exactly as printed and check the unit ({unit}) too. If the report shows another number or unit, use "Edit". | |
+| `retype.confirm` | Хариутай тулгасан | Checked against the report | |
+| `retype.hidden` | (уншсан утгыг нуусан — хариунаасаа бичнэ үү) | (the value read is hidden — type it from your report) | |
+| `sampleTime.why` | Эмийн түвшний хариунд дээж авсан цаг бичигдээгүй байна. Цагийг баримтаас (жишээ нь лабын баримт) мэдэж байвал нэмбэл сүүлийн тунгаас хэдэн цагийн дараа авсныг харуулна. Санамжаар бүү бичээрэй — мэдэхгүй бол хоосон үлдээнэ үү. Цаг нэмбэл энэ хариуны шалгасан мөрүүдийг дахин тулгана. | This drug level result has no sample time. If you know it from a document (for example the lab's slip), adding it shows how many hours after the last dose it was taken. Do not guess — leave it empty if you are not sure. Adding a time asks you to check this report's rows again. | |
+| `sampleTime.add` | Дээж авсан цагийг нэмэх | Add the sample time | |
+| `sampleTime.time` | Дээж авсан цаг | Sample time | |
+| `sampleTime.save` | Цагийг хадгалах | Save the time | |
 
 ## Нүүр: шинжилгээ, «Анхаарах»
 
-Хянагч: эмч, лабын эмч. Түлхүүр: `app.home.lab` (16).
+Хянагч: эмч, лабын эмч. Түлхүүр: `app.home.lab` (17).
 
 | Түлхүүр | Монгол | English | Санал |
 |---|---|---|---|
@@ -143,6 +151,7 @@ _Нийт 974 текст._
 | `criticalHelp` | Хариу дээр бичигдсэн критик хязгаараас гадуур утга байна. Эмч эсвэл шилжүүлэн суулгалтын багтайгаа энэ талаар ярилцаагүй бол холбогдоно уу. Биеийн байдал муу бол 103 руу залгана уу. | A value is outside the critical limit printed on the result. If you have not talked about it with your doctor or transplant team, contact them. If you feel unwell, call 103. | |
 | `defaultsNote` | Эрхтний төрлөөр апп-ын санал болгосон жагсаалт — эмчийн хяналтын төлөвлөгөө биш. Аль шинжилгээг хэзээ өгөхийг эмчтэйгээ тохирно уу. | A list the app suggests for the organ - not your doctor's monitoring plan. Agree with your doctor which tests to take and when. | |
 | `stale` | Сүлжээгүй — {when}-ны байдлаар | Offline - as of {when} | |
+| `changeOtherLab` | Өмнөх утга өөр лабынх ({date}: {value}) — арга нь ялгаатай байж болзошгүй тул өөрчлөлтийг тоогоор харуулахгүй. | The previous value is another lab's ({date}: {value}) — methods may differ, so no change is shown as a number. | |
 
 ## Хандлагын график
 

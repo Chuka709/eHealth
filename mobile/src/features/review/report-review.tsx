@@ -9,6 +9,7 @@ import { Button } from "@/components/button";
 import { Choices } from "@/components/choices";
 import { PickerField } from "@/components/date-field";
 import { FormMessage } from "@/components/form-message";
+import { TextField } from "@/components/text-field";
 import { knownIssues, type LabReport, type LabResult } from "@/features/upload/use-reports";
 import { formatDate, formatDateTime } from "@/lib/dates";
 import { useErrorText } from "@/lib/use-error-text";
@@ -16,7 +17,7 @@ import { usePalette } from "@/theme/use-palette";
 
 import { CRITICAL_FLAGS, FLAGS, flagToken } from "./flag";
 
-import { localMoment } from "./moments";
+import { localDay, localMoment } from "./moments";
 import { useReviewActions } from "./use-review";
 
 /**
@@ -172,6 +173,22 @@ export function ReportReview({
         />
       )}
 
+      {/* a drug level without the sample's time: the time may be added (Q54, physician
+          2026-11-18) - the date stays as printed; never required, never guessed */}
+      {draft &&
+        !pickDate &&
+        report.collected_at &&
+        report.collected_precision === "day" &&
+        report.last_doses.some((d) => d.time_unknown) && (
+          <SampleTime
+            day={localDay(report.collected_at)}
+            busy={actions.editReport.isPending}
+            onSave={(at) =>
+              actions.editReport.mutate({ collected_at: at, collected_precision: "minute" })
+            }
+          />
+        )}
+
       {draft && nameIssue && (
         <View style={[styles.box, { borderColor: p.border, backgroundColor: p.surface }]}>
           <FormMessage
@@ -215,8 +232,14 @@ export function ReportReview({
             first={i === 0}
             draft={draft}
             lastDoses={report.last_doses.filter((d) => d.test_code === row.test_code)}
-            onAccept={(issue) =>
-              actions.editResult.mutate({ resultId: row.id, patch: { acknowledge: [issue] } })
+            onAccept={(issue, retyped) =>
+              actions.editResult.mutate({
+                resultId: row.id,
+                patch:
+                  retyped === undefined
+                    ? { acknowledge: [issue] }
+                    : { acknowledge: [issue], retyped_value: retyped },
+              })
             }
             onEdit={() =>
               router.push({
@@ -266,6 +289,39 @@ export function ReportReview({
           <Text style={[styles.meta, { color: p.textMuted }]}>{t("confirmHint")}</Text>
           <Button label={t("reject")} variant="link" onPress={reject} />
         </View>
+      )}
+    </View>
+  );
+}
+
+function SampleTime({
+  day,
+  busy,
+  onSave,
+}: {
+  day: string;
+  busy: boolean;
+  onSave: (at: string) => void;
+}) {
+  const t = useTranslations("app.upload.review.sampleTime");
+  const p = usePalette();
+  const [open, setOpen] = useState(false);
+  const [time, setTime] = useState<string | null>(null);
+  return (
+    <View style={[styles.box, { borderColor: p.border, backgroundColor: p.surface }]}>
+      <Text style={[styles.meta, { color: p.text }]}>{t("why")}</Text>
+      {!open ? (
+        <Button label={t("add")} variant="secondary" onPress={() => setOpen(true)} />
+      ) : (
+        <>
+          <PickerField label={t("time")} mode="time" value={time} onChange={setTime} />
+          <Button
+            label={t("save")}
+            disabled={time === null}
+            busy={busy}
+            onPress={() => time !== null && onSave(localMoment(day, time))}
+          />
+        </>
       )}
     </View>
   );
@@ -334,15 +390,21 @@ function ResultCard({
   first: boolean;
   draft: boolean;
   lastDoses: LabReport["last_doses"];
-  onAccept: (issue: string) => void;
+  onAccept: (issue: string, retyped?: string) => void;
   onEdit: () => void;
   onDelete: () => void;
 }) {
   const t = useTranslations("app.upload.review");
   const p = usePalette();
+  // an implausible value is kept only when typed again from the printed report (Q57)
+  const [retyping, setRetyping] = useState(false);
+  const [retyped, setRetyped] = useState("");
   const token = flagToken(row.flag);
   const colour = p.flag[token];
-  const value = [row.raw_value, row.raw_unit].filter(Boolean).join(" ");
+  // while it is typed again, the read value is hidden: copied from the screen it proves nothing
+  const value = retyping
+    ? t("retype.hidden")
+    : [row.raw_value, row.raw_unit].filter(Boolean).join(" ");
   const range = row.ref_text ? t("range", { range: row.ref_text }) : t("noRange");
   const critical = row.critical_text ? t("critical", { range: row.critical_text }) : null;
   const known = row.test_name_mn && row.test_name_mn !== row.raw_name ? row.test_name_mn : null;
@@ -451,10 +513,29 @@ function ResultCard({
               accessibilityLabel={t("matchesLabel", {
                 issue: t(`issues.${knownIssues([issue])[0]}`),
               })}
-              onPress={() => onAccept(issue)}
+              onPress={() => (issue === "implausible" ? setRetyping(true) : onAccept(issue))}
             />
           </View>
         ))}
+      {draft && retyping && open.includes("implausible") && (
+        <View style={styles.retype}>
+          <TextField
+            label={t("retype.label")}
+            hint={t("retype.hint", { unit: row.raw_unit ?? "—" })}
+            value={retyped}
+            onChangeText={setRetyped}
+            autoCorrect={false}
+            autoCapitalize="none"
+            testID={`retype-${row.position}`}
+          />
+          <Button
+            label={t("retype.confirm")}
+            compact
+            disabled={retyped.trim() === ""}
+            onPress={() => onAccept("implausible", retyped.trim())}
+          />
+        </View>
+      )}
       {draft && (
         <View style={styles.actions}>
           <Button label={t("edit")} compact variant="secondary" onPress={onEdit} />
@@ -466,6 +547,7 @@ function ResultCard({
 }
 
 const styles = StyleSheet.create({
+  retype: { gap: space.sm },
   section: { gap: space.sm },
   heading: { fontSize: fontSize.bodyLarge, fontWeight: "700" },
   meta: { fontSize: fontSize.caption },

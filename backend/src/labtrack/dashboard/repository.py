@@ -49,10 +49,11 @@ _LATEST = bound_text(
 # the last :n confirmed values of each card's test, newest first (the same order)
 _HISTORY = bound_text(
     "select h.id, h.test_code, h.collected_at, h.value_canonical, h.comparator,"
-    " h.unit_canonical, h.flag, h.raw_value, h.raw_unit"
+    " h.unit_canonical, h.flag, h.raw_value, h.raw_unit, h.lab_name"
     " from unnest(cast(:codes as text[])) c(code)"
     " cross join lateral (select lr.id, lr.test_code, lr.collected_at, lr.value_canonical,"
-    " lr.comparator, lr.unit_canonical, lr.flag::text as flag, lr.raw_value, lr.raw_unit"
+    " lr.comparator, lr.unit_canonical, lr.flag::text as flag, lr.raw_value, lr.raw_unit,"
+    " r.lab_name"
     " from lab_results lr"
     " join lab_reports r on r.id = lr.report_id and r.patient_id = lr.patient_id"
     " where lr.patient_id = :p and lr.test_code = c.code and r.status = 'confirmed'"

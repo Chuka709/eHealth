@@ -145,6 +145,8 @@ class RowEdit:
     test_code: str | None = None
     acknowledge: tuple[str, ...] = ()
     clear: frozenset[str] = frozenset()  # fields set back to empty: unit, ref, critical
+    # an implausible value is accepted only when typed again from the printed report (Q57)
+    retyped_value: str | None = None
 
 
 @dataclass(frozen=True)
@@ -335,6 +337,12 @@ def _row(stored: Any, edit: RowEdit | None = None, *, new_date: bool = False) ->
     )  # fmt: skip
 
 
+def same_value(text: str) -> str:
+    """A printed value as typed again: the spaces around it and the decimal mark ("12,4" /
+    "12.4") aside - a space inside ("12 4") is kept, never read as "124"."""
+    return text.strip().replace(",", ".")
+
+
 def _check_ack(requested: Iterable[str], issues: Iterable[str]) -> None:
     asked = set(requested)
     if not asked <= set(issues) or asked & NOT_ACCEPTED:
@@ -359,6 +367,14 @@ async def edit_result(
     if set(edit.acknowledge) & REPORT_ISSUES:
         raise AppError(422, "review.issue_not_open")  # the report's, accepted for the report
     _check_ack(edit.acknowledge, stored.issues)
+    if "implausible" in edit.acknowledge:
+        # double entry (Q57, physician 2026-11-18): the value typed again, from the report
+        if edit.retyped_value is None or same_value(edit.retyped_value) != same_value(
+            stored.raw_value or ""
+        ):
+            raise AppError(422, "review.retype_mismatch")
+    elif edit.retyped_value is not None:
+        raise AppError(422, "review.retype_mismatch")
     row = _row(stored, edit)
     await _redo(
         db, patient_id, report, [row], catalog=catalog, mine=mine,

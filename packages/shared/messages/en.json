@@ -1112,7 +1112,8 @@
         "openTrend": "Open the trend chart",
         "criticalHelp": "A value is outside the critical limit printed on the result. If you have not talked about it with your doctor or transplant team, contact them. If you feel unwell, call 103.",
         "defaultsNote": "A list the app suggests for the organ - not your doctor's monitoring plan. Agree with your doctor which tests to take and when.",
-        "stale": "Offline - as of {when}"
+        "stale": "Offline - as of {when}",
+        "changeOtherLab": "The previous value is another lab's ({date}: {value}) — methods may differ, so no change is shown as a number."
       },
       "cardsEditor": {
         "title": "Home cards",
@@ -1312,7 +1313,19 @@
         "call103": "Call 103",
         "moveConfirm": "Move this result to the profile “{name}”?",
         "possibleCritical": "May need prompt review",
-        "typedNotice": "This is a draft typed in by hand. Check each value against the result again. Only confirmed values go into the history and charts."
+        "typedNotice": "This is a draft typed in by hand. Check each value against the result again. Only confirmed values go into the history and charts.",
+        "retype": {
+          "label": "Type the value again from the printed report",
+          "hint": "This value is far from what the app expects — most often a misread or a wrong unit. Look at the paper/PDF report, type the number exactly as printed and check the unit ({unit}) too. If the report shows another number or unit, use \"Edit\".",
+          "confirm": "Checked against the report",
+          "hidden": "(the value read is hidden — type it from your report)"
+        },
+        "sampleTime": {
+          "why": "This drug level result has no sample time. If you know it from a document (for example the lab's slip), adding it shows how many hours after the last dose it was taken. Do not guess — leave it empty if you are not sure. Adding a time asks you to check this report's rows again.",
+          "add": "Add the sample time",
+          "time": "Sample time",
+          "save": "Save the time"
+        }
       }
     },
     "trends": {
@@ -1833,7 +1846,8 @@
       "acknowledge_one": "Check and mark this row on its own, one at a time.",
       "critical_needs_ack": "This result may hold a value that needs prompt review. Confirm you have seen it before deleting or rejecting.",
       "move_confirmed": "A document with a confirmed result cannot be moved to another profile.",
-      "move_target": "You cannot move it to that profile."
+      "move_target": "You cannot move it to that profile.",
+      "retype_mismatch": "The value typed again does not match the value read. If the report shows another number, correct it with \"Edit\"."
     },
     "dashboard": {
       "bad_cards": "The card list is not valid: a test is repeated, not in the list, or there are more than 24."

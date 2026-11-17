@@ -58,7 +58,9 @@ def test_every_organ_has_defaults_from_the_catalog() -> None:
 
 
 def test_kidney_defaults_with_the_drug_taken() -> None:
-    assert default_cards(["kidney"], ["TAC"], []) == ["CREA", "TAC", "HGB", "K", "UPCR", "BKV_DNA"]
+    assert default_cards(["kidney"], ["TAC"], []) == [
+        "CREA", "TAC", "HGB", "K", "UPCR", "BKV_DNA", "GLU", "UACR",
+    ]  # fmt: skip
     assert default_cards(["kidney"], ["CSA"], ["TAC"]) == [
         "CREA",
         "CSA",
@@ -66,6 +68,8 @@ def test_kidney_defaults_with_the_drug_taken() -> None:
         "K",
         "UPCR",
         "BKV_DNA",
+        "GLU",
+        "UACR",
     ]
 
 
@@ -148,6 +152,7 @@ def test_change_sign_follows_the_values(a: Decimal, b: Decimal) -> None:
     history = [_p(0, str(a)), _p(1, str(b))]
     out = change(history[1], history)
     assert out is not None
+    assert out.percent is not None
     if b > a:
         assert out.percent >= 0
     elif b < a:
@@ -175,10 +180,31 @@ def test_change_rounds_half_away_from_zero_downwards() -> None:
     assert change(history[1], history).percent == Decimal(-13)  # type: ignore[union-attr]
 
 
-def test_no_percent_for_viral_loads() -> None:
+def test_a_viral_load_changes_in_log10_not_percent() -> None:
     history = [_p(0, "500"), _p(1, "5000")]
-    assert change(history[1], history, "virology") is None
-    assert change(history[1], history, "renal") is not None
+    viral = change(history[1], history, "virology")
+    assert viral is not None
+    assert (viral.percent, viral.log10_delta) == (None, Decimal("1.0"))  # Q60-b
+    down = change(history[0], [_p(-1, "20000"), history[0]], "virology")
+    assert down is not None
+    assert down.log10_delta == Decimal("-1.6")
+    assert change(history[1], history, "renal").percent == Decimal(900)  # type: ignore[union-attr]
+
+
+def test_another_labs_value_gets_no_number() -> None:
+    def lab(day: int, value: str, name: str | None) -> Point:
+        return Point(f"r{day}", _T0 + timedelta(days=day), Decimal(value), None, "mg/dL",
+                     "normal", lab=name)  # fmt: skip
+
+    other = change(lab(1, "1.2", "Интермед"), [lab(0, "1.0", "УНТЭ"), lab(1, "1.2", "Интермед")])
+    assert other is not None
+    assert (other.percent, other.other_lab, other.previous.value) == (None, True, Decimal("1.0"))
+    same = change(lab(1, "1.2", " унтэ"), [lab(0, "1.0", "УНТЭ"), lab(1, "1.2", " унтэ")])
+    assert same is not None
+    assert (same.percent, same.other_lab) == (Decimal(20), False)
+    unnamed = change(lab(1, "1.2", None), [lab(0, "1.0", "УНТЭ"), lab(1, "1.2", None)])
+    assert unnamed is not None
+    assert unnamed.percent == Decimal(20)
 
 
 def test_spark_keeps_only_the_newest_unit() -> None:

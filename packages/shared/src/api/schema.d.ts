@@ -2630,7 +2630,11 @@ export interface components {
         /** ChangeOut */
         ChangeOut: {
             /** Percent */
-            percent: string;
+            percent: string | null;
+            /** Log10 Change */
+            log10_change: string | null;
+            /** Other Lab */
+            other_lab: boolean;
             /** Previous Value */
             previous_value: string;
             /**
@@ -4129,6 +4133,8 @@ export interface components {
             acknowledge?: string[];
             /** Clear */
             clear?: ("raw_unit" | "ref_text" | "critical_text")[];
+            /** Retyped Value */
+            retyped_value?: string | null;
         };
         /** SecurityEventOut */
         SecurityEventOut: {

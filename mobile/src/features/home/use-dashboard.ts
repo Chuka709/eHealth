@@ -57,6 +57,12 @@ export function useResetCards(patientId: string) {
   });
 }
 
+/** A viral load's change in log10 (Q60-b): "+1.0 log", "−0.5 log". */
+export function logText(delta: string): string {
+  if (delta === "0" || delta === "0.0") return "0 log";
+  return delta.startsWith("-") ? `−${delta.slice(1)} log` : `+${delta} log`;
+}
+
 /** "+20 %" / "−25 %" / "0 %": the server's whole percent with its sign (a number, no
  * judgement - H32). */
 export function percentText(percent: string): string {

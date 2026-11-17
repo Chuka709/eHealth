@@ -14,7 +14,13 @@ previous value is a plain number, shown with both values and dates.
 - Callers pass only CONFIRMED values (`latest_results`, confirmed history) and only the
   organs of transplants still in place (a lost graft does not choose cards).
 - No percent change for viral loads (compared on a log scale clinically: 500 -> 5000 is one
-  log, not "+900 %") - the two values and dates are shown instead (Q60).
+  log, not "+900 %"): the change in log10, with both values and dates (Q60-b, physician
+  2026-11-18).
+- No percent between two labs: methods differ (tacrolimus immunoassay / LC-MS/MS, creatinine
+  Jaffe / enzymatic), so a percent would mostly measure the method. The previous value is
+  shown, marked "another lab" (Q60-c). Spacing and letter case of a lab name do not count;
+  an unnamed lab is not taken for another one.
+- Kidney cards add glucose (post-transplant diabetes) and urine albumin/creatinine (Q60-d).
 - "Worth a look" is limited to values from the last `ATTENTION_DAYS` before the newest
   value, so an old critical result does not stand for the present (Q60; H32).
 """
@@ -51,7 +57,7 @@ MAX_ATTENTION = 5
 ATTENTION_DAYS = 90
 NO_PERCENT_CATEGORIES = frozenset({"virology"})
 
-_KIDNEY = ("CREA", LEVEL, "HGB", "K", "UPCR", "BKV_DNA")
+_KIDNEY = ("CREA", LEVEL, "HGB", "K", "UPCR", "BKV_DNA", "GLU", "UACR")
 _LIVER = ("ALT", "AST", "TBIL", "GGT", "INR", LEVEL, "HBV_DNA", "HDV_RNA")
 _THORACIC = (LEVEL, "CREA", "HGB", "CMV_DNA")
 _GENERAL = (LEVEL, "CREA", "HGB")
@@ -61,7 +67,7 @@ DEFAULT_CARDS: dict[Organ, tuple[str, ...]] = {
     "heart": _THORACIC,
     "lung": _THORACIC,
     "pancreas": (*_GENERAL, "GLU", "HBA1C"),
-    "kidney_pancreas": (*_KIDNEY, "GLU", "HBA1C"),
+    "kidney_pancreas": (*_KIDNEY, "HBA1C"),  # glucose is a kidney card already
     "intestine": _GENERAL,
     "cornea": (),  # usually no systemic immunosuppression: nothing presumed
     "hsct": _GENERAL,
@@ -115,6 +121,14 @@ class Point:
     # the lab marked it critical, or its printed critical range could not be used
     # (`possible_critical`/`critical_unreadable` issues): sorted with the critical ones
     possibly_critical: bool = False
+    lab: str | None = None  # the lab that printed it (reports.lab_name)
+
+
+def _same_lab(a: str | None, b: str | None) -> bool:
+    """Two printed lab names are one lab unless both are named and differ (spacing, case)."""
+    if not (a and a.strip() and b and b.strip()):
+        return True
+    return " ".join(a.split()).casefold() == " ".join(b.split()).casefold()
 
 
 def _order(p: Point) -> tuple[datetime, str]:
@@ -135,15 +149,28 @@ def spark(history: Sequence[Point], n: int = SPARK_POINTS) -> list[Point]:
 @dataclass(frozen=True)
 class Change:
     previous: Point
-    percent: Decimal  # whole percent, signed; plain arithmetic, no judgement
+    percent: Decimal | None  # whole percent, signed; plain arithmetic, no judgement
+    log10_delta: Decimal | None = None  # a viral load: log10(latest) - log10(previous)
+    other_lab: bool = False  # the previous value is another lab's: no percent
+
+
+def _log10_change(latest: Decimal, previous: Point) -> Change | None:
+    """A viral load's change in log10 (both above zero), to one decimal."""
+    if previous.value is None or latest <= 0 or previous.value <= 0:
+        return None
+    delta = latest.log10() - previous.value.log10()
+    return Change(
+        previous=previous,
+        percent=None,
+        log10_delta=delta.quantize(Decimal("0.1"), rounding=ROUND_HALF_UP),
+    )
 
 
 def change(latest: Point, history: Sequence[Point], category: str | None = None) -> Change | None:
     """The change from the value before `latest` (strictly earlier). Only when both are exact
-    numbers in the same unit and the previous is not zero - a "< 0.5" has no exact value -
-    and never for a viral load (`category` of the catalog test)."""
-    if category in NO_PERCENT_CATEGORIES:
-        return None
+    numbers in the same unit and the previous is not zero - a "< 0.5" has no exact value. A
+    viral load (`category` of the catalog test) gets its log10 change instead of a percent;
+    another lab's previous value gets no number at all, only the mark."""
     if latest.value is None or latest.comparator is not None:
         return None
     earlier = [p for p in history if p.collected_at < latest.collected_at]
@@ -157,6 +184,10 @@ def change(latest: Point, history: Sequence[Point], category: str | None = None)
         or previous.value == 0
     ):
         return None
+    if not _same_lab(latest.lab, previous.lab):
+        return Change(previous=previous, percent=None, other_lab=True)
+    if category in NO_PERCENT_CATEGORIES:
+        return _log10_change(latest.value, previous)
     pct = (latest.value - previous.value) / abs(previous.value) * 100
     return Change(previous=previous, percent=pct.quantize(Decimal(1), rounding=ROUND_HALF_UP))
 

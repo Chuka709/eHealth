@@ -48,6 +48,8 @@ class ResultPatch(BaseModel):
     test_code: Annotated[str, Field(pattern=r"^[A-Z0-9_]{1,32}$")] | None = None
     acknowledge: list[Issue] = Field(default_factory=list, max_length=30)
     clear: list[Cleared] = Field(default_factory=list, max_length=3)
+    # accepting `implausible`: the value typed again from the printed report (Q57)
+    retyped_value: Text | None = Field(default=None, min_length=1)
 
 
 class ResultNew(BaseModel):
@@ -193,6 +195,7 @@ async def edit_result(
         test_code=body.test_code,
         acknowledge=tuple(body.acknowledge),
         clear=frozenset(body.clear),
+        retyped_value=body.retyped_value,
     )
     await review.edit_result(db, patient_id, report_id, result_id, edit)
     return await _out(db, patient_id, report_id)

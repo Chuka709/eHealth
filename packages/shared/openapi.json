@@ -16124,8 +16124,30 @@
       "ChangeOut": {
         "properties": {
           "percent": {
-            "type": "string",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Percent"
+          },
+          "log10_change": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Log10 Change"
+          },
+          "other_lab": {
+            "type": "boolean",
+            "title": "Other Lab"
           },
           "previous_value": {
             "type": "string",
@@ -16162,6 +16184,8 @@
         "type": "object",
         "required": [
           "percent",
+          "log10_change",
+          "other_lab",
           "previous_value",
           "previous_collected_at",
           "previous_raw_value",
@@ -20834,6 +20858,19 @@
             "type": "array",
             "maxItems": 3,
             "title": "Clear"
+          },
+          "retyped_value": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 200,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Retyped Value"
           }
         },
         "type": "object",

@@ -16,7 +16,13 @@ import { useErrorText } from "@/lib/use-error-text";
 import { usePalette } from "@/theme/use-palette";
 
 import { Sparkline } from "./sparkline";
-import { type DashboardCard, type LatestValue, percentText, useDashboard } from "./use-dashboard";
+import {
+  type DashboardCard,
+  type LatestValue,
+  logText,
+  percentText,
+  useDashboard,
+} from "./use-dashboard";
 
 /**
  * Home's lab part (docs/06 §1, docs/08 "Нүүр"; Phase 6.8): values the results marked outside
@@ -212,13 +218,18 @@ function ValueCardFilled({
   const previous = card.change
     ? [card.change.previous_raw_value, card.change.previous_raw_unit].filter(Boolean).join(" ")
     : "";
+  // a percent; a viral load in log10 (Q60-b); another lab's value without a number (Q60-c)
+  const c = card.change;
+  const when = c ? { date: formatDate(c.previous_collected_at), value: previous } : null;
   const change =
-    card.change && previous
-      ? t("change", {
-          percent: percentText(card.change.percent),
-          date: formatDate(card.change.previous_collected_at),
-          value: previous,
-        })
+    c && when && previous
+      ? c.other_lab
+        ? t("changeOtherLab", when)
+        : c.log10_change
+          ? t("change", { ...when, percent: logText(c.log10_change) })
+          : c.percent
+            ? t("change", { ...when, percent: percentText(c.percent) })
+            : null
       : null;
   // the line is in the catalog unit: drawn only when the latest value is in it too
   const showSpark = card.spark.length > 1 && card.spark_unit === latest.unit;

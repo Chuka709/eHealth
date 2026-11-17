@@ -104,6 +104,7 @@ def _point(row: Row[Any], possibly_critical: bool = False) -> core.Point:
         unit=row.unit_canonical,
         flag=cast(Flag, row.flag),
         possibly_critical=possibly_critical,
+        lab=getattr(row, "lab_name", None),
     )
 
 
@@ -141,7 +142,12 @@ async def dashboard(db: AsyncSession, patient_id: UUID, now: datetime) -> Dashbo
     for code in codes:
         test = names[code]
         found = by_code.get(code)
-        latest_point = _point(found) if found is not None else None
+        # the latest as the history has it (with its lab): the same row, newest first
+        latest_point = (
+            next((p for p in history[code] if p.result_id == str(found.id)), _point(found))
+            if found is not None
+            else None
+        )
         cards.append(
             Card(
                 test_code=code,

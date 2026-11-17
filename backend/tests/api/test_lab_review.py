@@ -417,3 +417,30 @@ async def test_the_test_catalog_lists_the_tests(
     r = await client.get("/api/v1/lab-tests", headers=h)
     assert r.status_code == 200, r.text
     assert any(t["code"] == code and t["canonical_unit"] == "g/L" for t in r.json())
+
+
+async def test_an_implausible_value_is_accepted_only_when_typed_again(
+    client: AsyncClient, owner_engine: AsyncEngine, code: str
+) -> None:
+    """Q57 (physician 2026-11-18): a value outside what a body can hold is kept only after the
+    person types it again from the printed report - a matching retype, never a bare tap."""
+    h, base, report = await _draft(client, owner_engine)
+    first = _rows((await client.get(f"{base}/reports/{report}", headers=h)).json())[0]
+    url = f"{base}/reports/{report}/results/{first['id']}"
+    r = await client.patch(
+        url, headers=h, json={"test_code": code, "raw_value": "950,5", "raw_unit": "г/л"}
+    )
+    assert r.status_code == 200, r.text
+    assert "implausible" in _rows(r.json())[0]["issues"]
+    for body in (
+        {"acknowledge": ["implausible"]},  # a tap is not enough
+        {"acknowledge": ["implausible"], "retyped_value": "95,05"},  # another number
+        {"acknowledge": ["unknown_test"], "retyped_value": "950,5"},  # a retype for nothing
+    ):
+        r = await client.patch(url, headers=h, json=body)
+        assert r.status_code == 422, body
+    r = await client.patch(
+        url, headers=h, json={"acknowledge": ["implausible"], "retyped_value": " 950.5 "}
+    )
+    assert r.status_code == 200, r.text
+    assert "implausible" in _rows(r.json())[0]["acknowledged"]

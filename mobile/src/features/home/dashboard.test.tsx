@@ -241,3 +241,54 @@ test("the cards are reordered and saved as one list, or set back to the organ's"
   await waitFor(() => expect(deletes).toBe(1));
   expect(alert).toHaveBeenCalledTimes(1);
 });
+
+test("a viral load changes in log10 and another lab's value gets no number (Q60)", async () => {
+  dashboard = {
+    ...dashboard,
+    cards: [
+      {
+        test_code: "BKV_DNA",
+        name_mn: "BK вирусын ДНХ",
+        name_en: "BK virus DNA",
+        latest: value({ result_id: "r2", raw_value: "5000", raw_unit: "копи/мл", value: "5000" }),
+        change: {
+          percent: null,
+          log10_change: "1.0",
+          other_lab: false,
+          previous_value: "500",
+          previous_collected_at: "2026-09-14T00:30:00Z",
+          previous_raw_value: "500",
+          previous_raw_unit: "копи/мл",
+        },
+        spark: [],
+        spark_unit: null,
+      },
+      {
+        test_code: "K",
+        name_mn: "Кали",
+        name_en: "Potassium",
+        latest: value({ result_id: "r3", raw_value: "4,8", raw_unit: "ммоль/л", value: "4.8" }),
+        change: {
+          percent: null,
+          log10_change: null,
+          other_lab: true,
+          previous_value: "4.1",
+          previous_collected_at: "2026-09-14T00:30:00Z",
+          previous_raw_value: "4,1",
+          previous_raw_unit: "ммоль/л",
+        },
+        spark: [],
+        spark_unit: null,
+      },
+    ],
+  };
+  await renderRouter("./src/app", { initialUrl: "/" });
+  await screen.findByTestId("home-screen");
+  await screen.findByTestId("card-K");
+  expect(
+    screen.getByText("Өмнөхөөс өөрчлөлт: +1.0 log (2026.09.14: 500 копи/мл)"),
+  ).toBeOnTheScreen();
+  expect(
+    screen.getByText(/^Өмнөх утга өөр лабынх \(2026\.09\.14: 4,1 ммоль\/л\)/),
+  ).toBeOnTheScreen();
+});

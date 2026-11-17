@@ -115,6 +115,7 @@
     "review.not_draft",
     "review.not_found",
     "review.open_issues",
+    "review.retype_mismatch",
     "review.too_many_rows",
     "review.unknown_test",
     "share.invitation_not_found",

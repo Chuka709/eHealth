@@ -65,7 +65,9 @@ class SparkPoint(BaseModel):
 
 
 class ChangeOut(BaseModel):
-    percent: str  # whole percent, signed
+    percent: str | None  # whole percent, signed; none for a viral load or another lab
+    log10_change: str | None  # a viral load: log10(latest) - log10(previous), signed (Q60-b)
+    other_lab: bool  # the previous value is another lab's: no number between them (Q60-c)
     previous_value: str  # in the catalog unit (the percent's basis)
     previous_collected_at: datetime
     # the previous value as its result printed it
@@ -124,7 +126,9 @@ def _change_out(c: core.Change | None, printed: tuple[str, str | None] | None) -
     if c is None or c.previous.value is None:
         return None
     return ChangeOut(
-        percent=num(c.percent) or "0",
+        percent=num(c.percent),
+        log10_change=num(c.log10_delta),
+        other_lab=c.other_lab,
         previous_value=num(c.previous.value) or "0",
         previous_collected_at=c.previous.collected_at,
         previous_raw_value=printed[0] if printed else None,

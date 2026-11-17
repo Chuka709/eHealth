@@ -16,6 +16,8 @@ export type ResultPatch = {
   test_code?: string;
   acknowledge?: string[];
   clear?: ("raw_unit" | "ref_text" | "critical_text")[];
+  /** accepting `implausible`: the value typed again from the printed report (Q57) */
+  retyped_value?: string;
 };
 export type ResultNew = {
   raw_name: string;

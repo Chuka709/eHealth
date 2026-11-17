@@ -94,7 +94,7 @@ async def test_kidney_cards_with_tacrolimus_and_only_confirmed_values(
     body = await _dashboard(client, base, h)
     assert body["custom"] is False
     codes = [c["test_code"] for c in body["cards"]]
-    assert codes == ["CREA", "TAC", "HGB", "K", "UPCR", "BKV_DNA"]
+    assert codes == ["CREA", "TAC", "HGB", "K", "UPCR", "BKV_DNA", "GLU", "UACR"]
     crea = body["cards"][0]
     # the draft never reaches the dashboard (rule 4); numbers are strings (rule 7)
     assert (crea["latest"]["raw_value"], crea["latest"]["value"]) == ("1.20", "1.20")
@@ -124,7 +124,9 @@ async def test_attention_puts_a_lab_critical_mark_first_and_viral_loads_have_no_
     assert [a["test_code"] for a in body["attention"]] == ["K", "BKV_DNA", "HGB"]
     assert body["attention"][0]["latest"]["possibly_critical"] is True
     (bkv,) = body["cards"]
-    assert bkv["change"] is None  # a viral load: compared on a log scale clinically (Q60)
+    # a viral load: compared on a log scale clinically - log10, never a percent (Q60-b)
+    assert (bkv["change"]["percent"], bkv["change"]["log10_change"]) == (None, "1.0")
+    assert bkv["change"]["other_lab"] is False
     assert [p["value"] for p in bkv["spark"]] == ["500", "5000"]
 
 
@@ -261,4 +263,4 @@ async def test_a_failed_graft_and_a_stopped_medicine_choose_no_cards(
             {"d": today, "m": tac["id"]},
         )
     codes = [c["test_code"] for c in (await _dashboard(client, base, h))["cards"]]
-    assert codes == ["CREA", "EVR", "HGB", "K", "UPCR", "BKV_DNA"]
+    assert codes == ["CREA", "EVR", "HGB", "K", "UPCR", "BKV_DNA", "GLU", "UACR"]

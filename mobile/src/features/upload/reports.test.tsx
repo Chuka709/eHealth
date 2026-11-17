@@ -1,4 +1,4 @@
-import { fireEvent, renderRouter, screen } from "expo-router/testing-library";
+import { fireEvent, renderRouter, screen, waitFor } from "expo-router/testing-library";
 
 import { clearAccessToken, setStatus } from "@/features/auth/session-store";
 import { apiBaseUrl } from "@/lib/api-base";
@@ -264,6 +264,57 @@ test("confirm waits until every issue is looked at, one at a time", async () => 
   await fireEvent.press(screen.getByRole("button", { name: /^Батлах\./ }));
   expect(await screen.findByText(/Батлагдсан/)).toBeOnTheScreen();
   expect(sent.at(-1)?.path).toMatch(/\/confirm$/);
+});
+
+test("an implausible value is kept only when typed again from the report (Q57)", async () => {
+  documents = [document("needs_review")];
+  reports = [
+    {
+      ...REPORT,
+      results: [REPORT.results[0], { ...REPORT.results[1], issues: ["implausible"] }],
+    },
+  ];
+  await openResults();
+  await fireEvent.press(await screen.findByTestId(`document-${DOC}`));
+  await fireEvent.press(
+    await screen.findByRole("button", { name: /«уншилтын алдаа байж магадгүй»: хариутай ижил/ }),
+  );
+  expect(sent.filter((x) => x.method === "PATCH")).toHaveLength(0); // a tap is not enough
+  const done = screen.getByRole("button", { name: "Хариутай тулгасан" });
+  expect(done).toBeDisabled();
+  await fireEvent.changeText(screen.getByTestId("retype-1"), "1,2");
+  await fireEvent.press(done);
+  await waitFor(() =>
+    expect(sent.find((x) => x.method === "PATCH")).toMatchObject({
+      body: { acknowledge: ["implausible"], retyped_value: "1,2" },
+    }),
+  );
+});
+
+test("a drug level without the sample time may get one, on the printed date (Q54)", async () => {
+  documents = [document("needs_review")];
+  reports = [
+    {
+      ...REPORT,
+      last_doses: [
+        {
+          test_code: "CREA",
+          medication_id: "m1",
+          medication_name: "Такролимус",
+          taken_at: null,
+          minutes_before: null,
+          time_unknown: true,
+          other_records: 0,
+        },
+      ],
+    },
+  ];
+  await openResults();
+  await fireEvent.press(await screen.findByTestId(`document-${DOC}`));
+  expect(await screen.findByText(/дээж авсан цаг бичигдээгүй/)).toBeOnTheScreen();
+  await fireEvent.press(screen.getByRole("button", { name: "Дээж авсан цагийг нэмэх" }));
+  expect(screen.getByRole("button", { name: "Цагийг хадгалах" })).toBeDisabled();
+  expect(screen.getByText(/Дээж авсан цаг/)).toBeOnTheScreen();
 });
 
 test("a draft that may be critical opens under a red banner, its row first", async () => {
