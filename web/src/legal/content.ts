@@ -102,7 +102,7 @@ const privacyMn: LegalDoc = {
       heading: "7. Хадгалах хугацаа ба устгах",
       blocks: [
         "Таны мэдээлэл аккаунт идэвхтэй байх хугацаанд хадгалагдана. Аккаунтаа устгавал бүх төхөөрөмжөөс шууд гарч, 30 хоногийн дараа бүх мэдээлэл (эрүүл мэндийн мэдээлэл, баримтын файл) системээс бүрмөсөн устна. 30 хоногийн дотор зөвхөн таны хүсэлтээр, хүн таних шалгалтын дараа сэргээж болно.",
-        "Нөөц хуулбарт үлдсэн мэдээлэл [N] хоногийн дотор дарагдаж устна. Аюулгүй байдлын бүртгэл (утгагүй, зөвхөн дугаар) [хугацаа] хадгалагдана.",
+        "Нөөц хуулбарт үлдсэн мэдээлэл 35 хоногийн дотор дарагдаж устна. Аюулгүй байдлын бүртгэл (утгагүй, зөвхөн дугаар) [хугацаа] хадгалагдана.",
         "Устгах заавар: доорх «Аккаунт устгах» холбоос.",
       ],
     },
@@ -212,7 +212,7 @@ const privacyEn: LegalDoc = {
       heading: "7. Retention and deletion",
       blocks: [
         "Your data is kept while your account is active. When you delete your account you are signed out of every device at once, and 30 days later all data (health data, document files) is erased from the system permanently. Within those 30 days it can be restored only at your request, after an identity check.",
-        "Data left in backups is overwritten within [N] days. The security log (identifiers only, no values) is kept for [period].",
+        "Data left in backups is overwritten within 35 days. The security log (identifiers only, no values) is kept for [period].",
         "How to delete: the “Delete account” link below.",
       ],
     },
@@ -406,7 +406,7 @@ const deletionMn: LegalDoc = {
       heading: "Хэзээ устах вэ, юу үлдэх вэ",
       blocks: [
         "Хүсэлтээс 30 хоногийн дараа системээс бүрмөсөн устна. Энэ хугацаанд санамсаргүй эсвэл дарамтаар хийсэн хүсэлтийг зөвхөн таны хүсэлтээр, хүн таних шалгалтын дараа сэргээж болно.",
-        "Нөөц хуулбарт үлдсэн мэдээлэл [N] хоногийн дотор дарагдаж устна. Аюулгүй байдлын бүртгэл (зөвхөн дугаар, утгагүй) [хугацаа] хадгалагдана. Хуваалцсан хүмүүс таны мэдээллийг өмнө нь татаж авсан бол (PDF гэх мэт) тэр хуулбарт бид хүрэхгүй.",
+        "Нөөц хуулбарт үлдсэн мэдээлэл 35 хоногийн дотор дарагдаж устна. Аюулгүй байдлын бүртгэл (зөвхөн дугаар, утгагүй) [хугацаа] хадгалагдана. Хуваалцсан хүмүүс таны мэдээллийг өмнө нь татаж авсан бол (PDF гэх мэт) тэр хуулбарт бид хүрэхгүй.",
         "Устгахаас өмнө мэдээллээ хадгалах бол апп-аас PDF, JSON, FHIR экспорт авна уу.",
       ],
     },
@@ -456,7 +456,7 @@ const deletionEn: LegalDoc = {
       heading: "When, and what remains",
       blocks: [
         "Everything is erased from the system permanently 30 days after the request. Within that time an accidental or coerced request can be undone only at your request, after an identity check.",
-        "Data left in backups is overwritten within [N] days. The security log (identifiers only, no values) is kept for [period]. Copies that people you shared with downloaded earlier (such as a PDF) are beyond our reach.",
+        "Data left in backups is overwritten within 35 days. The security log (identifiers only, no values) is kept for [period]. Copies that people you shared with downloaded earlier (such as a PDF) are beyond our reach.",
         "To keep your data, export the PDF, JSON or FHIR files in the app before deleting.",
       ],
     },
