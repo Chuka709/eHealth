@@ -77,8 +77,15 @@ export async function writeForSharing(
   if (!stillValid(ticket)) return null;
   const file = new File(freshFolder(), name);
   file.create({ overwrite: true });
-  await file.write(bytes); // asynchronous in SDK 58: the share sheet gets the whole file
-  return stillValid(ticket) ? file : null;
+  try {
+    await file.write(bytes); // asynchronous in SDK 58: the share sheet gets the whole file
+  } catch (error) {
+    removeQuietly(exportFolder); // no partial file left behind (security review 8.5 L3)
+    throw error;
+  }
+  if (stillValid(ticket)) return file;
+  removeQuietly(exportFolder);
+  return null;
 }
 
 /** "dropped": the session ended meanwhile (nothing to say); "unavailable": no share sheet. */

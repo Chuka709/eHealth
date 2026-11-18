@@ -27,10 +27,27 @@ export async function copyIn(sourceUri: string, id: string, mime: string): Promi
   const target = new File(folder, `${id}.${EXTENSIONS[mime] ?? "bin"}`);
   if (target.exists) target.delete();
   // asynchronous in SDK 58: not awaited, the picker's copy was removed mid-copy and nothing
-  // was queued ("file_missing" - found on the emulator, 8.5)
-  await new File(sourceUri).copy(target);
+  // was queued ("file_missing" - found on the emulator, 8.5). A copy that fails or hangs (a
+  // slow provider) leaves no partial file and does not hold the queue (security review L1, L2).
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error("copy timed out")), COPY_TIMEOUT_MS);
+  });
+  const copying = new File(sourceUri).copy(target);
+  try {
+    await Promise.race([copying, timeout]);
+  } catch (error) {
+    removeFile(target.uri);
+    // a timed-out copy may still finish later: its file goes too (nothing queues it)
+    void copying.catch(() => undefined).finally(() => removeFile(target.uri));
+    throw error;
+  } finally {
+    clearTimeout(timer);
+  }
   return target.uri;
 }
+
+const COPY_TIMEOUT_MS = 60_000;
 
 export function fileExists(uri: string): boolean {
   try {

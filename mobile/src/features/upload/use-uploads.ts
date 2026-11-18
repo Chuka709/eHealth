@@ -67,12 +67,16 @@ export async function queueFiles(
   { shared = false }: { shared?: boolean } = {},
 ): Promise<"queued" | "full"> {
   const epoch = currentEpoch();
-  for (const file of files) {
-    const outcome = await enqueueUpload(file, patientId, newClientId(), epoch);
-    if (outcome === "full") return "full";
-    // the scanner's or picker's own copy: ours is enough. Never a shared file: another app
-    // chose that path (commit security review 3.5)
-    if (!shared) removeSourceCopy(file.uri);
+  try {
+    for (const file of files) {
+      const outcome = await enqueueUpload(file, patientId, newClientId(), epoch);
+      if (outcome === "full") return "full";
+    }
+  } finally {
+    // the scanner's or picker's own copies: ours are enough, and a full queue or a failed copy
+    // leaves none of them behind either (security review 8.5 L2). Never a shared file: another
+    // app chose that path (commit security review 3.5)
+    if (!shared) for (const file of files) removeSourceCopy(file.uri);
   }
   void queryClient.invalidateQueries({ queryKey: ["uploads"] });
   void sendWaitingUploads();

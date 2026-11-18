@@ -87,12 +87,18 @@ async function addToQueue(
 ): Promise<"queued" | "full"> {
   const store = await localStore();
   if (!sessionIs(epoch)) throw new Error("session changed");
-  const pending = read<PendingUpload>(store.getString(PENDING));
-  if (pending.length >= MAX_PENDING_UPLOADS) return "full";
+  if (read<PendingUpload>(store.getString(PENDING)).length >= MAX_PENDING_UPLOADS) return "full";
   const uri = await copyIn(file.uri, id, file.mime);
   if (!sessionIs(epoch)) {
     removeFile(uri);
     throw new Error("session changed");
+  }
+  // read again after the copy: a send running meanwhile may have removed entries (sent or
+  // refused); writing the list read before would bring them back (security review 8.5 M1)
+  const pending = read<PendingUpload>(store.getString(PENDING));
+  if (pending.length >= MAX_PENDING_UPLOADS) {
+    removeFile(uri);
+    return "full";
   }
   pending.push({ id, patientId, uri, mime: file.mime, createdAt: Date.now() });
   store.set(PENDING, JSON.stringify(pending));

@@ -134,6 +134,18 @@ test("the copy is whole before the picker's own file is removed (8.5)", async ()
   expect(mockFiles.has(waiting.uri)).toBe(true);
 });
 
+test("a file sent while another is being copied is not queued again (8.5 review M1)", async () => {
+  await queue(1);
+  const source = "file:///data/user/0/pkg/cache/scan-2.jpg";
+  mockFiles.add(source);
+  const adding = enqueueUpload({ uri: source, mime: "image/jpeg" }, P, id(2), currentEpoch());
+  // the app came back from the picker: a send runs while the second file is copied
+  const sent = await flushUploads(async () => answer(201));
+  await adding;
+  expect(sent).toBe(1);
+  expect((await pendingUploads()).map((u) => u.id)).toEqual([id(2)]);
+});
+
 test("offline or a server error keeps the file for later, in order", async () => {
   await queue(1);
   await queue(2);

@@ -6,7 +6,7 @@
 | # | Юу | Хэн | Төлөв |
 |---|---|---|---|
 | B1 | https бета сервер (Монголд байрлах эсэх — Q12 хуульчтай), Caddy TLS, нөөцлөлт | компани | ☐ |
-| B2 | Expo аккаунт (компанийн) → `eas init` → `EAS_PROJECT_ID` EAS env-д | компани + Claude | ☐ |
+| B2 | Expo аккаунт (компанийн) → `eas init` → `EAS_PROJECT_ID` EAS env-д | компани + Claude | ☐ (8.5, 2026.11.18): аккаунт байхгүй тул EAS beta build хийгээгүй; оронд нь локал production build (`dist/mobile-release`, x86_64 release APK) — §2-ийн manifest/зөвшөөрлийн шалгалт түүн дээр. Аккаунт бэлэн болмогц: `eas init` → `eas build --platform android --profile beta` → AAB-ийн зөвшөөрлийг `STORE_RELEASE.md` §5-аар дахин |
 | B3 | Firebase project → FCM V1 service account → `eas credentials` (Android push); Expo Enhanced Push Security + `EXPO_ACCESS_TOKEN` серверт; `PUSH_ENABLED=true` | компани | ☐ |
 | B4 | Нууцлалын бодлогын хуудас (https) → `EXPO_PUBLIC_PRIVACY_URL`; аккаунт устгах **web** хуудас (Play шаарддаг). Код бэлэн (8.1): `/privacy`, `/terms`, `/account-deletion` — компани `[...]`-ийг бөглөж, хуульч хянана | компани + хуульч (Q12) | ☐ |
 | B5 | Зөвшөөрлийн текст хуульчаар, тайлбар текст эмч + лабын эмчээр (Q12 — `docs/CLINICAL_TEXTS_REVIEW.md`); Q34, Q47, Q48 — эмч шийдсэн, хэрэгжсэн (2026.11.18) | компани | ☐ |

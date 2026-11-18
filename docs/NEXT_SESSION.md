@@ -1,45 +1,36 @@
-# Дараагийн session-д өгөх промпт (Phase 8.5-аас)
+# Дараагийн session-д өгөх промпт (Phase 8 код талаас дууссаны дараа)
 
 > Шинэ Claude Code session нээгээд (`/clear`) доорх блокыг бүтнээр нь буулгана.
 > Session бүрийн төгсгөлд энэ файлыг (төлөв, сургамж) шинэчилнэ.
 
 ```
-LabTrack MN төслийн Phase 8.5-ийг хэрэгжүүл: Phase 8 DoD. Төлөвлөгөө баталсан
-(docs/PROGRESS.md «Phase 8»). Надтай монголоор харилц. Эхлээд 4–6 мөр төлөвлөгөө өгч батлуул.
+LabTrack MN төсөл: Phase 8 код талаас дууссан (8.1–8.5). Надтай монголоор харилц.
+Эхлээд юуг хийхийг надаас асуу (доорх хоёрын аль нэг), дараа нь 4–6 мөр төлөвлөгөө батлуул.
+
+А. Компанийн блокер бэлэн болсон бол: B2 Expo аккаунт → `eas init`, `eas build --profile beta`,
+   AAB-ийн зөвшөөрлийг STORE_RELEASE.md §5-аар; B1 https сервер → `just seed-review https://…`,
+   Play Console маягт (STORE_RELEASE.md §1–4); legal `[...]` бөглөгдсөн бол `just release-check` бүтэн ногоон.
+Б. Phase 9 төлөвлөлт (docs/01_PLAN.md «Phase 9+»): өргөтгөлүүдээс эхнийхийг сонгож,
+   эрсдэл/зохицуулалтын үнэлгээтэй хамт төлөвлөнө.
 
 ## Эхлээд унш (зөвхөн эдгээрийг)
-- docs/PROGRESS.md — «Phase 8» (8.4 мөр, «Үлдсэн»)
-- docs/STORE_RELEASE.md §5 (release-check, AAB зөвшөөрөл, rollout), docs/BETA.md §1 (B2, B9), §2
-- docs/09_CLINICAL_SAFETY.md «Release бүрийн шалгалт»
-- docs/ANDROID_EMULATOR.md
-
-## Хийх
-1. Локал release build (Expo аккаунтгүй): `APP_VARIANT=production` + https placeholder-оор
-   `mobile/android`-д `gradlew assembleRelease` (эсвэл bundleRelease + bundletool) →
-   `aapt2 dump permissions` (USE_EXACT_ALARM, SYSTEM_ALERT_WINDOW, RECORD_AUDIO байхгүй);
-   `release-manifest.mjs`-тэй тулгах.
-2. B9: тэр build-ийг эмулятор дээр Files апп-аас PDF/зураг share хийж шалгах (patch: уншигдахгүй
-   URI → «уншиж чадсангүй», апп унахгүй); dev build дээрх Permission Denial дахин гарах эсэх.
-3. `just release-check` — legal-аас бусад ногоон; 09-ийн гараар хийх шалгалтуудын нотолгоо
-   (medical-reviewer бүх шинэ текст, restore-drill бүртгэл).
-4. EAS beta build — компанийн Expo аккаунт (B2) бэлэн бол; үгүй бол BETA §1-д тэмдэглэнэ.
-5. Phase 8 DoD нотолгоо PROGRESS-т, commit + `git push origin phase-2`.
+- docs/PROGRESS.md — «Phase 8» (8.4, 8.5 мөр)
+- docs/BETA.md §1 (B1–B10 төлөв), docs/STORE_RELEASE.md (А бол)
+- docs/01_PLAN.md «Phase 9+» (Б бол)
 
 ## Одоогийн төлөв (2026.11.18, салбар phase-2)
-- Phase 0–7, D1–D5b, 8.1–8.4 дууссан. Migration 0048 хүртэл.
-- Тест: backend 1384, Jest 327, shared 13, web 21 (+1 LEGAL_RELEASE); release-check legal-аас бусад ногоон.
-- Нээлттэй: Q65, Q66 (эмч), Q67 (SIM swap), Q12 (хуульч, эмч), BETA B1–B8, B10 (компани).
+- Phase 0–8 код талаас дууссан. Migration 0048 хүртэл.
+- Тест: backend 1384, Jest 330, shared 13, web 21 (+1 LEGAL_RELEASE); release-check legal-аас бусад ногоон.
+- Нээлттэй: Q65, Q66 (эмч), Q67 (SIM swap), Q12 (хуульч, эмч), BETA B1–B8, B10 (компани), B6 утасны матриц.
 
 ## Сургамж
-- Jest-ийг Metro/эмулятор эсвэл бүтэн `just test-api` ажиллаж байхад бүү ажиллуул — тестүүд
-  timeout-оор хуурамчаар унана.
-- `node_modules` унших эрхгүй (тохиргоо): сангийн эхийг `pnpm patch <pkg> --edit-dir <scratchpad>`
-  хавтаснаас уншиж засна → `pnpm patch-commit`.
-- Python heredoc доторх `\n` бодит мөр таслалт болж кодыг эвддэг — Python файлыг Write/Edit-ээр.
-- `just seed-review` — dev-д `just seed-demo`-ийн админ хэрэгтэй; `.env.review` git-д орохгүй.
-- `TaskStop` нь Metro-гийн node процессыг зогсоодоггүй — порт эзэлсэн хэвээр (taskkill //F //T //PID).
+- Expo SDK 58-д `File.copy()`/`move()`/`write()` async — заавал await (8.5-д upload алдагдаж байсан).
+- Локал release build: `dist/mobile-release` хуулбарт (ANDROID_EMULATOR.md), dev-ийн `mobile/android`-ыг бүү дар.
+- `adb emu kill` гацдаг — taskkill qemu + `adb kill-server`.
+- Jest-ийг Metro/эмулятор эсвэл бүтэн `just test-api` ажиллаж байхад бүү ажиллуул.
+- `node_modules` унших эрхгүй: сангийн эхийг `pnpm patch <pkg> --edit-dir <scratchpad>`-аас уншина.
+- Python heredoc доторх `\n` бодит мөр таслалт болдог — код засварыг Write/Edit-ээр.
 - Эмулятор: Medium_Phone_API_37.0, `-no-snapshot-load -memory 3072 -gpu swiftshader_indirect
-  -feature -Vulkan`; ANR цонхонд «Wait»; dev client-ийн хөвөгч товч header-ийн баруун талыг
-  таглана (🆘-ийг x≈800-д товш). JDK: `E:/Android/Android Studio/jbr`.
-- `.env`-д шинэ түлхүүр нэмэх: `python scripts/init_env.py` (утгыг хэвлэхгүй).
+  -feature -Vulkan`; adb reverse 8081/8080 + `metro-emulator` launch config (EXPO_PUBLIC_API_URL=localhost);
+  dev client-ийн хөвөгч товч header-ийн баруун талыг таглана.
 ```
