@@ -45,6 +45,9 @@ class TrendPointOut(BaseModel):
     report_id: UUID
     document_id: UUID | None  # the source document, when there is one (typed in: none)
     lab_name: str | None
+    # the name as printed on the result (e.g. "eGFR (MDRD)"): the catalog name never says
+    # which equation a lab used (Q69/Q70)
+    raw_name: str
     collected_at: datetime
     collected_precision: str  # 'day': only the day was printed
     days_since_transplant: int | None
@@ -187,6 +190,7 @@ async def get_trend(  # noqa: PLR0917 - path, filters and the session
                 report_id=p.row.report_id,
                 document_id=p.row.document_id,
                 lab_name=p.row.lab_name,
+                raw_name=p.row.raw_name,
                 collected_at=p.row.collected_at,
                 collected_precision=p.row.collected_precision,
                 days_since_transplant=p.days_since,

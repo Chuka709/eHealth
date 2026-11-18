@@ -86,6 +86,7 @@ async def test_points_keep_their_own_ranges_and_drafts_stay_out(
     assert body["truncated"] is False
     assert body["axis"] is None  # no transplant recorded
     assert body["points"][0]["days_since_transplant"] is None
+    assert body["points"][0]["raw_name"] == "TAC"  # the printed name (Q70)
 
 
 async def test_period_filter(client: AsyncClient, owner_engine: AsyncEngine) -> None:

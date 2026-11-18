@@ -137,7 +137,9 @@ export default function TrendScreen() {
       testID="trend-screen"
       data={newestFirst}
       keyExtractor={(pt) => pt.result_id}
-      renderItem={({ item }) => <PointRow point={item} approximate={approximate} />}
+      renderItem={({ item }) => (
+        <PointRow point={item} approximate={approximate} catalogName={data.test.name_mn} />
+      )}
       ListHeaderComponent={header}
       style={{ backgroundColor: p.background }}
       contentContainerStyle={styles.content}
@@ -151,9 +153,11 @@ export default function TrendScreen() {
 const PointRow = memo(function PointRow({
   point,
   approximate,
+  catalogName,
 }: {
   point: TrendPoint;
   approximate: boolean;
+  catalogName: string;
 }) {
   const t = useTranslations("app.trends");
   const tr = useTranslations("app.upload.review");
@@ -179,13 +183,17 @@ const PointRow = memo(function PointRow({
             days: -point.days_since_transplant,
           });
   const lab = point.lab_name ? t("lab", { lab: point.lab_name }) : null;
+  // the name as printed (e.g. "eGFR (MDRD)"): which equation or method this lab used (Q70)
+  const printed = sameName(point.raw_name, catalogName)
+    ? null
+    : t("printedName", { name: point.raw_name });
   const notDrawn = point.value === null ? t("notDrawn") : null;
   const source = point.document_id ?? point.report_id;
   return (
     <Pressable
       onPress={() => router.push(`/results/${source}`)}
       accessibilityRole="button"
-      accessibilityLabel={[when, value, flagText, range, critical, days, lab, notDrawn]
+      accessibilityLabel={[when, value, flagText, printed, range, critical, days, lab, notDrawn]
         .filter(Boolean)
         .join(". ")}
       accessibilityHint={t("openSource")}
@@ -208,6 +216,7 @@ const PointRow = memo(function PointRow({
           </Text>
         </View>
       )}
+      {printed && <Text style={[styles.meta, { color: p.textMuted }]}>{printed}</Text>}
       <Text style={[styles.meta, { color: p.textMuted }]}>{range}</Text>
       {critical && <Text style={[styles.meta, { color: p.textMuted }]}>{critical}</Text>}
       {days && <Text style={[styles.meta, { color: p.textMuted }]}>{days}</Text>}
@@ -266,3 +275,10 @@ const styles = StyleSheet.create({
   tabular: { fontVariant: ["tabular-nums"] },
   strong: { fontWeight: "600" },
 });
+
+/** The printed name says nothing more than the catalog name, with or without its "(…)" part. */
+function sameName(printed: string, catalog: string): boolean {
+  const norm = (x: string) => x.trim().toLocaleLowerCase();
+  const name = norm(printed);
+  return name === norm(catalog) || name === norm(catalog.replace(/\s*\([^)]*\)\s*$/, ""));
+}

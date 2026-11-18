@@ -1394,6 +1394,7 @@
       "values": "Results",
       "openSource": "Open the source result",
       "lab": "Lab: {lab}",
+      "printedName": "Name on the result: {name}",
       "truncated": "The latest {limit} results are shown. Choose a shorter period.",
       "noValues": "No results in this period.",
       "doses": "Dose history ({medicine})",

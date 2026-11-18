@@ -5256,6 +5256,8 @@ export interface components {
             document_id: string | null;
             /** Lab Name */
             lab_name: string | null;
+            /** Raw Name */
+            raw_name: string;
             /**
              * Collected At
              * Format: date-time

@@ -64,6 +64,7 @@ const point = (over: Partial<Trend["points"][number]>): Trend["points"][number] 
   report_id: "rep1",
   document_id: "doc1",
   lab_name: "УНТЭ",
+  raw_name: "Такролимус",
   collected_at: "2026-05-01T00:30:00Z",
   collected_precision: "minute",
   days_since_transplant: 300,
@@ -106,6 +107,7 @@ const TREND: Trend = {
       ref_high: "12",
       ref_text: "4-12",
       lab_name: "Другой",
+      raw_name: "Tacrolimus (CMIA)",
       flag: "high",
     }),
   ],
@@ -281,6 +283,9 @@ test("the Trends tab lists tested tests and opens a chart with every value as te
   expect(screen.getByText("12.4 нг/мл")).toBeOnTheScreen();
   expect(screen.getByText("↑ Лавлахаас их")).toBeOnTheScreen();
   expect(screen.getByText("Лавлах хэмжээ: 4-12")).toBeOnTheScreen();
+  // the printed name only where it says more than the catalog name (Q70)
+  expect(screen.getByText("Хариун дээрх нэр: Tacrolimus (CMIA)")).toBeOnTheScreen();
+  expect(screen.queryByText("Хариун дээрх нэр: Такролимус")).toBeNull();
   expect(screen.getByText(/Тун ба шинжилгээний хариуны холбоог эмч тайлбарлана/)).toBeOnTheScreen();
   expect(trendQueries[0]).toMatch(/since=/); // 1 year by default
   await fireEvent.press(screen.getByRole("radio", { name: "Бүгд" }));

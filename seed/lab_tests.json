@@ -423,8 +423,8 @@
   {
    "code": "EGFR",
    "loinc": null,
-   "name_mn": "eGFR (тооцоолсон)",
-   "name_en": "eGFR (CKD-EPI 2021)",
+   "name_mn": "eGFR (лабын хариу)",
+   "name_en": "eGFR (lab-reported)",
    "name_ru": "СКФ",
    "category": "renal",
    "kind": "numeric",

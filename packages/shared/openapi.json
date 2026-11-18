@@ -25175,6 +25175,10 @@
             ],
             "title": "Lab Name"
           },
+          "raw_name": {
+            "type": "string",
+            "title": "Raw Name"
+          },
           "collected_at": {
             "type": "string",
             "format": "date-time",
@@ -25351,6 +25355,7 @@
           "report_id",
           "document_id",
           "lab_name",
+          "raw_name",
           "collected_at",
           "collected_precision",
           "days_since_transplant",
