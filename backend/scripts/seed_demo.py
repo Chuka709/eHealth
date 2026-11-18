@@ -119,6 +119,14 @@ class Admin:
         session = _ok(r)["session_token"]
         self.c, self.h = c, {"Authorization": f"Bearer {session}"}
 
+    @classmethod
+    def signed_in(cls, c: httpx.Client, session: str) -> "Admin":
+        """An admin who signed in elsewhere (seed_review.py on a beta server: a person types
+        the password and code; nothing is created through the migration role)."""
+        admin = cls.__new__(cls)
+        admin.c, admin.h = c, {"Authorization": f"Bearer {session}"}
+        return admin
+
     def register(self, username: str, name: str) -> str | None:
         """The account's id, or None if it already exists (kept as it is)."""
         r = self.c.post(

@@ -45,3 +45,17 @@ allowBuilds:
   unrs-resolver: false
   '@parcel/watcher': false
   '@swc/core': false
+patchedDependencies:
+  expo-share-intent@9.0.0: patches/expo-share-intent@9.0.0.patch
+# Security fixes in transitive packages (8.4 dependency scan): node-forge in @expo/cli.
+overrides:
+  node-forge: 1.4.3
+# `pnpm audit` (just release-check, CI): advisories accepted with a reason; review by 2027-02-01.
+auditConfig:
+  ignoreGhsas:
+    # picomatch ReDoS: no fixed version; only in Metro/Jest (build and test tools on our own
+    # globs), never in the app bundle or a server.
+    - GHSA-fc5q-39xc-vjpf
+    # minimatch ReDoS: fixed only in 11.x (major); only in @expo/fingerprint at build time,
+    # on our own globs.
+    - GHSA-g3hv-75wg-m249

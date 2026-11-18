@@ -1227,6 +1227,7 @@
       },
       "shared": "Files shared from another app: {n}. Check the profile, then add them.",
       "addShared": "Add to {name}",
+      "sharedUnreadable": "The shared file could not be read. Save it to your phone and add it below with “File (PDF)” or “From photos”.",
       "sharedUnsupported": "The shared file is not a PDF or a picture and cannot be added.",
       "ignoreShared": "Do not add",
       "noProfile": "Choose a profile first.",

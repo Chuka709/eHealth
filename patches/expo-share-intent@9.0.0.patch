@@ -1,0 +1,136 @@
+diff --git a/android/src/main/java/expo/modules/shareintent/ExpoShareIntentModule.kt b/android/src/main/java/expo/modules/shareintent/ExpoShareIntentModule.kt
+index ff5b1001e7bb3443482727cec48c22579465c73b..92f24c021de7ce3c0633fd675cc8c39a498d10d2 100644
+--- a/android/src/main/java/expo/modules/shareintent/ExpoShareIntentModule.kt
++++ b/android/src/main/java/expo/modules/shareintent/ExpoShareIntentModule.kt
+@@ -55,24 +55,41 @@ class ExpoShareIntentModule : Module() {
+             instance!!.sendEvent("onError", mapOf("value" to message))
+         }
+ 
+-        @SuppressLint("Range")
+-        private fun getFileInfo(uri: Uri): Map<String, String?> {
+-            val resolver: ContentResolver? = instance?.currentActivity?.contentResolver
++        // LabTrack patch (B9): a URI the app may not read (Permission Denial), or a provider that
++        // returns no row (CursorIndexOutOfBounds), used to crash the app. Such a file is skipped:
++        // null here, never a half-filled entry (its content URI is unreadable from JS as well).
++        private fun getFileInfo(uri: Uri): Map<String, String?>? {
++            return try {
++                readFileInfo(uri)
++            } catch (e: Exception) {
++                // No URI in the message: it may carry the file's name (rule 3, PHI).
++                notifyError("unreadable shared file: " + e.javaClass.simpleName)
++                null
++            }
++        }
++
++        private fun readFileInfo(uri: Uri): Map<String, String?>? {
++            val resolver: ContentResolver = instance?.currentActivity?.contentResolver
+                     ?: instance?.context?.contentResolver
+-            if (resolver == null) {
+-                notifyError("Cannot get resolver (getFileInfo)")
+-                return mapOf(
+-                    "contentUri" to uri.toString(),
+-                    "filePath" to instance?.getAbsolutePath(uri),
+-                )
++                    ?: return null
++            // LabTrack patch: never this app's own provider - another app sharing such a URI
++            // would have us copy our own private files (security review 8.4 L3).
++            val own = instance?.context?.packageName ?: return null
++            val authority = uri.authority.orEmpty()
++            if (authority == own || authority.startsWith("$own.")) return null
++            var fileName: String? = null
++            var fileSize: String? = null
++            resolver.query(uri, null, null, null, null)?.use { cursor ->
++                if (cursor.moveToFirst()) {
++                    val nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
++                    val sizeIndex = cursor.getColumnIndex(OpenableColumns.SIZE)
++                    if (nameIndex >= 0) fileName = cursor.getString(nameIndex)
++                    if (sizeIndex >= 0) fileSize = cursor.getString(sizeIndex)
++                }
+             }
+-            val queryResult: Cursor = resolver.query(uri, null, null, null, null)!!
+-            queryResult.moveToFirst()
+-            val fileName = queryResult.getString(queryResult.getColumnIndex(OpenableColumns.DISPLAY_NAME))
+-            val fileSize = queryResult.getString(queryResult.getColumnIndex(OpenableColumns.SIZE))
+-            queryResult.close()
+ 
+-            val mimeType = resolver.getType(uri)!!
++            val mimeType = resolver.getType(uri) ?: return null
++            val filePath = instance?.getAbsolutePath(uri) ?: return null
+ 
+             var mediaWidth: String? = null;
+             var mediaHeight: String? = null;
+@@ -81,13 +98,13 @@ class ExpoShareIntentModule : Module() {
+                 val options = BitmapFactory.Options().apply {
+                     inJustDecodeBounds = true
+                 }
+-                BitmapFactory.decodeStream(resolver.openInputStream(uri), null, options)
++                resolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it, null, options) }
+                 mediaHeight = options.outHeight.toString()
+                 mediaWidth = options.outWidth.toString()
+             }
+             if (mimeType.startsWith("video/")) {
+                 val retriever = MediaMetadataRetriever()
+-                retriever.setDataSource(instance?.getAbsolutePath(uri))
++                retriever.setDataSource(filePath)
+                 mediaWidth = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH)?.toInt().toString() ?: null
+                 mediaHeight = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT)?.toInt().toString() ?: null
+                 // Check orientation and flip size if required
+@@ -101,7 +118,7 @@ class ExpoShareIntentModule : Module() {
+ 
+             return mapOf(
+                     "contentUri" to uri.toString(),
+-                    "filePath" to instance?.getAbsolutePath(uri),
++                    "filePath" to filePath,
+                     "fileName" to fileName,
+                     "fileSize" to fileSize,
+                     "mimeType" to mimeType,
+@@ -114,8 +131,10 @@ class ExpoShareIntentModule : Module() {
+         fun handleShareIntent(intent: Intent) {
+             val activity = instance?.currentActivity
+             if (activity != null && !activity.isTaskRoot) {
++                // LabTrack patch (B9): pass the read grant on to the new task; without it the
++                // relaunched activity reads the shared URI with "Permission Denial".
+                 val newIntent = Intent(intent).apply {
+-                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
++                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                 }
+                 activity.startActivity(newIntent)
+                 activity.finish()
+@@ -142,14 +161,16 @@ class ExpoShareIntentModule : Module() {
+                 if (intent.action == Intent.ACTION_SEND) {
+                     val uri = intent.parcelable<Uri>(Intent.EXTRA_STREAM);
+                     if (uri != null) {
+-                        notifyShareIntent(mapOf( "files" to arrayOf(getFileInfo(uri), "type" to "file")))
++                        // LabTrack patch: "type" was inside the files array; an unreadable file
++                        // gives an empty list (the app says so) instead of a crash.
++                        notifyShareIntent(mapOf( "files" to listOfNotNull(getFileInfo(uri)), "type" to "file"))
+                     } else {
+                         notifyError("empty uri for file sharing: " + intent.action)
+                     }
+                 } else if (intent.action == Intent.ACTION_SEND_MULTIPLE) {
+                     val uris = intent.parcelableArrayList<Uri>(Intent.EXTRA_STREAM)
+                     if (uris != null) {
+-                        notifyShareIntent(mapOf( "files" to uris.map { getFileInfo(it) }, "type" to "file"))
++                        notifyShareIntent(mapOf( "files" to uris.mapNotNull { getFileInfo(it) }, "type" to "file"))
+                     } else {
+                         notifyError("empty uris array for file sharing: " + intent.action)
+                     }
+@@ -267,8 +288,8 @@ class ExpoShareIntentModule : Module() {
+ 
+             return uri.path
+         } catch (e: Exception) {
+-            e.printStackTrace()
+-            notifyError("cannot retreive absoluteFilePath for $uri: ${e.message}")
++            // LabTrack patch: no stack trace - a SecurityException names the URI (logcat, rule 3)
++            notifyError("cannot retrieve absoluteFilePath: " + e.javaClass.simpleName)
+             return null
+         }
+     }
+@@ -300,7 +321,6 @@ class ExpoShareIntentModule : Module() {
+                 if (cursor != null && cursor.moveToFirst()) {
+                     val columnIndex = cursor.getColumnIndexOrThrow(column)
+                     val fileName = cursor.getString(columnIndex)
+-                    Log.i("FileDirectory", "File name: $fileName")
+                     val safeName = fileName?.let { File(it).name }.orEmpty()
+                     if (safeName.isNotEmpty()) {
+                         val candidate = File(context.cacheDir, safeName)

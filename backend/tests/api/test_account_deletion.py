@@ -92,13 +92,16 @@ async def test_cancellation_goes_through_a_reset(client_from: ClientFactory) -> 
         await phone.post("/api/v1/me/delete", json={"password": NEW_PASSWORD}, headers=h)
     async with client_from(OFFICE) as c:
         admin = await _admin(c)  # not the admin who enrolled the national id
-        assert (
-            await c.post(
-                f"/api/v1/admin/users/{uid}/cancel-deletion",
-                json={"reason": "user_request"},
-                headers=admin,
-            )
-        ).status_code == 204
+        with capture_logs() as logs:
+            assert (
+                await c.post(
+                    f"/api/v1/admin/users/{uid}/cancel-deletion",
+                    json={"reason": "user_request"},
+                    headers=admin,
+                )
+            ).status_code == 204
+        # beside the request's line, for a restore from an older backup (OPS_RUNBOOK §5.6)
+        assert [e["user_id"] for e in logs if e["event"] == "account_deletion_cancelled"] == [uid]
         detail = (await c.get(f"/api/v1/admin/users/{uid}", headers=admin)).json()
         assert (detail["account_status"], detail["deletion_scheduled_for"]) == ("locked", None)
     async with client_from(HOME) as phone:

@@ -53,12 +53,22 @@ create-admin username role="super_admin":
 rewrap-user-keys:
     {{compose}} run --rm migrate python -m labtrack.cli rewrap-user-keys
 
+# After a restore (OPS_RUNBOOK §5.6): deletions requested since the backup, from the API's logs
+# (a file of `docker compose logs api` / the log store's export). Dry run; add --apply to write.
+redelete since logfile *args:
+    Get-Content -Encoding utf8 '{{logfile}}' | {{compose}} run --rm -T migrate python -m labtrack.cli redelete --since {{since}} {{args}}
+
 unlock-admin username:
     {{compose}} run --rm migrate python -m labtrack.cli unlock-admin {{username}}
 
 # Admin web end to end against the running stack (`just up` first). Creates a throwaway admin.
 e2e-web *args:
     {{pnpm}} --filter web exec playwright test {{args}}
+
+# Before a store build (8.4; docs/STORE_RELEASE.md §5): legal pages without drafts, store app
+# config + manifest, pip-audit + pnpm audit, eval --check, hazard log. A skipped step = not a release.
+release-check *args:
+    python scripts/release_check.py {{args}}
 
 # Reading quality against hand-checked answers (docs/05 "Eval"): synthetic eval/cases (in git)
 # and real eval/local (git-ignored, PHI). `just eval --details`, `--check` (DoD), `--ai` (costs
@@ -82,6 +92,12 @@ load-test:
 # credentials in .env.demo (git-ignored). `just seed-demo --reset` retires and seeds them anew.
 seed-demo *args:
     $env:UV_CACHE_DIR = "F:/.uv-cache"; $env:UV_TOOL_DIR = "F:/.uv-tools"; cd backend; uv run python scripts/seed_demo.py {{args}}
+
+# The app store review account (8.4; docs/STORE_RELEASE.md §4): made-up records, password in
+# .env.review (git-ignored). No argument = the dev stack; `just seed-review https://beta...` signs
+# an admin in by hand on that server.
+seed-review *args:
+    $env:UV_CACHE_DIR = "F:/.uv-cache"; $env:UV_TOOL_DIR = "F:/.uv-tools"; cd backend; uv run python scripts/seed_review.py {{args}}
 
 # The 2.10d device checks on the seeded demo accounts (no activation): `just e2e-mobile-fast`
 # runs reminders, wizard, travel and offline; name stages to run only those.

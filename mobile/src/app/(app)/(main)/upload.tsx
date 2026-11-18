@@ -13,7 +13,7 @@ import { Screen } from "@/components/screen";
 import { Paragraph } from "@/components/text";
 import { useRecordProfile } from "@/features/health/record-screens";
 import { ProfileSwitcher } from "@/features/records/profile-switcher";
-import { isForeignFile } from "@/features/upload/upload-files";
+import { readShared } from "@/features/upload/shared-files";
 import {
   type Picked,
   pickPdf,
@@ -22,15 +22,6 @@ import {
   scanPages,
 } from "@/features/upload/use-uploads";
 import { usePalette } from "@/theme/use-palette";
-
-const ACCEPTED = new Set([
-  "application/pdf",
-  "image/jpeg",
-  "image/png",
-  "image/heic",
-  "image/heif",
-  "image/webp",
-]);
 
 type Problem = "full" | "pickFailed" | null;
 
@@ -47,17 +38,7 @@ export default function UploadScreen() {
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<Problem>(null);
   const share = useShareIntentContext();
-  const shared: Picked[] = (share.shareIntent.files ?? [])
-    .filter((f) => ACCEPTED.has(f.mimeType))
-    .filter((f) => isForeignFile(f.path.startsWith("/") ? `file://${f.path}` : f.path))
-    .map((f) => ({
-      // a plain path may hold spaces or Cyrillic letters: encoded into a file URI (review M4)
-      uri:
-        f.path.startsWith("file://") || f.path.startsWith("content://")
-          ? f.path
-          : `file://${encodeURI(f.path)}`,
-      mime: f.mimeType,
-    }));
+  const { picked: shared, notice: sharedNotice } = readShared(share.shareIntent.files);
 
   const add =
     (pick: () => Promise<Picked[]>, fromShare = false) =>
@@ -105,7 +86,7 @@ export default function UploadScreen() {
               />
             </>
           ) : (
-            <FormMessage kind="warning" text={t("sharedUnsupported")} />
+            <FormMessage kind="warning" text={t(sharedNotice ?? "sharedUnsupported")} />
           )}
           <Button
             variant="link"
