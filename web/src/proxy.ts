@@ -3,7 +3,8 @@ import { type NextRequest, NextResponse } from "next/server";
 const ADMIN_COOKIE = "__Host-labtrack_admin";
 
 /**
- * /admin and /s (a share link's viewer, 7.3; no session check there - the API decides):
+ * /admin, /s (a share link's viewer, 7.3; no session check there - the API decides) and the
+ * legal pages (8.1):
  * a strict, per-request nonce CSP (no inline script without the nonce, nothing from
  * other origins) and a redirect to sign-in without a session cookie. Whether the session is
  * still valid is decided by the API on every call; this only avoids rendering an empty shell.
@@ -42,5 +43,5 @@ export function proxy(request: NextRequest) {
 export const config = {
   // no prefetch exemption: every /admin and /s response carries the CSP (and /admin the
   // session check)
-  matcher: ["/admin/:path*", "/s", "/s/:path*"],
+  matcher: ["/admin/:path*", "/s", "/s/:path*", "/privacy", "/terms", "/account-deletion"],
 };
