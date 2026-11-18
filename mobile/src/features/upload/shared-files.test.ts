@@ -36,6 +36,9 @@ test("a URI of this app's own provider is refused", () => {
   for (const path of [
     "content://mn.munkhly.labtrack.FileSystemFileProvider/cache/x.pdf",
     "content://mn.munkhly.labtrack.development.FileSystemFileProvider/files/y.pdf",
+    "content://0@mn.munkhly.labtrack.FileSystemFileProvider/files/z.pdf", // another user's
+    "CONTENT://MN.MUNKHLY.LABTRACK.FileSystemFileProvider/files/z.pdf",
+    "content://x@com.viber.files/123", // any userinfo is refused
   ]) {
     expect(readShared([file({ path })]).picked).toEqual([]);
   }

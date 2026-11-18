@@ -1,8 +1,8 @@
 diff --git a/android/src/main/java/expo/modules/shareintent/ExpoShareIntentModule.kt b/android/src/main/java/expo/modules/shareintent/ExpoShareIntentModule.kt
-index ff5b1001e7bb3443482727cec48c22579465c73b..92f24c021de7ce3c0633fd675cc8c39a498d10d2 100644
+index ff5b1001e7bb3443482727cec48c22579465c73b..249e9e2dcbe33e5f36b1ecb2e87d2b3c145fcd9e 100644
 --- a/android/src/main/java/expo/modules/shareintent/ExpoShareIntentModule.kt
 +++ b/android/src/main/java/expo/modules/shareintent/ExpoShareIntentModule.kt
-@@ -55,24 +55,41 @@ class ExpoShareIntentModule : Module() {
+@@ -55,24 +55,44 @@ class ExpoShareIntentModule : Module() {
              instance!!.sendEvent("onError", mapOf("value" to message))
          }
  
@@ -34,8 +34,11 @@ index ff5b1001e7bb3443482727cec48c22579465c73b..92f24c021de7ce3c0633fd675cc8c39a
 +                    ?: return null
 +            // LabTrack patch: never this app's own provider - another app sharing such a URI
 +            // would have us copy our own private files (security review 8.4 L3).
-+            val own = instance?.context?.packageName ?: return null
-+            val authority = uri.authority.orEmpty()
++            // Android reads "<userId>@<authority>" as that user's provider: an authority with
++            // '@' (or any case trick) is refused outright, never compared as a string.
++            val own = instance?.context?.packageName?.lowercase() ?: return null
++            val authority = uri.authority.orEmpty().lowercase()
++            if ('@' in authority) return null
 +            if (authority == own || authority.startsWith("$own.")) return null
 +            var fileName: String? = null
 +            var fileSize: String? = null
@@ -59,7 +62,7 @@ index ff5b1001e7bb3443482727cec48c22579465c73b..92f24c021de7ce3c0633fd675cc8c39a
  
              var mediaWidth: String? = null;
              var mediaHeight: String? = null;
-@@ -81,13 +98,13 @@ class ExpoShareIntentModule : Module() {
+@@ -81,13 +101,13 @@ class ExpoShareIntentModule : Module() {
                  val options = BitmapFactory.Options().apply {
                      inJustDecodeBounds = true
                  }
@@ -75,7 +78,7 @@ index ff5b1001e7bb3443482727cec48c22579465c73b..92f24c021de7ce3c0633fd675cc8c39a
                  mediaWidth = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH)?.toInt().toString() ?: null
                  mediaHeight = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT)?.toInt().toString() ?: null
                  // Check orientation and flip size if required
-@@ -101,7 +118,7 @@ class ExpoShareIntentModule : Module() {
+@@ -101,7 +121,7 @@ class ExpoShareIntentModule : Module() {
  
              return mapOf(
                      "contentUri" to uri.toString(),
@@ -84,7 +87,7 @@ index ff5b1001e7bb3443482727cec48c22579465c73b..92f24c021de7ce3c0633fd675cc8c39a
                      "fileName" to fileName,
                      "fileSize" to fileSize,
                      "mimeType" to mimeType,
-@@ -114,8 +131,10 @@ class ExpoShareIntentModule : Module() {
+@@ -114,8 +134,10 @@ class ExpoShareIntentModule : Module() {
          fun handleShareIntent(intent: Intent) {
              val activity = instance?.currentActivity
              if (activity != null && !activity.isTaskRoot) {
@@ -96,7 +99,7 @@ index ff5b1001e7bb3443482727cec48c22579465c73b..92f24c021de7ce3c0633fd675cc8c39a
                  }
                  activity.startActivity(newIntent)
                  activity.finish()
-@@ -142,14 +161,16 @@ class ExpoShareIntentModule : Module() {
+@@ -142,14 +164,16 @@ class ExpoShareIntentModule : Module() {
                  if (intent.action == Intent.ACTION_SEND) {
                      val uri = intent.parcelable<Uri>(Intent.EXTRA_STREAM);
                      if (uri != null) {
@@ -115,7 +118,7 @@ index ff5b1001e7bb3443482727cec48c22579465c73b..92f24c021de7ce3c0633fd675cc8c39a
                      } else {
                          notifyError("empty uris array for file sharing: " + intent.action)
                      }
-@@ -267,8 +288,8 @@ class ExpoShareIntentModule : Module() {
+@@ -267,8 +291,8 @@ class ExpoShareIntentModule : Module() {
  
              return uri.path
          } catch (e: Exception) {
@@ -126,7 +129,7 @@ index ff5b1001e7bb3443482727cec48c22579465c73b..92f24c021de7ce3c0633fd675cc8c39a
              return null
          }
      }
-@@ -300,7 +321,6 @@ class ExpoShareIntentModule : Module() {
+@@ -300,7 +324,6 @@ class ExpoShareIntentModule : Module() {
                  if (cursor != null && cursor.moveToFirst()) {
                      val columnIndex = cursor.getColumnIndexOrThrow(column)
                      val fileName = cursor.getString(columnIndex)

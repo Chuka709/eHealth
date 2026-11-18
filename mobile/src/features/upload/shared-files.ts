@@ -12,9 +12,21 @@ const ACCEPTED = new Set([
   "image/webp",
 ]);
 
-// This app's own content providers (file provider, store and dev packages): another app that
-// shares such a URI would have us read our own private files (security review 8.4 L3).
-const OWN_PROVIDER = /^content:\/\/mn\.munkhly\.labtrack(\.|\/)/;
+const OWN_PACKAGE = "mn.munkhly.labtrack";
+
+/**
+ * A content URI of this app's own providers (store and dev packages): another app sharing one
+ * would have us read our own private files (security review 8.4 L3). The authority is parsed,
+ * lowercased, and one with '@' (Android's "<userId>@<authority>") is refused outright.
+ */
+function isOwnProvider(path: string): boolean {
+  const m = /^content:\/\/([^/?#]*)/i.exec(path);
+  if (!m) return false;
+  const authority = (m[1] ?? "").toLowerCase();
+  return (
+    authority.includes("@") || authority === OWN_PACKAGE || authority.startsWith(`${OWN_PACKAGE}.`)
+  );
+}
 
 export type SharedNotice = "sharedUnreadable" | "sharedUnsupported" | null;
 
@@ -29,7 +41,7 @@ export function readShared(files: readonly ShareIntentFile[] | null | undefined)
 } {
   const picked = (files ?? [])
     .filter((f) => f.mimeType !== null && ACCEPTED.has(f.mimeType))
-    .filter((f) => !OWN_PROVIDER.test(f.path))
+    .filter((f) => !isOwnProvider(f.path))
     .filter((f) => isForeignFile(f.path.startsWith("/") ? `file://${f.path}` : f.path))
     .map((f) => ({
       // a plain path may hold spaces or Cyrillic letters: encoded into a file URI (review M4)
