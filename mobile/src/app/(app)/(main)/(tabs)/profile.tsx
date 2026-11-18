@@ -14,6 +14,7 @@ import {
   type Contact,
   QUESTIONS,
   type Question,
+  useNoKnownAllergies,
   useRecords,
 } from "@/features/health/use-health";
 import { ProfileSwitcher } from "@/features/records/profile-switcher";
@@ -53,6 +54,7 @@ export default function ProfileScreen() {
     );
   const appointments = useRecords(APPOINTMENTS, own?.id);
   const allergies = useRecords(ALLERGIES, own?.id);
+  const noKnownAllergies = useNoKnownAllergies(own?.id);
   const contacts = useRecords(CONTACTS, own?.id);
   const questions = useRecords(QUESTIONS, own?.id);
   const now = Date.now();
@@ -119,7 +121,9 @@ export default function ProfileScreen() {
                   .slice(0, 3)
                   .map((a) => a.substance)
                   .join(", ") + (allergyList.length > 3 ? ` +${allergyList.length - 3}` : "")
-              : t("noAllergy"),
+              : noKnownAllergies.data
+                ? t("nka.rowHint")
+                : t("noAllergy"),
           )}
           onPress={go("/allergies")}
           testID="profile-allergies"

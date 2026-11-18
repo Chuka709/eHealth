@@ -726,6 +726,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/patients/{patient_id}/no-known-allergies": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get No Known Allergies */
+        get: operations["get_no_known_allergies_api_v1_patients__patient_id__no_known_allergies_get"];
+        /**
+         * Confirm No Known Allergies
+         * @description Confirmed today (again). 409 while an allergy is recorded; adding one later ends it.
+         */
+        put: operations["confirm_no_known_allergies_api_v1_patients__patient_id__no_known_allergies_put"];
+        post?: never;
+        /** Clear No Known Allergies */
+        delete: operations["clear_no_known_allergies_api_v1_patients__patient_id__no_known_allergies_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/patients/{patient_id}/contacts": {
         parameters: {
             query?: never;
@@ -1642,6 +1664,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/patients/{patient_id}/steroid-card": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Steroid Card */
+        get: operations["steroid_card_api_v1_patients__patient_id__steroid_card_get"];
+        /**
+         * Owner Steroid Card
+         * @description The owner marks it as their doctor told them, or clears it (a caregiver cannot - the
+         *     database decides; audited).
+         */
+        put: operations["owner_steroid_card_api_v1_patients__patient_id__steroid_card_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/patients/{patient_id}/level-stats/{test_code}": {
         parameters: {
             query?: never;
@@ -1776,6 +1820,26 @@ export interface paths {
         put?: never;
         /** Remove Note */
         post: operations["remove_note_api_v1_me_doctor_notes_remove_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/doctor/steroid-card": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Doctor Steroid Card
+         * @description A treating doctor marks it (shown the NHS 2020 threshold in the app) or clears it.
+         */
+        post: operations["doctor_steroid_card_api_v1_me_doctor_steroid_card_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2554,6 +2618,20 @@ export interface components {
             sex: string | null;
         };
         /**
+         * CardSteroidCard
+         * @description Marked as needing a steroid emergency card (Q36), by a treating doctor or by the owner
+         *     as their doctor told them - never inferred from the medicines.
+         */
+        CardSteroidCard: {
+            /**
+             * Marked On
+             * Format: date
+             */
+            marked_on: string;
+            /** By Doctor */
+            by_doctor: boolean;
+        };
+        /**
          * CardStoppedMedication
          * @description An immunosuppressant stopped in the last 14 days (Q37): its name and stop day.
          */
@@ -2840,6 +2918,16 @@ export interface components {
             /** Exact Alarms */
             exact_alarms: boolean;
         };
+        /** DoctorSteroidCardIn */
+        DoctorSteroidCardIn: {
+            /** On */
+            on: boolean;
+            /**
+             * Patient Id
+             * Format: uuid
+             */
+            patient_id: string;
+        };
         /** DocumentOut */
         DocumentOut: {
             /**
@@ -2957,6 +3045,9 @@ export interface components {
             recently_stopped: components["schemas"]["CardStoppedMedication"][];
             /** Allergies */
             allergies: components["schemas"]["CardAllergy"][];
+            /** No Known Allergies On */
+            no_known_allergies_on: string | null;
+            steroid_card: components["schemas"]["CardSteroidCard"] | null;
             /** Contacts */
             contacts: components["schemas"]["CardContact"][];
             /**
@@ -3763,6 +3854,15 @@ export interface components {
             /** National Id */
             national_id: string;
         };
+        /**
+         * NoKnownAllergiesOut
+         * @description A dated "no known allergies" (Q39). Null: not confirmed - which is not the same as no
+         *     allergy (H17); the app says "none recorded" then.
+         */
+        NoKnownAllergiesOut: {
+            /** Confirmed On */
+            confirmed_on: string | null;
+        };
         /** NoteIn */
         NoteIn: {
             /**
@@ -4543,6 +4643,8 @@ export interface components {
             sex: string;
             /** Allergies */
             allergies: components["schemas"]["SharedAllergyOut"][];
+            /** No Known Allergies On */
+            no_known_allergies_on?: string | null;
         };
         /** SharedTransplantOut */
         SharedTransplantOut: {
@@ -4636,6 +4738,27 @@ export interface components {
              * @enum {string}
              */
             reason: "user_request" | "identity_verified" | "suspected_compromise" | "left_program" | "other";
+        };
+        /** SteroidCardIn */
+        SteroidCardIn: {
+            /** On */
+            on: boolean;
+        };
+        /**
+         * SteroidCardOut
+         * @description The steroid emergency card mark (Q36): when, and whether a treating doctor or the owner
+         *     (as their doctor told them) marked it. Never inferred from the medicines (rule 10).
+         */
+        SteroidCardOut: {
+            /**
+             * Marked On
+             * Format: date
+             */
+            marked_on: string;
+            /** By Doctor */
+            by_doctor: boolean;
+            /** Doctor Name */
+            doctor_name: string | null;
         };
         /**
          * SummaryOut
@@ -8986,6 +9109,232 @@ export interface operations {
             path: {
                 patient_id: string;
                 allergy_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    get_no_known_allergies_api_v1_patients__patient_id__no_known_allergies_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                patient_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NoKnownAllergiesOut"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    confirm_no_known_allergies_api_v1_patients__patient_id__no_known_allergies_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                patient_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NoKnownAllergiesOut"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    clear_no_known_allergies_api_v1_patients__patient_id__no_known_allergies_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                patient_id: string;
             };
             cookie?: never;
         };
@@ -13916,6 +14265,142 @@ export interface operations {
             };
         };
     };
+    steroid_card_api_v1_patients__patient_id__steroid_card_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                patient_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SteroidCardOut"] | null;
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    owner_steroid_card_api_v1_patients__patient_id__steroid_card_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                patient_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SteroidCardIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
     stats_api_v1_patients__patient_id__level_stats__test_code__get: {
         parameters: {
             query?: {
@@ -14409,6 +14894,73 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["NoteRemoveIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    doctor_steroid_card_api_v1_me_doctor_steroid_card_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DoctorSteroidCardIn"];
             };
         };
         responses: {

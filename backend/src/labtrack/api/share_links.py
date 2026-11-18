@@ -342,6 +342,8 @@ class SharedSummaryOut(BaseModel):
     birth_date: date | None
     sex: str
     allergies: list[SharedAllergyOut]
+    # a dated "no known allergies" (Q39); null is "none recorded", never "no allergy" (H17)
+    no_known_allergies_on: date | None = None
 
 
 class SharedLabOut(BaseModel):
@@ -453,6 +455,9 @@ _SECTION_SQL = {
 }
 
 
+_NKA_SQL = bound_text("select share_no_known_allergies(:s)")
+
+
 async def _rows(share: ShareContext, function: str) -> list[dict[str, Any]]:
     rows = await share.db.execute(_SECTION_SQL[function], {"s": share.session_hash})
     return [dict(r._mapping) for r in rows]
@@ -478,9 +483,12 @@ async def shared_record(share: Share) -> SharedRecordOut:
         people = await _rows(share, "share_summary")
         if people:
             person = people[0]
+            allergies = [SharedAllergyOut(**a) for a in await _rows(share, "share_allergies")]
+            nka = (await share.db.execute(_NKA_SQL, {"s": share.session_hash})).scalar_one_or_none()
             out.summary = SharedSummaryOut(
                 **person,
-                allergies=[SharedAllergyOut(**a) for a in await _rows(share, "share_allergies")],
+                allergies=allergies,
+                no_known_allergies_on=None if allergies else nka,
             )
     if "labs" in share.scopes:
         out.labs = [SharedLabOut(**r) for r in await _rows(share, "share_labs")]

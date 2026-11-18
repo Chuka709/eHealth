@@ -16,9 +16,10 @@ from zoneinfo import ZoneInfo
 from fastapi import APIRouter, Depends, Query, Response, status
 from pydantic import BaseModel, ConfigDict, StringConstraints, field_validator
 from sqlalchemy.exc import DBAPIError
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from labtrack.api.caregivers import _pg
-from labtrack.api.deps import PatientReadDb, PhiDb
+from labtrack.api.deps import PatientReadDb, PatientWriteDb, PhiDb
 from labtrack.api.errors import AppError, ErrorBody
 from labtrack.api.numbers import num
 from labtrack.api.ratelimit import per_user
@@ -31,6 +32,7 @@ from labtrack.core.level_stats import (
     level_stats,
 )
 from labtrack.db.sql import bound_text
+from labtrack.health import repository as health_repo
 
 _UB = ZoneInfo("Asia/Ulaanbaatar")
 
@@ -173,6 +175,46 @@ async def notes(patient_id: UUID, db: PatientReadDb) -> list[NoteOut]:
         await db.execute(bound_text("select * from profile_doctor_notes(:p)"), {"p": patient_id})
     ).all()
     return [NoteOut(**r._mapping) for r in rows]
+
+
+class SteroidCardOut(BaseModel):
+    """The steroid emergency card mark (Q36): when, and whether a treating doctor or the owner
+    (as their doctor told them) marked it. Never inferred from the medicines (rule 10)."""
+
+    marked_on: date
+    by_doctor: bool
+    doctor_name: str | None
+
+
+class SteroidCardIn(_Strict):
+    on: bool
+
+
+class DoctorSteroidCardIn(SteroidCardIn):
+    patient_id: UUID
+
+
+@router.get("/steroid-card", response_model=SteroidCardOut | None, responses=_ERRORS)
+async def steroid_card(patient_id: UUID, db: PatientReadDb) -> SteroidCardOut | None:
+    row = (await db.execute(health_repo.STEROID_CARD, {"p": patient_id})).first()
+    return SteroidCardOut(**row._mapping) if row else None
+
+
+async def _mark_steroid_card(db: AsyncSession, patient_id: UUID, on: bool) -> Response:
+    try:
+        await db.execute(health_repo.STEROID_CARD_SET, {"p": patient_id, "on": on})
+    except DBAPIError as exc:
+        if _pg(exc)[0] == "42501":
+            raise AppError(403, "clinician.steroid_card_forbidden") from None
+        raise
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.put("/steroid-card", status_code=status.HTTP_204_NO_CONTENT, responses=_ERRORS)
+async def owner_steroid_card(patient_id: UUID, body: SteroidCardIn, db: PatientWriteDb) -> Response:
+    """The owner marks it as their doctor told them, or clears it (a caregiver cannot - the
+    database decides; audited)."""
+    return await _mark_steroid_card(db, patient_id, body.on)
 
 
 _LEVEL_ROWS = bound_text(
@@ -377,3 +419,9 @@ async def remove_note(body: NoteRemoveIn, db: PhiDb) -> Response:
     if not done:
         raise AppError(404, "clinician.note_not_found")
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@me_router.post("/steroid-card", status_code=status.HTTP_204_NO_CONTENT, responses=_ERRORS)
+async def doctor_steroid_card(body: DoctorSteroidCardIn, db: PhiDb) -> Response:
+    """A treating doctor marks it (shown the NHS 2020 threshold in the app) or clears it."""
+    return await _mark_steroid_card(db, body.patient_id, body.on)

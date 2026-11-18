@@ -28,6 +28,8 @@ CARD_KEYS = {
     "other_medications",
     "recently_stopped",
     "allergies",
+    "no_known_allergies_on",  # Q39
+    "steroid_card",  # Q36: when and whether a doctor marked it, nothing else
     "contacts",
     "generated_at",
 }
@@ -263,6 +265,67 @@ async def test_an_empty_profile_has_an_empty_card(
     assert (card["blood_type"], card["blood_type_withheld"]) == (None, None)
     for key in ("transplants", "dosed_medications", "other_medications", "allergies", "contacts"):
         assert card[key] == []
+    # none recorded is never "no known allergies" (H17)
+    assert (card["no_known_allergies_on"], card["steroid_card"]) == (None, None)
+
+
+async def test_confirmed_no_known_allergies_until_one_is_added(
+    client: AsyncClient, owner_engine: AsyncEngine
+) -> None:
+    _, h, base = await _profile(client, owner_engine)
+    r = await client.put(f"{base}/no-known-allergies", headers=h)
+    assert r.status_code == 200
+    day = r.json()["confirmed_on"]
+    assert (await client.get(f"{base}/no-known-allergies", headers=h)).json() == {
+        "confirmed_on": day
+    }
+    card = (await client.get(f"{base}/emergency-card", headers=h)).json()
+    assert card["no_known_allergies_on"] == day
+    fhir = (await client.get(f"{base}/export.fhir.json", headers=h)).json()
+    [nka] = [
+        e["resource"] for e in fhir["entry"]
+        if e["resource"]["resourceType"] == "AllergyIntolerance"
+    ]  # fmt: skip
+    assert nka["code"]["coding"][0] == {
+        "system": "http://snomed.info/sct",
+        "code": "716186003",
+        "display": "No known allergy (situation)",
+    }
+    assert nka["verificationStatus"]["coding"][0]["code"] == "confirmed"
+    assert nka["clinicalStatus"]["coding"][0]["code"] == "active"
+    assert nka["asserter"] == nka["patient"]  # the patient's statement
+    assert nka["recordedDate"] == day
+    allergy = {"client_id": str(uuid4()), "substance": "Пенициллин"}
+    assert (await client.post(f"{base}/allergies", json=allergy, headers=h)).status_code == 201
+    card = (await client.get(f"{base}/emergency-card", headers=h)).json()
+    assert (card["no_known_allergies_on"], len(card["allergies"])) == (None, 1)
+    r = await client.put(f"{base}/no-known-allergies", headers=h)
+    assert (r.status_code, r.json()["code"]) == (409, "allergy.recorded")
+    fhir = (await client.get(f"{base}/export.fhir.json", headers=h)).json()
+    assert "716186003" not in str(fhir)
+    assert (await client.delete(f"{base}/no-known-allergies", headers=h)).status_code == 204
+
+
+async def test_the_owner_marks_the_steroid_card(
+    client: AsyncClient, client_from: ClientFactory, owner_engine: AsyncEngine
+) -> None:
+    _, h, base = await _profile(client, owner_engine)
+    assert (await client.get(f"{base}/steroid-card", headers=h)).json() is None
+    r = await client.put(f"{base}/steroid-card", json={"on": True}, headers=h)
+    assert r.status_code == 204
+    mark = (await client.get(f"{base}/steroid-card", headers=h)).json()
+    assert (mark["by_doctor"], mark["doctor_name"]) == (False, None)
+    card = (await client.get(f"{base}/emergency-card", headers=h)).json()
+    assert card["steroid_card"] == {"marked_on": mark["marked_on"], "by_doctor": False}
+    # a caregiver who may write records still cannot mark it
+    async with client_from() as other:
+        carer, ch = await _signed_in(other, owner_engine)
+        await _grant(owner_engine, base, carer, "caregiver")
+        r = await other.put(f"{base}/steroid-card", json={"on": False}, headers=ch)
+        assert (r.status_code, r.json()["code"]) == (403, "clinician.steroid_card_forbidden")
+    r = await client.put(f"{base}/steroid-card", json={"on": False}, headers=h)
+    assert r.status_code == 204
+    assert (await client.get(f"{base}/steroid-card", headers=h)).json() is None
 
 
 async def test_strangers_see_nothing_and_a_missing_profile_looks_the_same(

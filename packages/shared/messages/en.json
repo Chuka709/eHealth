@@ -845,6 +845,19 @@
         "care": "Transplant and care",
         "health": "Health",
         "people": "People"
+      },
+      "nka": {
+        "hint": "No allergy recorded does not mean no allergies. If you know of no allergy to medicines, food or anything else, you can confirm it.",
+        "confirmed": "No known allergies, confirmed {date}. Adding an allergy removes this confirmation.",
+        "confirm": "Confirm no known allergies",
+        "confirmTitle": "Confirm no known allergies?",
+        "confirmBody": "You confirm you know of no allergy to medicines, food or anything else. The emergency card will show “No known allergies” with today's date. If you are unsure, leave it unconfirmed.",
+        "clear": "Withdraw the confirmation",
+        "clearTitle": "Withdraw the confirmation?",
+        "clearBody": "The card will show “No allergy information entered”.",
+        "cancel": "Cancel",
+        "rowHint": "No known allergies",
+        "hintReadOnly": "No allergy recorded does not mean no allergies."
       }
     },
     "emergency": {
@@ -963,7 +976,11 @@
       "unknownValue": "unknown",
       "recentlyStopped": "Immunosuppressants stopped recently (within 14 days)",
       "recentStop": "{name} — not taken since {date}",
-      "transplantBloodBefore": "Blood type before the transplant: recipient {recipient}, donor {donor} — the current type is to be tested by the lab"
+      "transplantBloodBefore": "Blood type before the transplant: recipient {recipient}, donor {donor} — the current type is to be tested by the lab",
+      "noKnownAllergy": "No known allergies (self-reported, confirmed {date}).",
+      "steroidCard": "Steroid emergency card: steroid dependent — at risk of adrenal insufficiency (adrenal crisis). Steroids must not be stopped suddenly. In serious illness, injury, surgery, vomiting or diarrhoea, emergency medical care is needed without delay.",
+      "steroidCardByDoctor": "Marked by a doctor ({date}).",
+      "steroidCardBySelf": "Marked by the patient on their doctor's advice ({date})."
     },
     "notifications": {
       "title": "Notifications",
@@ -1664,6 +1681,23 @@
         "new": "New note",
         "newHint": "The owner and the people the profile is shared with see it under your name.",
         "add": "Add note"
+      },
+      "steroid": {
+        "title": "Steroid emergency card",
+        "what": "Long use of steroids (such as prednisolone) can lead to adrenal insufficiency. When marked, the emergency card shows a warning. A doctor decides whether it is needed — the app does not infer it from the medicines.",
+        "threshold": "NHS England National Patient Safety Alert 2020 (NatPSA/2020/005/NHSPS) and Society for Endocrinology guidance: a steroid emergency card is advised after prednisolone ≥ 5 mg/day (or an equivalent steroid) for ≥ 4 weeks; ≥ 40 mg/day for more than 1 week; ≥ 3 short high-dose courses within 12 months; high-dose inhaled or topical steroids and injections may also count. The risk lasts up to 12 months after stopping. The app does not infer this from the medicines — you decide. When marked, the patient's emergency card shows a warning.",
+        "ownerHint": "Mark it if your doctor told you that you need a steroid emergency card.",
+        "none": "Not marked.",
+        "markedByDoctor": "Marked by Dr {name} ({date}).",
+        "markedBySelf": "Marked by the patient on their doctor's advice ({date}).",
+        "mark": "Mark on the emergency card",
+        "markTitle": "Mark the steroid emergency card?",
+        "markBody": "The emergency card will show the “Steroid emergency card” warning.",
+        "clear": "Remove the mark",
+        "clearTitle": "Remove the mark?",
+        "clearBody": "The steroid warning is removed from the emergency card.",
+        "cancel": "Cancel",
+        "markedByFormerDoctor": "Marked by a doctor ({date})."
       }
     },
     "summaryExport": {
@@ -1811,7 +1845,8 @@
       "not_found": "This entry was not found."
     },
     "allergy": {
-      "not_found": "This allergy was not found."
+      "not_found": "This allergy was not found.",
+      "recorded": "An allergy is recorded, so “no known allergies” cannot be confirmed."
     },
     "contact": {
       "not_found": "This contact was not found."
@@ -1898,7 +1933,8 @@
       "target_order": "The lower limit cannot exceed the upper limit.",
       "target_day": "A target cannot start before yesterday or more than a year ahead.",
       "target_implausible": "This value is beyond what the test can show. Please check the number.",
-      "not_a_level_test": "Level statistics are not given for this test."
+      "not_a_level_test": "Level statistics are not given for this test.",
+      "steroid_card_forbidden": "Only the profile's owner or a treating doctor marks the steroid card."
     },
     "export": {
       "too_large": "This profile has too many records for one file. Please contact support."
@@ -2163,6 +2199,7 @@
       "birthDate": "Date of birth",
       "allergies": "Allergies",
       "noAllergies": "No allergy recorded.",
+      "noKnownAllergies": "No known allergies (self-reported, confirmed {date}).",
       "none": "Nothing recorded.",
       "organ": "Organ",
       "date": "Date",

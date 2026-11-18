@@ -1016,6 +1016,43 @@ _Нийт 997 текст._
 | `recentStop` | {name} — {date}-ноос эхлэн уугаагүй | {name} — not taken since {date} | |
 | `transplantBloodBefore` | Цусны бүлэг шилжүүлэн суулгахаас өмнө: хүлээн авагч {recipient}, донор {donor} — одоогийн бүлгийг лабораторид тодорхойлно | Blood type before the transplant: recipient {recipient}, donor {donor} — the current type is to be tested by the lab | |
 
+## Харшилгүй гэж баталсан, стероидын яаралтай карт (D5b; Q39, Q36)
+
+Хянагч: эмч. Тайлбар: картад NHS картын «гидрокортизон 100 мг IV/IM» мөрийг дүрэм 10-ын улмаас оруулаагүй — эмч оруулах эсэхийг шийднэ (Q66 г).
+
+| Түлхүүр | Монгол | English | Санал |
+|---|---|---|---|
+| `app.emergency.noKnownAllergy` | Мэдэгдэж буй харшилгүй (өөрөө баталсан, {date}). | No known allergies (self-reported, confirmed {date}). | |
+| `app.emergency.steroidCard` | Стероидын яаралтай карт: стероидын эмчилгээнээс хамааралтай — бөөрний дээд булчирхайн дутагдлын (хямралын) эрсдэлтэй. Стероидыг гэнэт зогсоож болохгүй. Хүнд өвчин, гэмтэл, мэс засал, бөөлжих эсвэл суулгах үед яаралтай эмнэлгийн тусламж шаардлагатай — хойшлуулахгүй. | Steroid emergency card: steroid dependent — at risk of adrenal insufficiency (adrenal crisis). Steroids must not be stopped suddenly. In serious illness, injury, surgery, vomiting or diarrhoea, emergency medical care is needed without delay. | |
+| `app.emergency.steroidCardByDoctor` | Эмч тэмдэглэсэн ({date}). | Marked by a doctor ({date}). | |
+| `app.emergency.steroidCardBySelf` | Эмчийн зөвлөснөөр өөрөө тэмдэглэсэн ({date}). | Marked by the patient on their doctor's advice ({date}). | |
+| `app.health.nka.hint` | Харшил бүртгээгүй нь харшилгүй гэсэн үг биш. Эм, хоол болон бусад зүйлд харшил байгааг мэдэхгүй бол баталж болно. | No allergy recorded does not mean no allergies. If you know of no allergy to medicines, food or anything else, you can confirm it. | |
+| `app.health.nka.confirmed` | Мэдэгдэж буй харшилгүй гэж баталсан ({date}). Харшил нэмбэл энэ баталгаа автоматаар арилна. | No known allergies, confirmed {date}. Adding an allergy removes this confirmation. | |
+| `app.health.nka.confirm` | Мэдэгдэж буй харшилгүй гэж батлах | Confirm no known allergies | |
+| `app.health.nka.confirmTitle` | Мэдэгдэж буй харшилгүй гэж батлах уу? | Confirm no known allergies? | |
+| `app.health.nka.confirmBody` | Эм, хоол болон бусад зүйлд харшил байгааг мэдэхгүй гэдгээ баталж байна. Яаралтай картад «Мэдэгдэж буй харшилгүй» гэж өнөөдрийн огноотой харагдана. Эргэлзэж байвал батлахгүй орхино уу. | You confirm you know of no allergy to medicines, food or anything else. The emergency card will show “No known allergies” with today's date. If you are unsure, leave it unconfirmed. | |
+| `app.health.nka.clear` | Баталгааг цуцлах | Withdraw the confirmation | |
+| `app.health.nka.clearTitle` | Баталгааг цуцлах уу? | Withdraw the confirmation? | |
+| `app.health.nka.clearBody` | Картад «Харшлын мэдээлэл оруулаагүй» гэж харагдана. | The card will show “No allergy information entered”. | |
+| `app.health.nka.cancel` | Болих | Cancel | |
+| `app.health.nka.rowHint` | Мэдэгдэж буй харшилгүй | No known allergies | |
+| `app.health.nka.hintReadOnly` | Харшил бүртгээгүй нь харшилгүй гэсэн үг биш. | No allergy recorded does not mean no allergies. | |
+| `app.clinician.steroid.title` | Стероидын яаралтай карт | Steroid emergency card | |
+| `app.clinician.steroid.what` | Удаан хугацаанд стероид (преднизолон гэх мэт) уусан хүнд бөөрний дээд булчирхайн дутагдал үүсч болно. Тэмдэглэсэн бол яаралтай картад анхааруулга харагдана. Хэрэгтэй эсэхийг эмч шийднэ — апп эмийн бүртгэлээс дүгнэхгүй. | Long use of steroids (such as prednisolone) can lead to adrenal insufficiency. When marked, the emergency card shows a warning. A doctor decides whether it is needed — the app does not infer it from the medicines. | |
+| `app.clinician.steroid.threshold` | NHS England-ийн 2020 оны аюулгүй байдлын сэрэмжлүүлэг (NatPSA/2020/005/NHSPS) ба Society for Endocrinology-ийн зөвлөмжөөр стероидын яаралтай карт олгоно: преднизолон ≥ 5 мг/өдөр (эсвэл түүнтэй тэнцэх стероид) ≥ 4 долоо хоног; ≥ 40 мг/өдөр 1 долоо хоногоос дээш; 12 сард ≥ 3 богино, өндөр тунтай курс; өндөр тунтай амьсгалын/арьсны стероид, тарилга мөн хамаарч болно. Эрсдэл зогсоосноос хойш 12 сар хүртэл үргэлжилнэ. Апп үүнийг эмийн бүртгэлээс дүгнэхгүй — та шийднэ. Тэмдэглэвэл өвчтөний яаралтай картад анхааруулга гарна. | NHS England National Patient Safety Alert 2020 (NatPSA/2020/005/NHSPS) and Society for Endocrinology guidance: a steroid emergency card is advised after prednisolone ≥ 5 mg/day (or an equivalent steroid) for ≥ 4 weeks; ≥ 40 mg/day for more than 1 week; ≥ 3 short high-dose courses within 12 months; high-dose inhaled or topical steroids and injections may also count. The risk lasts up to 12 months after stopping. The app does not infer this from the medicines — you decide. When marked, the patient's emergency card shows a warning. | |
+| `app.clinician.steroid.ownerHint` | Эмч тань стероидын яаралтай карт хэрэгтэй гэж хэлсэн бол тэмдэглэнэ үү. | Mark it if your doctor told you that you need a steroid emergency card. | |
+| `app.clinician.steroid.none` | Тэмдэглээгүй. | Not marked. | |
+| `app.clinician.steroid.markedByDoctor` | Эмч {name} тэмдэглэсэн ({date}). | Marked by Dr {name} ({date}). | |
+| `app.clinician.steroid.markedBySelf` | Эмчийн зөвлөснөөр өөрөө тэмдэглэсэн ({date}). | Marked by the patient on their doctor's advice ({date}). | |
+| `app.clinician.steroid.mark` | Яаралтай картад тэмдэглэх | Mark on the emergency card | |
+| `app.clinician.steroid.markTitle` | Стероидын яаралтай карт тэмдэглэх үү? | Mark the steroid emergency card? | |
+| `app.clinician.steroid.markBody` | Яаралтай картад «Стероидын яаралтай карт» анхааруулга харагдана. | The emergency card will show the “Steroid emergency card” warning. | |
+| `app.clinician.steroid.clear` | Тэмдэглэгээг арилгах | Remove the mark | |
+| `app.clinician.steroid.clearTitle` | Тэмдэглэгээг арилгах уу? | Remove the mark? | |
+| `app.clinician.steroid.clearBody` | Яаралтай картаас стероидын анхааруулга арилна. | The steroid warning is removed from the emergency card. | |
+| `app.clinician.steroid.cancel` | Болих | Cancel | |
+| `app.clinician.steroid.markedByFormerDoctor` | Эмч тэмдэглэсэн ({date}). | Marked by a doctor ({date}). | |
+
 ## Апп-ын тухай (зориулалт, хийдэггүй зүйлс)
 
 Хянагч: эмч. Түлхүүр: `app.about` (15).

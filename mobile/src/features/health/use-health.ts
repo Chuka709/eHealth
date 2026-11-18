@@ -198,6 +198,8 @@ export function useSaveRecord<TOut, TFields>(kind: Kind<TOut, TFields>, patientI
       refresh(kind.key, patientId);
       // questions show their appointment: a changed appointment refreshes them too
       if (kind.key === "appointments") refresh("questions", patientId);
+      // an allergy added ends a "no known allergies" on the server (0048)
+      if (kind.key === "allergies") refresh("no-known-allergies", patientId);
     },
   });
 }
@@ -210,6 +212,43 @@ export function useDeleteRecord<TOut, TFields>(kind: Kind<TOut, TFields>, patien
       return kind.remove(patientId, id);
     },
     onSuccess: () => refresh(kind.key, patientId),
+  });
+}
+
+// --- a confirmed "no known allergies" (Q39) ------------------------------------------------
+
+/** The dated statement, or null (not confirmed - never the same as "no allergies", H17). */
+export function useNoKnownAllergies(patientId: string | undefined) {
+  return useQuery({
+    queryKey: recordsKey("no-known-allergies", patientId ?? ""),
+    enabled: Boolean(patientId),
+    meta: { persist: true },
+    queryFn: async () => {
+      const { data, error } = await api.GET("/api/v1/patients/{patient_id}/no-known-allergies", {
+        params: path(patientId ?? ""),
+      });
+      if (!data) throw apiError(error);
+      return data.confirmed_on;
+    },
+  });
+}
+
+/** Confirm (true) or withdraw (false); refused while an allergy is recorded. */
+export function useSetNoKnownAllergies(patientId: string) {
+  return useMutation({
+    networkMode: "always",
+    mutationFn: async (confirm: boolean) => {
+      online();
+      const opts = { params: path(patientId) };
+      const { error, response } = confirm
+        ? await api.PUT("/api/v1/patients/{patient_id}/no-known-allergies", opts)
+        : await api.DELETE("/api/v1/patients/{patient_id}/no-known-allergies", opts);
+      if (!response.ok) throw apiError(error);
+    },
+    onSettled: () => {
+      refresh("no-known-allergies", patientId);
+      refresh("allergies", patientId);
+    },
   });
 }
 

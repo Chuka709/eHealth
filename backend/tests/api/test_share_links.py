@@ -151,3 +151,15 @@ async def test_the_record_shows_only_the_links_sections(
         # the viewer finishes: the session ends on the server
         assert (await c.post("/api/v1/share/close", headers=h)).status_code == 204
         assert (await c.get("/api/v1/share/record", headers=h)).status_code == 401
+
+
+async def test_the_summary_carries_a_confirmed_no_known_allergies(
+    owner_engine: AsyncEngine, client_from: ClientFactory
+) -> None:
+    async with client_from() as c:
+        owner, base, link = await _owner_link(c, owner_engine)
+        day = (await c.put(f"{base}/no-known-allergies", headers=owner)).json()["confirmed_on"]
+        r = await c.post("/api/v1/share/open", json={"token": link["token"], "pin": link["pin"]})
+        h = {"X-Share-Session": r.json()["session"]}
+        summary = (await c.get("/api/v1/share/record", headers=h)).json()["summary"]
+        assert (summary["allergies"], summary["no_known_allergies_on"]) == ([], day)

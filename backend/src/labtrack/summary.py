@@ -43,6 +43,7 @@ _LABELS: dict[str, dict[str, str]] = {
         "transplant": "Шилжүүлэн суулгалт",
         "allergies": "Харшил",
         "no_allergies": "Харшил бүртгээгүй.",
+        "nka": "Мэдэгдэж буй харшилгүй (өөрөө баталсан, {day}).",
         "meds": "Одоо уудаг эм",
         "no_meds": "Эм бүртгээгүй.",
         "labs": "Шинжилгээний хариу (батлагдсан)",
@@ -71,6 +72,7 @@ _LABELS: dict[str, dict[str, str]] = {
         "transplant": "Transplant",
         "allergies": "Allergies",
         "no_allergies": "No allergy recorded.",
+        "nka": "No known allergies (self-reported, confirmed {day}).",
         "meds": "Medicines taken now",
         "no_meds": "No medicine recorded.",
         "labs": "Lab results (confirmed)",
@@ -218,6 +220,9 @@ async def gather(db: AsyncSession, patient_id: object, months: int) -> dict[str,
             " order by substance",
             **p,
         ),
+        "nka": await _rows(
+            db, "select confirmed_on from no_known_allergies where patient_id = :p", **p
+        ),
         "meds": await _rows(
             db,
             "select m.name, m.strength, m.form, m.started_on,"
@@ -323,6 +328,8 @@ def render_html(data: dict[str, Any], lang: str) -> str:  # noqa: PLR0912, PLR09
             )
             + "</ul>"
         )
+    elif data["nka"]:  # a dated statement (Q39) - never said for "none recorded" (H17)
+        out.append(f"<p>{_e(t['nka'].format(day=_day(data['nka'][0]['confirmed_on'])))}</p>")
     else:
         out.append(f"<p>{_e(t['no_allergies'])}</p>")
     out.append(f"<h2>{_e(t['meds'])}</h2>")

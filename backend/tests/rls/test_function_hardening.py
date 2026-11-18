@@ -87,6 +87,12 @@ EXECUTE_MATRIX: dict[str, set[str]] = {
         # 0046: phones whose reminders may be late (Q48)
         "owner_reminders_may_be_late(uuid)",
         "set_device_exact_alarms(uuid,boolean)",
+        # 0048: confirmed "no known allergies" and the steroid emergency card (Q39, Q36)
+        "clear_no_known_allergies(uuid)",
+        "confirm_no_known_allergies(uuid)",
+        "profile_steroid_card(uuid)",
+        "set_steroid_card(uuid,boolean)",
+        "share_no_known_allergies(text)",
         # 0043: a doctor's targets and notes
         "add_doctor_note(uuid,text)",
         "end_patient_target(uuid,date)",

@@ -138,7 +138,7 @@ def test_the_summary_escapes_what_people_typed() -> None:
             "today": date(2026, 1, 1), "since": date(2025, 7, 1),
             "profile": {"full_name": "<b>X</b>", "birth_date": None},
             "questions": [{"text": '<img src="file:///etc/passwd">'}],
-            "transplants": [], "allergies": [], "meds": [], "targets": [], "labs": [],
+            "transplants": [], "allergies": [], "nka": [], "meds": [], "targets": [], "labs": [],
             "events": [], "vitals": [],
         },
         "mn",

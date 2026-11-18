@@ -105,6 +105,13 @@ ALLERGIES = Table(
 )
 ALLERGY_LIST = bound_text(_ALLERGY_COLUMNS + " order by created_at limit :n")
 ALLERGY_ONE = bound_text(_ALLERGY_COLUMNS + " and id = :i")
+# a dated "no known allergies" (0048, Q39): through functions, never written directly
+NO_KNOWN_ALLERGIES = bound_text("select confirmed_on from no_known_allergies where patient_id = :p")
+NKA_CONFIRM = bound_text("select confirm_no_known_allergies(:p)")
+NKA_CLEAR = bound_text("select clear_no_known_allergies(:p)")
+# the steroid emergency card mark (0048, Q36)
+STEROID_CARD = bound_text("select * from profile_steroid_card(:p)")
+STEROID_CARD_SET = bound_text("select set_steroid_card(:p, :on)")
 
 _CONTACT_COLUMNS = (
     "select id, name, relation, phone, is_transplant_center, sort_order, created_at,"

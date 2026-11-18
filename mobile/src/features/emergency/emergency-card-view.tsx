@@ -10,7 +10,7 @@ import { useRegimenText } from "@/features/meds/use-med-text";
 import { elapsedText, transplantDateText } from "@/features/records/elapsed";
 import { formatDate, formatDateTime } from "@/lib/dates";
 import { usePalette } from "@/theme/use-palette";
-import { graftKey, recentStopLines, transplantBloodLines } from "./card-text";
+import { graftKey, recentStopLines, steroidLines, transplantBloodLines } from "./card-text";
 import type { EmergencyCard } from "./snapshot";
 
 /** A number to dial: digits with an optional leading + (no pauses, codes or other characters);
@@ -79,7 +79,7 @@ export function EmergencyCardView({ card, copy }: { card: EmergencyCard; copy: C
           quiet
         />
       )}
-      {(card.transplants.length > 0 || takesImmunosuppressant) && (
+      {(card.transplants.length > 0 || takesImmunosuppressant || card.steroid_card) && (
         // what a responder must see first: a panel with the emergency colour on its edge (2.12)
         <View
           style={[
@@ -97,6 +97,19 @@ export function EmergencyCardView({ card, copy }: { card: EmergencyCard; copy: C
               {e("introImmunosuppressed")}
             </Text>
           )}
+          {steroidLines(card, e as never).map((text, i) => (
+            <Text
+              key={text}
+              accessibilityLanguage={lang}
+              accessibilityRole={i === 0 ? "alert" : undefined}
+              style={[
+                i === 0 ? styles.lead : styles.line,
+                { color: i === 0 ? p.text : p.textMuted },
+              ]}
+            >
+              {i === 0 ? `⚠ ${text}` : text}
+            </Text>
+          ))}
         </View>
       )}
 
@@ -107,7 +120,12 @@ export function EmergencyCardView({ card, copy }: { card: EmergencyCard; copy: C
 
       {section(e("allergies"))}
       {/* none recorded is never "no allergies" (H17) */}
-      {card.allergies.length === 0 && line(e("noAllergy"))}
+      {card.allergies.length === 0 &&
+        line(
+          card.no_known_allergies_on
+            ? e("noKnownAllergy", { date: dated(card.no_known_allergies_on) })
+            : e("noAllergy"),
+        )}
       {keyed(card.allergies, (x) => x.substance).map(([k, a]) => (
         <View key={k}>
           {line(

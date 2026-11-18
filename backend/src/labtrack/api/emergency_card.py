@@ -3,7 +3,7 @@
 One read gives the phone what it keeps offline (encrypted): the profile, transplants, the
 medicines currently taken, allergies and emergency contacts. Immunosuppressants and
 corticosteroids come with the dose the user recorded and every recorded change ahead (a
-taper has several); the others come by name. There is no new table. The route reads the
+taper has several); the others come by name. The route reads the
 same rows, under the same RLS and profile gate, as the routes that write them. A dose is
 shown as recorded, never computed or suggested (CLAUDE.md rule 10).
 
@@ -123,6 +123,14 @@ class CardAllergy(BaseModel):
     severity: str | None
 
 
+class CardSteroidCard(BaseModel):
+    """Marked as needing a steroid emergency card (Q36), by a treating doctor or by the owner
+    as their doctor told them - never inferred from the medicines."""
+
+    marked_on: date
+    by_doctor: bool
+
+
 class CardContact(BaseModel):
     name: str
     relation: str | None
@@ -141,8 +149,11 @@ class EmergencyCardOut(BaseModel):
     # immunosuppressant or a corticosteroid
     other_medications: list[CardMedication]
     recently_stopped: list[CardStoppedMedication]
-    # none recorded is not "no known allergies": the app must never say so (H17)
+    # none recorded is not "no known allergies": the app says so only on this dated statement
+    # (Q39), which never stands beside a recorded allergy (H17)
     allergies: list[CardAllergy]
+    no_known_allergies_on: date | None
+    steroid_card: CardSteroidCard | None
     contacts: list[CardContact]  # transplant centres first, then as the user ordered them
     generated_at: datetime
 
@@ -200,6 +211,8 @@ async def get_emergency_card(patient_id: UUID, db: PatientReadDb) -> EmergencyCa
     today = _today()
     allergies = await health_repo.rows(db, health_repo.ALLERGY_LIST, patient_id, n=_LIST_MAX)
     contacts = await health_repo.rows(db, health_repo.CONTACT_LIST, patient_id, n=_LIST_MAX)
+    nka = await health_repo.rows(db, health_repo.NO_KNOWN_ALLERGIES, patient_id)
+    steroid = await health_repo.rows(db, health_repo.STEROID_CARD, patient_id)
 
     return EmergencyCardOut(
         patient=CardPatient(
@@ -239,6 +252,10 @@ async def get_emergency_card(patient_id: UUID, db: PatientReadDb) -> EmergencyCa
             CardAllergy.model_validate(r._mapping)
             for r in order_allergies(allergies, lambda r: r.severity)
         ],
+        no_known_allergies_on=nka[0].confirmed_on if nka and not allergies else None,
+        steroid_card=CardSteroidCard(marked_on=steroid[0].marked_on, by_doctor=steroid[0].by_doctor)
+        if steroid
+        else None,
         contacts=[
             CardContact.model_validate(r._mapping)
             for r in sorted(contacts, key=lambda c: not c.is_transplant_center)  # stable

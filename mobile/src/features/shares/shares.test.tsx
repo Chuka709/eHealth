@@ -176,6 +176,8 @@ const handlers: Record<string, Handler> = {
   "POST /api/v1/me/doctor/targets/end": record("target-end"),
   "POST /api/v1/me/doctor/notes": record("note", 201),
   "POST /api/v1/me/doctor/notes/remove": record("note-remove"),
+  "POST /api/v1/me/doctor/steroid-card": record("steroid-doctor"),
+  [`PUT /api/v1/patients/${OWN.id}/steroid-card`]: record("steroid-owner"),
   [`GET /api/v1/patients/${OWN.id}/share-links`]: () =>
     json(200, [
       {
@@ -234,6 +236,13 @@ for (const p of [OWN, PATIENT]) {
         set_by_name: "Д. Ганбат",
       },
     ]);
+  handlers[`GET ${base}/steroid-card`] = () =>
+    json(
+      200,
+      p.id === OWN.id
+        ? null
+        : { marked_on: "2026-11-17", by_doctor: true, doctor_name: "Д. Ганбат" },
+    );
   handlers[`GET ${base}/doctor-notes`] = () =>
     json(200, [
       {
@@ -523,4 +532,30 @@ test("a doctor gets the summary PDF but not the owner's export", async () => {
   await fireEvent.press(await screen.findByTestId("profile-summary"));
   expect(await screen.findByRole("button", { name: "PDF үүсгэх" })).toBeOnTheScreen();
   expect(screen.queryByRole("button", { name: "JSON файл авах" })).toBeNull();
+});
+
+test("the owner marks the steroid card as their doctor told them (Q36)", async () => {
+  setActiveProfile(OWN.id);
+  await openTab(/^Профайл,/);
+  await fireEvent.press(await screen.findByTestId("profile-doctor"));
+  expect(await screen.findByText("Тэмдэглээгүй.")).toBeOnTheScreen();
+  expect(screen.queryByText(/^NHS England-ийн 2020 оны/)).toBeNull();
+  await fireEvent.press(screen.getByRole("button", { name: "Яаралтай картад тэмдэглэх" }));
+  expect(asked.at(-1)).toMatch(/^Стероидын яаралтай карт тэмдэглэх үү\?/);
+  await waitFor(() => expect(posts).toContainEqual({ path: "steroid-owner", body: { on: true } }));
+});
+
+test("the steroid card: the doctor sees the NHS threshold and clears a mark, the owner marks as told (Q36)", async () => {
+  setActiveProfile(PATIENT.id);
+  await openTab(/^Профайл,/);
+  await fireEvent.press(await screen.findByTestId("profile-doctor"));
+  expect(await screen.findByText(/^NHS England-ийн 2020 оны/)).toBeOnTheScreen();
+  expect(await screen.findByText("Эмч Д. Ганбат тэмдэглэсэн (2026.11.17).")).toBeOnTheScreen();
+  await fireEvent.press(screen.getByRole("button", { name: "Тэмдэглэгээг арилгах" }));
+  await waitFor(() =>
+    expect(posts).toContainEqual({
+      path: "steroid-doctor",
+      body: { patient_id: PATIENT.id, on: false },
+    }),
+  );
 });

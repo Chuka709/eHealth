@@ -113,6 +113,8 @@ const CARD = {
   other_medications: [{ name: "Витамин Д", brand: null }],
   recently_stopped: [{ name: "Такролимус", brand: "Програф", stopped_on: "2026-11-08" }],
   allergies: [],
+  no_known_allergies_on: null,
+  steroid_card: null,
   contacts: [{ name: "Төв", relation: null, phone: "7000 1234", is_transplant_center: true }],
   generated_at: "2026-11-10T02:00:00Z",
 };
@@ -222,6 +224,22 @@ test("🆘 on Home opens the card as the server assembled it (H17)", async () =>
   expect(screen.getByRole("button", { name: "Залгах — Төв" })).toBeOnTheScreen();
   expect(screen.getByText("Шинэчилсэн: 2026.11.10 10:00")).toBeOnTheScreen();
   expect(screen.queryByText(/Утсанд хадгалсан хувилбар/)).toBeNull();
+});
+
+test("a confirmed no known allergies and the steroid card mark are shown as recorded (Q39, Q36)", async () => {
+  cardAnswer = () =>
+    json(200, {
+      ...CARD,
+      no_known_allergies_on: "2026-11-18",
+      steroid_card: { marked_on: "2026-11-17", by_doctor: true },
+    });
+  await openCard();
+  expect(
+    screen.getByText("Мэдэгдэж буй харшилгүй (өөрөө баталсан, 2026.11.18)."),
+  ).toBeOnTheScreen();
+  expect(screen.queryByText(/Харшлын мэдээлэл оруулаагүй/)).toBeNull();
+  expect(screen.getByText(/Стероидын яаралтай карт: .*бөөрний дээд булчирхай/)).toBeOnTheScreen();
+  expect(screen.getByText("Эмч тэмдэглэсэн (2026.11.17).")).toBeOnTheScreen();
 });
 
 test("the card is saved encrypted and opens offline, marked as the saved copy", async () => {

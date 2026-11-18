@@ -146,3 +146,26 @@ async def test_level_stats_are_numbers_only_with_a_reason_when_too_few(
         assert (mine["with_target"], mine["in_target_percent"], mine["labs"]) == (0, None, [])
         # only tacrolimus for now (Q63): another test gives no number
         assert (await c.get(f"{base}/level-stats/CREA", headers=owner)).status_code == 422
+
+
+async def test_a_treating_doctor_marks_the_steroid_card(
+    owner_engine: AsyncEngine, client_from: ClientFactory
+) -> None:
+    async with client_from() as c:
+        owner, base, doc = await _doctor_on(c, owner_engine)
+        pid = base.rsplit("/", 1)[1]
+        r = await c.post(
+            "/api/v1/me/doctor/steroid-card", json={"patient_id": pid, "on": True}, headers=doc
+        )
+        assert r.status_code == 204
+        mark = (await c.get(f"{base}/steroid-card", headers=owner)).json()
+        assert mark["by_doctor"] is True
+        assert mark["doctor_name"]
+        # the doctor's write gate is not the profile's: the owner's route is closed to them
+        r = await c.put(f"{base}/steroid-card", json={"on": False}, headers=doc)
+        assert r.status_code == 403
+        r = await c.post(
+            "/api/v1/me/doctor/steroid-card", json={"patient_id": pid, "on": False}, headers=owner
+        )
+        assert r.status_code == 204  # the owner may clear it through either route
+        assert (await c.get(f"{base}/steroid-card", headers=owner)).json() is None

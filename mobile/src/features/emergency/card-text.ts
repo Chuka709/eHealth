@@ -81,6 +81,24 @@ export function graftKey(tr: CardTransplant): string {
     : `graft.${tr.graft_status}`;
 }
 
+/**
+ * The steroid emergency card (Q36): the warning, then whose mark it is and when. An older
+ * saved card has none.
+ */
+export function steroidLines(
+  card: EmergencyCard,
+  e: (key: string, values?: Record<string, string | number>) => string,
+): string[] {
+  const mark = card.steroid_card;
+  if (!mark) return [];
+  return [
+    e("steroidCard"),
+    e(mark.by_doctor ? "steroidCardByDoctor" : "steroidCardBySelf", {
+      date: dated(mark.marked_on),
+    }),
+  ];
+}
+
 /** Immunosuppressants stopped in the last 14 days, with the day (Q37); an older card has none. */
 export function recentStopLines(card: EmergencyCard, e: Tr): string[] {
   return [...(card.recently_stopped ?? [])]
@@ -117,6 +135,7 @@ export function cardText(
   if (card.dosed_medications.some((m) => m.category === "immunosuppressant")) {
     who.push(e("introImmunosuppressed"));
   }
+  who.push(...steroidLines(card, e));
   if (fields.name) who.push(`${e("name")}: ${card.patient.full_name}`);
   if (fields.birthDate && card.patient.birth_date) {
     who.push(`${e("birthDate")}: ${dated(card.patient.birth_date)}`);
@@ -184,7 +203,9 @@ export function cardText(
           .filter(Boolean)
           .join(" — "),
       )
-    : [e("noAllergy")];
+    : card.no_known_allergies_on
+      ? [e("noKnownAllergy", { date: dated(card.no_known_allergies_on) })]
+      : [e("noAllergy")];
 
   const contacts = card.contacts.length
     ? card.contacts.map((c) =>

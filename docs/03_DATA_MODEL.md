@@ -545,6 +545,21 @@ create table audit_logs (
 );  -- UPDATE/DELETE-г trigger хориглоно
 create index on audit_logs (target_user_id, at desc);
 create index on audit_logs (patient_id, at desc);
+
+-- 0048 (Q39, Q36): нэг профайлд нэг мөр; зөвхөн definer функцээр бичнэ, can_read_patient уншина
+create table no_known_allergies (           -- «Мэдэгдэх харшилгүй» огноотой баталгаа
+  patient_id uuid primary key references patients on delete cascade,
+  confirmed_on date not null,               -- local_today(); харшил нэмэхэд trigger устгана
+  confirmed_by uuid references users on delete set null,
+  created_at timestamptz not null default now()
+);
+create table steroid_cards (                -- стероидын яаралтай карт (апп дүгнэхгүй)
+  patient_id uuid primary key references patients on delete cascade,
+  marked_on date not null,
+  marked_by uuid references users on delete set null,
+  by_doctor boolean not null,               -- эмчлэгч эмч эсвэл эзэн (эмчийн зөвлөснөөр)
+  created_at timestamptz not null default now()
+);
 ```
 
 ## Админ ба идэвхжүүлэлтийн функц (migration 0004)

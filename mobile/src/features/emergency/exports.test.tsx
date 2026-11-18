@@ -146,6 +146,8 @@ const CARD: EmergencyCard = {
   ],
   other_medications: [],
   recently_stopped: [],
+  no_known_allergies_on: null,
+  steroid_card: null,
   allergies: [],
   contacts: [{ name: "Төв", relation: null, phone: "7000 1234", is_transplant_center: true }],
   generated_at: "2026-11-10T02:00:00Z",

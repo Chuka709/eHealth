@@ -142,3 +142,44 @@ export function useRemoveNote(patientId: string) {
     onSettled: () => refresh(patientId),
   });
 }
+
+// --- the steroid emergency card (Q36) ----------------------------------------------------
+
+export type SteroidCard = components["schemas"]["SteroidCardOut"];
+const steroidKey = (p: string | undefined) => ["steroid-card", p] as const;
+
+/** The mark, or null when not marked. Never inferred from the medicines (rule 10). */
+export function useSteroidCard(patientId: string | undefined) {
+  return useQuery({
+    queryKey: steroidKey(patientId),
+    enabled: patientId !== undefined,
+    staleTime: 0,
+    queryFn: async () => {
+      const { data, error, response } = await api.GET(
+        "/api/v1/patients/{patient_id}/steroid-card",
+        { params: { path: { patient_id: patientId ?? "" } } },
+      );
+      if (!response.ok) throw apiError(error);
+      return data ?? null;
+    },
+  });
+}
+
+/** A treating doctor marks it through their route, the owner through the profile's. */
+export function useMarkSteroidCard(patientId: string, asDoctor: boolean) {
+  return useMutation({
+    mutationFn: async (on: boolean) => {
+      const { error, response } = asDoctor
+        ? await api.POST("/api/v1/me/doctor/steroid-card", { body: { patient_id: patientId, on } })
+        : await api.PUT("/api/v1/patients/{patient_id}/steroid-card", {
+            params: { path: { patient_id: patientId } },
+            body: { on },
+          });
+      if (!response.ok) throw apiError(error);
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: steroidKey(patientId) });
+      void queryClient.invalidateQueries({ queryKey: ["emergency-card", patientId] });
+    },
+  });
+}

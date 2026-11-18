@@ -20,8 +20,10 @@ import {
   useDoctorNotes,
   useEndTarget,
   useLevelStats,
+  useMarkSteroidCard,
   useRemoveNote,
   useSetTarget,
+  useSteroidCard,
   useTargets,
 } from "@/features/clinician/use-clinician";
 import { useRecordProfile } from "@/features/health/record-screens";
@@ -75,6 +77,12 @@ export default function DoctorScreen() {
           then, with CV% alone (Q63-7 ★) */}
       {isDoctor && <LevelCard patientId={own.id} />}
 
+      <SteroidCardSection
+        patientId={own.id}
+        isDoctor={isDoctor}
+        canMark={isDoctor || own.access_level === "owner"}
+      />
+
       <Title>{t("targets.title")}</Title>
       <Paragraph muted>{t("targets.hint")}</Paragraph>
       {targets.isPending && <LoadingView />}
@@ -101,6 +109,74 @@ export default function DoctorScreen() {
       {notes.data?.length === 0 && <Paragraph muted>{t("notes.none")}</Paragraph>}
       {notes.data && <Notes patientId={own.id} notes={notes.data} isDoctor={isDoctor} />}
     </Screen>
+  );
+}
+
+/**
+ * The steroid emergency card mark (Q36 ★): a treating doctor decides, shown the NHS 2020
+ * threshold; the owner may mark it as their doctor told them. The app never infers it from
+ * the medicines (rule 10). Whose mark it is stays visible.
+ */
+function SteroidCardSection({
+  patientId,
+  isDoctor,
+  canMark,
+}: {
+  patientId: string;
+  isDoctor: boolean;
+  canMark: boolean;
+}) {
+  const t = useTranslations("app.clinician.steroid");
+  const card = useCard();
+  const errorText = useErrorText();
+  const mark = useSteroidCard(patientId);
+  const set = useMarkSteroidCard(patientId, isDoctor);
+  const marked = mark.data ?? null;
+  const ask = (on: boolean) =>
+    Alert.alert(on ? t("markTitle") : t("clearTitle"), on ? t("markBody") : t("clearBody"), [
+      { text: t("cancel"), style: "cancel" },
+      {
+        text: on ? t("mark") : t("clear"),
+        style: on ? "default" : "destructive",
+        onPress: () => set.mutate(on),
+      },
+    ]);
+  return (
+    <View style={card} testID="steroid-card">
+      <Title>{t("title")}</Title>
+      <Paragraph muted>{isDoctor ? t("threshold") : t("what")}</Paragraph>
+      {mark.isPending && <LoadingView />}
+      {mark.isError && (
+        <RetryView text={errorText(mark.error)} onRetry={() => void mark.refetch()} />
+      )}
+      {mark.isSuccess && (
+        <Paragraph>
+          {marked
+            ? t(
+                !marked.by_doctor
+                  ? "markedBySelf"
+                  : marked.doctor_name
+                    ? "markedByDoctor"
+                    : "markedByFormerDoctor",
+                {
+                  date: formatDate(`${marked.marked_on}T12:00:00Z`),
+                  name: marked.doctor_name ?? "",
+                },
+              )
+            : t("none")}
+        </Paragraph>
+      )}
+      {canMark && !isDoctor && !marked && <Paragraph muted>{t("ownerHint")}</Paragraph>}
+      {canMark && mark.isSuccess && (
+        <Button
+          label={marked ? t("clear") : t("mark")}
+          variant={marked ? "secondary" : "primary"}
+          disabled={set.isPending}
+          onPress={() => ask(!marked)}
+        />
+      )}
+      {set.isError && <FormMessage kind="error" text={errorText(set.error)} />}
+    </View>
   );
 }
 

@@ -64,6 +64,8 @@ const CARD = {
   dosed_medications: [],
   other_medications: [],
   recently_stopped: [],
+  no_known_allergies_on: null,
+  steroid_card: null,
   allergies: [{ substance: "Пенициллин", reaction: null, severity: "severe" }],
   contacts: [],
   generated_at: "2026-11-01T02:00:00Z",

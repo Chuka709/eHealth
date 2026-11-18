@@ -1,4 +1,5 @@
 import { fireEvent, renderRouter, screen, waitFor } from "expo-router/testing-library";
+import { Alert } from "react-native";
 
 import { clearAccessToken, setStatus } from "@/features/auth/session-store";
 import { apiBaseUrl } from "@/lib/api-base";
@@ -87,6 +88,16 @@ for (const kind of ["events", "allergies", "contacts", "appointments", "question
     return json(201, row);
   };
 }
+let nka: string | null = null;
+handlers[`GET ${P}/no-known-allergies`] = () => json(200, { confirmed_on: nka });
+handlers[`PUT ${P}/no-known-allergies`] = () => {
+  nka = "2026-11-18";
+  return json(200, { confirmed_on: nka });
+};
+handlers[`DELETE ${P}/no-known-allergies`] = () => {
+  nka = null;
+  return new Response(null, { status: 204 });
+};
 handlers[`POST ${P}/vitals`] = async (request) => {
   const body = (await request.json()) as Record<string, unknown>;
   posts.push({ path: "vitals", body });
@@ -106,6 +117,7 @@ beforeEach(() => {
   store = {};
   posts = [];
   vitalStatus = 201;
+  nka = null;
   mockFetch.mockReset();
   mockFetch.mockImplementation(async (input: Request | string, init?: RequestInit) => {
     const request = typeof input === "string" ? new Request(input, init) : input;
@@ -160,6 +172,43 @@ test("an allergy is added with the form's client_id; a missing substance is said
   await waitFor(() => expect(posts).toHaveLength(1));
   expect(posts[0].body).toMatchObject({ substance: "Пенициллин", severity: "severe" });
   expect(String(posts[0].body.client_id)).toMatch(/^[0-9a-f-]{36}$/);
+});
+
+test("no known allergies is confirmed on purpose, dated, and offered only with none recorded (Q39)", async () => {
+  const asked = jest.spyOn(Alert, "alert").mockImplementation((_t, _m, buttons) => {
+    buttons?.find((b) => b.style !== "cancel")?.onPress?.();
+  });
+  await openProfile();
+  await fireEvent.press(await screen.findByTestId("profile-allergies"));
+  // none recorded is not "no allergies" (H17)
+  expect(await screen.findByText(/^Харшил бүртгээгүй нь харшилгүй гэсэн үг биш/)).toBeOnTheScreen();
+  await press("Мэдэгдэж буй харшилгүй гэж батлах");
+  expect(asked).toHaveBeenCalledTimes(1);
+  expect(
+    await screen.findByText(/^Мэдэгдэж буй харшилгүй гэж баталсан \(2026\.11\.18\)/),
+  ).toBeOnTheScreen();
+  await press("Баталгааг цуцлах");
+  expect(await screen.findByText(/^Харшил бүртгээгүй нь харшилгүй/)).toBeOnTheScreen();
+  asked.mockRestore();
+});
+
+test("with an allergy recorded, no known allergies is not offered", async () => {
+  store.allergies = [
+    {
+      id: "a1",
+      substance: "Пенициллин",
+      reaction: null,
+      severity: null,
+      noted_on: null,
+      created_at: "",
+      updated_at: null,
+    },
+  ];
+  nka = "2026-11-01"; // a stale answer never shows beside an allergy
+  await openProfile();
+  await fireEvent.press(await screen.findByTestId("profile-allergies"));
+  expect(await screen.findByText("Пенициллин")).toBeOnTheScreen();
+  expect(screen.queryByText(/Мэдэгдэж буй харшилгүй/)).toBeNull();
 });
 
 test("a contact's phone is checked before it is sent", async () => {

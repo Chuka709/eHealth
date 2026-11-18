@@ -82,7 +82,12 @@ export default async function ShareViewPage() {
           </dl>
           <h3 className="font-semibold">{t("allergies")}</h3>
           {data.summary.allergies.length === 0 ? (
-            <p className="text-slate-700">{t("noAllergies")}</p>
+            <p className="text-slate-700">
+              {/* a dated statement (Q39); none recorded is never "no allergies" (H17) */}
+              {data.summary.no_known_allergies_on
+                ? t("noKnownAllergies", { date: day(data.summary.no_known_allergies_on) })
+                : t("noAllergies")}
+            </p>
           ) : (
             <ul className="list-disc pl-5">
               {data.summary.allergies.map((a) => (

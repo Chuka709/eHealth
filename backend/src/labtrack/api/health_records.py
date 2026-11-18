@@ -14,7 +14,9 @@ from uuid import UUID
 
 from fastapi import APIRouter, Query, Response, status
 from pydantic import AfterValidator, BaseModel, Field, PlainSerializer, model_validator
+from sqlalchemy.exc import DBAPIError
 
+from labtrack.api.caregivers import _pg
 from labtrack.api.deps import PatientReadDb, PatientWriteDb
 from labtrack.api.errors import AppError, ErrorBody
 from labtrack.api.records import Long, OptionalPastDate, PastDate, Short, _Strict
@@ -214,6 +216,45 @@ async def replace_allergy(
 @router.delete("/allergies/{allergy_id}", status_code=status.HTTP_204_NO_CONTENT, responses=_ERRORS)
 async def delete_allergy(patient_id: UUID, allergy_id: UUID, db: PatientWriteDb) -> Response:
     await service.delete(db, "allergies", patient_id, allergy_id)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+class NoKnownAllergiesOut(BaseModel):
+    """A dated "no known allergies" (Q39). Null: not confirmed - which is not the same as no
+    allergy (H17); the app says "none recorded" then."""
+
+    confirmed_on: date | None
+
+
+@router.get("/no-known-allergies", response_model=NoKnownAllergiesOut, responses=_ERRORS)
+async def get_no_known_allergies(patient_id: UUID, db: PatientReadDb) -> NoKnownAllergiesOut:
+    rows = await repo.rows(db, repo.NO_KNOWN_ALLERGIES, patient_id)
+    return NoKnownAllergiesOut(confirmed_on=rows[0].confirmed_on if rows else None)
+
+
+@router.put("/no-known-allergies", response_model=NoKnownAllergiesOut, responses=_ERRORS)
+async def confirm_no_known_allergies(patient_id: UUID, db: PatientWriteDb) -> NoKnownAllergiesOut:
+    """Confirmed today (again). 409 while an allergy is recorded; adding one later ends it."""
+    try:
+        day = (await db.execute(repo.NKA_CONFIRM, {"p": patient_id})).scalar_one()
+    except DBAPIError as exc:
+        state, _ = _pg(exc)
+        if state == "23514":
+            raise AppError(409, "allergy.recorded") from None
+        if state == "42501":
+            raise AppError(403, "patient.read_only") from None
+        raise
+    return NoKnownAllergiesOut(confirmed_on=day)
+
+
+@router.delete("/no-known-allergies", status_code=status.HTTP_204_NO_CONTENT, responses=_ERRORS)
+async def clear_no_known_allergies(patient_id: UUID, db: PatientWriteDb) -> Response:
+    try:
+        await db.execute(repo.NKA_CLEAR, {"p": patient_id})  # nothing to clear is fine
+    except DBAPIError as exc:
+        if _pg(exc)[0] == "42501":
+            raise AppError(403, "patient.read_only") from None
+        raise
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 

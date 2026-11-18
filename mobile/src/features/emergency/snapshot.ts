@@ -45,8 +45,15 @@ export async function readSnapshot(patientId: string): Promise<EmergencyCard | n
     const raw = store.getString(key(patientId));
     if (!raw) return null;
     const parsed: unknown = JSON.parse(raw);
-    // a copy saved before D5a has no recently_stopped: an empty list, never undefined
-    return isCard(parsed) ? { ...parsed, recently_stopped: parsed.recently_stopped ?? [] } : null;
+    // a copy saved before D5a/D5b lacks the newer parts: empty, never undefined
+    return isCard(parsed)
+      ? {
+          ...parsed,
+          recently_stopped: parsed.recently_stopped ?? [],
+          no_known_allergies_on: parsed.no_known_allergies_on ?? null,
+          steroid_card: parsed.steroid_card ?? null,
+        }
+      : null;
   } catch {
     return null; // a copy that cannot be read is no copy (never a half-shown card)
   }

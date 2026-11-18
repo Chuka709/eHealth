@@ -4,7 +4,8 @@ Two shapes, read as the owner under the row policies:
 
 - JSON: every record of the profile as the app keeps it (numbers as strings, rule 7), without
   internal ids of other people (who recorded what) or storage keys;
-- FHIR R4: a `collection` Bundle - Patient, AllergyIntolerance, MedicationStatement (dose as
+- FHIR R4: a `collection` Bundle - Patient, AllergyIntolerance (a confirmed "no known
+  allergy" as SNOMED 716186003, Q39), MedicationStatement (dose as
   entered, in `dosage.text`), Observation (confirmed lab values: as printed, the lab's range as
   text, the server's flag as interpretation; vital signs) and Procedure (transplants). FHIR
   JSON numbers are numbers: the printed text is kept in `valueString` when the value is not a
@@ -63,6 +64,9 @@ _TABLES: dict[str, LiteralString] = {
     " from vitals where patient_id = :p order by measured_at",
     "allergies": "select substance, reaction, severity, noted_on from allergies"
     " where patient_id = :p order by substance",
+    # a dated "no known allergies" and the steroid emergency card mark (0048; Q39, Q36)
+    "no_known_allergies": "select confirmed_on from no_known_allergies where patient_id = :p",
+    "steroid_card": "select marked_on, by_doctor from steroid_cards where patient_id = :p",
     "contacts": "select name, relation, phone, is_transplant_center from emergency_contacts"
     " where patient_id = :p order by sort_order",
     "appointments": "select kind::text as kind, title, scheduled_at, place, notes,"
@@ -174,6 +178,15 @@ def _dumps(value: object) -> str:
     return json.dumps(value, ensure_ascii=False, default=_plain)
 
 
+_SNOMED = "http://snomed.info/sct"
+NKA_SNOMED = "716186003"  # No known allergy (situation)
+_NKA_TEXT = "No known allergy (situation)"
+# FHIR codes are constants: error_codes.py reads quoted code literals as API errors
+_ACTIVE, _CONFIRMED = "active", "confirmed"
+_CLINICAL = "http://terminology.hl7.org/CodeSystem/allergyintolerance-clinical"
+_VERIFY = "http://terminology.hl7.org/CodeSystem/allergyintolerance-verification"
+
+
 def to_fhir(data: dict[str, Any]) -> bytes:
     person = data.get("profile") or {}
     patient_ref = "urn:uuid:patient"
@@ -197,6 +210,25 @@ def to_fhir(data: dict[str, Any]) -> bytes:
                     "patient": subject,
                     "code": {"text": a["substance"]},
                     **({"reaction": [{"description": a["reaction"]}]} if a["reaction"] else {}),
+                }
+            }
+        )
+    if not data["allergies"] and data["no_known_allergies"]:
+        # stated, dated "no known allergy" (AU Core / IPS) - never written for "none recorded";
+        # the patient's (or their caregiver's) statement, not a clinician's (asserter)
+        entries.append(
+            {
+                "resource": {
+                    "resourceType": "AllergyIntolerance",
+                    "patient": subject,
+                    "asserter": subject,
+                    "clinicalStatus": {"coding": [{"system": _CLINICAL, "code": _ACTIVE}]},
+                    "verificationStatus": {"coding": [{"system": _VERIFY, "code": _CONFIRMED}]},
+                    "code": {
+                        "coding": [{"system": _SNOMED, "code": NKA_SNOMED, "display": _NKA_TEXT}],
+                        "text": "No known allergy",
+                    },
+                    "recordedDate": _plain(data["no_known_allergies"][0]["confirmed_on"]),
                 }
             }
         )
