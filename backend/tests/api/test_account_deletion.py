@@ -6,6 +6,7 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncEngine
+from structlog.testing import capture_logs
 
 from labtrack.db.sql import bound_text
 from labtrack.worker.maintenance import run_daily
@@ -52,8 +53,13 @@ async def test_delete_needs_the_password_and_signs_out_everywhere(
         )
         assert wrong.status_code == 401
         assert (await phone.get("/api/v1/me", headers=h)).status_code == 200  # nothing happened
-        r = await phone.post("/api/v1/me/delete", json={"password": NEW_PASSWORD}, headers=h)
+        with capture_logs() as logs:
+            r = await phone.post("/api/v1/me/delete", json={"password": NEW_PASSWORD}, headers=h)
         assert r.status_code == 202
+        # kept outside the database (id only) for a restore from an older backup (8.2)
+        [event] = [e for e in logs if e["event"] == "account_deletion_requested"]
+        assert event == {"event": "account_deletion_requested", "user_id": str(uid),
+                         "log_level": "info"}  # fmt: skip
         scheduled = datetime.fromisoformat(r.json()["scheduled_for"])
         assert timedelta(days=29) < scheduled - datetime.now(UTC) <= timedelta(days=30)
         assert (await phone.get("/api/v1/me", headers=h)).status_code == 401

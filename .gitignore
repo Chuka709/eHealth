@@ -11,6 +11,9 @@
 google-services.json
 GoogleService-Info.plist
 
+# Encrypted backups (8.2) - never in git, even encrypted
+/backups/
+
 # PHI — raw (non-anonymized) eval inputs stay local
 eval/cases/**/raw/
 eval/local/

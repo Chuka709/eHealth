@@ -37,6 +37,7 @@ logs service="":
 db-roles:
     {{compose}} up -d --wait postgres
     {{compose}} exec -T postgres sh /docker-entrypoint-initdb.d/02-push-role.sh
+    {{compose}} exec -T postgres sh /docker-entrypoint-initdb.d/03-backup-role.sh
 
 migrate:
     {{compose}} run --rm migrate
@@ -88,6 +89,14 @@ e2e-mobile-fast *stages:
 # JAVA_HOME (Android Studio's jbr). See backend/scripts/e2e_mobile.py
 e2e-mobile *flows:
     $env:UV_CACHE_DIR = "F:/.uv-cache"; $env:UV_TOOL_DIR = "F:/.uv-tools"; cd backend; uv run python scripts/e2e_mobile.py {{quote(flows)}}
+
+# Encrypted backup of the database and documents into ./backups (8.2; docs/OPS_RUNBOOK.md)
+backup:
+    {{compose}} --profile ops run --rm --build backup backup.sh
+
+# Restore the newest (or the given) backup into a scratch database and check it
+restore-drill identity stamp="":
+    {{compose}} --profile ops run --rm --build -v "{{absolute_path(identity)}}:/run/secrets/backup-identity:ro" restore-drill restore-drill.sh '{{stamp}}'
 
 # Recreate the empty test database (as in infra/postgres/init/01-roles.sh). Downgrades do not
 # remove objects an older revision of a migration created, so tests could run on a stale schema.

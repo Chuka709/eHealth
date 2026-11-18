@@ -6,6 +6,7 @@ from datetime import datetime
 from typing import Annotated, Literal
 from uuid import UUID
 
+import structlog
 from fastapi import APIRouter, Depends, Path, Query, Response, status
 from pydantic import AfterValidator, BaseModel, ConfigDict, Field, StringConstraints
 from sqlalchemy.exc import DBAPIError
@@ -18,6 +19,8 @@ from labtrack.auth import service as auth_service
 from labtrack.config import get_settings
 from labtrack.core.text import valid_display_name
 from labtrack.db.sql import bound_text
+
+log = structlog.get_logger(__name__)
 
 router = APIRouter(prefix="/me", tags=["me"])
 
@@ -378,4 +381,8 @@ async def delete_account(body: DeleteRequest, db: UserDb) -> DeletionOut:
         if _sqlstate(exc) != "42501":
             raise
         raise AppError(409, "me.deletion_not_allowed") from None  # e.g. not an active account
+    # a record outside the database (id only): after a restore from an older backup the request
+    # is applied again from the logs (docs/OPS_RUNBOOK.md §5)
+    user_id = (await db.execute(bound_text("select app_user_id()"))).scalar_one()
+    log.info("account_deletion_requested", user_id=str(user_id))
     return DeletionOut(scheduled_for=scheduled)

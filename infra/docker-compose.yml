@@ -43,6 +43,7 @@ services:
       LABTRACK_ADMIN_LOGIN_PASSWORD: ${LABTRACK_ADMIN_LOGIN_PASSWORD:?run just init}
       LABTRACK_MAINT_PASSWORD: ${LABTRACK_MAINT_PASSWORD:?run just init}
       LABTRACK_PUSH_PASSWORD: ${LABTRACK_PUSH_PASSWORD:?run just init}
+      LABTRACK_BACKUP_PASSWORD: ${LABTRACK_BACKUP_PASSWORD:?run just init}
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./postgres/init:/docker-entrypoint-initdb.d:ro
@@ -317,6 +318,40 @@ services:
       valkey: { condition: service_healthy }
       seaweedfs: { condition: service_healthy }
 
+  # Encrypted backups (8.2; docs/OPS_RUNBOOK.md): `just backup`. Never started by `up`.
+  # Runs as labtrack_backup (password as a secret, not in the environment); holds only the age
+  # public key.
+  backup:
+    build: ./backup
+    profiles: ["ops"]
+    init: true
+    environment:
+      <<: *s3-env
+      BACKUP_AGE_RECIPIENT: ${BACKUP_AGE_RECIPIENT:-}
+      BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-35}
+    secrets: [backup_db_password]
+    tmpfs: ["/tmp:size=16m,mode=1777"]
+    volumes:
+      - ${BACKUP_DIR:-../backups}:/backups
+    networks: [backend]
+    depends_on:
+      postgres: { condition: service_healthy }
+      seaweedfs: { condition: service_healthy }
+
+  # Restore drill (8.2): `just restore-drill <identity file>`. No network, a throwaway Postgres
+  # on tmpfs - never the live cluster; backups read-only; the private key mounted only here.
+  restore-drill:
+    build: ./backup
+    profiles: ["ops"]
+    init: true
+    network_mode: none
+    command: ["restore-drill.sh"]
+    tmpfs:
+      - "/tmp:size=64m,mode=1777"
+      - "/var/lib/postgresql/drill:size=${DRILL_TMPFS_SIZE:-2g},mode=1777"
+    volumes:
+      - ${BACKUP_DIR:-../backups}:/backups:ro
+
 networks:
   edge:
     ipam:
@@ -328,6 +363,10 @@ networks:
   ai-handoff:
     internal: true
   egress: {}
+
+secrets:
+  backup_db_password:
+    environment: LABTRACK_BACKUP_PASSWORD
 
 volumes:
   pgdata:
