@@ -1,6 +1,6 @@
 # Эмнэлзүйн текстийн хяналт (Q12)
 
-_Нийт 986 текст._
+_Нийт 997 текст._
 
 **Зорилго:** шилжүүлэн суулгалтын эмч + лабораторийн эмч апп-ын эмнэлзүйн текстийг нэг дор хянана (эмчийн шийдвэр 2026.11.18, ★). Одоогоор зөвхөн такролимусын CV%-ийн карт хянуулах хүртэл өвчтөнд нуугдсан; бусад текст апп-д харагдаж байгаа тул бетаг нээхээс өмнө хянагдсан байх ёстой (BETA B5).
 
@@ -367,8 +367,8 @@ _Нийт 986 текст._
 | `dose.alreadyBodyYou` | Та энэ тунг {time}-д «уусан» гэж аль хэдийн тэмдэглэсэн байна. Дахин тэмдэглэх үү? Шинэ тэмдэглэл тусад нь хадгалагдана. | You already logged this dose as taken at {time}. Log it again? The new entry is kept separately. | |
 | `dose.uncheckedTitle` | Энэ тунг өмнө нь тэмдэглэсэн эсэхийг шалгаж чадсангүй | Could not check whether this dose is already recorded | |
 | `dose.uncheckedBody` | Өөр хүн тэмдэглэсэн байж магадгүй. «Уусан» гэж тэмдэглэх үү? | Someone else may have recorded it. Record it as taken? | |
-| `dose.takenAfter` | Товлосон цагаас {hours, plural, =0 {} other {# цаг }}{minutes} минутын дараа уусан | Taken {hours, plural, =0 {} one {# hour } other {# hours }}{minutes} min after its time | |
-| `dose.takenBefore` | Товлосон цагаас {hours, plural, =0 {} other {# цаг }}{minutes} минутын өмнө уусан | Taken {hours, plural, =0 {} one {# hour } other {# hours }}{minutes} min before its time | |
+| `dose.takenAfter` | Товлосон цагаас {minutes, plural, =0 {{hours} цагийн} other {{hours, plural, =0 {} other {{hours} цаг }}{minutes} минутын}} дараа уусан | Taken {minutes, plural, =0 {{hours, plural, one {# hour} other {# hours}}} other {{hours, plural, =0 {} one {# hour } other {# hours }}{minutes} min}} after its time | |
+| `dose.takenBefore` | Товлосон цагаас {minutes, plural, =0 {{hours} цагийн} other {{hours, plural, =0 {} other {{hours} цаг }}{minutes} минутын}} өмнө уусан | Taken {minutes, plural, =0 {{hours, plural, one {# hour} other {# hours}}} other {{hours, plural, =0 {} one {# hour } other {# hours }}{minutes} min}} before its time | |
 | `summary.title` | Энэ сарын тэмдэглэл | This month's records | |
 | `summary.body` | Уусан гэж тэмдэглэсэн: {taken} / товлосон тун: {planned}. Тэмдэглэсэн эсвэл тэмдэглэх хугацаа нь дууссан {due} тунгийн {percent}% нь «уусан». | Recorded as taken: {taken} / planned doses: {planned}. {percent}% of the {due} doses already recorded or whose recording time has ended are "taken". | |
 | `summary.bodyNoPercent` | Уусан гэж тэмдэглэсэн: {taken} / товлосон тун: {planned}. | Recorded as taken: {taken} / planned doses: {planned}. | |
@@ -909,7 +909,7 @@ _Нийт 986 текст._
 
 ## Яаралтай карт
 
-Хянагч: эмч. Түлхүүр: `app.emergency` (91).
+Хянагч: эмч. Түлхүүр: `app.emergency` (102).
 
 | Түлхүүр | Монгол | English | Санал |
 |---|---|---|---|
@@ -924,8 +924,9 @@ _Нийт 986 текст._
 | `transplants` | Шилжүүлэн суулгалт | Transplants | |
 | `graft.functioning` | Ажиллаж байгаа | Functioning | |
 | `graft.unknown` | Төлөв бүртгэгдээгүй | Status not recorded | |
-| `graft.failed` | Ажиллахаа больсон | No longer functioning | |
+| `graft.failed` | Ажиллахаа больсон | Not working | |
 | `graft.removed` | Мэс заслаар авсан | Removed (graftectomy) | |
+| `graft.failedInBody` | Ажиллахаа больсон (биед байгаа) | Not working (still in the body) | |
 | `followUp` | Хяналтын эмнэлэг, эмч: {value} | Follow-up: {value} | |
 | `bloodType` | Цусны бүлэг | Blood type | |
 | `bloodNote` | Хэрэглэгчийн бүртгэлээс. Цус сэлбэхийн өмнө лабораторийн шинжилгээгээр баталгаажуулна уу. | As recorded by the user. Confirm by laboratory testing before any transfusion. | |
@@ -955,7 +956,7 @@ _Нийт 986 текст._
 | `saved` | Утсанд хадгалсан хувилбар ({when}) — хуучирсан байж болно. | Copy saved on this phone ({when}) — it may be out of date. | |
 | `unlocked.openHint` | Түгжээтэй үед картыг нээх эсэх | Whether the card opens while the app is locked | |
 | `unlocked.body` | Асаавал аппын биометр түгжээний дэлгэц дээр «🆘 Яаралтай» товч гарч, утсанд хадгалсан яаралтай картыг аппын түгжээг тайлалгүйгээр нээнэ. Утасны өөрийн түгжээг (PIN, хурууны хээ) тайлсны дараа л энэ товч харагдана. Хэзээ ч дахин унтрааж болно. | When on, the app's lock screen shows a “🆘 Emergency” button that opens the emergency card saved on this phone without unlocking the app. It is only reachable after the phone's own lock (PIN, fingerprint) is passed. You can turn it off at any time. | |
-| `unlocked.risk` | Анхаар: утсыг тайлсан хэн ч (гэр бүлийн гишүүн, утсаа алдвал олсон хүн) энэ картыг харна: нэр, төрсөн огноо, эм, харшил, шилжүүлэн суулгалт, холбоо барих хүмүүсийн утасны дугаар. Аппын бусад мэдээлэл түгжээтэй хэвээр үлдэнэ. | Note: anyone who can unlock your phone (a family member, someone who finds a lost phone) will be able to see this card: your name, date of birth, medicines, allergies, transplants and your contacts' phone numbers. The rest of the app stays locked. | |
+| `unlocked.risk` | Анхаар: утсыг тайлсан хэн ч (гэр бүлийн гишүүн, утсаа алдвал олсон хүн) энэ картыг харна: нэр, төрсөн огноо, эм (саяхан зогсоосон эм орно), харшил, шилжүүлэн суулгалт (таны болон донорын цусны бүлэг, CMV), холбоо барих хүмүүсийн утасны дугаар. Аппын бусад мэдээлэл түгжээтэй хэвээр үлдэнэ. | Note: anyone who can unlock your phone (a family member, someone who finds a lost phone) will be able to see this card: your name, date of birth, medicines (including ones stopped recently), allergies, transplants (your and the donor's blood type, CMV) and your contacts' phone numbers. The rest of the app stays locked. | |
 | `unlocked.switch` | Түгжээтэй үед яаралтай картыг нээх | Open the emergency card while locked | |
 | `unlocked.noProfile` | Эрүүл мэндийн профайл үүссэний дараа тохируулж болно. | You can set this once your health profile exists. | |
 | `unlocked.failed` | Тохиргоог хадгалж чадсангүй. Дахин оролдоно уу. | Could not save the setting. Please try again. | |
@@ -976,7 +977,7 @@ _Нийт 986 текст._
 | `export.medicalIdHint` | Утасны өөрийн яаралтай мэдээлэлд гараар нэмэх заавар | How to add it by hand to the phone's own emergency information | |
 | `export.failed` | Файлыг үүсгэж чадсангүй. Дахин оролдоно уу. | Could not make the file. Please try again. | |
 | `export.unavailable` | Энэ утсан дээр хуваалцах боломжгүй байна. | Sharing is not available on this phone. | |
-| `wallpaper.warning` | Энэ зургийг түгжээтэй дэлгэцэнд тавибал утсыг барьсан хэн ч түгжээ тайлалгүйгээр таны эм, харшил, шилжүүлэн суулгалт, холбоо барих хүмүүсийн нэр, утасны дугаарыг харна. | As a lock screen wallpaper, this image shows anyone holding the phone, without unlocking it, your medicines, allergies, transplant and your contacts' names and phone numbers. | |
+| `wallpaper.warning` | Энэ зургийг түгжээтэй дэлгэцэнд тавибал утсыг барьсан хэн ч түгжээ тайлалгүйгээр таны эм (саяхан зогсоосон эм орно), харшил, шилжүүлэн суулгалт, холбоо барих хүмүүсийн нэр, утасны дугаарыг харна. | As a lock screen wallpaper, this image shows anyone holding the phone, without unlocking it, your medicines (including ones stopped recently), allergies, transplant and your contacts' names and phone numbers. | |
 | `wallpaper.intro` | Доорх зураг яг хадгалагдах хэлбэр. Нэр, төрсөн огноо анхдагчаар ороогүй. | The image below is exactly what will be saved. Your name and date of birth are left out by default. | |
 | `wallpaper.showName` | Нэрийг оруулах | Include my name | |
 | `wallpaper.showBirthDate` | Төрсөн огноог оруулах | Include my date of birth | |
@@ -1004,6 +1005,16 @@ _Нийт 986 текст._
 | `medicalId.keepCurrent` | Утасны энэ мэдээлэл автоматаар шинэчлэгдэхгүй: эм, харшил өөрчлөгдвөл гараар засна уу. Хуулж дууссаны дараа хуулсан текстээ (clipboard) цэвэрлэвэл зүгээр. | The phone does not update this by itself: change it by hand when your medicines or allergies change. After copying, you may want to clear your clipboard. | |
 | `medicalId.inEnglish` | Текстийг англиар харуулах | Show the text in English | |
 | `medicalId.inMongolian` | Текстийг монголоор харуулах | Show the text in Mongolian | |
+| `transplantBlood` | Цусны бүлэг: хүлээн авагч {recipient}, донор {donor} | Blood type: recipient {recipient}, donor {donor} | |
+| `aboIncompatible` | ABO таарахгүй (ABO-incompatible) шилжүүлэн суулгалт — цусны бүтээгдэхүүн сонгохдоо шилжүүлэн суулгалтын төв, цусны банкинд мэдэгдэнэ үү | ABO-incompatible transplant — tell the transplant centre and the blood bank when choosing blood products | |
+| `cmv` | CMV: донор {donor} / хүлээн авагч {recipient} | CMV: donor {donor} / recipient {recipient} | |
+| `sero.pos` | эерэг (+) | positive (+) | |
+| `sero.neg` | сөрөг (−) | negative (−) | |
+| `sero.unknown` | тодорхойгүй | unknown | |
+| `unknownValue` | тодорхойгүй | unknown | |
+| `recentlyStopped` | Саяхан (14 хоногийн дотор) зогсоосон дархлаа дарангуйлагч | Immunosuppressants stopped recently (within 14 days) | |
+| `recentStop` | {name} — {date}-ноос эхлэн уугаагүй | {name} — not taken since {date} | |
+| `transplantBloodBefore` | Цусны бүлэг шилжүүлэн суулгахаас өмнө: хүлээн авагч {recipient}, донор {donor} — одоогийн бүлгийг лабораторид тодорхойлно | Blood type before the transplant: recipient {recipient}, donor {donor} — the current type is to be tested by the lab | |
 
 ## Апп-ын тухай (зориулалт, хийдэггүй зүйлс)
 

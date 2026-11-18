@@ -10,7 +10,7 @@ import { useRegimenText } from "@/features/meds/use-med-text";
 import { elapsedText, transplantDateText } from "@/features/records/elapsed";
 import { formatDate, formatDateTime } from "@/lib/dates";
 import { usePalette } from "@/theme/use-palette";
-
+import { graftKey, recentStopLines, transplantBloodLines } from "./card-text";
 import type { EmergencyCard } from "./snapshot";
 
 /** A number to dial: digits with an optional leading + (no pauses, codes or other characters);
@@ -148,6 +148,15 @@ export function EmergencyCardView({ card, copy }: { card: EmergencyCard; copy: C
             .join(", ")}`,
         )}
 
+      {recentStopLines(card, e as never).length > 0 && (
+        <View style={[styles.box, { borderColor: p.border }]}>
+          {line(e("recentlyStopped"), true)}
+          {recentStopLines(card, e as never).map((text) => (
+            <View key={text}>{line(text)}</View>
+          ))}
+        </View>
+      )}
+
       {section(e("bloodType"))}
       {card.blood_type ? (
         <>
@@ -178,9 +187,12 @@ export function EmergencyCardView({ card, copy }: { card: EmergencyCard; copy: C
               {tr.graft_status !== "functioning" &&
                 line(
                   e("graftLabel", {
-                    status: e(`graft.${tr.graft_status}` as "graft.failed"),
+                    status: e(graftKey(tr) as "graft.failed"),
                   }),
                 )}
+              {transplantBloodLines(tr, e as never, card.blood_type_withheld).map((text) => (
+                <View key={text}>{line(text)}</View>
+              ))}
               {line([tr.hospital, tr.city, tr.country].filter(Boolean).join(", "), true)}
               {(tr.follow_up_center || tr.follow_up_doctor) &&
                 line(

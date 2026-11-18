@@ -8,13 +8,14 @@ same rows, under the same RLS and profile gate, as the routes that write them. A
 shown as recorded, never computed or suggested (CLAUDE.md rule 10).
 
 Only what the card shows is returned. There are no row ids (the phone may show this while the
-app is locked, and an id would link a copy of it back to the records), and no donor, HLA,
-notes or other history. Reads are not audited, as with every other read here (2.7a, see
+app is locked, and an id would link a copy of it back to the records), and no HLA, notes or
+other history; of the donor only the ABO type and CMV status, for blood products (Q35).
+Reads are not audited, as with every other read here (2.7a, see
 docs/PROGRESS.md).
 """
 
-from datetime import UTC, date, datetime
-from typing import Any, Literal
+from datetime import UTC, date, datetime, timedelta
+from typing import Any, Literal, cast
 from uuid import UUID
 
 from fastapi import APIRouter
@@ -41,6 +42,7 @@ from labtrack.core.emergency import (
     order_allergies,
     order_dosed,
     order_transplants,
+    recently_stopped,
 )
 from labtrack.core.medications import upcoming_regimens
 from labtrack.health import repository as health_repo
@@ -70,6 +72,12 @@ class CardTransplant(BaseModel):
     hospital: str
     follow_up_center: str | None
     follow_up_doctor: str | None
+    # for blood products (Q35, physician 2026-11-18): both ABO types, ABO-incompatible, CMV
+    recipient_blood_type: str | None
+    donor_blood_type: str | None
+    abo_incompatible: bool | None
+    cmv_donor: str | None  # pos | neg | unknown
+    cmv_recipient: str | None
 
 
 class CardDose(BaseModel):
@@ -101,6 +109,14 @@ class CardMedication(BaseModel):
     brand: str | None
 
 
+class CardStoppedMedication(BaseModel):
+    """An immunosuppressant stopped in the last 14 days (Q37): its name and stop day."""
+
+    name: str
+    brand: str | None
+    stopped_on: date  # the first day it was not taken
+
+
 class CardAllergy(BaseModel):
     substance: str
     reaction: str | None
@@ -124,6 +140,7 @@ class EmergencyCardOut(BaseModel):
     # current, by name only: neither the catalogue nor the user (Q34, user_category) calls it an
     # immunosuppressant or a corticosteroid
     other_medications: list[CardMedication]
+    recently_stopped: list[CardStoppedMedication]
     # none recorded is not "no known allergies": the app must never say so (H17)
     allergies: list[CardAllergy]
     contacts: list[CardContact]  # transplant centres first, then as the user ordered them
@@ -145,6 +162,16 @@ def _upcoming(rows: list[Any], today: date, planned_end_on: date | None) -> list
     ]
 
 
+def _first_day_off(m: Any) -> date | None:
+    """The first day a medicine was not taken: its stop day, or the day after a course's planned
+    last day (a course that simply ran out stops too - Q37)."""
+    if m.stopped_on is not None:
+        return cast(date, m.stopped_on)
+    if m.planned_end_on is not None:
+        return cast(date, m.planned_end_on) + timedelta(days=1)
+    return None
+
+
 @router.get("/emergency-card", response_model=EmergencyCardOut, responses=_ERRORS)
 async def get_emergency_card(patient_id: UUID, db: PatientReadDb) -> EmergencyCardOut:
     """Everything the card shows, in its order. The phone keeps it (encrypted) to show offline
@@ -161,7 +188,8 @@ async def get_emergency_card(patient_id: UUID, db: PatientReadDb) -> EmergencyCa
         BloodRecord(t.organ, t.recipient_blood_type, t.donor_blood_type) for t in transplants
     )
 
-    current = [m for m in await _medications(db, patient_id) if m.is_current]
+    every = await _medications(db, patient_id)
+    current = [m for m in every if m.is_current]
     dosed = order_dosed(
         [(c, m) for m in current if (c := dosed_category(m.category)) is not None],
         lambda pair: pair[0],
@@ -197,6 +225,15 @@ async def get_emergency_card(patient_id: UUID, db: PatientReadDb) -> EmergencyCa
             CardMedication(name=m.name, brand=m.brand)
             for m in current
             if dosed_category(m.category) is None
+        ],
+        recently_stopped=[
+            CardStoppedMedication(name=m.name, brand=m.brand, stopped_on=first_off)
+            for m in every
+            if (first_off := _first_day_off(m)) is not None
+            and dosed_category(m.category) == "immunosuppressant"
+            # started again (a new record of the same medicine): it is taken now, not stopped
+            and m.name.casefold() not in {c.name.casefold() for c in current}
+            and recently_stopped(first_off, today)
         ],
         allergies=[
             CardAllergy.model_validate(r._mapping)

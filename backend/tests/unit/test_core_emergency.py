@@ -15,6 +15,7 @@ from labtrack.core.emergency import (
     order_allergies,
     order_dosed,
     order_transplants,
+    recently_stopped,
 )
 from labtrack.core.medications import upcoming_regimens
 
@@ -77,8 +78,8 @@ def test_working_grafts_come_first_then_newest() -> None:
         ("functioning", 2020),
         ("functioning", 2010),
         ("unknown", 2015),
+        ("failed", 2024),  # still in the body: before a removed graft (Q40)
         ("removed", 2025),
-        ("failed", 2024),
     ]
 
 
@@ -94,7 +95,7 @@ _STATUS = st.sampled_from(["functioning", "unknown", "failed", "removed", "somet
 def test_transplant_order_loses_nothing_and_groups_by_graft(rows: list[_T]) -> None:
     ordered = _ordered(rows)
     assert sorted(map(repr, ordered)) == sorted(map(repr, rows))
-    rank = {"functioning": 0, "failed": 2, "removed": 2}  # anything else ranks as unknown
+    rank = {"functioning": 0, "failed": 2, "removed": 3}  # anything else ranks as unknown
     keys = [(rank.get(r.status, 1), -r.on.toordinal(), -r.number) for r in ordered]
     assert keys == sorted(keys)
 
@@ -153,3 +154,13 @@ def test_every_step_ahead_is_kept_one_per_day(rows: list[_R]) -> None:
     for r in ahead:  # the latest entered for its day, never a voided one
         assert r.voided_at is None
         assert r.seq == max(x.seq for x in live if x.effective_from == r.effective_from)
+
+
+def test_recently_stopped_is_the_last_fourteen_days() -> None:
+    """Q37 (physician 2026-11-18): an immunosuppressant stopped within 14 days stays listed."""
+    today = date(2026, 11, 18)
+    assert recently_stopped(date(2026, 11, 18), today)  # stopped today
+    assert recently_stopped(date(2026, 11, 4), today)  # 14 days ago
+    assert not recently_stopped(date(2026, 11, 3), today)
+    assert not recently_stopped(date(2026, 11, 20), today)  # not yet
+    assert not recently_stopped(None, today)

@@ -7,13 +7,16 @@ a value, fills a gap or suggests a dose (CLAUDE.md rules 5, 10):
   agrees. If two records disagree, none is shown and the card says the records conflict.
   After a stem-cell transplant (HSCT) from a donor of another type, or of an unknown type, the
   blood type itself changes, so the recorded type is withheld too. The card never picks one;
-- transplants: grafts still working come first, then unknown, then failed or removed. Within
+- transplants: grafts still working come first, then unknown, then failed (still in the body:
+  it matters to the immune system - Q40, physician 2026-11-18), then removed. Within
   each group the newest comes first (by date, then by transplant number, because a month- or
   year-only date ties);
 - allergies: the most severe first (severe, moderate, mild, then unknown or not given),
   otherwise in the order they were recorded;
 - medicines shown with their recorded dose: immunosuppressants, then corticosteroids (a long
-  steroid course matters to an emergency team). Every other current medicine is shown by name.
+  steroid course matters to an emergency team). Every other current medicine is shown by name;
+- an immunosuppressant stopped in the last RECENT_STOP_DAYS days is listed apart with its stop
+  day (it stays in the body; a sudden stop matters to the team - Q37).
 """
 
 from collections.abc import Callable, Iterable, Sequence
@@ -24,7 +27,8 @@ from typing import Literal
 BLOOD_TYPES = frozenset({"O+", "O-", "A+", "A-", "B+", "B-", "AB+", "AB-"})
 DosedCategory = Literal["immunosuppressant", "corticosteroid"]
 _DOSED_ORDER: dict[DosedCategory, int] = {"immunosuppressant": 0, "corticosteroid": 1}
-_GRAFT_ORDER = {"functioning": 0, "unknown": 1, "failed": 2, "removed": 2}
+_GRAFT_ORDER = {"functioning": 0, "unknown": 1, "failed": 2, "removed": 3}
+RECENT_STOP_DAYS = 14  # Q37
 _SEVERITY_ORDER = {"severe": 0, "moderate": 1, "mild": 2}
 
 Withheld = Literal["conflict", "hsct"]
@@ -90,6 +94,11 @@ def order_transplants[T](
             -transplant_number(r),
         ),
     )
+
+
+def recently_stopped(stopped_on: date | None, today: date) -> bool:
+    """Stopped within the last RECENT_STOP_DAYS days (the stop day itself included)."""
+    return stopped_on is not None and 0 <= (today - stopped_on).days <= RECENT_STOP_DAYS
 
 
 def order_allergies[T](rows: Sequence[T], severity: Callable[[T], str | None]) -> list[T]:

@@ -2553,6 +2553,21 @@ export interface components {
             /** Sex */
             sex: string | null;
         };
+        /**
+         * CardStoppedMedication
+         * @description An immunosuppressant stopped in the last 14 days (Q37): its name and stop day.
+         */
+        CardStoppedMedication: {
+            /** Name */
+            name: string;
+            /** Brand */
+            brand: string | null;
+            /**
+             * Stopped On
+             * Format: date
+             */
+            stopped_on: string;
+        };
         /** CardTransplant */
         CardTransplant: {
             /** Organ */
@@ -2581,6 +2596,16 @@ export interface components {
             follow_up_center: string | null;
             /** Follow Up Doctor */
             follow_up_doctor: string | null;
+            /** Recipient Blood Type */
+            recipient_blood_type: string | null;
+            /** Donor Blood Type */
+            donor_blood_type: string | null;
+            /** Abo Incompatible */
+            abo_incompatible: boolean | null;
+            /** Cmv Donor */
+            cmv_donor: string | null;
+            /** Cmv Recipient */
+            cmv_recipient: string | null;
         };
         /** CardsIn */
         CardsIn: {
@@ -2928,6 +2953,8 @@ export interface components {
             dosed_medications: components["schemas"]["CardDosedMedication"][];
             /** Other Medications */
             other_medications: components["schemas"]["CardMedication"][];
+            /** Recently Stopped */
+            recently_stopped: components["schemas"]["CardStoppedMedication"][];
             /** Allergies */
             allergies: components["schemas"]["CardAllergy"][];
             /** Contacts */

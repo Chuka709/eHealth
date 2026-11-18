@@ -17,7 +17,8 @@ from .test_records import _change, _grant, _medication, _profile, _transplant
 pytestmark = pytest.mark.db
 
 # The whole shape: the phone may show this while the app is locked, so a field added to a
-# Card* model must be a decision, never a side effect (no ids, donor, HLA or notes).
+# Card* model must be a decision, never a side effect (no ids, HLA or notes; of the donor, only
+# the ABO type and CMV status needed for blood products - Q35, physician 2026-11-18).
 CARD_KEYS = {
     "patient",
     "blood_type",
@@ -25,6 +26,7 @@ CARD_KEYS = {
     "transplants",
     "dosed_medications",
     "other_medications",
+    "recently_stopped",
     "allergies",
     "contacts",
     "generated_at",
@@ -43,6 +45,11 @@ TRANSPLANT_KEYS = {
     "hospital",
     "follow_up_center",
     "follow_up_doctor",
+    "recipient_blood_type",
+    "donor_blood_type",
+    "abo_incompatible",
+    "cmv_donor",
+    "cmv_recipient",
 }
 DOSED_KEYS = {
     "category",
@@ -159,6 +166,7 @@ async def test_the_card_gathers_the_profile_in_its_order(
     assert pred_card["dose"] is not None  # a steroid course matters to an emergency team
 
     assert card["other_medications"] == [{"name": "Витамин Д", "brand": None}]  # not stopped
+    assert card["recently_stopped"] == []  # "Өмнөх" is no immunosuppressant, and long ago
     assert card["allergies"] == [
         {"substance": "Пенициллин", "reaction": None, "severity": "severe"},
         {"substance": "Тоос", "reaction": None, "severity": "mild"},
@@ -350,3 +358,37 @@ async def test_an_uncatalogued_medicine_the_user_calls_an_immunosuppressant_show
     # the catalogue says what a catalogued medicine is: no second answer
     both = _medication(catalog_code="TEST_TAC", name="Програф", user_category="corticosteroid")
     assert (await client.post(f"{base}/medications", json=both, headers=h)).status_code == 422
+
+
+async def test_an_immunosuppressant_stopped_in_the_last_two_weeks_is_listed(
+    client: AsyncClient, owner_engine: AsyncEngine
+) -> None:
+    """Q37: stopped within 14 days - still on the card, apart, with its stop day."""
+    _, h, base = await _profile(client, owner_engine)
+    await _catalog(owner_engine)
+    today = datetime.now(UTC).date()
+    recent = _medication(
+        catalog_code="TEST_TAC",
+        name="Програф",
+        started_on="2025-01-01",
+        stopped_on=(today - timedelta(days=3)).isoformat(),
+    )
+    old = _medication(
+        catalog_code="TEST_TAC",
+        name="Адваграф",
+        started_on="2025-01-01",
+        stopped_on=(today - timedelta(days=30)).isoformat(),
+    )
+    for med in (recent, old):
+        assert (await client.post(f"{base}/medications", json=med, headers=h)).status_code == 201
+    card = (await client.get(f"{base}/emergency-card", headers=h)).json()
+    assert card["recently_stopped"] == [
+        {"name": "Програф", "brand": None, "stopped_on": recent["stopped_on"]}
+    ]
+    assert card["dosed_medications"] == []
+    # the same medicine started again: taken now, no longer listed as stopped
+    again = _medication(catalog_code="TEST_TAC", name="Програф")
+    assert (await client.post(f"{base}/medications", json=again, headers=h)).status_code == 201
+    card = (await client.get(f"{base}/emergency-card", headers=h)).json()
+    assert card["recently_stopped"] == []
+    assert [m["name"] for m in card["dosed_medications"]] == ["Програф"]

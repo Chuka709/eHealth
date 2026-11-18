@@ -91,6 +91,11 @@ const CARD = {
       hospital: "Улсын нэгдүгээр төв эмнэлэг",
       follow_up_center: null,
       follow_up_doctor: null,
+      recipient_blood_type: "A+",
+      donor_blood_type: "O+",
+      abo_incompatible: true,
+      cmv_donor: "pos",
+      cmv_recipient: "neg",
     },
   ],
   dosed_medications: [
@@ -106,6 +111,7 @@ const CARD = {
     },
   ],
   other_medications: [{ name: "Витамин Д", brand: null }],
+  recently_stopped: [{ name: "Такролимус", brand: "Програф", stopped_on: "2026-11-08" }],
   allergies: [],
   contacts: [{ name: "Төв", relation: null, phone: "7000 1234", is_transplant_center: true }],
   generated_at: "2026-11-10T02:00:00Z",
@@ -199,6 +205,16 @@ test("🆘 on Home opens the card as the server assembled it (H17)", async () =>
   // a corticosteroid alone does not claim immunosuppression
   expect(screen.queryByText("Дархлаа дарангуйлах эм тогтмол уудаг.")).toBeNull();
   expect(screen.getByText("Бусад эм: Витамин Д")).toBeOnTheScreen();
+  // for blood products (Q35) and a recent stop (Q37), each as recorded
+  // records that disagree (this card's blood type is withheld): the type before the transplant
+  expect(
+    screen.getByText(/^Цусны бүлэг шилжүүлэн суулгахаас өмнө: хүлээн авагч A\+, донор O\+/),
+  ).toBeOnTheScreen();
+  expect(screen.getByText(/^ABO таарахгүй \(ABO-incompatible\).*цусны банкинд/)).toBeOnTheScreen();
+  expect(screen.getByText("CMV: донор эерэг (+) / хүлээн авагч сөрөг (−)")).toBeOnTheScreen();
+  expect(
+    screen.getByText("Такролимус (Програф) — 2026.11.08-ноос эхлэн уугаагүй"),
+  ).toBeOnTheScreen();
   // none recorded is never "no allergies"
   expect(
     screen.getByText("Харшлын мэдээлэл оруулаагүй — харшилгүй гэсэн үг биш."),

@@ -38,7 +38,67 @@ export function translatorFor(locale: Locale) {
 
 const dated = (iso: string) => formatDate(`${iso}T12:00:00Z`);
 
-export type CardFields = { name: boolean; birthDate: boolean };
+const ABO = new Set(["O+", "O-", "A+", "A-", "B+", "B-", "AB+", "AB-"]);
+type Tr = (key: string, values?: Record<string, string | number>) => string;
+type CardTransplant = EmergencyCard["transplants"][number];
+
+/**
+ * For blood products (Q35, physician 2026-11-18): both ABO types, ABO-incompatible, CMV of the
+ * donor and the recipient - each line only when recorded, never guessed.
+ */
+export function transplantBloodLines(
+  tr: CardTransplant,
+  e: Tr,
+  withheld: EmergencyCard["blood_type_withheld"] = null,
+): string[] {
+  const lines: string[] = [];
+  const known = (v: string | null) => (v && ABO.has(v) ? v : null);
+  const recipient = known(tr.recipient_blood_type);
+  const donor = known(tr.donor_blood_type);
+  if (recipient || donor) {
+    // after a stem-cell transplant, or with records that disagree, the recorded type is the
+    // one before the transplant - never the current one (the card withholds that, H17)
+    const before = tr.organ === "hsct" || withheld !== null;
+    lines.push(
+      e(before ? "transplantBloodBefore" : "transplantBlood", {
+        recipient: recipient ?? e("unknownValue"),
+        donor: donor ?? e("unknownValue"),
+      }),
+    );
+  }
+  if (tr.abo_incompatible) lines.push(e("aboIncompatible"));
+  if (tr.cmv_donor || tr.cmv_recipient) {
+    const sero = (v: string | null) => e(`sero.${v ?? "unknown"}`);
+    lines.push(e("cmv", { donor: sero(tr.cmv_donor), recipient: sero(tr.cmv_recipient) }));
+  }
+  return lines;
+}
+
+/** A failed solid organ stays in the body (Q40); for a stem-cell or cornea graft it says less. */
+export function graftKey(tr: CardTransplant): string {
+  return tr.graft_status === "failed" && tr.organ !== "hsct" && tr.organ !== "cornea"
+    ? "graft.failedInBody"
+    : `graft.${tr.graft_status}`;
+}
+
+/** Immunosuppressants stopped in the last 14 days, with the day (Q37); an older card has none. */
+export function recentStopLines(card: EmergencyCard, e: Tr): string[] {
+  return [...(card.recently_stopped ?? [])]
+    .sort((a, b) => b.stopped_on.localeCompare(a.stopped_on)) // the latest stop first
+    .map((m) =>
+      e("recentStop", {
+        name: m.brand ? `${m.name} (${m.brand})` : m.name,
+        date: dated(m.stopped_on),
+      }),
+    );
+}
+
+/**
+ * What a card made from this text carries beyond the medical core. `bloodDetails`: the
+ * recipient's and the donor's ABO and CMV per transplant (Q35) - left off the wallpaper, which
+ * anyone holding the phone sees without unlocking it (security review D5a).
+ */
+export type CardFields = { name: boolean; birthDate: boolean; bloodDetails?: boolean };
 
 export function cardText(
   card: EmergencyCard,
@@ -80,7 +140,10 @@ export function cardText(
           [organ, tr.organ_detail, transplantDateText(tr), since].filter(Boolean).join(" · "),
         ];
         if (tr.graft_status !== "functioning") {
-          lines.push(e("graftLabel", { status: e(`graft.${tr.graft_status}`) }));
+          lines.push(e("graftLabel", { status: e(graftKey(tr)) }));
+        }
+        if (fields.bloodDetails !== false) {
+          lines.push(...transplantBloodLines(tr, e, card.blood_type_withheld));
         }
         lines.push([tr.hospital, tr.city, tr.country].filter(Boolean).join(", "));
         return lines;
@@ -105,6 +168,9 @@ export function cardText(
         .join(", ")}`,
     );
   }
+
+  const stopped = recentStopLines(card, e);
+  if (stopped.length) medLines.push(e("recentlyStopped"), ...stopped);
 
   const allergies = card.allergies.length
     ? card.allergies.map((a) =>

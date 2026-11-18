@@ -15878,6 +15878,38 @@
         ],
         "title": "CardPatient"
       },
+      "CardStoppedMedication": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "brand": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Brand"
+          },
+          "stopped_on": {
+            "type": "string",
+            "format": "date",
+            "title": "Stopped On"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "brand",
+          "stopped_on"
+        ],
+        "title": "CardStoppedMedication",
+        "description": "An immunosuppressant stopped in the last 14 days (Q37): its name and stop day."
+      },
       "CardTransplant": {
         "properties": {
           "organ": {
@@ -15962,6 +15994,61 @@
               }
             ],
             "title": "Follow Up Doctor"
+          },
+          "recipient_blood_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recipient Blood Type"
+          },
+          "donor_blood_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Donor Blood Type"
+          },
+          "abo_incompatible": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Abo Incompatible"
+          },
+          "cmv_donor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cmv Donor"
+          },
+          "cmv_recipient": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cmv Recipient"
           }
         },
         "type": "object",
@@ -15977,7 +16064,12 @@
           "city",
           "hospital",
           "follow_up_center",
-          "follow_up_doctor"
+          "follow_up_doctor",
+          "recipient_blood_type",
+          "donor_blood_type",
+          "abo_incompatible",
+          "cmv_donor",
+          "cmv_recipient"
         ],
         "title": "CardTransplant"
       },
@@ -16975,6 +17067,13 @@
             "type": "array",
             "title": "Other Medications"
           },
+          "recently_stopped": {
+            "items": {
+              "$ref": "#/components/schemas/CardStoppedMedication"
+            },
+            "type": "array",
+            "title": "Recently Stopped"
+          },
           "allergies": {
             "items": {
               "$ref": "#/components/schemas/CardAllergy"
@@ -17003,6 +17102,7 @@
           "transplants",
           "dosed_medications",
           "other_medications",
+          "recently_stopped",
           "allergies",
           "contacts",
           "generated_at"

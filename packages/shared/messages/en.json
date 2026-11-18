@@ -860,8 +860,9 @@
       "graft": {
         "functioning": "Functioning",
         "unknown": "Status not recorded",
-        "failed": "No longer functioning",
-        "removed": "Removed (graftectomy)"
+        "failed": "Not working",
+        "removed": "Removed (graftectomy)",
+        "failedInBody": "Not working (still in the body)"
       },
       "followUp": "Follow-up: {value}",
       "bloodType": "Blood type",
@@ -895,7 +896,7 @@
       "unlocked": {
         "openHint": "Whether the card opens while the app is locked",
         "body": "When on, the app's lock screen shows a “🆘 Emergency” button that opens the emergency card saved on this phone without unlocking the app. It is only reachable after the phone's own lock (PIN, fingerprint) is passed. You can turn it off at any time.",
-        "risk": "Note: anyone who can unlock your phone (a family member, someone who finds a lost phone) will be able to see this card: your name, date of birth, medicines, allergies, transplants and your contacts' phone numbers. The rest of the app stays locked.",
+        "risk": "Note: anyone who can unlock your phone (a family member, someone who finds a lost phone) will be able to see this card: your name, date of birth, medicines (including ones stopped recently), allergies, transplants (your and the donor's blood type, CMV) and your contacts' phone numbers. The rest of the app stays locked.",
         "switch": "Open the emergency card while locked",
         "noProfile": "You can set this once your health profile exists.",
         "failed": "Could not save the setting. Please try again.",
@@ -920,7 +921,7 @@
         "unavailable": "Sharing is not available on this phone."
       },
       "wallpaper": {
-        "warning": "As a lock screen wallpaper, this image shows anyone holding the phone, without unlocking it, your medicines, allergies, transplant and your contacts' names and phone numbers.",
+        "warning": "As a lock screen wallpaper, this image shows anyone holding the phone, without unlocking it, your medicines (including ones stopped recently), allergies, transplant and your contacts' names and phone numbers.",
         "intro": "The image below is exactly what will be saved. Your name and date of birth are left out by default.",
         "showName": "Include my name",
         "showBirthDate": "Include my date of birth",
@@ -950,7 +951,19 @@
         "keepCurrent": "The phone does not update this by itself: change it by hand when your medicines or allergies change. After copying, you may want to clear your clipboard.",
         "inEnglish": "Show the text in English",
         "inMongolian": "Show the text in Mongolian"
-      }
+      },
+      "transplantBlood": "Blood type: recipient {recipient}, donor {donor}",
+      "aboIncompatible": "ABO-incompatible transplant — tell the transplant centre and the blood bank when choosing blood products",
+      "cmv": "CMV: donor {donor} / recipient {recipient}",
+      "sero": {
+        "pos": "positive (+)",
+        "neg": "negative (−)",
+        "unknown": "unknown"
+      },
+      "unknownValue": "unknown",
+      "recentlyStopped": "Immunosuppressants stopped recently (within 14 days)",
+      "recentStop": "{name} — not taken since {date}",
+      "transplantBloodBefore": "Blood type before the transplant: recipient {recipient}, donor {donor} — the current type is to be tested by the lab"
     },
     "notifications": {
       "title": "Notifications",

@@ -78,7 +78,7 @@ export default function EmergencyWallpaperScreen() {
       <Wallpaper
         card={card}
         locale={locale}
-        fields={{ name, birthDate }}
+        fields={{ name, birthDate, bloodDetails: false }}
         onFit={setFits}
         viewRef={view}
         label={w("previewLabel")}

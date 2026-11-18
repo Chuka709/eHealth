@@ -118,6 +118,11 @@ const CARD: EmergencyCard = {
       hospital: "Улсын нэгдүгээр төв эмнэлэг",
       follow_up_center: null,
       follow_up_doctor: null,
+      recipient_blood_type: null,
+      donor_blood_type: null,
+      abo_incompatible: null,
+      cmv_donor: null,
+      cmv_recipient: null,
     },
   ],
   dosed_medications: [
@@ -140,6 +145,7 @@ const CARD: EmergencyCard = {
     },
   ],
   other_medications: [],
+  recently_stopped: [],
   allergies: [],
   contacts: [{ name: "Төв", relation: null, phone: "7000 1234", is_transplant_center: true }],
   generated_at: "2026-11-10T02:00:00Z",
@@ -323,4 +329,43 @@ test("a failed move leaves no source file behind", async () => {
 
 test("the wallet card page forbids every outside load (CSP)", () => {
   expect(walletCardHtml(CARD)).toContain("default-src 'none'");
+});
+
+test("blood details and a recent stop reach the printed text, but never the wallpaper", () => {
+  const card: EmergencyCard = {
+    ...CARD,
+    transplants: CARD.transplants.map((tr) => ({
+      ...tr,
+      recipient_blood_type: "A+",
+      donor_blood_type: "O+",
+      abo_incompatible: true,
+      cmv_donor: "pos",
+      cmv_recipient: "unknown",
+    })),
+    recently_stopped: [
+      { name: "Програф", brand: null, stopped_on: "2026-11-01" },
+      { name: "Сандиммун", brand: null, stopped_on: "2026-11-10" },
+    ],
+  };
+  const printed = lines(cardText(card, "mn"));
+  expect(printed).toContain("Цусны бүлэг: хүлээн авагч A+, донор O+");
+  expect(printed).toContain("CMV: донор эерэг (+) / хүлээн авагч тодорхойгүй");
+  const stops = printed.filter((l) => l.endsWith("эхлэн уугаагүй"));
+  expect(stops).toEqual([
+    "Сандиммун — 2026.11.10-ноос эхлэн уугаагүй", // the latest stop first
+    "Програф — 2026.11.01-ноос эхлэн уугаагүй",
+  ]);
+  const wallpaper = lines(
+    cardText(card, "mn", { name: false, birthDate: false, bloodDetails: false }),
+  );
+  expect(wallpaper.some((l) => l.startsWith("Цусны бүлэг: хүлээн авагч"))).toBe(false);
+  expect(wallpaper.some((l) => l.startsWith("CMV"))).toBe(false);
+  // after a stem-cell transplant the recorded type is the one before it (H17)
+  const hsct = lines(
+    cardText(
+      { ...card, transplants: card.transplants.map((t) => ({ ...t, organ: "hsct" })) },
+      "mn",
+    ),
+  );
+  expect(hsct.some((l) => l.startsWith("Цусны бүлэг шилжүүлэн суулгахаас өмнө:"))).toBe(true);
 });
