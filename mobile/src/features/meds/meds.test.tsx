@@ -227,6 +227,8 @@ test("today's doses come from the dose history; a tap records one through the qu
     ),
   ).toBeOnTheScreen();
   expect(screen.queryByText(/алдсан|мартсан/)).toBeNull();
+  // what the percent counts is said on the summary, with no "enough" (Q27)
+  expect(screen.getByText(/^Хувь гэдэг нь товлосон тунгаас/)).toBeOnTheScreen();
 
   const [taken] = screen.getAllByRole("button", { name: /^Уусан — / });
   await fireEvent.press(taken);
@@ -502,6 +504,36 @@ test("Q24: who logged a dose, and another log of it, show as facts", async () =>
   expect(screen.getByText(/^Мөн тэмдэглэсэн: та, /)).toBeOnTheScreen();
   // a fact, never a judgement
   expect(screen.queryByText(/давхар|хэтэрсэн|аюул/)).toBeNull();
+});
+
+test("Q25: a dose taken well after its time says how far, never 'late'", async () => {
+  const later = new Date(Date.parse(morningDose()) + (2 * 60 + 15) * 60_000).toISOString();
+  posts.push({
+    key: "intake",
+    body: {
+      client_id: "11111111-1111-4111-8111-111111111112",
+      medication_id: MED_ID,
+      scheduled_at: morningDose(),
+      taken_at: later,
+      status: "taken",
+      recorded_by: "you",
+    },
+  });
+  await openMeds();
+  expect(await screen.findByText("Товлосон цагаас 2 цаг 15 минутын дараа уусан")).toBeOnTheScreen();
+  expect(screen.queryByText(/хоцорсон|оройтсон/)).toBeNull();
+});
+
+test("Q25: a whole number of hours reads as hours alone", () => {
+  const messages = jest.requireActual("@labtrack/shared/messages/mn.json") as {
+    app: { meds: { dose: { takenAfter: string } } };
+  };
+  const { createTranslator } = jest.requireActual("use-intl") as typeof import("use-intl");
+  const t = createTranslator({ locale: "mn", messages: { d: messages.app.meds.dose } });
+  expect(t("d.takenAfter", { hours: 2, minutes: 0 })).toBe("Товлосон цагаас 2 цагийн дараа уусан");
+  expect(t("d.takenAfter", { hours: 0, minutes: 45 })).toBe(
+    "Товлосон цагаас 45 минутын дараа уусан",
+  );
 });
 
 test("Q24: logging a dose someone logged meanwhile asks first, then keeps both", async () => {

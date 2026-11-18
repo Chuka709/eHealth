@@ -15,10 +15,11 @@ Drafts, rejected reports and documents are left out (rule 4; documents are files
 
 import json
 import re
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from decimal import Decimal
 from typing import Any, LiteralString
 from uuid import UUID
+from zoneinfo import ZoneInfo
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -91,6 +92,25 @@ async def gather(db: AsyncSession, patient_id: UUID) -> dict[str, Any]:
             raise ExportTooLargeError(key)
         out[key] = rows[0] if key == "profile" and rows else rows
     return out
+
+
+def local_today() -> date:
+    """Today in Ulaanbaatar (the app's day for "taken now")."""
+    return datetime.now(ZoneInfo("Asia/Ulaanbaatar")).date()
+
+
+def last_day(medication: dict[str, Any]) -> date | None:
+    """FHIR `effectivePeriod.end` is the last day taken (an inclusive bound); the app keeps the
+    first day NOT taken (`stopped_on`, Q21, physician 2026-11-18) - one day earlier, never
+    before the start. Without a stop, a course's planned last day (`planned_end_on`, already
+    a last day taken). The JSON export keeps the app's own `stopped_on`: one day later."""
+    stopped = medication["stopped_on"]
+    if not isinstance(stopped, date):
+        planned = medication.get("planned_end_on")
+        return planned if isinstance(planned, date) else None
+    last = stopped - timedelta(days=1)
+    started = medication["started_on"]
+    return max(last, started) if isinstance(started, date) else last
 
 
 def _plain(value: object) -> object:
@@ -181,7 +201,9 @@ def to_fhir(data: dict[str, Any]) -> bytes:
             }
         )
     for m in data["medications"]:
-        status = "completed" if m["stopped_on"] else "active"
+        end = last_day(m)
+        # a stopped medicine, or a course whose planned last day has passed, is not taken now
+        status = "completed" if end is not None and end < local_today() else "active"
         dosage = [{"text": _dose(g)} for g in m["regimens"][-1:]]  # the dose in force last
         entries.append(
             {
@@ -193,9 +215,7 @@ def to_fhir(data: dict[str, Any]) -> bytes:
                         "text": " ".join(v for v in (m["name"], m["strength"], m["form"]) if v)
                     },
                     "effectivePeriod": {
-                        k: _plain(v)
-                        for k, v in (("start", m["started_on"]), ("end", m["stopped_on"]))
-                        if v
+                        k: _plain(v) for k, v in (("start", m["started_on"]), ("end", end)) if v
                     },
                     **({"dosage": dosage} if dosage else {}),
                 }

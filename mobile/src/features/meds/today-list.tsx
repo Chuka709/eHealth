@@ -20,6 +20,9 @@ import {
   useFailedDoses,
 } from "./use-medications";
 
+/** A taken dose this far from its time shows how far (Q25); closer, nothing is said. */
+const OFFSET_SHOWN_MIN = 30;
+
 const formatters = new Map<string, Intl.DateTimeFormat>();
 
 /** "HH:MM" in a zone, 24 h. "en-US" is deliberate: only the digits are read (formatToParts),
@@ -275,6 +278,18 @@ function DoseRow({
           ? t("dose.stateNone")
           : t("dose.upcoming");
   const recorded = dose.state !== null;
+  // how far from its time the dose was taken, as a fact - never "late" (Q23, Q25: no judgement)
+  const offset =
+    dose.state === "taken" && dose.recorded?.takenAt
+      ? Math.round((Date.parse(dose.recorded.takenAt) - dose.slot.scheduledAt) / 60_000)
+      : 0;
+  const offsetText =
+    Math.abs(offset) >= OFFSET_SHOWN_MIN
+      ? t(offset > 0 ? "dose.takenAfter" : "dose.takenBefore", {
+          hours: Math.floor(Math.abs(offset) / 60),
+          minutes: Math.abs(offset) % 60,
+        })
+      : null;
   return (
     <View
       style={[
@@ -318,6 +333,11 @@ function DoseRow({
         >
           {state}
         </Text>
+        {offsetText && (
+          <Text style={[styles.body, { color: p.textMuted }]} testID="dose-offset">
+            {offsetText}
+          </Text>
+        )}
       </View>
       {(dose.recorded?.also ?? []).map((x) => (
         <Text key={`${x.by}@${x.takenAt}`} style={[styles.body, { color: p.text }]}>

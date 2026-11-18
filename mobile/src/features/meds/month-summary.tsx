@@ -65,6 +65,10 @@ export function MonthSummary({ patientId, now }: { patientId: string; now: Date 
         </Text>
       ))}
       <Text style={[styles.note, { color: p.textMuted }]}>{t("note")}</Text>
+      {/* what the percent counts, said on the summary itself (Q27, ESPACOMP implementation) */}
+      {total.percent_taken !== null && (
+        <Text style={[styles.note, { color: p.textMuted }]}>{t("definition")}</Text>
+      )}
     </View>
   );
 }

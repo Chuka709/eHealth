@@ -146,3 +146,26 @@ def test_the_summary_escapes_what_people_typed() -> None:
     assert "<img" not in html
     assert "&lt;img" in html
     assert "<b>X</b>" not in html
+
+
+def test_the_fhir_end_is_the_last_day_taken() -> None:
+    """Q21: the app's stopped_on is the first day not taken; FHIR's end is the last day taken."""
+    from datetime import date  # noqa: PLC0415
+
+    from labtrack.export import last_day  # noqa: PLC0415
+
+    assert last_day({"started_on": date(2026, 1, 1), "stopped_on": date(2026, 3, 1)}) == date(
+        2026, 2, 28
+    )
+    # stopped the day it started: never before the start
+    assert last_day({"started_on": date(2026, 3, 1), "stopped_on": date(2026, 3, 1)}) == date(
+        2026, 3, 1
+    )
+    assert last_day({"started_on": None, "stopped_on": None}) is None
+    # a course without a stop ends on its planned last day (already a last day taken)
+    planned = {
+        "started_on": date(2026, 1, 1),
+        "stopped_on": None,
+        "planned_end_on": date(2026, 2, 1),
+    }
+    assert last_day(planned) == date(2026, 2, 1)

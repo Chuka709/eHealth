@@ -1,6 +1,6 @@
 # Эмнэлзүйн текстийн хяналт (Q12)
 
-_Нийт 983 текст._
+_Нийт 986 текст._
 
 **Зорилго:** шилжүүлэн суулгалтын эмч + лабораторийн эмч апп-ын эмнэлзүйн текстийг нэг дор хянана (эмчийн шийдвэр 2026.11.18, ★). Одоогоор зөвхөн такролимусын CV%-ийн карт хянуулах хүртэл өвчтөнд нуугдсан; бусад текст апп-д харагдаж байгаа тул бетаг нээхээс өмнө хянагдсан байх ёстой (BETA B5).
 
@@ -328,7 +328,7 @@ _Нийт 983 текст._
 
 ## Эм, тун, сануулга, каталоггүй эмийн ангилал
 
-Хянагч: эмч. Түлхүүр: `app.meds` (195).
+Хянагч: эмч. Түлхүүр: `app.meds` (198).
 
 | Түлхүүр | Монгол | English | Санал |
 |---|---|---|---|
@@ -367,6 +367,8 @@ _Нийт 983 текст._
 | `dose.alreadyBodyYou` | Та энэ тунг {time}-д «уусан» гэж аль хэдийн тэмдэглэсэн байна. Дахин тэмдэглэх үү? Шинэ тэмдэглэл тусад нь хадгалагдана. | You already logged this dose as taken at {time}. Log it again? The new entry is kept separately. | |
 | `dose.uncheckedTitle` | Энэ тунг өмнө нь тэмдэглэсэн эсэхийг шалгаж чадсангүй | Could not check whether this dose is already recorded | |
 | `dose.uncheckedBody` | Өөр хүн тэмдэглэсэн байж магадгүй. «Уусан» гэж тэмдэглэх үү? | Someone else may have recorded it. Record it as taken? | |
+| `dose.takenAfter` | Товлосон цагаас {hours, plural, =0 {} other {# цаг }}{minutes} минутын дараа уусан | Taken {hours, plural, =0 {} one {# hour } other {# hours }}{minutes} min after its time | |
+| `dose.takenBefore` | Товлосон цагаас {hours, plural, =0 {} other {# цаг }}{minutes} минутын өмнө уусан | Taken {hours, plural, =0 {} one {# hour } other {# hours }}{minutes} min before its time | |
 | `summary.title` | Энэ сарын тэмдэглэл | This month's records | |
 | `summary.body` | Уусан гэж тэмдэглэсэн: {taken} / товлосон тун: {planned}. Тэмдэглэсэн эсвэл тэмдэглэх хугацаа нь дууссан {due} тунгийн {percent}% нь «уусан». | Recorded as taken: {taken} / planned doses: {planned}. {percent}% of the {due} doses already recorded or whose recording time has ended are "taken". | |
 | `summary.bodyNoPercent` | Уусан гэж тэмдэглэсэн: {taken} / товлосон тун: {planned}. | Recorded as taken: {taken} / planned doses: {planned}. | |
@@ -376,6 +378,7 @@ _Нийт 983 текст._
 | `summary.none` | Энэ сард товлосон тун алга. | No doses planned this month. | |
 | `summary.note` | Зөвхөн таны тэмдэглэлийн тоо. Эмийг апп-д нэмсэн өдрөөс тоолно. | Counts of your records only, from the day each medicine was added to the app. | |
 | `summary.offline` | Сарын тэмдэглэл сүлжээнд холбогдсон үед харагдана. | This month's records show when you are connected. | |
+| `summary.definition` | Хувь гэдэг нь товлосон тунгаас «уусан» гэж тэмдэглэсэн тунгийн хувь (тэмдэглэх хугацаа нь дууссан тунгаас). Сануулгагүй эмийг ч тоолно, шаардлагатай үед уудаг эмийг тоолохгүй. Ямар ч хувийг «хангалттай» гэж үнэлэхгүй — эмчтэйгээ ярилцана уу. | The percent is the share of scheduled doses recorded as taken (of the doses whose time to record has passed). Medicines without reminders count too; as-needed medicines do not. No percent is judged "enough" — talk it over with your doctor. | |
 | `form.search` | Эмийн нэрээр хайх | Search by medicine name | |
 | `form.searchHint` | Монгол, англи эсвэл худалдааны нэрээр | Mongolian, English or brand name | |
 | `form.searchEmpty` | Олдсонгүй. Доор гараар бичиж болно. | Not found. You can type it below. | |
