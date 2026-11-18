@@ -74,6 +74,10 @@ test-api *args:
 fuzz-api:
     $env:UV_CACHE_DIR = "F:/.uv-cache"; $env:UV_TOOL_DIR = "F:/.uv-tools"; cd backend; uv run python scripts/fuzz_api.py
 
+# Load test of the running dev stack with locust (8.3; docs/LOAD_TEST.md); throwaway users
+load-test:
+    $env:UV_CACHE_DIR = "F:/.uv-cache"; $env:UV_TOOL_DIR = "F:/.uv-tools"; cd backend; uv run python scripts/load_test.py
+
 # Persistent demo accounts and records on the dev stack (backend/scripts/seed_demo.py);
 # credentials in .env.demo (git-ignored). `just seed-demo --reset` retires and seeds them anew.
 seed-demo *args:

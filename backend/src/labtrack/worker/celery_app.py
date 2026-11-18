@@ -4,6 +4,7 @@ from typing import Any
 
 from celery import Celery, signals
 from celery.schedules import crontab
+from kombu import Queue  # type: ignore[import-untyped]
 from sqlalchemy.exc import OperationalError
 
 from labtrack.config import get_settings
@@ -11,7 +12,21 @@ from labtrack.logging import configure_logging
 
 _redis = str(get_settings().redis_url)
 
-app = Celery("labtrack", broker=_redis, backend=_redis)
+# The AI worker (B10) keeps to what its Valkey user may touch: its own unacked bookkeeping (the
+# shared one would let it re-queue tasks onto other queues), no results, no remote control, and
+# its queue declared by the producer only (it may not change the queue's routing).
+_AI_ONLY = get_settings().ai_worker_isolation
+_TRANSPORT: dict[str, Any] = {"priority_steps": [0]}
+if _AI_ONLY:
+    _TRANSPORT |= {
+        "unacked_key": "ai-unacked",
+        "unacked_index_key": "ai-unacked_index",
+        "unacked_mutex_key": "ai-unacked_mutex",
+    }
+
+app = Celery("labtrack", broker=_redis, backend=None if _AI_ONLY else _redis)
+if _AI_ONLY:
+    app.conf.task_queues = [Queue("ai", routing_key="ai", no_declare=True)]
 app.conf.update(
     task_serializer="json",
     accept_content=["json"],
@@ -19,6 +34,11 @@ app.conf.update(
     result_expires=3600,
     task_acks_late=True,
     worker_prefetch_multiplier=1,
+    # one list per queue (no per-priority lists): the AI worker's Valkey user may touch the
+    # "ai" list only (B10); no task here uses message priorities. Every process alike:
+    # producers and consumers must agree on the list names.
+    broker_transport_options=_TRANSPORT,
+    worker_enable_remote_control=not _AI_ONLY,
     task_default_queue="default",
     timezone="UTC",
     worker_hijack_root_logger=False,
@@ -187,7 +207,7 @@ def extract_document(document_id: str, user_id: str) -> str:
 
 
 @app.task(  # type: ignore[untyped-decorator]
-    name="labtrack.ai.read", soft_time_limit=150, time_limit=180
+    name="labtrack.ai.read", soft_time_limit=150, time_limit=180, ignore_result=True
 )
 def ai_read(document_id: str) -> str:
     """The document id only (rule 3). On the AI worker: de-identified text in, the answer out

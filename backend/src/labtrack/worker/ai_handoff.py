@@ -74,7 +74,7 @@ class ValkeyHandoff:
     def send(self, document_id: UUID, user_id: UUID) -> None:
         from labtrack.worker.celery_app import app  # noqa: PLC0415
 
-        app.send_task("labtrack.ai.read", args=[str(document_id)])
+        app.send_task("labtrack.ai.read", args=[str(document_id)], ignore_result=True)
         # saved by the default worker itself, once the answer is there (it polls)
         app.send_task(
             "labtrack.documents.save_ai", args=[str(document_id), str(user_id)], countdown=15

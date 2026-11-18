@@ -23,6 +23,10 @@ class Settings(BaseSettings):
     # Runtime role: labtrack_app (RLS enforced, no access to secret columns).
     database_url: PostgresDsn
     redis_url: RedisDsn = RedisDsn("redis://valkey:6379/0")
+    # the AI worker (B10): no remote control, no task results, its own unacked keys, its queue
+    # not declared by it - all its Valkey user allows (infra/valkey/start.sh); it hands its
+    # answer back through ai-output:*
+    ai_worker_isolation: bool = False
     sentry_dsn: SecretStr | None = None
     api_prefix: str = "/api/v1"
 

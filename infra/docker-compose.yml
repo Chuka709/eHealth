@@ -57,9 +57,14 @@ services:
   # Valkey (BSD-3) instead of Redis 7.4+/8 (RSAL/SSPL/AGPL) - project licence policy.
   valkey:
     image: valkey/valkey:8-alpine
-    command: ["sh", "-c", "exec valkey-server --save '' --appendonly no --requirepass \"$$VALKEY_PASSWORD\""]
+    # two ACL users: default, and "ai" for the AI worker only (B10; infra/valkey/start.sh)
+    command: ["sh", "/start.sh"]
     environment:
       VALKEY_PASSWORD: ${VALKEY_PASSWORD:?run just init}
+      VALKEY_AI_PASSWORD: ${VALKEY_AI_PASSWORD:?run just init}
+    volumes:
+      - ./valkey/start.sh:/start.sh:ro
+    tmpfs: ["/tmp:size=1m"]
     networks: [backend, ai-handoff]
     healthcheck:
       test: ["CMD-SHELL", "REDISCLI_AUTH=\"$$VALKEY_PASSWORD\" valkey-cli ping | grep -q PONG"]
@@ -210,18 +215,32 @@ services:
     environment:
       ENVIRONMENT: ${ENVIRONMENT:-dev}
       DATABASE_URL: postgresql+asyncpg://none:none@unused.invalid:5432/none
-      REDIS_URL: redis://:${VALKEY_PASSWORD:?run just init}@valkey:6379/0
+      # its own ACL user: its keys and the "ai" queue only (B10, infra/valkey/start.sh)
+      REDIS_URL: redis://ai:${VALKEY_AI_PASSWORD:?run just init}@valkey:6379/0
+      # no remote control, no task results, its own unacked keys, the queue not declared by it
+      # (settings.ai_worker_isolation; what its Valkey user allows - infra/valkey/start.sh)
+      AI_WORKER_ISOLATION: "true"
       SENTRY_DSN: ${SENTRY_DSN:-}
       CLAMD_HOST: ${CLAMD_HOST:-}  # only so the settings' production check passes; never used
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       EXTRACTION_MODEL: ${EXTRACTION_MODEL:-}
+      # out only through the proxy, which allows api.anthropic.com alone (B10)
+      HTTPS_PROXY: http://ai-proxy:8888
+      NO_PROXY: valkey
     volumes:
       - ../backend/src:/app/src:ro
     command: ["celery", "-A", "labtrack.worker.celery_app", "worker", "--loglevel=INFO", "--concurrency=2",
-              "--queues=ai", "--hostname=ai@%h"]
-    networks: [ai-handoff, egress]
+              "--queues=ai", "--hostname=ai@%h", "--without-gossip", "--without-mingle",
+              "--without-heartbeat"]
+    networks: [ai-handoff, ai-egress]
     depends_on:
       valkey: { condition: service_healthy }
+      ai-proxy: { condition: service_started }
+
+  # The AI worker's only way out (B10): CONNECT to api.anthropic.com:443, nothing else.
+  ai-proxy:
+    build: ./ai-proxy
+    networks: [ai-egress, egress]
 
   # Schedules the daily maintenance task (runs on maint-worker) and push delivery (push-worker).
   # One instance only.
@@ -361,6 +380,9 @@ networks:
     internal: true
   # the AI worker and Valkey only (4.5)
   ai-handoff:
+    internal: true
+  # the AI worker and its egress proxy only (B10)
+  ai-egress:
     internal: true
   egress: {}
 
