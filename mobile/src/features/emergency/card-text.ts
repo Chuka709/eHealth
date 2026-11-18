@@ -82,7 +82,7 @@ export function graftKey(tr: CardTransplant): string {
 }
 
 /**
- * The steroid emergency card (Q36): the warning, then whose mark it is and when. An older
+ * The steroid emergency card (Q36): its title, the warning, then whose mark it is and when. An older
  * saved card has none.
  */
 export function steroidLines(
@@ -92,6 +92,7 @@ export function steroidLines(
   const mark = card.steroid_card;
   if (!mark) return [];
   return [
+    e("steroidCardTitle"),
     e("steroidCard"),
     e(mark.by_doctor ? "steroidCardByDoctor" : "steroidCardBySelf", {
       date: dated(mark.marked_on),

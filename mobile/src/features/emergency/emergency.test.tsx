@@ -238,7 +238,10 @@ test("a confirmed no known allergies and the steroid card mark are shown as reco
     screen.getByText("Мэдэгдэж буй харшилгүй (өөрөө баталсан, 2026.11.18)."),
   ).toBeOnTheScreen();
   expect(screen.queryByText(/Харшлын мэдээлэл оруулаагүй/)).toBeNull();
-  expect(screen.getByText(/Стероидын яаралтай карт: .*бөөрний дээд булчирхай/)).toBeOnTheScreen();
+  expect(screen.getByText("⚠ Стероидын яаралтай карт")).toBeOnTheScreen();
+  expect(
+    screen.getByText(/^Стероидын эмчилгээнээс хамааралтай — бөөрний дээд булчирхай/),
+  ).toBeOnTheScreen();
   expect(screen.getByText("Эмч тэмдэглэсэн (2026.11.17).")).toBeOnTheScreen();
 });
 

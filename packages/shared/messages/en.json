@@ -857,7 +857,8 @@
         "clearBody": "The card will show “No allergy information entered”.",
         "cancel": "Cancel",
         "rowHint": "No known allergies",
-        "hintReadOnly": "No allergy recorded does not mean no allergies."
+        "hintReadOnly": "No allergy recorded does not mean no allergies.",
+        "confirmAction": "Confirm"
       }
     },
     "emergency": {
@@ -978,7 +979,8 @@
       "recentStop": "{name} — not taken since {date}",
       "transplantBloodBefore": "Blood type before the transplant: recipient {recipient}, donor {donor} — the current type is to be tested by the lab",
       "noKnownAllergy": "No known allergies (self-reported, confirmed {date}).",
-      "steroidCard": "Steroid emergency card: steroid dependent — at risk of adrenal insufficiency (adrenal crisis). Steroids must not be stopped suddenly. In serious illness, injury, surgery, vomiting or diarrhoea, emergency medical care is needed without delay.",
+      "steroidCardTitle": "⚠ Steroid emergency card",
+      "steroidCard": "Steroid dependent — at risk of adrenal insufficiency (adrenal crisis). Steroids must not be stopped suddenly. In serious illness, injury, surgery, vomiting or diarrhoea, emergency medical care is needed without delay.",
       "steroidCardByDoctor": "Marked by a doctor ({date}).",
       "steroidCardBySelf": "Marked by the patient on their doctor's advice ({date})."
     },
@@ -1697,7 +1699,8 @@
         "clearTitle": "Remove the mark?",
         "clearBody": "The steroid warning is removed from the emergency card.",
         "cancel": "Cancel",
-        "markedByFormerDoctor": "Marked by a doctor ({date})."
+        "markedByFormerDoctor": "Marked by a doctor ({date}).",
+        "markAction": "Mark"
       }
     },
     "summaryExport": {

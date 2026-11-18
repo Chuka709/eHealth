@@ -136,7 +136,7 @@ function SteroidCardSection({
     Alert.alert(on ? t("markTitle") : t("clearTitle"), on ? t("markBody") : t("clearBody"), [
       { text: t("cancel"), style: "cancel" },
       {
-        text: on ? t("mark") : t("clear"),
+        text: on ? t("markAction") : t("clear"),
         style: on ? "default" : "destructive",
         onPress: () => set.mutate(on),
       },

@@ -52,7 +52,7 @@ function NoKnownAllergies() {
       [
         { text: t("cancel"), style: "cancel" },
         {
-          text: confirm ? t("confirm") : t("clear"),
+          text: confirm ? t("confirmAction") : t("clear"),
           style: confirm ? "default" : "destructive",
           onPress: () => set.mutate(confirm),
         },

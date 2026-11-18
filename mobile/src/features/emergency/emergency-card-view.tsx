@@ -104,10 +104,10 @@ export function EmergencyCardView({ card, copy }: { card: EmergencyCard; copy: C
               accessibilityRole={i === 0 ? "alert" : undefined}
               style={[
                 i === 0 ? styles.lead : styles.line,
-                { color: i === 0 ? p.text : p.textMuted },
+                { color: i === 2 ? p.textMuted : p.text },
               ]}
             >
-              {i === 0 ? `⚠ ${text}` : text}
+              {text}
             </Text>
           ))}
         </View>
