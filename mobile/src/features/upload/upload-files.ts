@@ -21,12 +21,14 @@ export const EXTENSIONS: Record<string, string> = {
 };
 
 /** A private copy named by the upload's id (the original name is never kept). */
-export function copyIn(sourceUri: string, id: string, mime: string): string {
+export async function copyIn(sourceUri: string, id: string, mime: string): Promise<string> {
   const folder = uploadFolder();
   if (!folder.exists) folder.create({ intermediates: true });
   const target = new File(folder, `${id}.${EXTENSIONS[mime] ?? "bin"}`);
   if (target.exists) target.delete();
-  new File(sourceUri).copy(target);
+  // asynchronous in SDK 58: not awaited, the picker's copy was removed mid-copy and nothing
+  // was queued ("file_missing" - found on the emulator, 8.5)
+  await new File(sourceUri).copy(target);
   return target.uri;
 }
 

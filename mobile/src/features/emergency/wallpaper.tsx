@@ -105,7 +105,7 @@ export async function shareWallpaper(view: WallpaperView): Promise<ShareResult> 
     width: 1170 / ratio,
     height: 2532 / ratio,
   });
-  const file = writeForSharing(ticket, decodeBase64(base64), "emergency-wallpaper.png");
+  const file = await writeForSharing(ticket, decodeBase64(base64), "emergency-wallpaper.png");
   return shareFile(ticket, file, "image/png");
 }
 

@@ -11,6 +11,7 @@ import {
   MAX_PENDING_UPLOADS,
   pendingUploads,
   type SendUpload,
+  tidyUploadFolder,
 } from "./upload-queue";
 
 const mockStore = new Map<string, string>();
@@ -61,7 +62,8 @@ jest.mock("expo-file-system", () => {
     delete() {
       mockFiles.delete(this.uri);
     }
-    copy(target: MockFile) {
+    async copy(target: MockFile) {
+      await new Promise((done) => setTimeout(done, 5)); // asynchronous, as in SDK 58
       if (!mockFiles.has(this.uri)) throw new Error("no source");
       mockFiles.add(target.uri);
     }
@@ -108,6 +110,28 @@ test("a picked file is copied into the app's own folder, then sent and removed",
   expect(send).toHaveBeenCalledWith(expect.objectContaining({ id: id(1), patientId: P }));
   expect(await pendingUploads()).toEqual([]);
   expect(mockFiles.has(waiting.uri)).toBe(false); // nothing of it left on the phone
+});
+
+test("tidying while a file is being added never removes the new copy (8.5)", async () => {
+  // the app comes back from the picker: a send (with its tidy) starts as the file is added
+  const source = "file:///data/user/0/pkg/cache/scan-9.jpg";
+  mockFiles.add(source);
+  const tidying = tidyUploadFolder(); // reads the list before the new file is in it
+  const adding = enqueueUpload({ uri: source, mime: "image/jpeg" }, P, id(9), currentEpoch());
+  await Promise.all([tidying, adding]);
+  await tidyUploadFolder(); // and a later one too
+  const [waiting] = await pendingUploads();
+  expect(mockFiles.has(waiting.uri)).toBe(true);
+});
+
+test("the copy is whole before the picker's own file is removed (8.5)", async () => {
+  // queueFiles removes the picker's copy as soon as the file is queued
+  const source = "file:///data/user/0/pkg/cache/DocumentPicker/x.pdf";
+  mockFiles.add(source);
+  await enqueueUpload({ uri: source, mime: "application/pdf" }, P, id(8), currentEpoch());
+  mockFiles.delete(source);
+  const [waiting] = await pendingUploads();
+  expect(mockFiles.has(waiting.uri)).toBe(true);
 });
 
 test("offline or a server error keeps the file for later, in order", async () => {

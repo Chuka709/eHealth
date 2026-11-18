@@ -62,7 +62,7 @@ export function useExportFile(patientId: string) {
       const ticket = startExport();
       const bytes = await fetchBytes(input.kind, patientId, input.months, input.lang);
       const { name, mime } = FILES[input.kind];
-      const file = writeForSharing(ticket, new Uint8Array(bytes), name);
+      const file = await writeForSharing(ticket, new Uint8Array(bytes), name);
       return shareFile(ticket, file, mime);
     },
   });

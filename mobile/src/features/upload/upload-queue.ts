@@ -57,7 +57,29 @@ const sessionIs = (epoch: number) =>
  * Queue a picked file for a profile: copied first, so the source (a scan in the cache, a file
  * from another app) may go away. "full" when too many wait (the user goes online first).
  */
-export async function enqueueUpload(
+/**
+ * Adding a file and tidying the folder take turns (8.5, found on the emulator): the app coming
+ * back from the picker or share sheet starts a send, whose tidy read the list before the new
+ * file was in it and then deleted the new copy as a stray ("file_missing", nothing sent).
+ */
+let folderLock: Promise<unknown> = Promise.resolve();
+
+function withFolderLock<T>(work: () => Promise<T>): Promise<T> {
+  const next = folderLock.then(work, work);
+  folderLock = next.catch(() => undefined);
+  return next;
+}
+
+export function enqueueUpload(
+  file: { uri: string; mime: string },
+  patientId: string,
+  id: string,
+  epoch: number,
+): Promise<"queued" | "full"> {
+  return withFolderLock(() => addToQueue(file, patientId, id, epoch));
+}
+
+async function addToQueue(
   file: { uri: string; mime: string },
   patientId: string,
   id: string,
@@ -67,7 +89,7 @@ export async function enqueueUpload(
   if (!sessionIs(epoch)) throw new Error("session changed");
   const pending = read<PendingUpload>(store.getString(PENDING));
   if (pending.length >= MAX_PENDING_UPLOADS) return "full";
-  const uri = copyIn(file.uri, id, file.mime);
+  const uri = await copyIn(file.uri, id, file.mime);
   if (!sessionIs(epoch)) {
     removeFile(uri);
     throw new Error("session changed");
@@ -159,7 +181,9 @@ function move(store: Store, upload: PendingUpload, status: number, code: string 
 }
 
 /** Files nothing waits for any more are removed (review M2); run before each flush. */
-export async function tidyUploadFolder(): Promise<void> {
-  const keep = new Set((await pendingUploads()).map((u) => u.uri));
-  removeStrays(keep);
+export function tidyUploadFolder(): Promise<void> {
+  return withFolderLock(async () => {
+    const keep = new Set((await pendingUploads()).map((u) => u.uri));
+    removeStrays(keep);
+  });
 }

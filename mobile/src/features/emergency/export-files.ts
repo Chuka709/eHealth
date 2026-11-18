@@ -69,16 +69,16 @@ export async function keepForSharing(
 }
 
 /** Writes bytes straight into the export folder (no temporary file elsewhere). */
-export function writeForSharing(
+export async function writeForSharing(
   ticket: ExportTicket,
   bytes: Uint8Array,
   name: string,
-): File | null {
+): Promise<File | null> {
   if (!stillValid(ticket)) return null;
   const file = new File(freshFolder(), name);
   file.create({ overwrite: true });
-  file.write(bytes);
-  return file;
+  await file.write(bytes); // asynchronous in SDK 58: the share sheet gets the whole file
+  return stillValid(ticket) ? file : null;
 }
 
 /** "dropped": the session ended meanwhile (nothing to say); "unavailable": no share sheet. */
