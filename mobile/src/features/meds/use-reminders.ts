@@ -16,6 +16,7 @@ import {
   recordsKey,
   useRecords,
 } from "@/features/health/use-health";
+import { isLocked, useLocked } from "@/features/lock/lock-store";
 import { pushData, pushRoute } from "@/features/notices/push-route";
 import { refreshNotices } from "@/features/notices/use-notifications";
 import { setActiveProfile } from "@/features/records/active-profile";
@@ -75,6 +76,9 @@ function sessionGuard(): () => boolean {
  * request during a sync runs once more after it, from the latest data. Asks for the
  * notification permission once there is something to remind of.
  */
+/** read again on return to the foreground when older than this (the queries' staleTime) */
+const RESUME_STALE_MS = 30_000;
+
 export function useReminderSync(): void {
   const t = useTranslations("app.meds");
   const patients = usePatients();
@@ -212,10 +216,32 @@ export function useReminderSync(): void {
     runRef.current();
   }, [meds.data, zones.data, intakes.data, pending.data, appointments.data, own?.id]);
 
+  // back in the foreground: the schedule is read again where it may be out of date - a medicine
+  // added on the web or another phone was shown on Home but never reminded (real phone,
+  // 2026.11.19); a changed list re-plans through the effect above
+  const refreshRef = useRef<() => void>(() => undefined);
+  refreshRef.current = () => {
+    // by age, not `isStale`: that is as of the last render, and nothing renders in the background
+    for (const q of [meds, zones, intakes, appointments]) {
+      if (Date.now() - q.dataUpdatedAt > RESUME_STALE_MS) void q.refetch();
+    }
+  };
+
+  const locked = useLocked();
+  useEffect(() => {
+    if (!locked) refreshRef.current();
+  }, [locked]);
+
   useEffect(() => {
     const off = onReminderSync(() => runRef.current());
     const sub = AppState.addEventListener("change", (state) => {
-      if (state === "active") runRef.current();
+      if (state !== "active") return;
+      runRef.current();
+      // after every other listener: back after a long while locks the app first, and nothing
+      // is requested before it is unlocked (lock test) - the unlock refreshes instead
+      setTimeout(() => {
+        if (!isLocked()) refreshRef.current();
+      }, 0);
     });
     return () => {
       off();

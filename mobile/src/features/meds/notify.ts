@@ -112,8 +112,10 @@ function content(n: Pick<Planned, "title" | "body" | "data" | "kind">) {
  * Make the OS schedule equal to `planned`: ours not planned any more are cancelled, new ones
  * scheduled; unchanged ones are left (same id = same time and content), and one already due
  * (a late alarm) is kept but never scheduled anew. A "10 мин дараа" stays only while every
- * dose it lists is still planned and unrecorded (`keepSnooze`). `valid()` is checked before
- * every OS call: a sign-out meanwhile stops the sync, and anything it scheduled is removed.
+ * dose it lists is still planned and unrecorded (`keepSnooze`). New ones go first, soonest
+ * first, a few calls at a time; cancelling what is no longer planned comes last. `valid()` is
+ * checked between batches: a sign-out meanwhile stops the sync, and anything it scheduled is
+ * removed.
  */
 export async function syncReminders(
   planned: readonly Planned[],
@@ -126,55 +128,107 @@ export async function syncReminders(
   renewAll = false,
 ): Promise<void> {
   const existing = await Notifications.getAllScheduledNotificationsAsync();
+  if (!valid()) return;
   const wanted = new Map(planned.map((n) => [n.id, n]));
   const scheduled: string[] = [];
-  const stop = async () => {
-    for (const id of scheduled) await Notifications.cancelScheduledNotificationAsync(id);
-  };
+  const stop = () =>
+    inBatches(scheduled, (id) => Notifications.cancelScheduledNotificationAsync(id));
   // minutes of late alarms (still pending after their time) cancelled for a new content
   const lateReplaced = new Set<number>();
   const renewed = new Set<string>();
+  const lateObsolete: string[] = [];
+  const obsolete: string[] = [];
   const now = Date.now();
   for (const n of existing) {
-    if (!valid()) return stop();
     if (!OURS.test(n.identifier)) continue;
     const keep = n.identifier.startsWith("snooze.")
       ? keepSnooze(doseData(n.content.data)?.d ?? [], n.content.body ?? "")
       : wanted.has(n.identifier) || keepUnplanned(n.identifier);
     const plan = wanted.get(n.identifier);
     // renewed: a planned one is set again under the new permission. A due one fires at once:
-    // Android drops exact alarms when the permission is taken away, and a held-back inexact
-    // one is late already (H18)
-    const renew = renewAll && keep && plan !== undefined;
-    if (keep && !renew) continue;
-    await Notifications.cancelScheduledNotificationAsync(n.identifier);
-    if (renew) {
+    // Android drops exact alarms when the permission is taken away (and on a force stop), and
+    // a held-back inexact one is late already (H18). Scheduled again under the same id, which
+    // replaces the OS alarm - no cancel first: on MIUI each call can take 2-22 s, and cancelling
+    // ~45 reminders before setting any left no reminder for minutes (real phone, 2026.11.19)
+    if (renewAll && keep && plan !== undefined) {
       renewed.add(n.identifier);
       if (plan.due) lateReplaced.add(plan.at);
       continue;
     }
+    if (keep) continue;
     const at = Number(n.identifier.match(/^dose\.(\d+)\./)?.[1]);
-    if (Number.isFinite(at) && at <= now) lateReplaced.add(at);
+    if (Number.isFinite(at) && at <= now) {
+      lateReplaced.add(at);
+      lateObsolete.push(n.identifier);
+    } else obsolete.push(n.identifier);
   }
+  const cancel = (id: string) => Notifications.cancelScheduledNotificationAsync(id);
+  // a late alarm whose content changed goes before its replacement (never both shown)
+  await inBatches(lateObsolete, cancel);
+  if (!valid()) return;
+  // iOS keeps only the 64 soonest pending: no room to set the new ones first, or later days and
+  // the "renew" notice would be dropped (medical review H-1). Its calls are quick anyway.
+  let rest = obsolete;
+  if (Platform.OS === "ios") {
+    await inBatches(obsolete, cancel);
+    rest = [];
+    if (!valid()) return;
+  }
+  // a future minute whose content changed (a dose changed, one of a shared minute recorded
+  // early): its old reminder goes as soon as the new one is set - never two lists for one dose
+  // time (medical review M-1)
+  const oldOfMinute = new Map<number, string[]>();
+  for (const id of rest) {
+    const at = Number(id.match(/^dose\.(\d+)\./)?.[1]);
+    if (Number.isFinite(at)) oldOfMinute.set(at, [...(oldOfMinute.get(at) ?? []), id]);
+  }
+  const leftover = new Set(rest);
   const have = new Set(existing.map((n) => n.identifier).filter((id) => !renewed.has(id)));
-  for (const n of planned) {
-    if (have.has(n.id)) continue;
+  // the soonest first: the next dose is reminded again before the rest of the week is set
+  const toSchedule = planned
+    .filter((n) => !have.has(n.id))
     // a due one is scheduled only to replace a late alarm whose content changed (one dose of
     // a shared minute recorded meanwhile): the rest of that minute is still reminded, now
-    if (n.due && !lateReplaced.has(n.at)) continue;
+    .filter((n) => !n.due || lateReplaced.has(n.at))
+    .sort((a, b) => a.at - b.at);
+  for (let i = 0; i < toSchedule.length; i += BATCH) {
     if (!valid()) return stop();
-    await Notifications.scheduleNotificationAsync({
-      identifier: n.id,
-      content: content(n),
-      trigger: {
-        type: Notifications.SchedulableTriggerInputTypes.DATE,
-        date: n.due ? now + 2_000 : n.at,
-        channelId: CHANNEL,
-      },
-    });
-    scheduled.push(n.id);
+    const batch = toSchedule.slice(i, i + BATCH);
+    // one refused call does not stop the rest; what was set is known (a sign-out removes it -
+    // medical review M-2); a failed one is tried again by the next sync
+    const results = await Promise.allSettled(
+      batch.map((n) =>
+        Notifications.scheduleNotificationAsync({
+          identifier: n.id,
+          content: content(n),
+          trigger: {
+            type: Notifications.SchedulableTriggerInputTypes.DATE,
+            date: n.due ? now + 2_000 : n.at,
+            channelId: CHANNEL,
+          },
+        }),
+      ),
+    );
+    const set = batch.filter((_, k) => results[k]?.status === "fulfilled");
+    scheduled.push(...set.map((n) => n.id));
+    const replaced = set.flatMap((n) => oldOfMinute.get(n.at) ?? []);
+    await inBatches(replaced, cancel);
+    for (const id of replaced) leftover.delete(id);
   }
+  if (!valid()) return stop();
+  // the rest of what is no longer planned goes last: a reminder too many for a moment, never
+  // one too few
+  await inBatches([...leftover], cancel);
   if (!valid()) await stop();
+}
+
+/** OS calls a few at a time: each waits on the system (seconds on some phones), not on us. */
+const BATCH = 6;
+
+async function inBatches(ids: readonly string[], call: (id: string) => Promise<unknown>) {
+  for (let i = 0; i < ids.length; i += BATCH) {
+    await Promise.allSettled(ids.slice(i, i + BATCH).map(call));
+  }
 }
 
 /** "10 мин дараа": the same reminder once more, ten minutes from now. */

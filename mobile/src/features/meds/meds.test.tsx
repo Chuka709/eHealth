@@ -1,5 +1,5 @@
 import { fireEvent, renderRouter, screen, waitFor } from "expo-router/testing-library";
-import { Alert } from "react-native";
+import { Alert, AppState, type AppStateStatus } from "react-native";
 
 import { clearAccessToken, setStatus } from "@/features/auth/session-store";
 import { resetDeviceAlarmReport } from "@/features/meds/use-device-alarms";
@@ -37,6 +37,18 @@ jest.mock("expo-local-authentication", () => ({
 
 type Handler = (request: Request) => Promise<Response> | Response;
 const mockFetch = jest.fn<Promise<Response>, [Request]>();
+// the phone's maker (expo-device): Xiaomi phones get the autostart hint (R4)
+let mockManufacturer: string | null = null;
+jest.mock("expo-device", () => ({
+  get manufacturer() {
+    return mockManufacturer;
+  },
+  brand: null,
+  osName: "Android",
+  modelName: "test",
+  osBuildId: "V14.0.5.0",
+  deviceName: "test",
+}));
 const json = (status: number, body: unknown) =>
   new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
 
@@ -205,6 +217,16 @@ beforeEach(() => {
 
 afterEach(() => queryClient.clear());
 
+// Other libraries subscribe to AppState too (TanStack's focus manager): every listener is told.
+const appStateListeners = new Set<(state: AppStateStatus) => void>();
+jest.spyOn(AppState, "addEventListener").mockImplementation((_type, listener) => {
+  const fn = listener as (state: AppStateStatus) => void;
+  appStateListeners.add(fn);
+  return { remove: () => appStateListeners.delete(fn) } as ReturnType<
+    typeof AppState.addEventListener
+  >;
+});
+
 async function openMeds() {
   await renderRouter("./src/app", { initialUrl: "/" });
   await fireEvent.press(await screen.findByRole("button", { name: /^Эм/ }));
@@ -372,6 +394,40 @@ test("reminders are scheduled on the phone, without the medicine's name (H10)", 
   expect(all.some((n) => n.identifier.startsWith("renew."))).toBe(true);
 });
 
+test("a medicine added elsewhere is reminded once the app comes back (real phone, 2026.11.19)", async () => {
+  notifications.__scheduled.clear();
+  await openMeds();
+  await waitFor(() => expect(notifications.__scheduled.size).toBeGreaterThan(0));
+  const noonOf = () =>
+    [...notifications.__scheduled.values()].filter((n) => n.content.title?.startsWith("12:00"));
+  expect(noonOf()).toEqual([]);
+  // added on the web meanwhile; the lists the phone holds are older than they may stay
+  const noon = regimen("66666666-6666-4666-8666-666666666666", "2026-01-01", [
+    { at: "12:00", amount: "1" },
+  ]);
+  medications = [
+    TACROLIMUS,
+    {
+      ...TACROLIMUS,
+      id: "55555555-5555-4555-8555-555555555555",
+      catalog_code: null,
+      name: "Шинэ эм",
+      current_regimen: noon,
+      regimens: [noon],
+    },
+  ];
+  const now = Date.now();
+  const clock = jest.spyOn(Date, "now").mockReturnValue(now + 60_000);
+  const medCalls = () =>
+    mockFetch.mock.calls.filter(([r]) => String((r as Request).url ?? r).endsWith("/medications"))
+      .length;
+  const before = medCalls();
+  for (const fn of appStateListeners) fn("active");
+  await waitFor(() => expect(medCalls()).toBeGreaterThan(before));
+  await waitFor(() => expect(noonOf().length).toBeGreaterThan(0));
+  clock.mockRestore();
+});
+
 test("'Уусан' on a reminder records that dose", async () => {
   await openMeds();
   await screen.findByTestId(`dose-${MED_ID}-08:00`);
@@ -475,6 +531,32 @@ test("Android without exact alarms: Medicines says reminders may be late, Home d
   } finally {
     rn.Platform.OS = os;
     mocked.getExactAlarmPermissionsAsync.mockResolvedValue({ granted: true, status: "granted" });
+  }
+});
+
+test("Xiaomi: Medicines asks for background autostart until the user says it is on (R4)", async () => {
+  const rn = jest.requireActual("react-native") as {
+    Platform: { OS: string };
+    Linking: { sendIntent: (action: string) => Promise<void> };
+  };
+  const os = rn.Platform.OS;
+  rn.Platform.OS = "android";
+  mockManufacturer = "Xiaomi";
+  const sendIntent = jest.spyOn(rn.Linking, "sendIntent").mockResolvedValue(undefined);
+  try {
+    await renderRouter("./src/app", { initialUrl: "/" });
+    await screen.findByTestId("home-screen");
+    expect(screen.queryByText(/апп-аа нээх хүртэл/)).toBeNull(); // Medicines only
+    await fireEvent.press(await screen.findByRole("button", { name: /^Эм/ }));
+    expect(await screen.findByText(/апп-аа нээх хүртэл/)).toBeOnTheScreen();
+    await fireEvent.press(screen.getByRole("button", { name: "Background autostart нээх" }));
+    expect(sendIntent).toHaveBeenCalledWith("miui.intent.action.OP_AUTO_START");
+    await fireEvent.press(screen.getByText("Асаасан, дахин сануулахгүй"));
+    await waitFor(() => expect(screen.queryByText(/апп-аа нээх хүртэл/)).toBeNull());
+  } finally {
+    rn.Platform.OS = os;
+    mockManufacturer = null;
+    sendIntent.mockRestore();
   }
 });
 

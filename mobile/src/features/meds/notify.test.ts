@@ -91,6 +91,126 @@ test("a snooze is cancelled once its dose is recorded (medical review 2.5c H-2)"
   expect(os.has("snooze.dose.1.a")).toBe(false);
 });
 
+test("the soonest reminders are set first, and nothing is cancelled before they are", async () => {
+  const was = Platform.OS;
+  Platform.OS = "android"; // Android: new ones first (iOS has its own order)
+  const schedule = jest.mocked(Notifications.scheduleNotificationAsync).getMockImplementation();
+  const cancel = jest
+    .mocked(Notifications.cancelScheduledNotificationAsync)
+    .getMockImplementation();
+  try {
+    const at = Date.now() + 3_600_000;
+    os.set(`dose.${at + 1}.old`, {
+      identifier: `dose.${at + 1}.old`,
+      content: {},
+      trigger: { date: at + 1 },
+    });
+    const order: string[] = [];
+    const cancel = jest
+      .mocked(Notifications.cancelScheduledNotificationAsync)
+      .getMockImplementation();
+    jest.mocked(Notifications.scheduleNotificationAsync).mockImplementation(async (r) => {
+      order.push(`+${r.identifier ?? ""}`);
+      os.set(r.identifier ?? "", {
+        identifier: r.identifier ?? "",
+        content: {},
+        trigger: { date: 0 },
+      });
+      return r.identifier ?? "";
+    });
+    jest.mocked(Notifications.cancelScheduledNotificationAsync).mockImplementation(async (id) => {
+      order.push(`-${id}`);
+      os.delete(id);
+    });
+    const later = dose(`dose.${at + 7_200_000}.l`, at + 7_200_000, [B]);
+    await syncReminders([later, dose(`dose.${at}.s`, at, [A])], keepAll, always);
+    expect(order).toEqual([`+dose.${at}.s`, `+dose.${at + 7_200_000}.l`, `-dose.${at + 1}.old`]);
+    jest.mocked(Notifications.cancelScheduledNotificationAsync).mockImplementation(cancel);
+  } finally {
+    Platform.OS = was;
+    jest.mocked(Notifications.scheduleNotificationAsync).mockImplementation(schedule);
+    jest.mocked(Notifications.cancelScheduledNotificationAsync).mockImplementation(cancel);
+  }
+});
+
+test("iOS: the old ones go first, never more than 64 pending (medical review H-1)", async () => {
+  const was = Platform.OS;
+  Platform.OS = "ios";
+  try {
+    const base = Date.now() + 3_600_000;
+    for (let k = 0; k < 56; k += 1) {
+      const id = `dose.${base + k * 60_000}.old`;
+      os.set(id, { identifier: id, content: {}, trigger: { date: base + k * 60_000 } });
+    }
+    let most = 0;
+    const schedule = jest.mocked(Notifications.scheduleNotificationAsync).getMockImplementation();
+    jest.mocked(Notifications.scheduleNotificationAsync).mockImplementation(async (r) => {
+      const id = await (schedule as NonNullable<typeof schedule>)(r);
+      most = Math.max(most, os.size);
+      return id;
+    });
+    const planned = Array.from({ length: 56 }, (_, k) =>
+      dose(`dose.${base + k * 60_000}.new`, base + k * 60_000, [A]),
+    );
+    await syncReminders(planned, keepAll, always);
+    jest.mocked(Notifications.scheduleNotificationAsync).mockImplementation(schedule);
+    expect(most).toBeLessThanOrEqual(64);
+    expect([...os.keys()].every((id) => id.endsWith(".new"))).toBe(true);
+    expect(os.size).toBe(56);
+  } finally {
+    Platform.OS = was;
+  }
+});
+
+test("a future minute whose content changed is never pending twice past its batch (M-1)", async () => {
+  const was = Platform.OS;
+  Platform.OS = "android"; // Android: new ones first (iOS has its own order)
+  const schedule = jest.mocked(Notifications.scheduleNotificationAsync).getMockImplementation();
+  const cancel = jest
+    .mocked(Notifications.cancelScheduledNotificationAsync)
+    .getMockImplementation();
+  try {
+    const at = Date.now() + 3_600_000;
+    const far = at + 86_400_000;
+    os.set(`dose.${at}.ab`, { identifier: `dose.${at}.ab`, content: {}, trigger: { date: at } });
+    os.set(`dose.${far}.x`, { identifier: `dose.${far}.x`, content: {}, trigger: { date: far } });
+    const order: string[] = [];
+    const cancel = jest
+      .mocked(Notifications.cancelScheduledNotificationAsync)
+      .getMockImplementation();
+    jest.mocked(Notifications.scheduleNotificationAsync).mockImplementation(async (r) => {
+      order.push(`+${r.identifier ?? ""}`);
+      return (schedule as NonNullable<typeof schedule>)(r);
+    });
+    jest.mocked(Notifications.cancelScheduledNotificationAsync).mockImplementation(async (id) => {
+      order.push(`-${id}`);
+      return (cancel as NonNullable<typeof cancel>)(id);
+    });
+    // A was recorded early: only B is left of that minute
+    await syncReminders([dose(`dose.${at}.b`, at, [B])], keepAll, always);
+    expect(order).toEqual([`+dose.${at}.b`, `-dose.${at}.ab`, `-dose.${far}.x`]);
+  } finally {
+    Platform.OS = was;
+    jest.mocked(Notifications.scheduleNotificationAsync).mockImplementation(schedule);
+    jest.mocked(Notifications.cancelScheduledNotificationAsync).mockImplementation(cancel);
+  }
+});
+
+test("one refused reminder does not stop the others (M-2)", async () => {
+  const at = Date.now() + 3_600_000;
+  const schedule = jest.mocked(Notifications.scheduleNotificationAsync).getMockImplementation();
+  jest.mocked(Notifications.scheduleNotificationAsync).mockImplementation(async (r) => {
+    if (r.identifier === `dose.${at}.bad`) throw new Error("refused");
+    return (schedule as NonNullable<typeof schedule>)(r);
+  });
+  const later = Array.from({ length: 8 }, (_, k) =>
+    dose(`dose.${at + (k + 1) * 60_000}.ok`, at + (k + 1) * 60_000, [A]),
+  );
+  await syncReminders([dose(`dose.${at}.bad`, at, [B]), ...later], keepAll, always);
+  jest.mocked(Notifications.scheduleNotificationAsync).mockImplementation(schedule);
+  expect(os.size).toBe(8);
+});
+
 test("a sign-out during a sync leaves nothing scheduled (rule 8)", async () => {
   const at = Date.now() + 3_600_000;
   let calls = 0;
@@ -133,10 +253,11 @@ test("H18: after the exact-alarm permission changes, every planned reminder is s
   jest.clearAllMocks();
   await syncReminders(planned, keepAll, always, () => false, true);
   // the coming one is scheduled again (now as the OS allows); the late one fires at once -
-  // Android drops exact alarms when the permission is taken away
-  expect(Notifications.cancelScheduledNotificationAsync).toHaveBeenCalledWith(`dose.${at}.a`);
-  expect(Notifications.cancelScheduledNotificationAsync).toHaveBeenCalledWith(`dose.${due}.b`);
+  // Android drops exact alarms when the permission is taken away. Set again in place under
+  // the same id (it replaces the alarm), never cancelled first (MIUI: seconds per call)
+  expect(Notifications.cancelScheduledNotificationAsync).not.toHaveBeenCalled();
   expect(Notifications.scheduleNotificationAsync).toHaveBeenCalledTimes(2);
+  expect(os.get(`dose.${due}.b`)?.trigger.date).toBeGreaterThan(Date.now() - 1000);
   expect(os.has(`dose.${at}.a`)).toBe(true);
   expect(os.has(`dose.${due}.b`)).toBe(true);
 });

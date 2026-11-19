@@ -12,7 +12,12 @@ import {
   showNames,
 } from "@/features/meds/notify";
 import { useZones } from "@/features/meds/use-medications";
-import { enableExactAlarms, useReminderHealth } from "@/features/meds/use-reminder-health";
+import {
+  enableExactAlarms,
+  hasAutostartSetting,
+  openAutostart,
+  useReminderHealth,
+} from "@/features/meds/use-reminder-health";
 import { requestReminderSync } from "@/features/meds/use-reminders";
 import { zoneLabel } from "@/features/meds/use-zone-prompt";
 import { ownProfile, usePatients } from "@/features/records/use-profile";
@@ -89,6 +94,13 @@ export default function RemindersSettingsScreen() {
           <Paragraph>{th("batteryBody")}</Paragraph>
           <Paragraph>{th("batterySamsung")}</Paragraph>
           <Paragraph>{th("batteryXiaomi")}</Paragraph>
+          {hasAutostartSetting() && (
+            <Button
+              label={th("autostartOpen")}
+              variant="secondary"
+              onPress={() => void openAutostart().catch(() => undefined)}
+            />
+          )}
           <Paragraph>{th("batteryOppo")}</Paragraph>
           <Paragraph>{th("batteryOther")}</Paragraph>
           <Button

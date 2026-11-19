@@ -653,7 +653,10 @@
         "batteryTitle": "Батарей хэмнэлт",
         "batteryBody": "Зарим утас батарей хэмнэхийн тулд апп-ын сануулгыг саатуулдаг. Сануулга хоцорч эсвэл огт ирэхгүй бол энэ апп-ыг батарей хэмнэлтээс чөлөөлнө үү. Цэс, шошгын нэр утасны загвар, хувилбараас хамаарч өөр байж болно:",
         "batterySamsung": "Samsung: Тохиргоо → Апп → LabTrack → Батарей → «Хязгааргүй» (Unrestricted).",
-        "batteryXiaomi": "Xiaomi: Тохиргоо → Апп → Апп удирдах → LabTrack → Батарей хэмнэгч → «Хязгаарлалтгүй» (No restrictions); мөн «Автоматаар эхлэх» (Autostart)-ыг асаана.",
+        "batteryXiaomi": "Xiaomi, Redmi, POCO: Тохиргоо → Апп → Апп удирдах → LabTrack → Battery saver → «No restrictions». Мөн «Background autostart»-д LabTrack-ийг асаана (доорх товч).",
+        "autostartOff": "Таны утсанд «Background autostart» (автоматаар эхлэх) тохиргоо LabTrack-д унтраалттай байж магадгүй. Тэгвэл утсаа дахин асаасны дараа (эсвэл апп-ыг хүчээр хаасны дараа) апп-аа нээх хүртэл эмийн сануулга ирэхгүй. Доорх товчоор нээж, LabTrack-ийг асаана уу.",
+        "autostartOpen": "Background autostart нээх",
+        "autostartDone": "Асаасан, дахин сануулахгүй",
         "batteryOppo": "Oppo / Realme: Тохиргоо → Апп → Апп удирдах → LabTrack → Батарейн хэрэглээ → «Арын дэвсгэрт ажиллахыг зөвшөөрөх» (Allow background activity).",
         "batteryOther": "Бусад утас: Тохиргоо → Апп → LabTrack → Батарей → хязгаарлалтгүй.",
         "openSettings": "Апп-ын тохиргоог нээх"

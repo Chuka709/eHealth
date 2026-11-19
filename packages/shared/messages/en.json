@@ -653,7 +653,10 @@
         "batteryTitle": "Battery saving",
         "batteryBody": "Some phones delay app reminders to save battery. If reminders come late or not at all, exempt this app from battery saving. Menu and label names differ by phone model and version:",
         "batterySamsung": "Samsung: Settings → Apps → LabTrack → Battery → “Unrestricted”.",
-        "batteryXiaomi": "Xiaomi: Settings → Apps → Manage apps → LabTrack → Battery saver → “No restrictions”, and turn on “Autostart”.",
+        "batteryXiaomi": "Xiaomi, Redmi, POCO: Settings → Apps → Manage apps → LabTrack → Battery saver → “No restrictions”. Also turn LabTrack on in “Background autostart” (button below).",
+        "autostartOff": "“Background autostart” may be off for LabTrack on this phone. If so, medicine reminders stop after a restart (or after the app is force-stopped) until you open the app. Use the button below to turn it on.",
+        "autostartOpen": "Open Background autostart",
+        "autostartDone": "I turned it on, don’t remind me again",
         "batteryOppo": "Oppo / Realme: Settings → Apps → App management → LabTrack → Battery usage → “Allow background activity”.",
         "batteryOther": "Other phones: Settings → Apps → LabTrack → Battery → unrestricted.",
         "openSettings": "Open the app's settings"
