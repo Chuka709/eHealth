@@ -6,6 +6,8 @@ import { Button } from "@/components/button";
 import { Screen } from "@/components/screen";
 import { Paragraph, Title } from "@/components/text";
 import {
+  alarmSound,
+  setAlarmSound,
   setShowAppointmentDetails,
   setShowNames,
   showAppointmentDetails,
@@ -30,6 +32,7 @@ export default function RemindersSettingsScreen() {
   const [asking, setAsking] = useState(false);
   const [names, setNames] = useState<boolean | null>(null);
   const [details, setDetails] = useState<boolean | null>(null);
+  const [loud, setLoud] = useState<boolean | null>(null);
   const patients = usePatients();
   const zones = useZones(ownProfile(patients.data)?.id);
 
@@ -40,10 +43,27 @@ export default function RemindersSettingsScreen() {
     void showAppointmentDetails()
       .then(setDetails)
       .catch(() => setDetails(false));
+    void alarmSound()
+      .then(setLoud)
+      .catch(() => setLoud(true));
   }, []);
 
   return (
     <Screen>
+      <Host matchContents={{ vertical: true }} style={styles.wide}>
+        <Switch
+          label={t("alarmSound")}
+          value={loud ?? true}
+          disabled={loud === null}
+          onValueChange={(on) => {
+            setLoud(on);
+            void setAlarmSound(on).then(requestReminderSync);
+          }}
+          testID="reminders-alarm-sound"
+        />
+      </Host>
+      <Paragraph muted>{t("alarmSoundHint")}</Paragraph>
+      <Paragraph muted>{t("repeatHint")}</Paragraph>
       <Host matchContents={{ vertical: true }} style={styles.wide}>
         <Switch
           label={t("showNames")}

@@ -12,17 +12,23 @@ import type { DoseItem, PlannedNotification } from "./reminders";
  */
 
 export const CHANNEL = "doses";
+/** Loud: the alarm stream (sounds in silent mode), a long sound and vibration - the user's
+ * choice 2026.11.19 after a real phone: the short default sound without vibration went
+ * unnoticed. Channels are fixed once made: the quiet one stays for whoever turns this off. */
+export const CHANNEL_ALARM = "doses-alarm";
+export const ALARM_SOUND = "dose_alarm.wav";
 export const CATEGORY_ONE = "dose_one";
 export const CATEGORY_MANY = "dose_many";
 export const ACTION_TAKEN = "taken";
 export const ACTION_SNOOZE = "snooze";
 export const SNOOZE_MS = 10 * 60_000;
 
-const OURS = /^(dose|renew|snooze|appt)\./;
+const OURS = /^(dose|renew|snooze|appt|again)\./;
 const NAMES_KEY = "prefs.reminder_names.v1";
 
 export type NotifyTexts = {
   channel: string;
+  channelAlarm: string;
   taken: string;
   takenAll: string;
   snooze: string;
@@ -49,6 +55,38 @@ export async function setShowNames(on: boolean): Promise<void> {
   (await localStore()).set(NAMES_KEY, on);
 }
 
+const ALARM_KEY = "prefs.reminder_alarm.v1";
+
+/** Whether dose reminders ring like an alarm (on by default). */
+export async function alarmSound(): Promise<boolean> {
+  return (await localStore()).getBoolean(ALARM_KEY) ?? true;
+}
+
+export async function setAlarmSound(on: boolean): Promise<void> {
+  (await localStore()).set(ALARM_KEY, on);
+}
+
+const CHANNEL_KEY = "reminders.channel.v1";
+
+/** Whether the reminders already on the phone were set on another channel or sound (the
+ * setting changed, or an update brought the loud one): then they are all set anew. */
+export async function soundChanged(): Promise<boolean> {
+  const { channel } = await doseSound();
+  const before = (await localStore()).getString(CHANNEL_KEY);
+  return (before ?? CHANNEL) !== channel;
+}
+
+export async function rememberSound(): Promise<void> {
+  const { channel } = await doseSound();
+  (await localStore()).set(CHANNEL_KEY, channel);
+}
+
+/** The channel (Android) and sound (iOS) dose reminders use now. */
+export async function doseSound(): Promise<{ channel: string; sound: string | true }> {
+  const loud = await alarmSound().catch(() => true);
+  return loud ? { channel: CHANNEL_ALARM, sound: ALARM_SOUND } : { channel: CHANNEL, sound: true };
+}
+
 /** Channel and categories, in the app's language (re-registered on each sync). */
 export async function registerReminderKinds(texts: NotifyTexts): Promise<void> {
   if (Platform.OS === "android") {
@@ -57,6 +95,19 @@ export async function registerReminderKinds(texts: NotifyTexts): Promise<void> {
       importance: Notifications.AndroidImportance.HIGH,
       // the secure lock screen shows "content hidden", never the text
       lockscreenVisibility: Notifications.AndroidNotificationVisibility.PRIVATE,
+    });
+    await Notifications.setNotificationChannelAsync(CHANNEL_ALARM, {
+      name: texts.channelAlarm,
+      importance: Notifications.AndroidImportance.MAX,
+      lockscreenVisibility: Notifications.AndroidNotificationVisibility.PRIVATE,
+      sound: ALARM_SOUND,
+      audioAttributes: {
+        usage: Notifications.AndroidAudioUsage.ALARM,
+        contentType: Notifications.AndroidAudioContentType.SONIFICATION,
+      },
+      enableVibrate: true,
+      vibrationPattern: [0, 700, 300, 700, 300, 700],
+      bypassDnd: false,
     });
   }
   // "Уусан" opens the app, which records the dose at once (whether a background action runs
@@ -96,12 +147,17 @@ export async function registerReminderKinds(texts: NotifyTexts): Promise<void> {
 /** Everything this phone schedules: dose reminders, the renew notice, appointments (2.6c). */
 export type Planned = PlannedNotification | PlannedAppointmentReminder;
 
-function content(n: Pick<Planned, "title" | "body" | "data" | "kind">) {
+function content(
+  n: Pick<Planned, "title" | "body" | "data" | "kind">,
+  sound: string | true = true,
+) {
   return {
     title: n.title,
     body: n.body,
     data: n.data,
-    sound: true, // the system default sound (a string names a bundled custom file)
+    // iOS: a bundled file for doses when ringing like an alarm, else the default; Android
+    // takes the sound from the channel
+    sound: n.kind === "dose" ? sound : true,
     ...(n.kind === "dose" && "d" in n.data
       ? { categoryIdentifier: n.data.d.length > 1 ? CATEGORY_MANY : CATEGORY_ONE }
       : {}),
@@ -128,6 +184,7 @@ export async function syncReminders(
   renewAll = false,
 ): Promise<void> {
   const existing = await Notifications.getAllScheduledNotificationsAsync();
+  const { channel, sound } = await doseSound();
   if (!valid()) return;
   const wanted = new Map(planned.map((n) => [n.id, n]));
   const scheduled: string[] = [];
@@ -200,11 +257,11 @@ export async function syncReminders(
       batch.map((n) =>
         Notifications.scheduleNotificationAsync({
           identifier: n.id,
-          content: content(n),
+          content: content(n, sound),
           trigger: {
             type: Notifications.SchedulableTriggerInputTypes.DATE,
             date: n.due ? now + 2_000 : n.at,
-            channelId: CHANNEL,
+            channelId: n.kind === "dose" ? channel : CHANNEL,
           },
         }),
       ),
@@ -240,25 +297,41 @@ export async function snooze(
   const data = doseData(shown.data);
   if (!data || !valid()) return;
   const id = `snooze.${identifier.replace(/^snooze\./, "")}`;
+  const { channel, sound } = await doseSound();
   await Notifications.scheduleNotificationAsync({
     identifier: id,
-    content: content({ title: shown.title, body: shown.body, data, kind: "dose" }),
+    content: content({ title: shown.title, body: shown.body, data, kind: "dose" }, sound),
     trigger: {
       type: Notifications.SchedulableTriggerInputTypes.DATE,
       date: Date.now() + SNOOZE_MS,
-      channelId: CHANNEL,
+      channelId: channel,
     },
   });
   if (!valid()) await Notifications.cancelScheduledNotificationAsync(id); // signed out meanwhile
 }
 
 /** This phone's own local dose reminders (a push message can never look like one). */
-export const LOCAL_DOSE_ID = /^(snooze\.)?dose\.\d+\.[0-9a-z]+$/;
+export const LOCAL_DOSE_ID = /^(snooze\.)?(again\.)?dose\.\d+\.[0-9a-z]+$/;
 
-/** A recorded dose: its "10 мин дараа" copy is no longer wanted. */
+const copiesOf = (identifier: string) => {
+  const base = identifier.replace(/^snooze[.]/, "").replace(/^again[.]/, "");
+  return [base, `again.${base}`, `snooze.${base}`, `snooze.again.${base}`];
+};
+
+/** A recorded dose: every copy already shown (reminder, repeat, snoozes) leaves the tray. */
+export async function dismissDoseCopies(identifier: string): Promise<void> {
+  await Promise.allSettled(
+    copiesOf(identifier).map((id) => Notifications.dismissNotificationAsync(id)),
+  );
+}
+
+/** A recorded dose: its "10 мин дараа" copies and its 15-minute repeat are no longer wanted. */
 export async function cancelSnoozeOf(identifier: string): Promise<void> {
-  await Notifications.cancelScheduledNotificationAsync(
-    `snooze.${identifier.replace(/^snooze\./, "")}`,
+  const base = identifier.replace(/^snooze\./, "").replace(/^again\./, "");
+  await Promise.allSettled(
+    [`snooze.${base}`, `snooze.again.${base}`, `again.${base}`].map((id) =>
+      Notifications.cancelScheduledNotificationAsync(id),
+    ),
   );
 }
 

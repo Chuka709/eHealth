@@ -27,14 +27,17 @@ import {
   ACTION_SNOOZE,
   ACTION_TAKEN,
   cancelSnoozeOf,
+  dismissDoseCopies,
   doseData,
   exactAlarmState,
   LOCAL_DOSE_ID,
   registerReminderKinds,
   rememberExactAlarm,
+  rememberSound,
   showAppointmentDetails,
   showNames,
   snooze,
+  soundChanged,
   syncReminders,
 } from "./notify";
 import { doseKey, doseStates, planOf } from "./plan";
@@ -148,6 +151,7 @@ export function useReminderSync(): void {
     if (!permission.granted || !valid()) return; // the Home warning says reminders are off
     await registerReminderKinds({
       channel: t("notify.channel"),
+      channelAlarm: t("notify.channelAlarm"),
       taken: t("notify.taken"),
       takenAll: t("notify.takenAll"),
       snooze: t("notify.snooze"),
@@ -163,12 +167,16 @@ export function useReminderSync(): void {
             now,
             showNames: names,
             recorded,
+            // no repeat where alarms may come out of order (Android without exact alarms - H18)
+            repeat: (await exactAlarmState().catch(() => null))?.granted !== false,
           },
           {
             title: t("notify.title"),
             timedTitle: (time) => t("notify.timedTitle", { time }),
             count: (n) => t("notify.count", { n }),
             item: (name, amount) => (amount ? t("notify.item", { name, amount }) : name),
+            again: (title) => t("notify.again", { title }),
+            againBody: (body) => t("notify.againBody", { body }),
             renewTitle: t("notify.renewTitle"),
             renewBody: t("notify.renewBody"),
           },
@@ -186,9 +194,12 @@ export function useReminderSync(): void {
     // renewed only once every kind is known: one left unplanned keeps its alarms as they
     // were set, and the change would be remembered with them never renewed
     const exact = await exactAlarmState().catch(() => null);
-    const renew = (exact?.changed ?? false) && doseData !== null && visitsKnown;
+    // a new sound: the reminders already set keep the channel they were set with
+    const sound = await soundChanged().catch(() => false);
+    const renew = ((exact?.changed ?? false) || sound) && doseData !== null && visitsKnown;
     await syncReminders([...planned, ...visits], keepSnooze, valid, keepUnplanned, renew);
     if (renew && exact && valid()) await rememberExactAlarm(exact.granted).catch(() => undefined);
+    if (renew && valid()) await rememberSound().catch(() => undefined);
   };
 
   const runRef = useRef<() => void>(() => undefined);
@@ -334,7 +345,8 @@ export function useReminderResponses(): void {
           return;
         }
         await cancelSnoozeOf(request.identifier).catch(() => undefined);
-        await Notifications.dismissNotificationAsync(request.identifier).catch(() => undefined);
+        // every copy of this dose time leaves the tray, not only the one tapped (M2)
+        await dismissDoseCopies(request.identifier).catch(() => undefined);
         return;
       }
       if (response.actionIdentifier === ACTION_TAKEN && !ours) {

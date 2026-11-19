@@ -612,6 +612,9 @@
       "notify": {
         "channel": "Medicine reminders",
         "title": "Time for your medicine",
+        "channelAlarm": "Medicine reminders – alarm sound",
+        "again": "Not marked yet: {title}",
+        "againBody": "If you took it, tap “Taken”. {body}",
         "timedTitle": "{time} medicine reminder",
         "count": "{n, plural, one {# dose} other {# doses}}",
         "item": "{name} {amount}",
@@ -625,6 +628,9 @@
       },
       "reminders": {
         "title": "Reminders",
+        "alarmSound": "Ring like an alarm",
+        "alarmSoundHint": "When on, reminders ring longer with an alarm sound and vibrate. On silent or vibrate, some phones only vibrate (Xiaomi, for example); in Do Not Disturb they do not ring. When off, reminders use the normal notification sound.",
+        "repeatHint": "Whatever this setting: a dose not marked on this phone is reminded once more 15 minutes later (not on Android phones without exact alarms, where the order is not sure).",
         "open": "Reminders",
         "openHint": "Lock screen, time zone",
         "showNames": "Show medicine names in reminders",

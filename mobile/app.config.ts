@@ -214,7 +214,8 @@ const appConfig = ({ config }: ConfigContext): ExpoConfig => ({
     ],
     // Local medication reminders (Phase 2.5); push (caregiver alerts) in 2.8. The icon and
     // channel are set with the reminder screens.
-    ["expo-notifications", { color: "#0B5FA5" }],
+    // the loud dose reminder sound (channel "doses-alarm"; iOS plays it by name)
+    ["expo-notifications", { color: "#0B5FA5", sounds: ["./assets/sounds/dose_alarm.wav"] }],
     [
       "expo-splash-screen",
       {

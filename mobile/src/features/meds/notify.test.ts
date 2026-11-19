@@ -2,7 +2,17 @@ import * as Notifications from "expo-notifications";
 import { Platform } from "react-native";
 import { showRemindersInForeground } from "@/lib/notifications";
 
-import { exactAlarmState, rememberExactAlarm, snooze, syncReminders } from "./notify";
+import {
+  cancelSnoozeOf,
+  dismissDoseCopies,
+  exactAlarmState,
+  rememberExactAlarm,
+  rememberSound,
+  setAlarmSound,
+  snooze,
+  soundChanged,
+  syncReminders,
+} from "./notify";
 import type { PlannedNotification } from "./reminders";
 
 type Scheduled = {
@@ -11,11 +21,12 @@ type Scheduled = {
   trigger: { date: number };
 };
 // the encrypted local store needs a session: an in-memory one here (shared across modules)
-const mockStored = new Map<string, boolean>();
+const mockStored = new Map<string, boolean | string>();
 jest.mock("@/lib/local-store", () => ({
   localStore: async () => ({
-    getBoolean: (k: string) => mockStored.get(k),
-    set: (k: string, v: boolean) => mockStored.set(k, v),
+    getBoolean: (k: string) => mockStored.get(k) as boolean | undefined,
+    getString: (k: string) => mockStored.get(k) as string | undefined,
+    set: (k: string, v: boolean | string) => mockStored.set(k, v),
   }),
 }));
 
@@ -284,4 +295,34 @@ test("H18: reminders are renewed after a permission change and once per app star
   } finally {
     Platform.OS = was;
   }
+});
+
+test("'Уусан' cancels the dose's repeat and its snoozes (user 2026.11.19)", async () => {
+  for (const id of ["again.dose.1.a", "snooze.dose.1.a", "snooze.again.dose.1.a"]) {
+    os.set(id, { identifier: id, content: {}, trigger: { date: 1 } });
+  }
+  await cancelSnoozeOf("again.dose.1.a");
+  expect(os.size).toBe(0);
+});
+
+test("a new sound renews every reminder once: loud by default, quiet when turned off", async () => {
+  mockStored.clear();
+  expect(await soundChanged()).toBe(true); // set before the loud channel existed
+  await rememberSound();
+  expect(await soundChanged()).toBe(false);
+  await setAlarmSound(false);
+  expect(await soundChanged()).toBe(true);
+  await rememberSound();
+  expect(await soundChanged()).toBe(false);
+});
+
+test("'Уусан' takes every copy of that dose time out of the tray (medical review M2)", async () => {
+  await dismissDoseCopies("again.dose.1.a");
+  const dismissed = jest
+    .mocked(Notifications.dismissNotificationAsync)
+    .mock.calls.map(([id]) => id)
+    .sort();
+  expect(dismissed).toEqual(
+    ["again.dose.1.a", "dose.1.a", "snooze.again.dose.1.a", "snooze.dose.1.a"].sort(),
+  );
 });

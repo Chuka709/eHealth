@@ -386,7 +386,7 @@ test("reminders are scheduled on the phone, without the medicine's name (H10)", 
   expect(doses.length).toBeLessThanOrEqual(14);
   for (const n of doses) {
     expect(n.trigger.date).toBeGreaterThan(Date.now());
-    expect(n.trigger.channelId).toBe("doses");
+    expect(n.trigger.channelId).toBe("doses-alarm"); // loud by default (user 2026.11.19)
     expect(n.content.title).toMatch(/^(08|20):00-ийн эмийн сануулга$/);
     expect(JSON.stringify(n.content)).not.toContain("Такролимус");
     expect(n.content.data.d).toEqual([{ m: MED_ID, at: n.trigger.date }]);

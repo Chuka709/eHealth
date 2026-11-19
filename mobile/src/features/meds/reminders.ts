@@ -7,8 +7,9 @@
  *   times of one medicine brought together by a zone switch - Q26) share it and list every
  *   item, never only the first.
  * - iOS keeps at most 64 pending local notifications: 56 for doses, 8 left for appointments and
- *   "10 мин дараа". Days planned = min(7, floor(56 / the busiest day's notifications)); the
- *   phone re-plans on every app start and foreground, so the window keeps rolling.
+ *   "10 мин дараа". Each dose time takes two (its reminder and the repeat 15 minutes later,
+ *   while the dose is not recorded). Days planned = min(7, floor(56 / (2 × the busiest day's
+ *   times))); the phone re-plans on every app start and foreground, so the window keeps rolling.
  * - A day before the window runs out, one "open the app" notification: if the app is not
  *   opened, reminders would stop silently otherwise.
  * - A dose already recorded (taken early, skipped ahead, by a caregiver) is not reminded:
@@ -28,6 +29,8 @@ import { doseSlots } from "./slots";
 export const DOSE_BUDGET = 56;
 export const MAX_DAYS = 7;
 export const GRACE = 75 * 60_000; // the +1h inexact window, with a margin
+/** the one repeat of an unrecorded dose's reminder */
+export const REPEAT = 15 * 60_000;
 const DAY = 24 * 60 * 60_000;
 
 export type ReminderMedicine = {
@@ -45,6 +48,10 @@ export type ReminderInput = {
   showNames: boolean;
   /** doseKey(medicationId, scheduledAt) of doses already recorded */
   recorded: ReadonlySet<string>;
+  /** plan the repeat 15 minutes later - not where the order of alarms is not sure: Android
+   * without exact alarms may hold each back by up to an hour, so a repeat could come before
+   * its reminder and read as a new dose (medical review M3, H18) */
+  repeat?: boolean;
 };
 
 export type ReminderTexts = {
@@ -52,6 +59,10 @@ export type ReminderTexts = {
   /** a dose reminder's title with its scheduled time: "08:00-ийн эмийн сануулга" - a reminder
    * held back (inexact alarm, up to an hour or more) still says which dose it is (H18) */
   timedTitle: (time: string) => string;
+  /** the repeat says the dose is not marked yet, never "take it again" (medical review M1):
+   * "Тэмдэглэгдээгүй: 08:00-ийн эмийн сануулга" / "Уусан бол «Уусан» дарна уу. 2 тун" */
+  again: (title: string) => string;
+  againBody: (body: string) => string;
   count: (n: number) => string; // "2 тун" (no names)
   item: (name: string, amount: string | null) => string; // "Такролимус 2 мг"
   renewTitle: string;
@@ -103,12 +114,14 @@ export function planReminders(input: ReminderInput, texts: ReminderTexts): Plann
     const n = week.filter((g) => g.at >= from && g.at < from + DAY).length;
     busiest = Math.max(busiest, n);
   }
-  const days = daysFor(busiest);
+  // each dose time takes two: the reminder and its repeat
+  const days = daysFor(busiest * 2);
   const end = start + days * DAY;
-  // a late one still pending on the OS counts against the same 64
-  const groups = week.filter((g) => g.at < end).slice(0, Math.max(0, DOSE_BUDGET - late.length));
+  // a late one (and its repeat) still pending on the OS counts against the same 64
+  const room = Math.max(0, Math.floor(DOSE_BUDGET / 2) - late.length);
+  const groups = week.filter((g) => g.at < end).slice(0, room);
 
-  const out: PlannedNotification[] = [...late, ...groups].map((g) => {
+  const reminders: PlannedNotification[] = [...late, ...groups].map((g) => {
     const d = g.items.map(({ med, slot }) => ({ m: med.id, at: slot.scheduledAt }));
     const body = input.showNames
       ? g.items
@@ -134,6 +147,24 @@ export function planReminders(input: ReminderInput, texts: ReminderTexts): Plann
       due: g.at <= input.now,
     };
   });
+  // once more REPEAT later while the dose is not recorded (the user's choice 2026.11.19): a
+  // recorded dose drops out of the plan, and its repeat is cancelled with it
+  const repeat = input.repeat ?? true;
+  const out: PlannedNotification[] = reminders.flatMap((r) =>
+    repeat && r.at + REPEAT > input.now
+      ? [
+          r,
+          {
+            ...r,
+            id: `again.${r.id}`,
+            at: r.at + REPEAT,
+            title: texts.again(r.title),
+            body: texts.againBody(r.body),
+            due: false,
+          },
+        ]
+      : [r],
+  );
 
   // a day before the planned doses run out (only when there is such a day ahead)
   const last = groups.at(-1)?.at ?? end;

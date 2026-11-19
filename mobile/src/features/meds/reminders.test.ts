@@ -6,6 +6,7 @@ import {
   GRACE,
   MAX_DAYS,
   planReminders,
+  REPEAT,
   type ReminderMedicine,
   type ReminderTexts,
 } from "./reminders";
@@ -14,6 +15,8 @@ import type { MedicationPlan } from "./slots";
 const texts: ReminderTexts = {
   title: "Эм уух цаг боллоо",
   timedTitle: (time) => `${time}-ийн эмийн сануулга`,
+  again: (title) => `Тэмдэглэгдээгүй: ${title}`,
+  againBody: (body) => `Уусан бол «Уусан»-ыг дарна уу. ${body}`,
   count: (n) => `${n} тун`,
   item: (name, amount) => (amount ? `${name} ${amount}` : name),
   renewTitle: "Сануулгаа сэргээнэ үү",
@@ -86,7 +89,9 @@ describe("reminder planning", () => {
 
   it("stops after a course ends and plans the new dose from its first day", () => {
     const course = med("c", ["08:00"], { planned_end_on: "2026-11-06" });
-    const doses = planReminders(input([course]), texts).filter((n) => n.kind === "dose");
+    const doses = planReminders(input([course]), texts).filter(
+      (n) => n.kind === "dose" && !n.id.startsWith("again."),
+    );
     expect(doses.map((n) => new Date(n.at).toISOString())).toEqual([
       "2026-11-05T00:00:00.000Z",
       "2026-11-06T00:00:00.000Z",
@@ -97,7 +102,9 @@ describe("reminder planning", () => {
     const list = planReminders(input([med("a", ["08:00", "20:00"])]), texts);
     const renew = list.filter((n) => n.kind === "renew");
     expect(renew).toHaveLength(1);
-    const lastDose = Math.max(...list.filter((n) => n.kind === "dose").map((n) => n.at));
+    const lastDose = Math.max(
+      ...list.filter((n) => n.kind === "dose" && !n.id.startsWith("again.")).map((n) => n.at),
+    );
     expect(renew[0].at).toBe(lastDose - DAY);
   });
 
@@ -119,9 +126,15 @@ describe("reminder planning", () => {
         expect(list.length).toBeLessThanOrEqual(DOSE_BUDGET + 1);
         for (const n of list) {
           expect(n.at).toBeGreaterThanOrEqual(NOW - GRACE);
-          expect(n.at).toBeLessThan(NOW + MAX_DAYS * DAY + 1);
+          expect(n.at).toBeLessThan(NOW + MAX_DAYS * DAY + REPEAT + 1);
         }
-        const times = doses.map((n) => n.at);
+        // every repeat follows its own reminder by REPEAT, with the same doses (user 2026.11.19)
+        for (const n of doses.filter((x) => x.id.startsWith("again."))) {
+          const first = doses.find((x) => `again.${x.id}` === n.id);
+          expect(first?.at).toBe(n.at - REPEAT);
+          expect(n.data).toEqual(first?.data);
+        }
+        const times = doses.filter((n) => !n.id.startsWith("again.")).map((n) => n.at);
         expect(times).toEqual([...times].sort((x, y) => x - y));
         expect(new Set(list.map((n) => n.id)).size).toBe(list.length);
       }),
@@ -133,6 +146,33 @@ describe("reminder planning", () => {
     expect(
       planReminders(input([med("s", ["20:00"], { stopped_on: "2026-11-01" })]), texts),
     ).toEqual([]);
+  });
+});
+
+describe("the repeat 15 minutes later (user 2026.11.19)", () => {
+  it("each dose time is reminded twice while not recorded, once recorded never again", () => {
+    const base = input([med("a", ["08:00"])]);
+    const list = planReminders(base, texts).filter((n) => n.kind === "dose");
+    const [first, again] = list;
+    expect(again.id).toBe(`again.${first.id}`);
+    expect(again.at - first.at).toBe(REPEAT);
+    expect(again.title).toBe(`Тэмдэглэгдээгүй: ${first.title}`);
+    expect(again.body).toBe(`Уусан бол «Уусан»-ыг дарна уу. ${first.body}`);
+    const recorded = new Set([`a@${first.at}`]);
+    const after = planReminders({ ...base, recorded }, texts);
+    expect(after.some((n) => n.id === again.id || n.id === first.id)).toBe(false);
+  });
+
+  it("no repeat where alarms may come out of order (Android without exact alarms - M3)", () => {
+    const list = planReminders({ ...input([med("a", ["08:00"])]), repeat: false }, texts);
+    expect(list.some((n) => n.id.startsWith("again."))).toBe(false);
+  });
+
+  it("a dose just past is still repeated if its repeat is ahead", () => {
+    const at = Date.parse("2026-11-04T00:00:00Z"); // 08:00 Ulaanbaatar
+    const list = planReminders({ ...input([med("a", ["08:00"])]), now: at + 5 * 60_000 }, texts);
+    const again = list.find((n) => n.id.startsWith("again.") && n.at === at + REPEAT);
+    expect(again?.due).toBe(false);
   });
 });
 
