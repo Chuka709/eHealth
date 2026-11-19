@@ -1,0 +1,36 @@
+# Phase 2 DoD "wizard ≤ 3 min" (2.10d): the transplant wizard from Home with the fields a user
+# needs (organ, year, hospital). `just e2e-mobile` times this flow; it runs on the app state the
+# activation flow left (signed in, no transplant yet). Maestro taps faster than a person, so the
+# time is a ceiling check of the screens, not a usability measurement (that is the beta's).
+# The hospital is typed in Latin letters: Maestro cannot type Cyrillic reliably.
+appId: ${MAESTRO_APP_ID}
+---
+- launchApp
+- tapOn: "Нүүр"
+- scrollUntilVisible:
+    element: "Шилжүүлэн суулгалт нэмэх"
+- tapOn: "Шилжүүлэн суулгалт нэмэх"
+- extendedWaitUntil:
+    visible: ".*Элэг"
+    timeout: 15000
+- tapOn: ".*Элэг"
+- tapOn: "Үргэлжлүүлэх"
+- tapOn: "Зөвхөн оноор"
+- tapOn: "Он"
+- inputText: "2015"
+- pressKey: Enter # closes the number pad
+- tapOn: "Үргэлжлүүлэх"
+- tapOn: "Эмнэлэг"
+- inputText: "Asan Medical Center"
+- hideKeyboard
+- tapOn: "Үргэлжлүүлэх"
+- scrollUntilVisible:
+    element: "Хадгалах"
+- tapOn: "Хадгалах"
+- extendedWaitUntil:
+    visible: "Өөр шилжүүлэн суулгалт.*"
+    timeout: 15000
+- tapOn: "Үгүй, дууслаа"
+- tapOn: "Нүүр"
+- scrollUntilVisible:
+    element: "Элэг · 2015"

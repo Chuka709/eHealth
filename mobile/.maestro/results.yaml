@@ -1,0 +1,30 @@
+# Phase 4.6: a read document opens its draft (`just e2e-mobile-fast results`, after
+# demo-login.yaml). Needs a PDF read into a draft on demo_kidney's own profile on the dev stack.
+appId: ${MAESTRO_APP_ID}
+---
+- launchApp
+- extendedWaitUntil:
+    visible: "Өнөөдрийн тунгууд"
+    timeout: 60000
+# the row is below today's doses
+- scrollUntilVisible:
+    element:
+      id: "home-results"
+    direction: DOWN
+    timeout: 20000
+- tapOn:
+    id: "home-results"
+- extendedWaitUntil:
+    visible: "Шинжилгээний хариунууд"
+    timeout: 90000
+- assertVisible: "Таны хянахыг хүлээж байна"
+- tapOn: "Уншсан утгуудыг харах"
+- extendedWaitUntil:
+    visible: ".*автоматаар уншсан ноорог.*"
+    timeout: 90000
+- assertVisible: "Лавлах хэмжээ: .*"
+- scrollUntilVisible:
+    element:
+      text: ".*батлах боломж удахгүй.*"
+    direction: DOWN
+    timeout: 30000

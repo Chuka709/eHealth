@@ -1,0 +1,42 @@
+{
+ "note": "Made up: a layout no local reader knows - read only with --ai",
+ "tags": [
+  "kidney",
+  "liver",
+  "kr",
+  "ai"
+ ],
+ "profile_name": "Зохиомол Туршилт",
+ "reports": [
+  {
+   "collected": "2025-08-02",
+   "results": [
+    {
+     "name": "Creatinine",
+     "value": "1.02",
+     "unit": "mg/dL",
+     "numeric": "1.02",
+     "ref_low": "0.70",
+     "ref_high": "1.20",
+     "test_code": "CREA"
+    },
+    {
+     "name": "Tacrolimus",
+     "value": "6.4",
+     "unit": "ng/mL",
+     "numeric": "6.4",
+     "test_code": "TAC"
+    },
+    {
+     "name": "ALT",
+     "value": "28",
+     "unit": "U/L",
+     "numeric": "28",
+     "ref_low": "0",
+     "ref_high": "41",
+     "test_code": "ALT"
+    }
+   ]
+  }
+ ]
+}

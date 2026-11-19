@@ -1,47 +1,63 @@
-# Дараагийн session-д өгөх промпт (Phase 2-оос)
+# Дараагийн session-д өгөх промпт (бодит утасны шалгалтын үргэлжлэл)
 
-> Шинэ Claude Code session нээгээд **Plan mode** (Shift+Tab) асаагаад доорх блокыг бүтнээр нь буулгана.
+> Шинэ Claude Code session нээгээд (`/clear`) доорх блокыг бүтнээр нь буулгана.
 > Session бүрийн төгсгөлд энэ файлыг (төлөв, сургамж) шинэчилнэ.
 
 ```
-LabTrack MN төслийн Phase 2-ыг эхлүүлнэ (шилжүүлэн суулгалт, эм, сануулга, амин үзүүлэлт, товлол).
-Надтай монголоор харилц.
+LabTrack MN: бодит утасны (B6) шалгалтыг үргэлжлүүл. Надтай монголоор харилц.
+Эхлээд 4–6 мөр төлөвлөгөө өгч батлуул.
 
-## Эхлээд унш (зөвхөн эдгээрийг — токен хэмнэ)
-- CLAUDE.md, backend/CLAUDE.md, mobile/CLAUDE.md (автоматаар ачаалагдана)
-- docs/PROGRESS.md — Phase 1 хэсгийн 1.13 (carry-over жагсаалт), Phase 2
-- docs/01_PLAN.md — Phase 2
-- docs/03_DATA_MODEL.md — ШИЛЖҮҮЛЭН СУУЛГАЛТ … ЗӨВШӨӨРӨЛ
-- docs/08_MOBILE.md, docs/09_CLINICAL_SAFETY.md (H6–H10, hazard log)
-- docs/OPEN_QUESTIONS.md — шийдэгдсэнийг дахин бүү маргалд
+## Эхлээд унш (зөвхөн эдгээрийг)
+- docs/DEVICE_TEST.md — бүхэлд нь (жагсаалт, 2026.11.19-ний үр дүн, олдвор)
+- docs/09_CLINICAL_SAFETY.md — зөвхөн H6, H18, H40 мөр
+- docs/ANDROID_EMULATOR.md «Б. Локал build» хэсэг
 
-## Одоогийн төлөв (2026.11.04, сүүлийн commit 7628083)
-- Phase 1 дууссан: migration 0001–0012; backend 330 тест (контейнер), RLS 141, Jest 104,
-  web 7, shared 11; `just lint` цэвэр; Maestro `activation.yaml` Android эмулятор дээр давсан.
-- Push хийгдээгүй (GitHub репо — та). Бодит iPhone, GitHub CI хойшлогдсон.
-- Ерөнхий хамгаалалтын тестүүд (`tests/rls/test_function_hardening.py`): шинэ хүснэгт заавал
-  ENABLE+FORCE RLS, definer функц бүр нэг signature, role бүрийн EXECUTE matrix snapshot —
-  Phase 2-ын migration бүрт snapshot-ийг санаатай шинэчилнэ. Админ токен хэрэглэгчийн бүх замд
-  401 (OpenAPI-аас ерөнхий тест — шинэ PHI route автоматаар хамрагдана).
+## Хийх
+1. Үлдсэн сануулгын тохиолдлууд POCO X3 NFC (MIUI 14) дээр: R5 Doze
+   (`dumpsys deviceidle force-idle`), R6 батарей хэмнэлт, R7 exact alarm зөвшөөрөлгүй
+   (давталт гарахгүй, «хоцорч болно» анхааруулга), R8 нислэгийн горим (офлайн «Уусан» дараалал),
+   R9 цагийн бүс (home/local), R10 мэдэгдлийн «Уусан»/«10 мин дараа» (апп хаалттай үед — давталт
+   ба tray-ийн бүх хуулбар арилах), R12 дахин товлолтын дараа давхар alarm байхгүй, чимээгүй
+   горим (0) дахь чанга суваг.
+2. Урсгалууд F2 скан (камер), F4 Viber/Messenger-ээс share, F5 офлайн, F6 яаралтай карт,
+   F7 гарахад cache цэвэрлэгдэх.
+3. Олдсон алдааг засах (тест + хянагч), DEVICE_TEST.md-д бүртгэх, commit + push.
+4. Боломжтой бол: cold start-ийн эхний синк бүгдийг дахин товлодог тул шинэ эм ~2 мин хоцорч
+   орно — нэмэгдсэн/өөрчлөгдсөн өгөгдлийг renew-ээс түрүүлж товлох (H6 үлдэгдэл).
 
-## Phase 2-т заавал (Phase 1-ээс шилжсэн)
-- `consents.require()` gate — PHI route бүр (DoD).
-- `wipeLocal` — MMKV болон локал сануулгыг гарахад устгах (MMKV нэмэх commit-ийн DoD).
-- Нууц үг солигдсоныг бусад төхөөрөмжид push-ээр мэдэгдэх.
-- Бусад carry-over — PROGRESS 1.13.
+## Одоогийн төлөв (2026.11.19, салбар phase-2, сүүлийн commit 9385382)
+- Phase 0–8 код талаас дууссан; бодит утсан дээр R1–R4 ✅, 3 бодит алдаа засагдсан
+  (синкийн хурд, өөр газраас нэмсэн эм, MIUI autostart), чанга суваг + 15 минутын давталт
+  (хэрэглэгчийн шийдвэр) — энгийн горимд дуугарсан, MIUI чичиргээний горимд зөвхөн чичирдэг.
+- eGFR/MELD: Q68–Q77 шийдсэн (одоо тооцохгүй; лабын eGFR «eGFR (лабын хариу)», хариун дээрх
+  нэр хандлагын графикт).
+- Тест: backend 1384, mobile Jest 342, web 21, shared 13.
+- Нээлттэй: Q78 (давталтын текст — эмч), Q65, Q66, Q67, Q12, BETA B1–B8, B10 (компани),
+  iPhone огт туршаагүй (iOS 64-ийн хязгаар, дуу).
 
-## Ажлын хэв маяг
-- Алхам бүр: төлөвлөгөө → миний зөвшөөрөл → хэрэгжүүлэх → security-reviewer (+UI-д ui-reviewer,
-  эмнэлгийн логикт medical-reviewer) → засах → commit.
-- Шинэ PHI хүснэгт → `phi-table` skill.
+## Бодит утасны тохиргоо (POCO X3 NFC, Android 12, MIUI 14)
+- adb serial `8f2c0cf9`; USB debugging + «USB debugging (Security settings)» асаалттай;
+  Background autostart LabTrack-д асаалттай, Battery saver → No restrictions.
+- `adb install` MIUI-д хаагддаг → APK-г хэрэглэгч өөрөө хуулж суулгана:
+  `F:\My Projects\eHealth\dist\labtrack-dev-arm64.apk` (одоо суусан хувилбар чанга сувагтай).
+- Холболт: `adb reverse tcp:8081 tcp:8081` ба `tcp:8080 tcp:8080` (утас дахин асахад алга
+  болно); Metro — `.claude/launch.json` `metro-emulator` (preview_start); апп нээх:
+  `adb shell am start -a android.intent.action.VIEW -d "exp+labtrack://expo-development-client/?url=http%3A%2F%2Flocalhost%3A8081"`.
+- Туршилтын сануулга: `cd backend && uv run python scripts/test_reminder.py 4 8` (одооноос
+  +4, +8 мин), дараа нь апп-ыг урд гаргах/дахин эхлүүлэх; шалгах:
+  `adb shell dumpsys alarm | grep labtrack`, `dumpsys notification --noredact`.
+- MIUI-д `uiautomator dump` ажиллахгүй — `exec-out screencap -p` + `input tap x y`.
+- Нэвтрэх: demo_kidney, нууц үг `.env.demo`-оос (хэвлэхгүй, `input text`-ээр).
 
-## Windows-ийн урхи
-- uv/just: %LOCALAPPDATA%\Microsoft\WinGet\Links; UV_PYTHON_DOWNLOADS=never. Backend тест: `just test-api`
-  (контейнер). Тест DB бохирдвол `just reset-test-db`.
-- Android build: LongPaths асаалттай, `mobile/android/local.properties`-д `cmake.dir` 4.1.2
-  (`expo prebuild --clean` устгадаг — дахин бич), Gradle ажиллах үед эмулятор унтраалттай
-  (paging file C: дээр). Эмулятор: `emulator -avd Pixel_API36 -no-snapshot`. Дэлгэрэнгүй:
-  docs/ANDROID_EMULATOR.md. Maestro: `just e2e-mobile` (Metro `npx expo start --dev-client`).
-- Jest suite-үүд module state хуваалцана (queryClient, session store) — beforeEach-д reset.
-  RNTL тестэд Date.now-г бүү freeze хий — clock inject (lockClock).
+## Сургамж
+- Утас дэлгэц унтарсан/түгжээтэй үед апп синк хийхгүй — хэмжилтийн өмнө хэрэглэгчээр дэлгэцийг
+  нээлгэнэ (Settings → Display → Sleep 10 мин).
+- Native build-ийн өмнө Docker-оо зогсоо (`docker compose ... stop`), эс бөгөөс clang
+  «out of memory»; `expo prebuild` нь `mobile/android/local.properties`-ийг устгадаг —
+  `dist/mobile-release/android/local.properties`-оос (CMake 4.1.2) хуулж, `app/.cxx` устгана.
+- Metro CI горимд кодын өөрчлөлтийг харахгүй — засварын дараа preview_stop/preview_start.
+- `adb` гацвал `taskkill //F //IM adb.exe`; foreground `sleep` хориотой — `timeout N tail -f /dev/null`.
+- Expo SDK 58 `File.copy/move/write` async — заавал await.
+- Python heredoc доторх `\n` бодит мөр таслалт болдог — код засварыг Write/Edit-ээр.
+- Jest-ийг Metro/эмулятор эсвэл бүтэн `just test-api` ажиллаж байхад бүү ажиллуул.
 ```

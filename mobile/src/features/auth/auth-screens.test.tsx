@@ -85,6 +85,20 @@ function route(handlers: Record<string, Handler>) {
     // Signed-in screens need the consents; all given unless a test says otherwise.
     if (!handler && request.url.endsWith("/api/v1/me/consents")) return json(200, allGiven);
     if (!handler && request.url.endsWith("/api/v1/me/notifications")) return json(200, []);
+    if (!handler && request.url.endsWith("/api/v1/patients"))
+      return json(200, [
+        {
+          id: "00000000-0000-4000-8000-000000000001",
+          relation: "self",
+          access_level: "owner",
+          full_name: "Бат",
+          birth_date: null,
+          sex: "unknown",
+          is_minor: false,
+          consent_required: false,
+          created_at: "2026-01-01T00:00:00Z",
+        },
+      ]);
     if (!handler) return json(200, { status: "ok" });
     return handler(request);
   });
@@ -203,7 +217,7 @@ describe("sign-in", () => {
     await fireEvent.changeText(screen.getByLabelText("Нууц үг"), "pw-123");
     await fireEvent.press(screen.getByRole("button", { name: "Нэвтрэх" }));
 
-    expect(await screen.findByText("Системийн төлөв")).toBeOnTheScreen();
+    expect(await screen.findByTestId("home-screen")).toBeOnTheScreen();
     expect(getStatus()).toBe("signedIn");
     expect(mockStore.get("lt.refresh")).toBe("r1");
     expect(await bodies("/api/v1/auth/login")).toEqual([

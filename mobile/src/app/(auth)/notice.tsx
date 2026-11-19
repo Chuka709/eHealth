@@ -34,7 +34,7 @@ export default function NoticeScreen() {
   const call = supportPhone ? { phone: supportPhone } : null;
 
   return (
-    <Screen>
+    <Screen safeTop>
       {kind === "none" && (
         <>
           <Title>{t("noticeGeneric.title")}</Title>

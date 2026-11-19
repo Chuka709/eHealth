@@ -387,7 +387,7 @@ async def test_profiles_cannot_be_shared_with_admins_or_pending_accounts(
     pending = await _create(admin_engine, admin)
     for target in (admin, pending):
         with pytest.raises(DBAPIError, match="row-level security"):
-            await grant(app_engine, owner, patient, target, "viewer")
+            await grant(app_engine, owner, patient, target, "viewer", direct=True)
 
 
 async def test_consents_cannot_be_backdated(

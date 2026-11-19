@@ -1,8 +1,9 @@
 import { Host, Switch } from "@expo/ui";
 import { fontSize, radius, space } from "@labtrack/shared";
 import bundledVersions from "@labtrack/shared/consent-versions.json";
-import { Alert, StyleSheet, Text, View } from "react-native";
+import { Alert, StyleSheet, View } from "react-native";
 import { useTranslations } from "use-intl";
+import { Text } from "@/components/app-text";
 
 import { Button } from "@/components/button";
 import { FormMessage } from "@/components/form-message";
@@ -60,6 +61,22 @@ export default function ConsentSettingsScreen() {
       { cancelable: true },
     );
 
+  // Q42: withdrawing ends every caregiver's access at once - said before, never after
+  const stopSharing = () =>
+    Alert.alert(
+      t("consentSettings.caregiverWithdrawTitle"),
+      t("consentSettings.caregiverWithdrawBody"),
+      [
+        { text: t("common.cancel"), style: "cancel" },
+        {
+          text: t("consentSettings.caregiverWithdrawConfirm"),
+          style: "destructive",
+          onPress: () => give.mutate([item("caregiver_sharing", false)]),
+        },
+      ],
+      { cancelable: true },
+    );
+
   return (
     <Screen>
       {REQUIRED_KINDS.map((kind) => (
@@ -86,6 +103,20 @@ export default function ConsentSettingsScreen() {
             disabled={give.isPending}
             onValueChange={(on) => give.mutate(AI_KINDS.map((kind) => item(kind, on)))}
             testID="consent-settings-ai"
+          />
+        </Host>
+      </ConsentRow>
+      <ConsentRow state={byKind.get("caregiver_sharing")} title={t("consent.caregiver.title")}>
+        <Paragraph muted>{t("consent.caregiver.summary")}</Paragraph>
+        <Host matchContents={{ vertical: true }} style={styles.wide}>
+          <Switch
+            label={t("consent.caregiver.title")}
+            value={byKind.get("caregiver_sharing")?.granted === true}
+            disabled={give.isPending}
+            onValueChange={(on) =>
+              on ? give.mutate([item("caregiver_sharing", true)]) : stopSharing()
+            }
+            testID="consent-settings-caregiver"
           />
         </Host>
       </ConsentRow>

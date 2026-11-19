@@ -1,6 +1,13 @@
 import { Stack } from "expo-router";
 import { useTranslations } from "use-intl";
 
+import { useEmergencyCardSync } from "@/features/emergency/use-card-sync";
+import { useDeviceAlarmReport } from "@/features/meds/use-device-alarms";
+import { useReminderResponses, useReminderSync } from "@/features/meds/use-reminders";
+import { useZonePrompt } from "@/features/meds/use-zone-prompt";
+import { useLocalData } from "@/features/offline/use-local-data";
+import { usePushRegistration } from "@/features/push/use-push-registration";
+
 /**
  * Every signed-in screen except onboarding lives in this group, so a new screen is behind the
  * consent/onboarding guard of (app)/_layout by default. Each screen names itself in the header
@@ -8,16 +15,81 @@ import { useTranslations } from "use-intl";
  */
 export default function MainLayout() {
   const t = useTranslations("app");
+  // encrypted offline cache + queued writes: only past the consent guard, signed in, unlocked
+  useLocalData();
+  // local medicine reminders: planned, answered, and moved when the time zone changes
+  useReminderSync();
+  useReminderResponses();
+  useZonePrompt();
+  // whether reminders here can be on time: a caregiver's alert waits longer if not (Q48)
+  useDeviceAlarmReport();
+  // the saved emergency card follows every change (the locked app and an offline phone show it)
+  useEmergencyCardSync();
+  // server push: this device's token on this session, again on every return (2.8f)
+  usePushRegistration();
   return (
     <Stack screenOptions={{ headerBackTitle: t("common.back") }}>
-      <Stack.Screen name="home" options={{ title: t("name") }} />
-      <Stack.Screen name="settings/index" options={{ title: t("settings.title") }} />
+      <Stack.Screen name="(tabs)" options={{ headerShown: false, title: t("name") }} />
+      <Stack.Screen name="emergency" options={{ title: t("emergency.title") }} />
+      <Stack.Screen name="notifications/index" options={{ title: t("notifications.title") }} />
+      <Stack.Screen name="profiles" options={{ title: t("profiles.title") }} />
+      <Stack.Screen name="timeline" options={{ title: t("timeline.title") }} />
+      <Stack.Screen name="reports/compare" options={{ title: t("timeline.compareScreen.title") }} />
+      <Stack.Screen name="dashboard/cards" options={{ title: t("home.cardsEditor.title") }} />
+      <Stack.Screen name="caregivers/index" options={{ title: t("caregivers.title") }} />
+      <Stack.Screen name="shares/index" options={{ title: t("shares.title") }} />
+      <Stack.Screen name="shares/links" options={{ title: t("shareLinks.row") }} />
+      <Stack.Screen name="doctor/index" options={{ title: t("clinician.row") }} />
+      <Stack.Screen name="summary" options={{ title: t("summaryExport.row") }} />
+      <Stack.Screen
+        name="caregivers/invitations"
+        options={{ title: t("caregivers.invitations.title") }}
+      />
+      <Stack.Screen
+        name="caregivers/alerts"
+        options={{ title: t("caregivers.alertSettings.title") }}
+      />
+      <Stack.Screen name="notifications/[id]" options={{ title: t("notifications.title") }} />
+      <Stack.Screen name="settings/emergency" options={{ title: t("emergency.title") }} />
+      <Stack.Screen
+        name="settings/emergency-wallpaper"
+        options={{ title: t("emergency.export.wallpaper") }}
+      />
+      <Stack.Screen
+        name="settings/medical-id"
+        options={{ title: t("emergency.export.medicalId") }}
+      />
       <Stack.Screen name="settings/profile" options={{ title: t("profile.title") }} />
       <Stack.Screen name="settings/password" options={{ title: t("passwordChange.title") }} />
       <Stack.Screen name="settings/devices" options={{ title: t("devices.title") }} />
       <Stack.Screen name="settings/consents" options={{ title: t("consentSettings.title") }} />
       <Stack.Screen name="settings/admin-history" options={{ title: t("adminHistory.title") }} />
+      <Stack.Screen name="settings/about" options={{ title: t("about.title") }} />
+      <Stack.Screen name="upload" options={{ title: t("upload.title") }} />
+      <Stack.Screen name="results/index" options={{ title: t("upload.listTitle") }} />
+      <Stack.Screen name="results/[id]" options={{ title: t("upload.review.title") }} />
+      <Stack.Screen name="results/row" options={{ title: t("upload.review.rowTitle") }} />
+      <Stack.Screen name="results/new" options={{ title: t("upload.review.newTitle") }} />
       <Stack.Screen name="settings/delete-account" options={{ title: t("deleteAccount.title") }} />
+      <Stack.Screen name="transplants/index" options={{ title: t("transplant.listTitle") }} />
+      <Stack.Screen name="transplants/new" options={{ title: t("transplant.add") }} />
+      <Stack.Screen name="transplants/[id]" options={{ title: t("transplant.editTitle") }} />
+      <Stack.Screen name="meds/new" options={{ title: t("meds.add") }} />
+      <Stack.Screen name="events/index" options={{ title: t("health.events") }} />
+      <Stack.Screen name="events/[id]" options={{ title: t("health.event.edit") }} />
+      <Stack.Screen name="allergies/index" options={{ title: t("health.allergies") }} />
+      <Stack.Screen name="allergies/[id]" options={{ title: t("health.allergy.edit") }} />
+      <Stack.Screen name="contacts/index" options={{ title: t("health.contacts") }} />
+      <Stack.Screen name="contacts/[id]" options={{ title: t("health.contact.edit") }} />
+      <Stack.Screen name="appointments/index" options={{ title: t("health.appointments") }} />
+      <Stack.Screen name="appointments/[id]" options={{ title: t("health.appointment.edit") }} />
+      <Stack.Screen name="questions/index" options={{ title: t("health.questions") }} />
+      <Stack.Screen name="questions/[id]" options={{ title: t("health.question.edit") }} />
+      <Stack.Screen name="vitals/index" options={{ title: t("health.vitals") }} />
+      <Stack.Screen name="vitals/new" options={{ title: t("health.vital.add") }} />
+      <Stack.Screen name="settings/reminders" options={{ title: t("meds.reminders.title") }} />
+      <Stack.Screen name="meds/[id]/index" options={{ title: t("meds.detail.title") }} />
+      <Stack.Screen name="meds/[id]/dose" options={{ title: t("meds.change.title") }} />
     </Stack>
   );
 }

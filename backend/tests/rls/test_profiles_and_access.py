@@ -107,7 +107,7 @@ async def test_nobody_grants_access_to_themselves(
     owner, attacker = await make_user(owner_engine), await make_user(owner_engine)
     patient = await make_patient(app_engine, owner)
     with pytest.raises(DBAPIError, match="row-level security"):
-        await grant(app_engine, attacker, patient, attacker, "caregiver")
+        await grant(app_engine, attacker, patient, attacker, "caregiver", direct=True)
 
 
 async def test_owner_cannot_create_a_second_owner(
@@ -116,7 +116,7 @@ async def test_owner_cannot_create_a_second_owner(
     owner, other = await make_user(owner_engine), await make_user(owner_engine)
     patient = await make_patient(app_engine, owner)
     with pytest.raises(DBAPIError, match="row-level security"):
-        await grant(app_engine, owner, patient, other, "owner")
+        await grant(app_engine, owner, patient, other, "owner", direct=True)
 
 
 async def test_caregiver_cannot_escalate_or_regrant(
@@ -126,7 +126,7 @@ async def test_caregiver_cannot_escalate_or_regrant(
     patient = await make_patient(app_engine, owner)
     await grant(app_engine, owner, patient, carer, "caregiver")
     with pytest.raises(DBAPIError, match="row-level security"):
-        await grant(app_engine, carer, patient, friend, "viewer")
+        await grant(app_engine, carer, patient, friend, "viewer", direct=True)
     async with as_user(app_engine, carer) as conn:
         r = await conn.execute(
             bound_text(
@@ -199,8 +199,18 @@ async def test_notifications_are_private_and_only_read_at_is_writable(
     patient = await make_patient(app_engine, alice)
     async with as_user(app_engine, alice) as conn:
         await conn.execute(
-            bound_text("select notify(:u, 'share_invite', :p, null, 'share.invite')"),
-            {"u": bob, "p": patient},
+            bound_text(
+                "insert into consents (user_id, kind, version, granted)"
+                " values (app_user_id(), 'caregiver_sharing', '1', true)"
+            )
+        )
+    async with owner_engine.connect() as conn:
+        bob_name = await scalar(
+            conn, bound_text("select username::text from users where id = :u"), {"u": bob}
+        )
+    async with as_user(app_engine, alice) as conn:  # the invitation sends Bob its notice
+        await conn.execute(
+            bound_text("select invite_caregiver(:p, :n)"), {"p": patient, "n": bob_name}
         )
     async with as_user(app_engine, alice) as conn:
         assert await scalar(conn, bound_text("select count(*) from notifications")) == 0
@@ -248,19 +258,20 @@ async def test_users_cannot_send_unrelated_notifications(
             )
 
 
-async def test_result_notification_reaches_a_caregiver_with_access(
-    app_engine: AsyncEngine, owner_engine: AsyncEngine, admin_engine: AsyncEngine
+@pytest.mark.parametrize("kind", ["critical_pending", "review_ready"])
+async def test_result_notices_come_only_from_a_read_document(
+    app_engine: AsyncEngine, owner_engine: AsyncEngine, kind: str
 ) -> None:
+    """notify_document_read() picks the recipients (0035); the app cannot push them at will."""
     owner, carer = await make_user(owner_engine), await make_user(owner_engine)
     patient = await make_patient(app_engine, owner)
     await grant(app_engine, owner, patient, carer, "caregiver")
-    async with as_user(app_engine, owner) as conn:
-        await conn.execute(
-            bound_text("select notify(:u, 'critical_pending', :p, null, 'result.critical')"),
-            {"u": carer, "p": patient},
-        )
-    async with as_user(app_engine, carer) as conn:
-        assert await scalar(conn, bound_text("select count(*) from notifications")) == 1
+    with pytest.raises(DBAPIError, match="notification not allowed"):
+        async with as_user(app_engine, owner) as conn:
+            await conn.execute(
+                bound_text("select notify(:u, :k, :p, null, 'result.critical')"),
+                {"u": carer, "k": kind, "p": patient},
+            )
 
 
 async def test_birth_date_cannot_be_rewritten_to_unlock_proxy_consent(
@@ -387,3 +398,47 @@ async def test_minor_status_is_no_oracle_and_relation_is_fixed(
             await conn.execute(
                 bound_text("update patients set relation = 'self' where id = :p"), {"p": child}
             )
+
+
+async def test_owner_profile_consents_reach_only_a_doctor_or_viewer_on_a_minors_profile(
+    app_engine: AsyncEngine, owner_engine: AsyncEngine, admin_engine: AsyncEngine
+) -> None:
+    """0044: the owner's required consents for a child's profile, to a doctor or a viewer it is
+    shared with (in force) - no rows for an adult's profile, a caregiver, an expired share or a
+    stranger, and never a consent kind the gate does not need."""
+    owner = await make_user(owner_engine)
+    doctor, viewer = await make_user(owner_engine, "doctor"), await make_user(owner_engine)
+    carer, late, stranger = (
+        await make_user(owner_engine),
+        await make_user(owner_engine, "doctor"),
+        await make_user(owner_engine),
+    )
+    adult = await make_patient(app_engine, owner)
+    child = await make_patient(app_engine, owner, minor=True)
+    async with as_user(app_engine, owner) as conn:
+        for kind in ("terms", "privacy", "sensitive_data", "research"):
+            await conn.execute(
+                bound_text(
+                    "insert into consents (user_id, patient_id, kind, version, granted)"
+                    " values (:u, :p, :k, '1', true)"
+                ),
+                {"u": owner, "p": child, "k": kind},
+            )
+    await grant(app_engine, owner, child, doctor, "doctor")
+    await grant(app_engine, owner, child, viewer, "viewer")
+    await grant(app_engine, owner, adult, doctor, "doctor")
+    await grant(app_engine, owner, adult, carer, "caregiver")
+    await grant(app_engine, owner, child, late, "doctor", expires=datetime(2020, 1, 1, tzinfo=UTC))
+    rows = bound_text("select kind from owner_profile_consents(:p) order by kind")
+
+    async def kinds(user: UUID, patient: UUID) -> list[str]:
+        async with as_user(app_engine, user) as conn:
+            return list((await conn.execute(rows, {"p": patient})).scalars())
+
+    assert await kinds(doctor, child) == ["privacy", "sensitive_data", "terms"]
+    assert await kinds(viewer, child) == ["privacy", "sensitive_data", "terms"]
+    assert await kinds(doctor, adult) == []
+    assert await kinds(carer, adult) == []
+    assert await kinds(late, child) == []
+    assert await kinds(stranger, child) == []
+    assert await kinds(owner, child) == []  # the owner reads their own rows directly

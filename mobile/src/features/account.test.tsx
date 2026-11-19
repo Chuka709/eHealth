@@ -67,6 +67,21 @@ function route(extra: Record<string, Handler> = {}) {
     "POST /api/v1/auth/refresh": () =>
       json(200, { access_token: "a1", token_type: "bearer", expires_in: 900, refresh_token: "r1" }),
     "GET /api/v1/me/consents": () => json(200, consents()),
+    // the own profile exists: no transplant wizard (Phase 2.4)
+    "GET /api/v1/patients": () =>
+      json(200, [
+        {
+          id: "00000000-0000-4000-8000-000000000001",
+          relation: "self",
+          access_level: "owner",
+          full_name: "Бат",
+          birth_date: null,
+          sex: "unknown",
+          is_minor: false,
+          consent_required: false,
+          created_at: "2026-01-01T00:00:00Z",
+        },
+      ]),
     "POST /api/v1/me/consents": async (request) => {
       const body = (await request.clone().json()) as { items: { kind: Kind; granted: boolean }[] };
       for (const i of body.items) given[i.kind] = i.granted;
@@ -129,7 +144,7 @@ beforeEach(() => {
 const open = () => renderRouter("./src/app", { initialUrl: "/" });
 const openSettingsRow = async (testID: string) => {
   await open();
-  await fireEvent.press(await screen.findByRole("button", { name: "Тохиргоо" }));
+  await fireEvent.press(await screen.findByRole("button", { name: /^Тохиргоо, tab/ }));
   await fireEvent.press(await screen.findByTestId(testID));
 };
 
@@ -358,4 +373,54 @@ test("a deletion learnt from a refresh shows the notice without a date", async (
   await open();
   expect(await screen.findByText("Устгах хүсэлтийг хүлээн авлаа")).toBeOnTheScreen();
   expect(screen.getByText(/хүсэлт гаргаснаас хойш 30 хоногийн дараа/)).toBeOnTheScreen();
+});
+
+test("About says what the app is for and never does (docs/09), with the support line", async () => {
+  await openSettingsRow("settings-about");
+  expect(await screen.findByRole("header", { name: "Энэ апп юу хийдэггүй вэ" })).toBeOnTheScreen();
+  expect(
+    screen.getByText(/Оношилгоо хийхгүй, эмчилгээ болон эмийн тун санал болгохгүй/),
+  ).toBeOnTheScreen();
+  expect(screen.getByText(/103 руу залгана уу/)).toBeOnTheScreen();
+  // reminders are never promised (H6, H18) nor caregiver alerts (H16)
+  expect(screen.getByText(/хоцорч эсвэл ирэхгүй байж болно/)).toBeOnTheScreen();
+  expect(screen.getByRole("button", { name: "103 руу залгах" })).toBeOnTheScreen();
+  // doctor sharing comes in Phase 7: not promised now
+  expect(screen.queryByText(/эмчтэйгээ хуваалцах/)).toBeNull();
+  // no privacy URL configured in tests: the button is hidden, never a dead link
+  expect(screen.queryByRole("button", { name: "Нууцлалын бодлого" })).toBeNull();
+});
+
+test("lab results: each file says how far it got; adding one asks whose result it is", async () => {
+  const doc = (id: string, status: string, extra: object = {}) => ({
+    id,
+    mime_type: "application/pdf",
+    size_bytes: 1000,
+    page_count: 2,
+    has_text_layer: true,
+    status,
+    error_code: null,
+    created_at: "2026-11-12T01:00:00Z",
+    ...extra,
+  });
+  route({
+    "GET /api/v1/patients/00000000-0000-4000-8000-000000000001/documents": () =>
+      json(200, [
+        doc("00000000-0000-4000-8000-0000000000d1", "uploaded"),
+        doc("00000000-0000-4000-8000-0000000000d2", "queued"),
+        doc("00000000-0000-4000-8000-0000000000d3", "rejected", { error_code: "infected" }),
+      ]),
+  });
+  await open();
+  await fireEvent.press(await screen.findByTestId("home-results"));
+  expect(await screen.findByText("Файлыг шалгаж байна")).toBeOnTheScreen();
+  expect(screen.getByText("Хүлээн авсан — уншихыг хүлээж байна")).toBeOnTheScreen();
+  expect(screen.getByText("Хүлээж аваагүй — өөр файл оруулна уу")).toBeOnTheScreen();
+  expect(screen.getByText("Файл аюулгүй биш тул хүлээж аваагүй.")).toBeOnTheScreen();
+  await fireEvent.press(screen.getByRole("button", { name: "Хариу оруулах" }));
+  expect(await screen.findByText("Энэ профайлд нэмнэ: Бат")).toBeOnTheScreen();
+  // scans never go to the phone's photos (CLAUDE.md rule 8) - and the user is told
+  expect(screen.getByText(/зургийн санд хадгалагдахгүй/)).toBeOnTheScreen();
+  expect(screen.getByRole("button", { name: /^Скан хийх/ })).toBeOnTheScreen();
+  expect(screen.getByRole("button", { name: /^Файл \(PDF\)/ })).toBeOnTheScreen();
 });

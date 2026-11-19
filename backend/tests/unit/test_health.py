@@ -43,3 +43,10 @@ def test_openapi_has_versioned_paths() -> None:
     paths = create_app().openapi()["paths"]
     assert "/api/v1/healthz" in paths
     assert "/api/v1/readyz" in paths
+
+
+def test_openapi_schema_names_are_unique() -> None:
+    """Two response models of one name get module-prefixed names (`labtrack__api__...`) in the
+    schema, which renames the client's existing types and breaks the apps (6.4)."""
+    schemas = create_app().openapi()["components"]["schemas"]
+    assert [name for name in schemas if name.startswith("labtrack__")] == []

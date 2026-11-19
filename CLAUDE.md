@@ -62,12 +62,13 @@ just eval            # задлалтын eval
 - Огноо: DB UTC, харуулах `Asia/Ulaanbaatar`. Commit: Conventional Commits.
 
 ## Ажлын урсгал
-1. Phase эхлэхэд төлөвлөгөө бичиж хэрэглэгчээр батлуулна.
-2. Дараалал: migration → repository → core + тест → API + тест → gen-client → апп дэлгэц → Maestro → (шаардлагатай бол) web.
-3. Алхам бүрийн дараа `just lint && just test`.
-4. Phase дуусахад DoD-г нотолгоотой `docs/PROGRESS.md`-д бичнэ.
-5. Эмнэлгийн тодорхойгүй асуудлыг `docs/OPEN_QUESTIONS.md`-д бичиж асууна.
-6. Auth/RLS/storage → `security-reviewer`; эмнэлгийн логик/prompt → `medical-reviewer`.
+1. Phase эхлэхэд төлөвлөгөө (4–6 том алхам, богино) бичиж хэрэглэгчээр батлуулна. **Нэг сесс ≈ нэг алхам**; алхам дуусахад commit + push, дараагийнх шинэ сессээр (`/clear`).
+2. Дараалал: migration → repository → core + тест → API + тест → gen-client → апп дэлгэц → (шаардлагатай бол) web.
+3. Алхам бүрийн дараа `just lint && just test`. Засварын явцад зөвхөн хамаарах тест (`-k`, `jest <file>`); бүтнээр — commit-ийн өмнө.
+4. Хянагч — **алхмын төгсгөлд нэг удаа**, хамаарахыг л: Auth/RLS/storage/token → `security-reviewer`; эмнэлгийн логик, prompt, эмнэлгийн UI текст → `medical-reviewer`; дэлгэц → `ui-reviewer`. High/Medium засварыг л дахин хянуулна; Low-г засаад үргэлжлүүлнэ.
+5. Эмулятор/Maestro: алхмын явцад `just e2e-mobile-fast <stage>` (seed хэрэглэгч); бүтэн `just e2e-mobile` — phase-ийн төгсгөлд. UI өөрчлөлтийг **дэлгэцийн зургаар** (dev build-д screen-capture хамгаалалтгүй) шалгана.
+6. `docs/PROGRESS.md` — алхам бүрт 2–3 өгүүлбэр (юу, нотолгоо, үлдсэн); дэлгэрэнгүй нь commit message-д. Phase дуусахад DoD нотолгоо.
+7. Эмнэлгийн тодорхойгүй асуудлыг `docs/OPEN_QUESTIONS.md`-д бичиж асууна; hazard log (09) — шинэ эрсдэл/хяналт гарсан үед л.
 
 ## Claude Code хэрэгсэл ба токен хэмнэлт (дэлгэрэнгүй: `docs/11_TOOLING.md`)
 - Agents: `security-reviewer`, `medical-reviewer` (opus), `ui-reviewer` (sonnet). Skill: `phi-table`. Commands: `/phase N`, `/security-check`.

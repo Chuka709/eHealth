@@ -1,15 +1,19 @@
 import { feedbackGlyph, fontSize, minTouchTarget, radius, space } from "@labtrack/shared";
-import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Platform, Pressable, StyleSheet, View } from "react-native";
 import { useTranslations } from "use-intl";
+import { Text } from "@/components/app-text";
 
 import { usePalette } from "@/theme/use-palette";
 
 import { useHealth } from "./use-health";
 
-export function HealthStatus() {
+/** `problemsOnly`: nothing while checking or connected - only an unreachable server shows. */
+export function HealthStatus({ problemsOnly = false }: { problemsOnly?: boolean }) {
   const t = useTranslations("status");
   const p = usePalette();
   const { isPending, isError, refetch, isFetching } = useHealth();
+
+  if (problemsOnly && !isError) return null;
 
   if (isPending) {
     return (

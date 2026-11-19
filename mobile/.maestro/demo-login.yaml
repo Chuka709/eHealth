@@ -1,0 +1,13 @@
+# Fast runs on the seeded demo accounts (`just e2e-mobile-fast`): a clean app signs in as
+# USERNAME (no new account, no activation - that is `just e2e-mobile`'s activation flow).
+appId: ${MAESTRO_APP_ID}
+---
+- launchApp:
+    clearState: true
+    clearKeychain: true
+- runFlow: subflows/dev-client.yaml
+- runFlow:
+    file: subflows/login.yaml
+    env:
+      USERNAME: ${MAESTRO_USERNAME}
+      PASSWORD: ${MAESTRO_PASSWORD}

@@ -17,7 +17,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from labtrack.db.sql import bound_text
 
-Kind = Literal["terms", "privacy", "sensitive_data", "ai_processing", "cross_border"]
+Kind = Literal[
+    "terms", "privacy", "sensitive_data", "ai_processing", "cross_border", "caregiver_sharing"
+]
 
 # Text version shown to the user; bump when the text changes (mn.json/en.json app.consent.*),
 # then `just gen-client` so the app bundles the new version with the new text.
@@ -27,6 +29,8 @@ VERSIONS: Final[dict[Kind, str]] = {
     "sensitive_data": "draft-2026-10",
     "ai_processing": "draft-2026-10",
     "cross_border": "draft-2026-10",
+    # the user lets caregivers they invite see and keep their profiles (Phase 2.8d; Q42)
+    "caregiver_sharing": "draft-2026-11",
 }
 # Without these the app cannot be used (health data cannot be processed at all).
 REQUIRED: Final[frozenset[Kind]] = frozenset({"terms", "privacy", "sensitive_data"})
@@ -103,12 +107,38 @@ async def require_for_patient(db: AsyncSession, patient_id: object) -> None:
     profile also needs the consents its owner gave for it (Q9), checked now - at 18 (the
     Ulaanbaatar date) the parent's consent stops counting and the profile is no longer a
     minor's. The profile's consents are readable only by the user who gave them, so anyone else
-    on a minor's profile (a caregiver) is refused - fail closed until a caregiver flow exists.
+    on a minor's profile it was shared with as a doctor or a viewer reads the owner's through
+    `owner_profile_consents()` (0044, 7.6): open while the owner's consents are in force.
     """
     from labtrack.api.errors import AppError  # noqa: PLC0415 - api depends on this module
 
     minor = (
         await db.execute(bound_text("select is_minor_patient(:p)"), {"p": patient_id})
     ).scalar_one()
-    if minor and await missing(db, REQUIRED, patient_id):
+    if not minor:
+        return
+    owner = (await db.execute(bound_text("select is_owner(:p)"), {"p": patient_id})).scalar_one()
+    if owner:
+        if await missing(db, REQUIRED, patient_id):
+            raise AppError(403, "consent.profile_required")
+        return
+    # a doctor or a viewer the owner shared it with (0040); a caregiver stays refused (0025: no
+    # caregivers on a child's profile)
+    level = (
+        await db.execute(
+            bound_text(
+                "select level::text from patient_access where patient_id = :p"
+                " and user_id = app_user_id() and revoked_at is null"
+                " and (expires_at is null or expires_at > now())"
+            ),
+            {"p": patient_id},
+        )
+    ).scalar_one_or_none()
+    if level not in ("doctor", "viewer"):
+        raise AppError(403, "consent.profile_required")
+    rows = await db.execute(
+        bound_text("select * from owner_profile_consents(:p)"), {"p": patient_id}
+    )
+    given = {r.kind for r in rows if r.granted and r.version == VERSIONS.get(r.kind)}
+    if not given >= REQUIRED:
         raise AppError(403, "consent.profile_required")

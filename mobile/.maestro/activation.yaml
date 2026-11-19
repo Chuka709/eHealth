@@ -1,4 +1,4 @@
-# Phase 1 DoD: a registered user activates with the admin's QR/link, sets their own password,
+# Phase 1 DoD (+ Phase 2.5): a registered user activates with the admin's QR/link, sets their own password,
 # signs in, gives the consents and reaches Home (docs/01 Phase 1 DoD, docs/08 "Анх нэвтрэх").
 #
 # Run with `just e2e-mobile`: it provisions the user and passes the values as MAESTRO_*
@@ -9,51 +9,16 @@ appId: ${MAESTRO_APP_ID}
     clearState: true
     clearKeychain: true
 - runFlow: subflows/dev-client.yaml
-- extendedWaitUntil:
-    visible: "Аккаунт идэвхжүүлэх"
-    timeout: 120000 # a cold Metro bundles for ~1 min
-
-# The admin's link (the same URL the QR holds). The token never reaches the router.
-- openLink: "labtrack://activate#${MAESTRO_ACTIVATION_TOKEN}"
-- assertVisible: "Идэвхжүүлэх код уншигдлаа.*"
-# Fields are filled through the keyboard's next/done actions, as a user would: tapping a label
-# does not focus its input, and hideKeyboard presses Back on Android (leaving the app).
-- tapOn: "Хэрэглэгчийн нэр"
-- inputText: ${MAESTRO_USERNAME}
-- pressKey: Enter
-- inputText: ${MAESTRO_PASSWORD}
-- pressKey: Enter
-- inputText: ${MAESTRO_PASSWORD}
-- pressKey: Enter
-- extendedWaitUntil:
-    visible: "Аккаунт идэвхжлээ.*"
-    timeout: 15000
-
-# Sign in with the password only the user knows.
-- tapOn: "Хэрэглэгчийн нэр"
-- inputText: ${MAESTRO_USERNAME}
-- pressKey: Enter
-- inputText: ${MAESTRO_PASSWORD}
-- pressKey: Enter # the password field's "go" action signs in
-
-# Consents: the three required ones, AI stays off.
-- extendedWaitUntil:
-    visible: 'Үйлчилгээний нөхцөл \(Заавал\)' # text is a regex: escape the brackets
-    timeout: 15000
-- tapOn: 'Үйлчилгээний нөхцөл \(Заавал\)'
-- tapOn: 'Нууцлалын бодлого \(Заавал\)'
-- tapOn: 'Эрүүл мэндийн мэдээлэл боловсруулах \(Заавал\)'
-- scrollUntilVisible:
-    element: "Үргэлжлүүлэх"
-- tapOn: "Үргэлжлүүлэх"
-
-# Biometric offer only on phones with strong biometrics enrolled.
 - runFlow:
-    when:
-      visible: "Аппыг хурдан, аюулгүй нээх"
-    commands:
-      - tapOn: "Одоо биш"
+    file: subflows/activate.yaml
+    env:
+      USERNAME: ${MAESTRO_USERNAME}
+      PASSWORD: ${MAESTRO_PASSWORD}
+      TOKEN: ${MAESTRO_ACTIVATION_TOKEN}
 
-- extendedWaitUntil:
-    visible: "Системийн төлөв"
-    timeout: 15000
+# Phase 2.5: medicines, today's doses and reminders.
+- runFlow: subflows/medication.yaml
+# Phase 2.9: Home - transplant, today's doses (one tap), next appointment.
+- runFlow: subflows/home.yaml
+# Phase 2.7: the emergency card, the wallet PDF, the wallpaper, Medical ID.
+- runFlow: subflows/emergency.yaml

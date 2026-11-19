@@ -1,4 +1,4 @@
-import { refreshSession, wipeLocal } from "./session";
+import { currentEpoch, refreshSession, wipeLocal } from "./session";
 import { getAccessToken } from "./session-store";
 
 // Endpoints that never carry the access token.
@@ -44,17 +44,22 @@ export function createAuthFetch(
     if (path === null || PUBLIC_PATHS.has(path)) return send(request);
 
     const retry = request.clone();
+    const started = currentEpoch();
     const token = await validAccessToken();
+    // the session changed while the token was being refreshed: this request is not its own
+    if (currentEpoch() !== started) throw new TypeError("Network request failed");
     const first = await sendAuthorized(request, token);
     if (!(await isSessionError(first))) return first;
 
+    // Signed out (or in as someone else) meanwhile: never replay this request on that session.
+    if (currentEpoch() !== started) return first;
     // Another request may already have rotated the token while this one was in flight.
     let next = getAccessToken();
     if (next === null || next === token) {
       if ((await refreshSession()) !== "ok") return first;
       next = getAccessToken();
     }
-    if (next === null) return first;
+    if (next === null || currentEpoch() !== started) return first;
     const second = await sendAuthorized(retry, next);
     // A fresh token was rejected: the session is gone (disabled account, revoked device).
     if (await isSessionError(second)) await wipeLocal("signedOut");

@@ -71,6 +71,8 @@ _TEXT_PATTERNS = (
     (re.compile(r"(Key \([^)]*\))=\([^)]*\)"), r"\1=([redacted])"),
     (re.compile(r"input_value=('[^']*'|\"[^\"]*\"|\S+)"), "input_value=[redacted]"),
     (re.compile(r"(\?)[^\s\"']+"), r"\1[redacted]"),  # URL query strings
+    # Expo push tokens (Expo's own error messages repeat them)
+    (re.compile(r"(Expo(?:nent)?PushToken\[)[^\]]*\]"), r"\1[redacted]]"),
 )
 
 

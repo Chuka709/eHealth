@@ -1,0 +1,63 @@
+# Phase 2.5: add a medicine with a dose per time, see today's doses, record one and undo it,
+# and see the reminder warning when Android does not allow exact alarms (H18). Runs after the
+# first sign-in (activation.yaml). The catalog is searched in Latin letters: Maestro's text
+# input cannot type Cyrillic reliably.
+appId: ${MAESTRO_APP_ID}
+---
+- tapOn: "Эм"
+- extendedWaitUntil:
+    visible: "Өнөөдрийн тунгууд"
+    timeout: 15000
+- tapOn: "Эм нэмэх"
+- tapOn: "Эмийн нэрээр хайх"
+- inputText: "Tacro"
+- extendedWaitUntil:
+    visible: "Такролимус.*"
+    timeout: 15000
+- tapOn: "Такролимус.*"
+- assertVisible: "Сонгосон: Такролимус"
+- tapOn: "Нэгж: Сонгоогүй"
+- tapOn: "мг"
+- tapOn: '1-р цагийн тун \(мг\)' # text is a regex: escape the brackets
+- inputText: "2"
+- pressKey: Enter # closes the number pad (hideKeyboard would press Back and leave)
+- scrollUntilVisible:
+    element: "Хадгалах"
+    timeout: 20000
+- tapOn: "Хадгалах"
+
+# Android 13+: the notification permission is asked once there is something to remind of.
+- runFlow:
+    when:
+      visible: ".*send you notifications.*"
+    commands:
+      - tapOn: "Allow"
+
+- extendedWaitUntil:
+    visible: "Такролимус"
+    timeout: 15000
+# Android 14+ denies exact alarms by default: reminders still come, Medicines says they may be
+# late and leads to the explanation (docs/08, H18).
+- extendedWaitUntil:
+    visible: "Эмийн сануулга хоцорч.*"
+    timeout: 15000
+    optional: true # granted on Android 12-13 images
+- runFlow:
+    when:
+      visible: "Эмийн сануулга хоцорч.*"
+    commands:
+      - tapOn: "Тайлбар ба тохиргоо"
+      - assertVisible: "Сануулга яг цагтаа ирэх"
+      - back
+
+# Today's 08:00 dose: "skipped" can be recorded ahead (taken only near its time), then undone.
+- scrollUntilVisible:
+    element: "Алгассан"
+- tapOn: "Алгассан"
+- extendedWaitUntil:
+    visible: "Алгассан гэж тэмдэглэсэн"
+    timeout: 15000
+- tapOn: "Буцаах"
+- extendedWaitUntil:
+    notVisible: "Алгассан гэж тэмдэглэсэн"
+    timeout: 15000

@@ -24,6 +24,7 @@ _REQUIRED = (
     "TEST_ADMIN_DATABASE_URL",
     "TEST_ADMIN_LOGIN_DATABASE_URL",
     "TEST_MAINT_DATABASE_URL",
+    "TEST_PUSH_DATABASE_URL",
 )
 
 
@@ -68,6 +69,14 @@ async def admin_login_engine() -> AsyncIterator[AsyncEngine]:
 @pytest.fixture(scope="session")
 async def maint_engine() -> AsyncIterator[AsyncEngine]:
     engine = create_async_engine(os.environ["TEST_MAINT_DATABASE_URL"])
+    yield engine
+    await engine.dispose()
+
+
+@pytest.fixture(scope="session")
+async def push_engine() -> AsyncIterator[AsyncEngine]:
+    """labtrack_push: the push worker's role (migration 0028)."""
+    engine = create_async_engine(os.environ["TEST_PUSH_DATABASE_URL"])
     yield engine
     await engine.dispose()
 
@@ -133,7 +142,33 @@ async def grant(
     *,
     expires: datetime | None = None,
     revoked: bool = False,
+    direct: bool = False,
 ) -> None:
+    """The owner shares the profile. Every shared level comes from an accepted invitation
+    (caregiver 0020, doctor/viewer 0040): the owner cannot grant it directly, so it is arranged
+    as an accepted invitation would leave it (unless `direct`, to test that it is refused)."""
+    if not direct:
+        engine = create_async_engine(os.environ["MIGRATION_DATABASE_URL"])
+        try:
+            async with engine.connect() as conn, conn.begin():
+                await conn.execute(
+                    bound_text(
+                        "insert into patient_access (patient_id, user_id, level, granted_by,"
+                        " expires_at, revoked_at) values (:p, :g, cast(:lvl as access_level), :o,"
+                        " :exp, case when :rev then now() end)"
+                    ),
+                    {
+                        "p": patient,
+                        "g": grantee,
+                        "lvl": level,
+                        "o": owner,
+                        "exp": expires,
+                        "rev": revoked,
+                    },
+                )
+        finally:
+            await engine.dispose()
+        return
     async with as_user(app_engine, owner) as conn:
         await conn.execute(
             bound_text(

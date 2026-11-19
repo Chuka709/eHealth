@@ -223,6 +223,13 @@ create table lab_results (
   created_at timestamptz not null default now()
 );
 create index on lab_results (patient_id, test_code, collected_at desc);
+-- 0031 (Phase 4.1): `extraction_runs` — `patient_id` + `method` ('local'|'ai', Q50), `reader`,
+-- `error_code` (чөлөөт текст биш), app-д зөвхөн INSERT/SELECT, owner устгана. `lab_reports` —
+-- `specimen` нэмэгдсэн, `source_patient_name` ХАДГАЛАХГҮЙ (зөвхөн `name_match_score`),
+-- `recorded_by/updated_by/updated_at`; app `status`/`confirmed_*`-г тавьж, өөрчилж чадахгүй
+-- (draft — дүрэм 4; батлалт Phase 5). `lab_results` — `position`, issue-ийн тогтсон жагсаалт
+-- (CHECK). Composite FK: run/report → documents(id, patient_id), result → lab_reports(id,
+-- patient_id); баримт устахад тайлан үлдэж (`document_id` null), run устна.
 
 create table patient_targets (
   patient_id uuid references patients on delete cascade,
@@ -300,9 +307,14 @@ create table medications (                   -- өвчтөний эм (одоо 
 );
 
 create table medication_regimens (           -- тун, хуваарийн түүх (тун өөрчлөгдөх бүрт шинэ мөр)
+  -- 0014: APPEND-ONLY (UPDATE/DELETE эрх, policy байхгүй; эмийг устгахад cascade). effective_to байхгүй:
+  -- тухайн өдрийн тун = effective_from <= өдөр мөрүүдээс (effective_from, seq)-аар хамгийн сүүлийнх
+  -- (seq — DB-ийн оруулсан дараалал, identity); алдаа засах = ижил огноотой шинэ мөр; recorded_by — DB.
   id uuid primary key default gen_random_uuid(),
-  medication_id uuid not null references medications on delete cascade,
-  effective_from date not null, effective_to date,
+  patient_id uuid not null references patients on delete cascade,   -- 0014: RLS-д
+  medication_id uuid not null,                 -- composite FK (medication_id, patient_id) → medications
+  client_id uuid not null,                     -- unique (patient_id, client_id)
+  effective_from date not null,
   dose_amount numeric, dose_unit text,     -- 2, 'мг' | 1, 'шахмал'
   schedule jsonb not null,                 -- {"type":"daily","times":["08:00","20:00"]} | {"type":"weekly","days":[1,4],"times":["09:00"]} | {"type":"prn"}
   instructions text,                       -- 'хоолноос 1 цагийн өмнө' (хэрэглэгч/эмчийн бичсэнээр)
@@ -342,7 +354,10 @@ create table clinical_events (
   created_at timestamptz not null default now()
 );
 
-create table pending_uploads (                -- апп offline-оос ирсэн давхардлыг барих
+-- 0029 (Phase 3.1): `documents`-д `client_id uuid not null` + unique (patient_id, client_id),
+-- `original_name`, `recorded_by/updated_by/updated_at` нэмэгдсэн; `pending_uploads` хүснэгт
+-- хэрэггүй болсон (давхардлыг client_id барина). Файл storage-д KEK envelope-оор шифрлэгдэнэ (Q49).
+create table pending_uploads (                -- (0029-өөр орлогдсон) апп offline-оос ирсэн давхардлыг барих
   client_upload_id uuid primary key, user_id uuid references users, document_id uuid references documents,
   created_at timestamptz default now()
 );
@@ -417,10 +432,53 @@ create table emergency_contacts (
 create table caregiver_alert_settings (
   patient_id uuid references patients on delete cascade,
   caregiver_user_id uuid references users on delete cascade,
-  missed_dose_after_min int default 30,        -- анхдагч 30 мин; null = унтраалттай
+  missed_dose_after_min int default 30,        -- анхдагч 30 мин (15–240); null = унтраалттай
   critical_result boolean not null default true,
+  owner_paused boolean not null default false, -- эзэн түр зогсооно; зөвхөн эзэн сэргээнэ
+  updated_at timestamptz not null default now(),
   primary key (patient_id, caregiver_user_id)
 );
+-- 0020 (Phase 2.8a): бичих бүх үйлдэл definer функцээр (`set_caregiver_alerts`,
+-- `pause_caregiver_alerts`); app-д зөвхөн SELECT (асран хамгаалагч өөрийнхөө, эзэн бүгдийг).
+
+create table caregiver_invitations (            -- хэрэглэгчийн нэрээр урина, хүлээн авсны дараа л эрх
+  id uuid primary key default gen_random_uuid(),
+  patient_id uuid not null references patients on delete cascade,
+  invited_user_id uuid not null references users on delete cascade,
+  invited_by uuid not null references users on delete cascade,
+  status text not null default 'pending',     -- pending | accepted | declined | revoked
+  created_at timestamptz not null default now(),
+  expires_at timestamptz not null default now() + interval '14 days',
+  responded_at timestamptz
+);
+-- `invite_caregiver` (caregiver_sharing зөвшөөрлийн дараа, байхгүй нэр/өөрөө/аль хэдийн
+-- хуваалцсан бол null — ялгаа харагдахгүй), `respond_caregiver_invitation`,
+-- `revoke_caregiver_invitation`, `leave_patient`, `my_caregiver_invitations()`.
+-- patient_access: эзэн 'caregiver' түвшинг шууд олгохгүй (access_insert), цуцлагдсан эрхийг
+-- update-ээр сэргээхгүй (`patient_access_app_rules` trigger) — шинэ урилга.
+
+create table dose_alerts (                      -- тунд, асран хамгаалагчид нэг мэдэгдэл (H16)
+  id bigserial primary key,
+  patient_id uuid not null references patients on delete cascade,
+  medication_id uuid not null,                  -- (medication_id, patient_id) → medications
+  slot_at timestamptz not null,
+  alerted_user_id uuid not null references users on delete cascade,
+  created_at timestamptz not null default now(),
+  unique (patient_id, medication_id, slot_at, alerted_user_id)
+);
+-- worker: `maint_caregiver_alert_targets()` (зөвхөн id, минут) → асран хамгаалагчийн нэрээр
+-- RLS дор уншиж бичнэ; INSERT зөвхөн `caregiver_alerts_on(patient_id)` үед.
+
+create table push_receipts (                    -- Expo ticket → receipt (зөвхөн labtrack_maint)
+  id bigserial primary key,
+  notification_id bigint not null references notifications on delete cascade,
+  session_id uuid not null references sessions on delete cascade,
+  ticket_id text, status text not null default 'sent',  -- sent | ok | error
+  error text, created_at timestamptz not null default now(), checked_at timestamptz
+);
+-- sessions.push_token: `set_session_push_token` (өөрийн сесс; утас өөр аккаунтад шилжвэл
+-- хуучин сессээс арилна); `maint_push_queue` / `maint_mark_pushed` / `maint_forget_push_token`
+-- (id, түлхүүр, token л); admin_reset нь саяхан цуцлагдсан төхөөрөмжид ч хүрнэ.
 
 -- ============ ЗӨВШӨӨРӨЛ ============
 create table consents (
@@ -433,6 +491,19 @@ create table consents (
   created_at timestamptz not null default now()
 );
 
+-- ============ НЭРЭЭР ХУВААЛЦАХ (эмч, үзэгч; 0040, 7.1) ============
+create table access_invitations (               -- урилга; хүлээн авснаар patient_access (doctor|viewer, expires_at)
+  id uuid primary key, patient_id uuid not null, invited_user_id uuid not null, invited_by uuid not null,
+  level access_level check (level in ('doctor','viewer')), access_days int check (access_days in (1,7,30)), -- null = цуцлах хүртэл
+  status text check (status in ('pending','accepted','declined','revoked')), created_at, expires_at (14 хоног), responded_at
+);
+create table profile_views (                    -- эмч/үзэгчийн уншилт, УБ-ын өдөр бүр нэг мөр; зөвхөн definer функцээр
+  patient_id uuid, user_id uuid, day date, first_at timestamptz, last_at timestamptz, primary key (patient_id, user_id, day)
+);
+-- функц: invite_access, respond_access_invitation, revoke_access_invitation, revoke_share, leave_share,
+-- owner_shares, owner_access_invitations, my_access_invitations, note_profile_view (API-ийн профайлын gate),
+-- owner_profile_views (90 хоног), maint_prune_profile_views (400 хоног). Q61.
+
 -- ============ ХУВААЛЦАХ ЛИНК ============
 create table share_links (
   id uuid primary key default gen_random_uuid(),
@@ -441,9 +512,9 @@ create table share_links (
   scopes text[] not null,                       -- 'summary','labs','meds','transplant','events','vitals'
   date_from date, date_to date,
   expires_at timestamptz not null, max_views int, view_count int not null default 0,
-  pin_hash text,                                -- сонголттой 6 оронтой PIN (argon2id)
+  pin_hash text not null,                       -- 6 оронтой PIN, сервер үүсгэнэ, заавал (argon2id; Q62)
   pin_failed_count int not null default 0,      -- 5 буруу → линк автоматаар цуцлагдана + эзэнд мэдэгдэл; тоолуурыг verify-ээс ӨМНӨ атомаар нэмнэ (04 §6.7)
-  created_by uuid not null references users, revoked_at timestamptz,
+  created_by uuid not null references users, revoked_at timestamptz,  -- 0041: revoked_reason ('owner','pin_locked'), max_views 1–100; pin_wrong_total (≤10), owner_token_version; share_sessions(link_id, token_hash, 30 мин) — нээлт бүр; сесс зөвхөн definer функцээр уншина (share_profile, 7.3-ын хэсгүүд), share_link_owner_ok
   created_at timestamptz not null default now()
 );
 
@@ -474,6 +545,21 @@ create table audit_logs (
 );  -- UPDATE/DELETE-г trigger хориглоно
 create index on audit_logs (target_user_id, at desc);
 create index on audit_logs (patient_id, at desc);
+
+-- 0048 (Q39, Q36): нэг профайлд нэг мөр; зөвхөн definer функцээр бичнэ, can_read_patient уншина
+create table no_known_allergies (           -- «Мэдэгдэх харшилгүй» огноотой баталгаа
+  patient_id uuid primary key references patients on delete cascade,
+  confirmed_on date not null,               -- local_today(); харшил нэмэхэд trigger устгана
+  confirmed_by uuid references users on delete set null,
+  created_at timestamptz not null default now()
+);
+create table steroid_cards (                -- стероидын яаралтай карт (апп дүгнэхгүй)
+  patient_id uuid primary key references patients on delete cascade,
+  marked_on date not null,
+  marked_by uuid references users on delete set null,
+  by_doctor boolean not null,               -- эмчлэгч эмч эсвэл эзэн (эмчийн зөвлөснөөр)
+  created_at timestamptz not null default now()
+);
 ```
 
 ## Админ ба идэвхжүүлэлтийн функц (migration 0004)
@@ -510,7 +596,7 @@ API нь хэзээ ч owner URL ашиглахгүй — шинэ auth үйлд
   - `patient_access`: SELECT өөрийн мөр эсвэл `is_owner(patient_id)`; INSERT/UPDATE/DELETE зөвхөн owner, **өөрийгөө owner болгох хориотой**; recursion-оос сэргийлж `is_owner()` definer функц.
   - `test_synonyms`: SELECT `user_id is null or user_id = app_user_id()` (бусдын сурсан синоним задрахгүй). Бусад каталог: бүгд SELECT.
   - `audit_logs`: шууд INSERT/SELECT **хориотой** — `audit_write(action, entity, entity_id, patient_id, diff)` (`actor_id := app_user_id()` хүчээр; `admin_*` үйлдлийг зөвхөн `labtrack_admin`), `my_admin_actions()`, `patient_access_log(p)` (зөвхөн owner, бусдын ip/user_agent-гүй). `REVOKE TRUNCATE`.
-  - `extraction_runs` (raw_output = PHI), `pending_uploads`, `share_links`: `can_read_patient`/`can_write_patient`-аар; аккаунтгүй үзэгч — `share_view(token_hash, pin)` definer функц.
+  - `extraction_runs` (raw_output = PHI), `pending_uploads`: `can_read_patient`/`can_write_patient`-аар; `share_links`/`share_sessions` — app-д эрхгүй, зөвхөн definer функц (0041); аккаунтгүй үзэгч — PIN-ээр сесс, хэсэг бүр өөрийн функцээр.
   - `product_events`: зөвхөн INSERT.
 
 ```sql
@@ -543,10 +629,15 @@ $$;
 ## Тэмдэглэл
 - Батлагдсан утгыг засвал хуучин утга `audit_logs.diff`-д.
 - `lab_results.collected_at` нь `lab_reports.collected_at`-ийн хуулбар (trend индекс) — тайлангийн огноо өөрчлөгдөхөд trigger-ээр синк, тесттэй.
-- `latest_results` materialized view — батлах үед refresh (дашбоардын хурд).
+- `latest_results` — **энгийн view** (`security_invoker`, `security_barrier`; 0038), materialized биш: materialized view эзнийхээ эрхээр уншсан мөрийг хадгалдаг тул RLS-ийг тойрно. Тест бүрийн хамгийн сүүлийн **батлагдсан** утга (ноорог, татгалзсан орохгүй — дүрэм 4), `test_code` ба огноотой мөр л; ижил агшинд — сүүлд батлагдсан тайлан. `(patient_id, test_code, collected_at desc)` индексээр. Dashboard (6.10) ижил тодорхойлолтыг тест тус бүрээр `lateral`-аар уншина (RLS-ийн шалгалт цөөн мөрөнд) — нэгийг өөрчилбөл хоёуланг (`tests/rls/test_dashboard.py` харьцуулна).
+- `dashboard_cards (patient_id pk, test_codes text[], recorded_by, updated_by, created_at, updated_at)` — профайлын pin хийсэн картууд дарааллаар (0038). Мөргүй = эрхтний анхдагч картууд; хоосон жагсаалт = хэрэглэгч алийг ч сонгоогүй. Зөвхөн бичигч (эзэн, асран хамгаалагч) харж/өөрчилнө; DB шалгана: идэвхтэй каталогийн тест, давхардалгүй, ≤ 24.
 - Seed: `seed/lab_tests.json` → test_catalog, test_synonyms, unit_aliases, unit_conversions.
 
 ## Шилжүүлэн суулгалт ба эмийн тэмдэглэл
+- **0014-ийн хэрэгжилт (дээрх SQL-ээс зөрөх нь):** 4 хүснэгт бүгдэд `client_id uuid not null` + `unique (patient_id, client_id)` (давтан илгээлт хадгалсан мөрийг олно); `transplants`, `medications`-д `unique (id, patient_id)`; `medications.transplant_id` → composite FK `(transplant_id, patient_id)`, `on delete set null (transplant_id)`; чөлөөт текст `short_text` (≤ 200) / `long_text` (≤ 4000) domain; `blood_type`, `serostatus` domain (`ebv_*` ч `pos/neg/unknown`); `country` ISO-2; `date_precision` month/year үед огноо тухайн сар/жилийн 1-нд; `updated_at` trigger; `medication_intakes.recorded_by` — DB тохируулна (дуудагч заахгүй), `on delete set null`; `taken`/`late` үед `taken_at` заавал, `skipped` үед хоосон; `scheduled_at`-гүй (prn) зөвхөн `taken`. **Security review-ийн дараа:** INSERT ба UPDATE эрх баганаар (id, created_at, updated_at, seq, recorded_by/updated_by — зөвхөн DB; id, patient_id, client_id засагдахгүй); `medication_intakes.id` uuid; unique `(patient_id, medication_id, scheduled_at)` (харь өвчтөний тунг тандах боломжгүй); `taken`/`late` → `skipped` DB-ээр хориотой (H20; буцаах = устгах); `recorded_by` (анх бичсэн) + `updated_by` (сүүлд); регименд `recorded_by`; эм/шилжүүлэн суулгалтыг зөвхөн эзэн устгана (асран хамгаалагч `stopped_on`); `schedule` — daily/weekly-д `times` 1–12, weekly-д `days` 1–7; `dose_amount` ≤ 4 аравтын орон; огнооны доод хязгаар. Тестүүд: `tests/rls/test_medications.py`.
+- **0015 (2.2, medical review):** `schedule.times` — `[{"at": "HH:MM", "amount": "2"}]` (цаг тус бүрийн тун, бүгдэд эсвэл аль нэгэнд ч биш; DB `regimen_schedule_ok()`), `dose_amount` зөвхөн prn-д; `dose_unit` — код (mg, mcg, g, ml, iu, unit, tablet, capsule, drop, puff, sachet, patch, other) + `dose_unit_text`; `voided_at`/`void_reason`/`voided_by` (нэг удаа, эхлээгүй мөрөнд, trigger); `medications.planned_end_on`; `medication_intakes.scheduled_at` минутаар бүхэл. API: `/patients/{id}/transplants`, `/medications` (+ `/regimens`, `/regimens/{id}/void`), `/intakes`, `/medication-catalog` (`api/records.py`, `records/service.py`, `records/repository.py`).
+- **0017 (2.5, Q22):** `patient_timezones (id, patient_id, client_id, seq, timezone, effective_at, recorded_by, created_at)` — профайлын сануулгын цагийн бүсийн түүх, append-only (UPDATE/DELETE эрхгүй; солих = шинэ мөр). `local` горимын эм тухайн үеийн бүсээр, `home` — үргэлж `Asia/Ulaanbaatar`. `timezone` — IANA (API `zoneinfo`-оор, DB хэлбэрээр шалгана), `effective_at` — утаснаас (offline-д зөвшөөрсөн солилт хожуу ирнэ; API: ≤ 7 хоногийн өмнө, ирээдүйд биш), `recorded_by` — DB. Тунгийн агшин — `core/slots.py` (апп-ын сануулгатай `packages/shared/fixtures/dose-slots.json`-оор тааруулна). API: `GET/POST /patients/{id}/timezone`, `GET /patients/{id}/adherence?month=YYYY-MM`. Тест: `tests/rls/test_patient_timezones.py`, `tests/api/test_reminder_zone.py`, `tests/unit/test_core_slots.py`.
+- **0018 (2.6a):** `clinical_events`, `vitals`, `allergies`, `emergency_contacts`, `appointments`, `doctor_questions` — дээрх SQL-ээс зөрөх нь: бүгдэд `client_id` + `unique (patient_id, client_id)`, `recorded_by`/`updated_by` (DB), баганаар эрх; `vitals.id` uuid, нэгж төрөл бүрт тогтмол (mmHg, bpm, kg, C, mmol_L, percent, ml), боломжит хязгаар (хэвийн хүрээ биш — `core/vitals.py` ба CHECK нэг тоо), засахгүй (устгаад дахин), `note` ≤ 200, даралтын нэг хэмжилт `group_id` (төрөл бүр нэг удаа); `clinical_events.transplant_id` ба `doctor_questions.appointment_id` composite FK; `appointments.reminder_offsets_min` ≤ 4, 0–10080 мин; үйл явдал, харшил, яаралтай холбоо, амин үзүүлэлтийг зөвхөн эзэн эсвэл бичсэн хүн устгана. Баримттай холбох (`related_document_id`, `linked_report_id`) — Phase 3/4. API: `/patients/{id}/events|allergies|contacts|appointments|questions` (CRUD), `/vitals` (+`/latest`). Тест: `tests/rls/test_health_records.py`, `tests/api/test_health_records.py`, `tests/unit/test_core_vitals.py`.
 - Бүх шинэ хүснэгт PHI → RLS (`can_read_patient`/`can_write_patient`) + тест.
 - Талбаруудын ихэнх нь **сонголттой** — хэрэглэгч мэдэхгүй зүйлээ хоосон орхино. Заавал: эрхтэн, огноо (нарийвчлалтай), улс, эмнэлэг.
 - Эмийн тун өөрчлөгдөхөд хуучин мөрийг засахгүй — `medication_regimens`-д шинэ мөр (түүх хадгалагдана, график дээр тун ↔ эмийн түвшин харьцуулна).

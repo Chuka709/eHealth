@@ -3,7 +3,7 @@ name: labtrack
 # Networks (least reachability):
 #   edge    - caddy, web, api            (the only network with published entry points)
 #   backend - api, worker, migrate, test, postgres, valkey, seaweedfs   (internal: no egress)
-#   egress  - api, worker                (outbound: Claude API, Sentry, Expo push)
+#   egress  - api, worker, push-worker   (outbound: Claude API, Sentry, Expo push)
 # web cannot reach postgres, valkey or seaweedfs; the data stores cannot reach the internet.
 
 x-backend: &backend
@@ -25,6 +25,13 @@ x-backend: &backend
     - ../seed:/seed:ro
   networks: [backend]
 
+# uploaded documents (Phase 3): only the API, the worker and the tests hold the store's keys
+x-s3-env: &s3-env
+  S3_ENDPOINT_URL: http://seaweedfs:8333
+  S3_ACCESS_KEY: ${S3_ACCESS_KEY:?run just init}
+  S3_SECRET_KEY: ${S3_SECRET_KEY:?run just init}
+  S3_BUCKET: ${S3_BUCKET:-labtrack-documents}
+
 services:
   postgres:
     image: postgres:17-alpine
@@ -35,6 +42,8 @@ services:
       LABTRACK_ADMIN_PASSWORD: ${LABTRACK_ADMIN_PASSWORD:?run just init}
       LABTRACK_ADMIN_LOGIN_PASSWORD: ${LABTRACK_ADMIN_LOGIN_PASSWORD:?run just init}
       LABTRACK_MAINT_PASSWORD: ${LABTRACK_MAINT_PASSWORD:?run just init}
+      LABTRACK_PUSH_PASSWORD: ${LABTRACK_PUSH_PASSWORD:?run just init}
+      LABTRACK_BACKUP_PASSWORD: ${LABTRACK_BACKUP_PASSWORD:?run just init}
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./postgres/init:/docker-entrypoint-initdb.d:ro
@@ -48,10 +57,15 @@ services:
   # Valkey (BSD-3) instead of Redis 7.4+/8 (RSAL/SSPL/AGPL) - project licence policy.
   valkey:
     image: valkey/valkey:8-alpine
-    command: ["sh", "-c", "exec valkey-server --save '' --appendonly no --requirepass \"$$VALKEY_PASSWORD\""]
+    # two ACL users: default, and "ai" for the AI worker only (B10; infra/valkey/start.sh)
+    command: ["sh", "/start.sh"]
     environment:
       VALKEY_PASSWORD: ${VALKEY_PASSWORD:?run just init}
-    networks: [backend]
+      VALKEY_AI_PASSWORD: ${VALKEY_AI_PASSWORD:?run just init}
+    volumes:
+      - ./valkey/start.sh:/start.sh:ro
+    tmpfs: ["/tmp:size=1m"]
+    networks: [backend, ai-handoff]
     healthcheck:
       test: ["CMD-SHELL", "REDISCLI_AUTH=\"$$VALKEY_PASSWORD\" valkey-cli ping | grep -q PONG"]
       interval: 5s
@@ -76,6 +90,21 @@ services:
       timeout: 3s
       retries: 30
 
+  # Virus scan for uploads (Phase 3.3), optional in dev (~1.5 GB RAM): `--profile av`.
+  # Signatures come from freshclam (egress); clamd listens only on the backend network.
+  clamav:
+    image: clamav/clamav:1.4.3
+    profiles: ["av"]
+    environment:
+      CLAMD_CONF_MaxFileSize: 25M
+      CLAMD_CONF_StreamMaxLength: 25M
+      CLAMD_CONF_MaxScanSize: 100M
+      CLAMD_CONF_AlertExceedsMax: "yes"
+      CLAMD_CONF_AlertEncrypted: "yes"
+    volumes:
+      - clamdb:/var/lib/clamav
+    networks: [backend, egress]
+
   migrate:
     <<: *backend
     environment:
@@ -89,7 +118,7 @@ services:
   api:
     <<: *backend
     environment:
-      <<: *backend-env
+      <<: [*backend-env, *s3-env]
       # Trust X-Forwarded-For only from Caddy and the admin web BFF (fixed addresses below),
       # never from clients. The BFF forwards the admin's address that Caddy saw (docs/04 §6.1).
       FORWARDED_ALLOW_IPS: 172.30.0.10,172.30.0.11
@@ -106,12 +135,22 @@ services:
     depends_on:
       migrate: { condition: service_completed_successfully }
       valkey: { condition: service_healthy }
+      seaweedfs: { condition: service_healthy }
 
   worker:
     <<: *backend
+    environment:
+      <<: [*backend-env, *s3-env]
+      # virus scan of uploads (3.3): `docker compose --profile av up -d clamav` and
+      # CLAMD_HOST=clamav in .env; unset in dev = documents go on unscanned (never in production)
+      CLAMD_HOST: ${CLAMD_HOST:-}
+      # reading by AI (4.5, Q50): off unless set; the key and model live on ai-worker only
+      AI_EXTRACTION_ENABLED: ${AI_EXTRACTION_ENABLED:-false}
+      AI_DAILY_DOCUMENTS: ${AI_DAILY_DOCUMENTS:-20}
     command: ["celery", "-A", "labtrack.worker.celery_app", "worker", "--loglevel=INFO", "--concurrency=2",
               "--queues=default"]
-    networks: [backend, egress]
+    # no route out (4.5 security review): it parses untrusted files and holds the KEK
+    networks: [backend]
     healthcheck:
       test: ["CMD-SHELL", "celery -A labtrack.worker.celery_app inspect ping -d celery@$$HOSTNAME --timeout 5 | grep -q pong"]
       interval: 15s
@@ -121,22 +160,90 @@ services:
     depends_on:
       migrate: { condition: service_completed_successfully }
       valkey: { condition: service_healthy }
+      seaweedfs: { condition: service_healthy }
 
-  # Daily maintenance only (queue "maintenance"): the one process with labtrack_maint
-  # credentials; no uploads, no internet.
+  # Maintenance (queue "maintenance"): the daily purge and caregivers' dose alerts (2.8e);
+  # labtrack_maint and app credentials, no uploads, no internet.
   maint-worker:
     <<: *backend
     environment:
-      <<: *backend-env
+      # S3 (3.3): deletes the objects of deleted documents; production gives it a delete-only key
+      <<: [*backend-env, *s3-env]
+      # no field-encryption key: it deletes sealed objects, it never reads them
+      LABTRACK_DEV_KEK: ""
       MAINT_DATABASE_URL: postgresql+asyncpg://labtrack_maint:${LABTRACK_MAINT_PASSWORD:?run just init}@postgres:5432/labtrack
-    command: ["celery", "-A", "labtrack.worker.celery_app", "worker", "--loglevel=INFO", "--concurrency=1",
+    # two at a time: the daily purge never holds back the 5-minute dose alerts (2.8e)
+    command: ["celery", "-A", "labtrack.worker.celery_app", "worker", "--loglevel=INFO", "--concurrency=2",
               "--queues=maintenance", "--hostname=maint@%h"]
     networks: [backend]
     depends_on:
       migrate: { condition: service_completed_successfully }
       valkey: { condition: service_healthy }
 
-  # Schedules the daily maintenance task (runs on maint-worker). One instance only.
+  # Push delivery only (queue "push", Phase 2.8b): labtrack_push credentials (2.11b: the
+  # delivery functions and push_receipts only) and its one outbound route, Expo. Off (sends and
+  # marks nothing) until PUSH_ENABLED=true. It has internet, so it gets only what it needs: no
+  # field-encryption key, no pepper, no app role (DATABASE_URL is required by the settings and
+  # is the push URL here too).
+  push-worker:
+    <<: *backend
+    environment:
+      ENVIRONMENT: ${ENVIRONMENT:-dev}
+      DATABASE_URL: postgresql+asyncpg://labtrack_push:${LABTRACK_PUSH_PASSWORD:?run just init}@postgres:5432/labtrack
+      REDIS_URL: redis://:${VALKEY_PASSWORD:?run just init}@valkey:6379/0
+      SENTRY_DSN: ${SENTRY_DSN:-}
+      PUSH_DATABASE_URL: postgresql+asyncpg://labtrack_push:${LABTRACK_PUSH_PASSWORD:?run just init}@postgres:5432/labtrack
+      PUSH_ENABLED: ${PUSH_ENABLED:-false}
+      EXPO_ACCESS_TOKEN: ${EXPO_ACCESS_TOKEN:-}
+    volumes:
+      - ../backend/src:/app/src:ro
+    command: ["celery", "-A", "labtrack.worker.celery_app", "worker", "--loglevel=INFO", "--concurrency=1",
+              "--queues=push", "--hostname=push@%h"]
+    networks: [backend, egress]
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+      valkey: { condition: service_healthy }
+
+  # Reading by AI (queue "ai", Phase 4.5): de-identified text in from Valkey, Claude's answer
+  # out. The API key and a route out, and nothing else: no database credentials (the URL is a
+  # placeholder it never opens), no field-encryption key, no object store, no uploads - and on
+  # its own network with Valkey alone (not postgres, seaweedfs or the API). Beta (docs/BETA.md
+  # B10): a Valkey ACL user limited to its keys and queue, and egress through a proxy that
+  # allows api.anthropic.com only.
+  ai-worker:
+    <<: *backend
+    environment:
+      ENVIRONMENT: ${ENVIRONMENT:-dev}
+      DATABASE_URL: postgresql+asyncpg://none:none@unused.invalid:5432/none
+      # its own ACL user: its keys and the "ai" queue only (B10, infra/valkey/start.sh)
+      REDIS_URL: redis://ai:${VALKEY_AI_PASSWORD:?run just init}@valkey:6379/0
+      # no remote control, no task results, its own unacked keys, the queue not declared by it
+      # (settings.ai_worker_isolation; what its Valkey user allows - infra/valkey/start.sh)
+      AI_WORKER_ISOLATION: "true"
+      SENTRY_DSN: ${SENTRY_DSN:-}
+      CLAMD_HOST: ${CLAMD_HOST:-}  # only so the settings' production check passes; never used
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      EXTRACTION_MODEL: ${EXTRACTION_MODEL:-}
+      # out only through the proxy, which allows api.anthropic.com alone (B10)
+      HTTPS_PROXY: http://ai-proxy:8888
+      NO_PROXY: valkey
+    volumes:
+      - ../backend/src:/app/src:ro
+    command: ["celery", "-A", "labtrack.worker.celery_app", "worker", "--loglevel=INFO", "--concurrency=2",
+              "--queues=ai", "--hostname=ai@%h", "--without-gossip", "--without-mingle",
+              "--without-heartbeat"]
+    networks: [ai-handoff, ai-egress]
+    depends_on:
+      valkey: { condition: service_healthy }
+      ai-proxy: { condition: service_started }
+
+  # The AI worker's only way out (B10): CONNECT to api.anthropic.com:443, nothing else.
+  ai-proxy:
+    build: ./ai-proxy
+    networks: [ai-egress, egress]
+
+  # Schedules the daily maintenance task (runs on maint-worker) and push delivery (push-worker).
+  # One instance only.
   beat:
     <<: *backend
     command: ["celery", "-A", "labtrack.worker.celery_app", "beat", "--loglevel=INFO",
@@ -145,6 +252,7 @@ services:
     depends_on:
       valkey: { condition: service_healthy }
       maint-worker: { condition: service_started }
+      push-worker: { condition: service_started }
 
   web:
     build:
@@ -191,8 +299,15 @@ services:
   test:
     <<: *backend
     profiles: ["test"]
+    volumes:
+      - ../backend/src:/app/src:ro
+      - ../backend/tests:/app/tests:ro
+      - ../backend/alembic:/app/alembic:ro
+      - ../seed:/seed:ro
+      # shared test vectors (dose-slots.json): the app's reminder planner uses the same file
+      - ../packages/shared/fixtures:/fixtures:ro
     environment:
-      <<: *backend-env
+      <<: [*backend-env, *s3-env]
       ENVIRONMENT: test
       PYTEST_ADDOPTS: "-p no:cacheprovider"
       # API tests log in many times from a few addresses; the limiter has its own test.
@@ -200,20 +315,61 @@ services:
       RATE_REFRESH_PER_MINUTE: "100000"
       RATE_ACTIVATE_PER_MINUTE: "100000"
       RATE_ADMIN_LOGIN_PER_MINUTE: "100000"
+      RATE_SHARE_OPEN_PER_MINUTE: "100000"
+      RATE_EXPORT_PER_MINUTE: "100000"
       MIGRATION_DATABASE_URL: postgresql+asyncpg://labtrack_owner:${LABTRACK_OWNER_PASSWORD:?run just init}@postgres:5432/labtrack_test
       TEST_DATABASE_URL: postgresql+asyncpg://labtrack_app:${LABTRACK_APP_PASSWORD:?run just init}@postgres:5432/labtrack_test
       TEST_ADMIN_DATABASE_URL: postgresql+asyncpg://labtrack_admin:${LABTRACK_ADMIN_PASSWORD:?run just init}@postgres:5432/labtrack_test
       TEST_ADMIN_LOGIN_DATABASE_URL: postgresql+asyncpg://labtrack_admin_login:${LABTRACK_ADMIN_LOGIN_PASSWORD:?run just init}@postgres:5432/labtrack_test
       TEST_MAINT_DATABASE_URL: postgresql+asyncpg://labtrack_maint:${LABTRACK_MAINT_PASSWORD:?run just init}@postgres:5432/labtrack_test
+      TEST_PUSH_DATABASE_URL: postgresql+asyncpg://labtrack_push:${LABTRACK_PUSH_PASSWORD:?run just init}@postgres:5432/labtrack_test
       MAINT_DATABASE_URL: postgresql+asyncpg://labtrack_maint:${LABTRACK_MAINT_PASSWORD:?run just init}@postgres:5432/labtrack_test
       ADMIN_DATABASE_URL: postgresql+asyncpg://labtrack_admin:${LABTRACK_ADMIN_PASSWORD:?run just init}@postgres:5432/labtrack_test
       ADMIN_LOGIN_DATABASE_URL: postgresql+asyncpg://labtrack_admin_login:${LABTRACK_ADMIN_LOGIN_PASSWORD:?run just init}@postgres:5432/labtrack_test
       DATABASE_URL: postgresql+asyncpg://labtrack_app:${LABTRACK_APP_PASSWORD:?run just init}@postgres:5432/labtrack_test
+      S3_BUCKET: labtrack-test-documents
+      # its own Valkey database: the dev worker never picks up a test's task
+      REDIS_URL: redis://:${VALKEY_PASSWORD:?run just init}@valkey:6379/1
     entrypoint: ["sh", "-c", "alembic upgrade head && alembic downgrade base && alembic upgrade head && exec \"$$@\"", "--"]
     command: ["pytest", "-q", "--no-header"]
     depends_on:
       postgres: { condition: service_healthy }
       valkey: { condition: service_healthy }
+      seaweedfs: { condition: service_healthy }
+
+  # Encrypted backups (8.2; docs/OPS_RUNBOOK.md): `just backup`. Never started by `up`.
+  # Runs as labtrack_backup (password as a secret, not in the environment); holds only the age
+  # public key.
+  backup:
+    build: ./backup
+    profiles: ["ops"]
+    init: true
+    environment:
+      <<: *s3-env
+      BACKUP_AGE_RECIPIENT: ${BACKUP_AGE_RECIPIENT:-}
+      BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-35}
+    secrets: [backup_db_password]
+    tmpfs: ["/tmp:size=16m,mode=1777"]
+    volumes:
+      - ${BACKUP_DIR:-../backups}:/backups
+    networks: [backend]
+    depends_on:
+      postgres: { condition: service_healthy }
+      seaweedfs: { condition: service_healthy }
+
+  # Restore drill (8.2): `just restore-drill <identity file>`. No network, a throwaway Postgres
+  # on tmpfs - never the live cluster; backups read-only; the private key mounted only here.
+  restore-drill:
+    build: ./backup
+    profiles: ["ops"]
+    init: true
+    network_mode: none
+    command: ["restore-drill.sh"]
+    tmpfs:
+      - "/tmp:size=64m,mode=1777"
+      - "/var/lib/postgresql/drill:size=${DRILL_TMPFS_SIZE:-2g},mode=1777"
+    volumes:
+      - ${BACKUP_DIR:-../backups}:/backups:ro
 
 networks:
   edge:
@@ -222,8 +378,19 @@ networks:
         - subnet: 172.30.0.0/24
   backend:
     internal: true
+  # the AI worker and Valkey only (4.5)
+  ai-handoff:
+    internal: true
+  # the AI worker and its egress proxy only (B10)
+  ai-egress:
+    internal: true
   egress: {}
+
+secrets:
+  backup_db_password:
+    environment: LABTRACK_BACKUP_PASSWORD
 
 volumes:
   pgdata:
   s3data:
+  clamdb:

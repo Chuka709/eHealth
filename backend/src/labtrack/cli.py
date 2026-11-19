@@ -96,6 +96,43 @@ def _unlock_admin(username: str) -> int:
     return 0
 
 
+def _redelete(since: str, apply: bool) -> int:
+    from datetime import UTC, datetime  # noqa: PLC0415
+
+    from labtrack.admin.redelete import Outcome, latest_events, reapply_deletions  # noqa: PLC0415
+
+    url = os.environ.get("MIGRATION_DATABASE_URL")
+    if not url:
+        sys.stderr.write("MIGRATION_DATABASE_URL is not set (run in the migrate container)\n")
+        return 2
+    try:
+        start = datetime.fromisoformat(since)
+    except ValueError:
+        sys.stderr.write("--since: the backup's ISO time with a zone, e.g. 2026-11-18T06:17:35Z\n")
+        return 2
+    if start.tzinfo is None:
+        sys.stderr.write("--since needs a time zone (Z or +08:00)\n")
+        return 2
+    if start > datetime.now(UTC):
+        sys.stderr.write("--since is in the future\n")
+        return 2
+    events = latest_events(sys.stdin, start)
+    outcomes = asyncio.run(reapply_deletions(url, events, apply=apply))
+    for uid, outcome in outcomes.items():  # ids and the event's time only (rule 3)
+        sys.stdout.write(f"{outcome.value}\t{uid}\t{events[uid].at.isoformat()}\n")
+    counts = {o: sum(1 for v in outcomes.values() if v is o) for o in Outcome}
+    summary = ", ".join(f"{o.value} {n}" for o, n in counts.items() if n)
+    sys.stdout.write(f"{len(outcomes)} account(s) in the logs since {since}: {summary or 'none'}\n")
+    if counts[Outcome.WOULD_REAPPLY]:
+        sys.stdout.write("dry run: nothing changed; run again with --apply\n")
+    if counts[Outcome.CANCELLED_BUT_PENDING]:
+        # the restored row still waits for the purge: keep the maintenance worker off until an
+        # admin cancels it again (or it is meant to go) - OPS_RUNBOOK §5.6
+        sys.stderr.write("cancelled_but_pending: decide each before the maintenance worker runs\n")
+        return 3
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="labtrack")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -113,6 +150,11 @@ def main(argv: list[str] | None = None) -> int:
     sub.add_parser("rewrap-user-keys", help="move KEK-sealed phone numbers under user keys")
     p_unlock = sub.add_parser("unlock-admin", help="clear an admin's sign-in lockout")
     p_unlock.add_argument("username")
+    p_redel = sub.add_parser(
+        "redelete", help="re-apply account deletions from API logs (stdin) after a restore"
+    )
+    p_redel.add_argument("--since", required=True, help="the backup's time (ISO, with a zone)")
+    p_redel.add_argument("--apply", action="store_true", help="write (default: dry run)")
 
     args = parser.parse_args(argv)
     writers = {
@@ -129,6 +171,8 @@ def main(argv: list[str] | None = None) -> int:
         return _rewrap()
     if args.command == "unlock-admin":
         return _unlock_admin(args.username)
+    if args.command == "redelete":
+        return _redelete(args.since, args.apply)
     return _create_admin(args.username, args.role)
 
 

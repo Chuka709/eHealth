@@ -1,10 +1,18 @@
+import { mkdirSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 import type { ConfigContext, ExpoConfig } from "expo/config";
-import { type ConfigPlugin, withAndroidManifest, withInfoPlist } from "expo/config-plugins";
+import {
+  type ConfigPlugin,
+  withAndroidManifest,
+  withDangerousMod,
+  withInfoPlist,
+} from "expo/config-plugins";
 
-// Bundle ID is decided before the first store build (docs/OPEN_QUESTIONS.md Q10); it cannot
+// Bundle ID decided in 2.11 (docs/OPEN_QUESTIONS.md Q10: mn.munkhly.labtrack); it cannot
 // change after release, so it comes from the environment instead of being hard-coded.
-const bundleId = process.env.APP_BUNDLE_ID ?? "mn.labtrack.app";
+const bundleId = process.env.APP_BUNDLE_ID ?? "mn.munkhly.labtrack";
 const variant = process.env.APP_VARIANT ?? "development";
+const easProjectId = process.env.EAS_PROJECT_ID?.trim() || undefined;
 const isProd = variant === "production";
 
 // Release builds must never talk to the API over cleartext HTTP.
@@ -21,6 +29,19 @@ if (
   !(/^\+?[0-9 ()-]+$/.test(supportPhone) && supportDigits >= 7 && supportDigits <= 15)
 ) {
   throw new Error(`EXPO_PUBLIC_SUPPORT_PHONE must be set for the ${variant} build`);
+}
+
+// Screenshots for design review are a development-bundle option only (src/features/lock/privacy.ts).
+if (variant !== "development" && process.env.EXPO_PUBLIC_ALLOW_SCREENSHOTS) {
+  throw new Error(`EXPO_PUBLIC_ALLOW_SCREENSHOTS must not be set for the ${variant} build`);
+}
+
+// The store listing and Settings -> About link the privacy policy (docs/08 "Дэлгүүрт гаргах").
+if (
+  isProd &&
+  !/^https:\/\/[^\s/]+\.[^\s]+$/.test(process.env.EXPO_PUBLIC_PRIVACY_URL?.trim() ?? "")
+) {
+  throw new Error("EXPO_PUBLIC_PRIVACY_URL must be an https:// URL for the production build");
 }
 
 // Native permission prompts are shown before the JS bundle (and use-intl) loads, so they live
@@ -57,9 +78,55 @@ const withStoreHardening: ConfigPlugin = (cfg) => {
   });
 };
 
+// Android 12+ ignores allowBackup="false" for device-to-device transfer: without rules the
+// encrypted local store (MMKV) would be copied to a new phone. It could not be read there (its
+// key stays in this phone's Keystore), but nothing of it should leave: every domain is
+// excluded from both cloud backup and device transfer. Replaces expo-secure-store's rules,
+// which exclude only its own preferences.
+// device_* are the device-protected (direct boot) storage: none written today, excluded anyway
+const excludeAll = [
+  "root",
+  "file",
+  "database",
+  "sharedpref",
+  "external",
+  "device_root",
+  "device_file",
+  "device_database",
+  "device_sharedpref",
+]
+  .map((domain) => `    <exclude domain="${domain}" path="." />`)
+  .join("\n");
+const NO_BACKUP_RULES = [
+  '<?xml version="1.0" encoding="utf-8"?>',
+  "<data-extraction-rules>",
+  `  <cloud-backup>\n${excludeAll}\n  </cloud-backup>`,
+  `  <device-transfer>\n${excludeAll}\n  </device-transfer>`,
+  "</data-extraction-rules>",
+  "",
+].join("\n");
+const withNoDataExtraction: ConfigPlugin = (cfg) => {
+  const files = withDangerousMod(cfg, [
+    "android",
+    (mod) => {
+      const dir = join(mod.modRequest.platformProjectRoot, "app/src/main/res/xml");
+      mkdirSync(dir, { recursive: true });
+      writeFileSync(join(dir, "labtrack_data_extraction_rules.xml"), NO_BACKUP_RULES);
+      return mod;
+    },
+  ]);
+  return withAndroidManifest(files, (mod) => {
+    const app = mod.modResults.manifest.application?.[0];
+    if (app) app.$["android:dataExtractionRules"] = "@xml/labtrack_data_extraction_rules";
+    return mod;
+  });
+};
+
 // Registered before the `plugins` list is applied, so its mods run after theirs.
-export default (ctx: ConfigContext): ExpoConfig =>
-  isProd ? withStoreHardening(appConfig(ctx)) : appConfig(ctx);
+export default (ctx: ConfigContext): ExpoConfig => {
+  const config = withNoDataExtraction(appConfig(ctx));
+  return isProd ? withStoreHardening(config) : config;
+};
 
 const appConfig = ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
@@ -94,6 +161,9 @@ const appConfig = ({ config }: ConfigContext): ExpoConfig => ({
     // DETECT_SCREEN_CAPTURE (install-time "normal") must stay: on Android 14+ the module registers
     // a screen-capture callback unconditionally at start, which throws without it.
     // The overlay permission is for the dev menu only.
+    // Medicine reminders on time (docs/08, H18): the user grants it on the explanation screen;
+    // without it reminders still come, an hour or more late (inexact, 2.10d), and Medicines says so.
+    permissions: ["android.permission.SCHEDULE_EXACT_ALARM"],
     blockedPermissions: [
       "android.permission.RECORD_AUDIO",
       "android.permission.READ_MEDIA_IMAGES",
@@ -101,6 +171,9 @@ const appConfig = ({ config }: ConfigContext): ExpoConfig => ({
       "android.permission.READ_MEDIA_VISUAL_USER_SELECTED",
       "android.permission.READ_EXTERNAL_STORAGE",
       "android.permission.WRITE_EXTERNAL_STORAGE",
+      // Google Play allows it only for alarm/calendar apps: reminders use SCHEDULE_EXACT_ALARM
+      // with an explanation and an inexact fallback (docs/08, hazard H18) - never this one.
+      "android.permission.USE_EXACT_ALARM",
       ...(isProd ? ["android.permission.SYSTEM_ALERT_WINDOW"] : []),
     ],
   },
@@ -120,6 +193,29 @@ const appConfig = ({ config }: ConfigContext): ExpoConfig => ({
         barcodeScannerEnabled: true,
       },
     ],
+    // Lab results (Phase 3.4): the system photo picker needs no gallery permission, and the
+    // picker never opens the camera (the document scanner does, with the camera text above)
+    // Phase 3.5: a lab result shared from another app (Messenger, Viber, Mail): pictures and
+    // PDFs only; it opens the upload screen, where the user says whose result it is
+    [
+      "expo-share-intent",
+      {
+        androidIntentFilters: ["image/*", "application/pdf"],
+        androidMultiIntentFilters: ["image/*"],
+        iosActivationRules: {
+          NSExtensionActivationSupportsImageWithMaxCount: 10,
+          NSExtensionActivationSupportsFileWithMaxCount: 1,
+        },
+      },
+    ],
+    [
+      "expo-image-picker",
+      { photosPermission: false, cameraPermission: false, microphonePermission: false },
+    ],
+    // Local medication reminders (Phase 2.5); push (caregiver alerts) in 2.8. The icon and
+    // channel are set with the reminder screens.
+    // the loud dose reminder sound (channel "doses-alarm"; iOS plays it by name)
+    ["expo-notifications", { color: "#0B5FA5", sounds: ["./assets/sounds/dose_alarm.wav"] }],
     [
       "expo-splash-screen",
       {
@@ -129,5 +225,8 @@ const appConfig = ({ config }: ConfigContext): ExpoConfig => ({
       },
     ],
   ],
+  // EAS project (push tokens, builds): `eas init` once on the company's Expo account, then
+  // EAS_PROJECT_ID in the EAS environment. Without it the app runs and push stays off.
+  ...(easProjectId ? { extra: { ...config.extra, eas: { projectId: easProjectId } } } : {}),
   experiments: { typedRoutes: true, reactCompiler: true },
 });

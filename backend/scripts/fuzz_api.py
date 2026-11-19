@@ -46,11 +46,15 @@ select count(*) from fz;
 commit;
 """
 
-# Ends the test user's session or account, or changes its password: covered by API tests.
+# Ends the test user's session or account, changes its password, or withdraws a required
+# consent (every health route then answers 403 - 8.3): covered by API tests.
 _DESTRUCTIVE = (
     "^/api/v1/(me/delete|me/report-unwanted-admin-action|auth/password|auth/logout"
-    "|auth/sessions/\\{session_id\\})$"
+    "|auth/sessions/\\{session_id\\}|me/consents)$"
 )
+# A share link's viewer routes (7.3) take the X-Share-Session header, never a bearer token: a
+# signed-in run gets 401 there by design (they are fuzzed in the anonymous run).
+_SHARE_SESSION = "^/api/v1/share/(profile|record|close)$"
 _CHECKS = "not_a_server_error,response_schema_conformance"
 
 
@@ -130,7 +134,11 @@ def _ok(r: httpx.Response) -> dict[str, object]:
 def _schemathesis(access_token: str | None = None) -> int:
     # One exclusion regex: a second --exclude-path-regex replaces the first. Signed in, the
     # routes that would end the test user's session are left out too.
-    exclude = "^/api/v1/admin" if access_token is None else f"^/api/v1/admin|{_DESTRUCTIVE}"
+    exclude = (
+        "^/api/v1/admin"
+        if access_token is None
+        else f"^/api/v1/admin|{_DESTRUCTIVE}|{_SHARE_SESSION}"
+    )
     config = [] if access_token is None else ["--config-file", str(SIGNED_IN_CONFIG)]
     cmd = [
         "uv", "tool", "run", "--from", "schemathesis==4.33.0", "schemathesis", *config, "run",

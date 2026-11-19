@@ -6,16 +6,21 @@ from datetime import datetime
 from typing import Annotated, Literal
 from uuid import UUID
 
-from fastapi import APIRouter, Path, Query, Response, status
+import structlog
+from fastapi import APIRouter, Depends, Path, Query, Response, status
 from pydantic import AfterValidator, BaseModel, ConfigDict, Field, StringConstraints
 from sqlalchemy.exc import DBAPIError
 
 from labtrack import consents
-from labtrack.api.deps import UserDb
+from labtrack.api.deps import Claims, UserDb
 from labtrack.api.errors import AppError, ErrorBody
+from labtrack.api.ratelimit import per_user
 from labtrack.auth import service as auth_service
+from labtrack.config import get_settings
 from labtrack.core.text import valid_display_name
 from labtrack.db.sql import bound_text
+
+log = structlog.get_logger(__name__)
 
 router = APIRouter(prefix="/me", tags=["me"])
 
@@ -77,7 +82,7 @@ class ConsentItem(_Strict):
 
 
 class ConsentRequest(_Strict):
-    items: Annotated[list[ConsentItem], Field(min_length=1, max_length=5)]
+    items: Annotated[list[ConsentItem], Field(min_length=1, max_length=len(consents.VERSIONS))]
     # a minor's profile the user owns (Q9); omitted = the user's own consents
     patient_id: UUID | None = None
 
@@ -92,6 +97,9 @@ class NotificationOut(BaseModel):
     id: int
     kind: str
     title_key: str
+    # ids only: the app opens the profile / the item through its own routes (2.8f)
+    patient_id: UUID | None
+    entity_id: str | None
     created_at: datetime
     read_at: datetime | None
 
@@ -159,6 +167,9 @@ async def give_consents(body: ConsentRequest, db: UserDb) -> Response:
         len(ai) != len(consents.AI_EXTRACTION) or not all(i.granted for i in ai)
     ):
         raise AppError(422, "validation")
+    # sharing with caregivers is the user's own choice, never one given for a profile (0023)
+    if body.patient_id is not None and any(i.kind == "caregiver_sharing" for i in body.items):
+        raise AppError(422, "validation")
     if any(i.granted and i.version != consents.VERSIONS[i.kind] for i in body.items):
         raise AppError(409, "consent.version_outdated")
     # One writer per user at a time, so the latest row is also the last one committed.
@@ -202,8 +213,16 @@ async def notifications(
 ) -> list[NotificationOut]:
     rows = await db.execute(
         bound_text(
-            "select id, kind, title_key, created_at, read_at from notifications"
-            " where (not :u or read_at is null) order by created_at desc limit :n"
+            "select id, kind, title_key, patient_id, entity_id, created_at, read_at"
+            " from notifications where (not :u or read_at is null)"
+            # a notice about a profile stays only while the user can open it (as 0024 does for
+            # push); an invitation's is for someone who has no access yet
+            " and (patient_id is null or can_read_patient(patient_id)"
+            " or (kind = 'share_invite' and (exists (select 1 from my_caregiver_invitations() i"
+            " where i.id::text = notifications.entity_id)"
+            " or exists (select 1 from my_access_invitations() j"
+            " where j.id::text = notifications.entity_id))))"
+            " order by created_at desc limit :n"
         ),
         {"u": unread_only, "n": limit},
     )
@@ -231,6 +250,85 @@ async def mark_read(
     ).scalar_one_or_none()
     if done is None:
         raise AppError(404, "me.notification_not_found")
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+class PushTokenIn(_Strict):
+    # Same shape as set_session_push_token() checks (0020); null clears it.
+    token: (
+        Annotated[
+            str,
+            StringConstraints(pattern=r"^Expo(nent)?PushToken\[[A-Za-z0-9_-]{10,100}\]$"),
+        ]
+        | None
+    )
+
+
+_PUSH_LIMIT = Depends(per_user("push_token", lambda: get_settings().rate_push_token_per_minute))
+
+
+async def _set_push_token(db: UserDb, claims: Claims, token: str | None) -> Response:
+    # The token goes on this request's own session (JWT sid) and is never logged or returned.
+    try:
+        done = (
+            await db.execute(
+                bound_text("select set_session_push_token(:s, :t)"),
+                {"s": claims.session_id, "t": token},
+            )
+        ).scalar_one()
+    except DBAPIError as exc:
+        if _sqlstate(exc) != "22023":
+            raise
+        raise AppError(422, "me.push_token_invalid") from None
+    if not done:  # the session ended after the request was authenticated
+        raise AppError(401, "auth.session_invalid")
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.put(
+    "/push-token",
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses={**_ERRORS, 429: {"model": ErrorBody}},
+    dependencies=[_PUSH_LIMIT],
+)
+async def put_push_token(body: PushTokenIn, db: UserDb, claims: Claims) -> Response:
+    """This device's Expo push token, for this session only. A token another session (account)
+    had on the same phone leaves that session (0020)."""
+    return await _set_push_token(db, claims, body.token)
+
+
+@router.delete(
+    "/push-token",
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses={**_ERRORS, 429: {"model": ErrorBody}},
+    dependencies=[_PUSH_LIMIT],
+)
+async def delete_push_token(db: UserDb, claims: Claims) -> Response:
+    return await _set_push_token(db, claims, None)
+
+
+class DeviceAlarmsIn(_Strict):
+    exact_alarms: bool  # this device can schedule exact alarms (iOS always; Android: allowed)
+
+
+@router.put(
+    "/device-alarms",
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses={**_ERRORS, 429: {"model": ErrorBody}},
+    dependencies=[_PUSH_LIMIT],
+)
+async def put_device_alarms(body: DeviceAlarmsIn, db: UserDb, claims: Claims) -> Response:
+    """Whether this device's medicine reminders can come on time (Q48): when none of the owner's
+    devices can, a caregiver's dose alert waits at least 90 minutes (0046). Kept per session
+    family, so it outlives refreshes; nothing about the device but this one flag."""
+    done = (
+        await db.execute(
+            bound_text("select set_device_exact_alarms(:s, :e)"),
+            {"s": claims.session_id, "e": body.exact_alarms},
+        )
+    ).scalar_one()
+    if not done:  # the session ended after the request was authenticated
+        raise AppError(401, "auth.session_invalid")
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
@@ -283,4 +381,8 @@ async def delete_account(body: DeleteRequest, db: UserDb) -> DeletionOut:
         if _sqlstate(exc) != "42501":
             raise
         raise AppError(409, "me.deletion_not_allowed") from None  # e.g. not an active account
+    # a record outside the database (id only): after a restore from an older backup the request
+    # is applied again from the logs (docs/OPS_RUNBOOK.md §5)
+    user_id = (await db.execute(bound_text("select app_user_id()"))).scalar_one()
+    log.info("account_deletion_requested", user_id=str(user_id))
     return DeletionOut(scheduled_for=scheduled)

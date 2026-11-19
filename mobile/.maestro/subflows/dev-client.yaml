@@ -33,6 +33,12 @@ appId: ${MAESTRO_APP_ID}
 - extendedWaitUntil:
     notVisible: "Bundling.*"
     timeout: 180000
+# "Bundling" may not have shown yet when the step above looked: wait until either the developer
+# menu or the app itself is on screen, so the menu never pops up over the next flow.
+- extendedWaitUntil:
+    visible: "(Continue|.*тавтай морил.*|Аккаунт идэвхжүүлэх)"
+    timeout: 120000
+    optional: true
 - runFlow:
     when:
       visible: "Continue"

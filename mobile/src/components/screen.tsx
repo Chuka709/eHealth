@@ -1,14 +1,33 @@
 import { space } from "@labtrack/shared";
-import type { ReactNode } from "react";
+import type { ComponentRef, ReactNode, Ref } from "react";
 import { ScrollView, StyleSheet } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 import { usePalette } from "@/theme/use-palette";
 
-/** Scrollable screen body: grows with Dynamic Type and stays usable with the keyboard open. */
-export function Screen({ children }: { children: ReactNode }) {
+export type ScreenScroll = ComponentRef<typeof ScrollView>;
+
+/**
+ * Scrollable screen body: grows with Dynamic Type and stays usable with the keyboard open.
+ * `scrollRef` lets a multi-step screen return to the top when the step changes.
+ */
+export function Screen({
+  children,
+  scrollRef,
+  testID,
+  safeTop = false,
+}: {
+  children: ReactNode;
+  scrollRef?: Ref<ScreenScroll>;
+  testID?: string;
+  /** A screen without a header (welcome, notice): keeps clear of the status bar (2.12). */
+  safeTop?: boolean;
+}) {
   const p = usePalette();
-  return (
+  const scroll = (
     <ScrollView
+      ref={scrollRef}
+      testID={testID}
       contentInsetAdjustmentBehavior="automatic"
       automaticallyAdjustKeyboardInsets
       keyboardShouldPersistTaps="handled"
@@ -17,6 +36,13 @@ export function Screen({ children }: { children: ReactNode }) {
     >
       {children}
     </ScrollView>
+  );
+  return safeTop ? (
+    <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: p.background }}>
+      {scroll}
+    </SafeAreaView>
+  ) : (
+    scroll
   );
 }
 

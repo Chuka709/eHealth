@@ -379,5 +379,5 @@ test.each([
 
 test("apiPath ignores a trailing slash, so public endpoints stay anonymous", () => {
   expect(apiPath(`${apiBaseUrl}/api/v1/auth/login/`, apiBaseUrl)).toBe("/api/v1/auth/login");
-  expect(apiPath(apiBaseUrl.toUpperCase() + "/api/v1/me", apiBaseUrl)).toBeNull();
+  expect(apiPath(`${apiBaseUrl.toUpperCase()}/api/v1/me`, apiBaseUrl)).toBeNull();
 });

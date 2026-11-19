@@ -6,7 +6,7 @@ import { useTranslations } from "use-intl";
 
 import { Button } from "@/components/button";
 import { FormMessage } from "@/components/form-message";
-import { NavRow } from "@/components/nav-row";
+import { NavGroup, NavRow } from "@/components/nav-row";
 import { Screen } from "@/components/screen";
 import { Paragraph } from "@/components/text";
 import { signOut } from "@/features/auth/session";
@@ -33,35 +33,78 @@ export default function SettingsScreen() {
 
   return (
     <Screen>
-      <NavRow
-        label={t("settings.profile")}
-        hint={t("settings.profileHint")}
-        onPress={() => router.push("/settings/profile")}
-        testID="settings-profile"
-      />
-      <NavRow
-        label={t("settings.password")}
-        onPress={() => router.push("/settings/password")}
-        testID="settings-password"
-      />
-      <NavRow
-        label={t("settings.devices")}
-        hint={t("settings.devicesHint")}
-        onPress={() => router.push("/settings/devices")}
-        testID="settings-devices"
-      />
-      <NavRow
-        label={t("consentSettings.open")}
-        hint={t("consentSettings.hint")}
-        onPress={() => router.push("/settings/consents")}
-        testID="settings-consents"
-      />
-      <NavRow
-        label={t("adminHistory.open")}
-        hint={t("adminHistory.hint")}
-        onPress={() => router.push("/settings/admin-history")}
-        testID="settings-admin-history"
-      />
+      <NavGroup title={t("settings.groups.health")}>
+        <NavRow
+          icon="card-account-details-outline"
+          label={t("emergency.title")}
+          hint={t("emergency.unlocked.openHint")}
+          onPress={() => router.push("/settings/emergency")}
+          testID="settings-emergency"
+        />
+        <NavRow
+          icon="alarm"
+          label={t("meds.reminders.open")}
+          hint={t("meds.reminders.openHint")}
+          onPress={() => router.push("/settings/reminders")}
+          testID="settings-reminders"
+        />
+      </NavGroup>
+      <NavGroup title={t("settings.groups.caregivers")}>
+        <NavRow
+          icon="account-heart-outline"
+          label={t("caregivers.invitations.open")}
+          hint={t("caregivers.invitations.openHint")}
+          onPress={() => router.push("/caregivers/invitations" as never)}
+          testID="settings-invitations"
+        />
+      </NavGroup>
+      <NavGroup title={t("settings.groups.account")}>
+        <NavRow
+          icon="account-circle-outline"
+          label={t("settings.profile")}
+          hint={t("settings.profileHint")}
+          onPress={() => router.push("/settings/profile")}
+          testID="settings-profile"
+        />
+        <NavRow
+          icon="lock-reset"
+          label={t("settings.password")}
+          onPress={() => router.push("/settings/password")}
+          testID="settings-password"
+        />
+        <NavRow
+          icon="cellphone-link"
+          label={t("settings.devices")}
+          hint={t("settings.devicesHint")}
+          onPress={() => router.push("/settings/devices")}
+          testID="settings-devices"
+        />
+      </NavGroup>
+      <NavGroup title={t("settings.groups.privacy")}>
+        <NavRow
+          icon="shield-check-outline"
+          label={t("consentSettings.open")}
+          hint={t("consentSettings.hint")}
+          onPress={() => router.push("/settings/consents")}
+          testID="settings-consents"
+        />
+        <NavRow
+          icon="history"
+          label={t("adminHistory.open")}
+          hint={t("adminHistory.hint")}
+          onPress={() => router.push("/settings/admin-history")}
+          testID="settings-admin-history"
+        />
+      </NavGroup>
+      <NavGroup title={t("settings.groups.app")}>
+        <NavRow
+          icon="information-outline"
+          label={t("about.open")}
+          hint={t("about.hint")}
+          onPress={() => router.push("/settings/about")}
+          testID="settings-about"
+        />
+      </NavGroup>
       {/* Its own block: the switch's label is the only label (nothing read twice). */}
       <View style={[styles.block, { backgroundColor: p.surface, borderColor: p.border }]}>
         <Host matchContents={{ vertical: true }} style={styles.wide}>
@@ -86,6 +129,7 @@ export default function SettingsScreen() {
       <View style={styles.separated}>
         <NavRow
           tone="danger"
+          icon="delete-outline"
           label={t("deleteAccount.open")}
           hint={t("deleteAccount.hint")}
           onPress={() => router.push("/settings/delete-account")}

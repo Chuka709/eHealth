@@ -94,6 +94,19 @@ async def decrypt_field(provider: KeyProvider, blob: bytes, aad: bytes) -> str:
         raise EnvelopeError from exc
 
 
+async def encrypt_bytes(provider: KeyProvider, data: bytes, aad: bytes) -> bytes:
+    """A file (an uploaded document) sealed as a field is: its own data key, wrapped (Q49)."""
+    dek = new_dek()
+    wrapped = await provider.wrap(dek, aad)
+    return seal(data, dek=dek, kek_id=provider.current_kek_id, wrapped_dek=wrapped, aad=aad)
+
+
+async def decrypt_bytes(provider: KeyProvider, blob: bytes, aad: bytes) -> bytes:
+    env = parse(blob)
+    dek = await provider.unwrap(env.kek_id, env.wrapped_dek, aad)
+    return open_sealed(env, dek=dek, aad=aad)
+
+
 @lru_cache
 def get_key_provider() -> KeyProvider:
     settings = get_settings()

@@ -6,6 +6,7 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncEngine
+from structlog.testing import capture_logs
 
 from labtrack.db.sql import bound_text
 from labtrack.worker.maintenance import run_daily
@@ -52,8 +53,13 @@ async def test_delete_needs_the_password_and_signs_out_everywhere(
         )
         assert wrong.status_code == 401
         assert (await phone.get("/api/v1/me", headers=h)).status_code == 200  # nothing happened
-        r = await phone.post("/api/v1/me/delete", json={"password": NEW_PASSWORD}, headers=h)
+        with capture_logs() as logs:
+            r = await phone.post("/api/v1/me/delete", json={"password": NEW_PASSWORD}, headers=h)
         assert r.status_code == 202
+        # kept outside the database (id only) for a restore from an older backup (8.2)
+        [event] = [e for e in logs if e["event"] == "account_deletion_requested"]
+        assert event == {"event": "account_deletion_requested", "user_id": str(uid),
+                         "log_level": "info"}  # fmt: skip
         scheduled = datetime.fromisoformat(r.json()["scheduled_for"])
         assert timedelta(days=29) < scheduled - datetime.now(UTC) <= timedelta(days=30)
         assert (await phone.get("/api/v1/me", headers=h)).status_code == 401
@@ -86,13 +92,16 @@ async def test_cancellation_goes_through_a_reset(client_from: ClientFactory) -> 
         await phone.post("/api/v1/me/delete", json={"password": NEW_PASSWORD}, headers=h)
     async with client_from(OFFICE) as c:
         admin = await _admin(c)  # not the admin who enrolled the national id
-        assert (
-            await c.post(
-                f"/api/v1/admin/users/{uid}/cancel-deletion",
-                json={"reason": "user_request"},
-                headers=admin,
-            )
-        ).status_code == 204
+        with capture_logs() as logs:
+            assert (
+                await c.post(
+                    f"/api/v1/admin/users/{uid}/cancel-deletion",
+                    json={"reason": "user_request"},
+                    headers=admin,
+                )
+            ).status_code == 204
+        # beside the request's line, for a restore from an older backup (OPS_RUNBOOK §5.6)
+        assert [e["user_id"] for e in logs if e["event"] == "account_deletion_cancelled"] == [uid]
         detail = (await c.get(f"/api/v1/admin/users/{uid}", headers=admin)).json()
         assert (detail["account_status"], detail["deletion_scheduled_for"]) == ("locked", None)
     async with client_from(HOME) as phone:
