@@ -2,6 +2,7 @@ import { fireEvent, renderRouter, screen, waitFor, within } from "expo-router/te
 import { Alert, AppState, type AppStateStatus } from "react-native";
 
 import { clearAccessToken, setStatus } from "@/features/auth/session-store";
+import { splitLater } from "@/features/meds/today-list";
 import { resetDeviceAlarmReport } from "@/features/meds/use-device-alarms";
 import { localDay } from "@/features/meds/use-today";
 import { apiBaseUrl } from "@/lib/api-base";
@@ -239,9 +240,12 @@ test("today's doses come from the dose history; a tap records one through the qu
   await openMeds();
   const morning = await screen.findByTestId(`dose-${MED_ID}-08:00`);
   expect(morning).toBeOnTheScreen();
-  // the later time of the day is folded away until asked for (UX audit #2)
-  expect(screen.queryByTestId(`dose-${MED_ID}-20:00`)).toBeNull();
-  await press(/^Өнөөдрийн дараагийн тунгууд/);
+  // the later time of the day is folded away while an earlier one is still to come (UX audit
+  // #2) - which depends on the clock, so the rule itself is tested apart (splitLater below)
+  if (Date.parse(morningDose()) > Date.now()) {
+    expect(screen.queryByTestId(`dose-${MED_ID}-20:00`)).toBeNull();
+    await press(/^Өнөөдрийн дараагийн тунгууд/);
+  }
   expect(screen.getByTestId(`dose-${MED_ID}-20:00`)).toBeOnTheScreen();
   // a dose whose time has passed reads "not recorded", a coming one "not yet due" - never missed
   expect(screen.getAllByText(/^(Тэмдэглээгүй|Цаг нь болоогүй)$/)).toHaveLength(2);
@@ -690,4 +694,22 @@ test("UX audit #1/#3: the Medicines tab has the emergency card and 'Эм нэм�
     await screen.findByRole("button", { name: "Яаралтай тусламжийн карт нээх" }),
   ).toBeOnTheScreen();
   expect(screen.getByTestId("meds-add-header")).toHaveProp("accessibilityLabel", "Эм нэмэх");
+});
+
+test("times already due and the next one show at once, later ones fold away (UX audit #2)", () => {
+  const at = (iso: string) => ({ items: [{ slot: { scheduledAt: Date.parse(iso) } }] });
+  const groups = [
+    at("2026-11-25T00:00:00Z"),
+    at("2026-11-25T06:00:00Z"),
+    at("2026-11-25T12:00:00Z"),
+  ];
+  const split = (now: string) =>
+    splitLater(groups as never, Date.parse(now)) as { shown: unknown[]; later: unknown[] };
+  // before the first time: the first shows, the rest fold
+  expect(split("2026-11-24T23:00:00Z").shown).toHaveLength(1);
+  // after the first: the due one and the next show, the last folds
+  const midday = split("2026-11-25T03:00:00Z");
+  expect([midday.shown.length, midday.later.length]).toEqual([2, 1]);
+  // after every time: all show, nothing folds
+  expect(split("2026-11-25T13:00:00Z").later).toHaveLength(0);
 });
