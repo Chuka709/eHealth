@@ -514,7 +514,7 @@ _Нийт 1046 текст._
 | `notify.ringingBody` | Зөвхөн дууг унтраана. Уусан бол сануулга дээрх «Уусан»-ыг дарна уу. | This only stops the sound. If you took it, tap "Taken" on the reminder. | |
 | `notify.ringing` | Эмийн сануулга дуугарч байна | A medicine reminder is ringing | |
 | `notify.again` | Тэмдэглэгдээгүй: {title} | Not marked yet: {title} | |
-| `notify.againBody` | Уусан бол «Уусан»-ыг дарна уу. {body} | If you took it, tap “Taken”. {body} | |
+| `notify.againBody` | Уусан бол «Уусан»-ыг дарна уу. {body}. Эргэлзэж байвал шилжүүлэн суулгалтын багтайгаа холбогдоно уу. | If you took it, tap “Taken”. {body}. If unsure, contact your transplant team. | |
 | `notify.timedTitle` | {time}-ийн эмийн сануулга | {time} medicine reminder | |
 | `notify.count` | {n} тун | {n, plural, one {# dose} other {# doses}} | |
 | `notify.item` | {name} {amount} | {name} {amount} | |

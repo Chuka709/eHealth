@@ -619,7 +619,7 @@
         "ringingBody": "This only stops the sound. If you took it, tap \"Taken\" on the reminder.",
         "ringing": "A medicine reminder is ringing",
         "again": "Not marked yet: {title}",
-        "againBody": "If you took it, tap “Taken”. {body}",
+        "againBody": "If you took it, tap “Taken”. {body}. If unsure, contact your transplant team.",
         "timedTitle": "{time} medicine reminder",
         "count": "{n, plural, one {# dose} other {# doses}}",
         "item": "{name} {amount}",

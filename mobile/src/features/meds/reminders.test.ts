@@ -209,3 +209,14 @@ describe("doses already recorded and late alarms (medical review 2.5c)", () => {
     }
   });
 });
+
+test("Q78: the repeat says to record a dose taken and to ask the transplant team if unsure - never a dose or time", () => {
+  const mn = jest.requireActual("@labtrack/shared/messages/mn.json") as {
+    app: { meds: { notify: { againBody: string } } };
+  };
+  const body = mn.app.meds.notify.againBody;
+  expect(body).toMatch(/^Уусан бол «Уусан»-ыг дарна уу\. \{body\}\. /);
+  expect(body).toMatch(/Эргэлзэж байвал шилжүүлэн суулгалтын багтайгаа холбогдоно уу\.$/);
+  // no instruction to take, skip or double a dose, no time window (10b)
+  expect(body).not.toMatch(/уу(на|ж) уу|алгас|давхар|цагийн дотор/);
+});
