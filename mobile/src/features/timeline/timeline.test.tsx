@@ -82,6 +82,7 @@ const report = (id: string, at: string, lab: string, value: string, ref: string)
   specimen: null,
   collected_at: at,
   collected_precision: "minute",
+  collected_by_user: false,
   date_ambiguous: false,
   name_match_score: null,
   has_unconfirmed_critical: false,

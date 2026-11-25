@@ -116,6 +116,7 @@ class LabReportOut(BaseModel):
     specimen: str | None
     collected_at: datetime | None
     collected_precision: str
+    collected_by_user: bool  # typed in or changed by a person, not printed (Q65)
     analysed_at: datetime | None
     reported_at: datetime | None
     date_ambiguous: bool

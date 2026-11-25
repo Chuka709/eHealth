@@ -16,10 +16,10 @@ Drafts, rejected reports and documents are left out (rule 4; documents are files
 
 import json
 import re
-from datetime import date, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 from typing import Any, LiteralString
-from uuid import UUID
+from uuid import UUID, uuid4
 from zoneinfo import ZoneInfo
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -51,6 +51,7 @@ _TABLES: dict[str, LiteralString] = {
     " and m.patient_id = i.patient_id where i.patient_id = :p"
     " order by coalesce(i.scheduled_at, i.taken_at)",
     "lab_results": "select r.collected_at, r.collected_precision, r.lab_name, r.specimen,"
+    " (r.source = 'typed' or r.collected_edited) as collected_by_user,"
     " v.test_code, t.loinc, coalesce(t.name_en, v.raw_name) as name_en, t.name_mn, v.raw_name,"
     " v.raw_value, v.raw_unit, v.value_canonical::text as value_canonical, v.unit_canonical,"
     " v.comparator, v.ref_text, v.critical_text, v.flag::text as flag, v.lab_flag"
@@ -183,6 +184,11 @@ NKA_SNOMED = "716186003"  # No known allergy (situation)
 _NKA_TEXT = "No known allergy (situation)"
 # FHIR codes are constants: error_codes.py reads quoted code literals as API errors
 _ACTIVE, _CONFIRMED = "active", "confirmed"
+_AUTHOR = "author"  # provenance-participant-type (a FHIR code, not an API error code)
+_BY_PERSON = (
+    "Sample date/time entered or corrected by a person (patient or caregiver),"
+    " not read from the lab report"
+)
 _CLINICAL = "http://terminology.hl7.org/CodeSystem/allergyintolerance-clinical"
 _VERIFY = "http://terminology.hl7.org/CodeSystem/allergyintolerance-verification"
 
@@ -287,7 +293,36 @@ def to_fhir(data: dict[str, Any]) -> bytes:
                     ]
                 }
             ]
-        entries.append({"resource": obs})
+        if not r.get("collected_by_user"):
+            entries.append({"resource": obs})
+            continue
+        # the sample's date/time was typed in or changed by the patient, not printed by the lab
+        # (Q65): said in the resource and by a Provenance with the patient as author (HL7)
+        ref = f"urn:uuid:{uuid4()}"  # a valid urn:uuid (security review L2)
+        obs["note"] = [{"text": _BY_PERSON}]
+        entries.append({"fullUrl": ref, "resource": obs})
+        entries.append(
+            {
+                "resource": {
+                    "resourceType": "Provenance",
+                    "target": [{"reference": ref}],
+                    "recorded": datetime.now(UTC).isoformat(),
+                    "agent": [
+                        {
+                            "type": {
+                                "coding": [
+                                    {
+                                        "system": "http://terminology.hl7.org/CodeSystem/provenance-participant-type",
+                                        "code": _AUTHOR,
+                                    }
+                                ]
+                            },
+                            "who": subject,
+                        }
+                    ],
+                }
+            }
+        )
     for v in data["vitals"]:
         quantity = _number(v["value"])
         entries.append(

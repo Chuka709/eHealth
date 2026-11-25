@@ -32,7 +32,8 @@ _TEST = bound_text(
 )
 _POINTS = bound_text(
     "select lr.id, lr.report_id, r.document_id, r.lab_name, lr.raw_name, lr.collected_at,"
-    " r.collected_precision, lr.raw_value, lr.raw_unit, lr.comparator, lr.value_text,"
+    " r.collected_precision, (r.source = 'typed' or r.collected_edited) as collected_by_user,"
+    " lr.raw_value, lr.raw_unit, lr.comparator, lr.value_text,"
     " lr.qualitative, lr.unit_canonical, lr.value_canonical, lr.ref_text,"
     " lr.ref_low_canonical, lr.ref_high_canonical, lr.critical_text,"
     " lr.critical_low_canonical, lr.critical_high_canonical, lr.flag::text as flag, lr.issues"

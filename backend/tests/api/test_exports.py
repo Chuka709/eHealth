@@ -169,3 +169,40 @@ def test_the_fhir_end_is_the_last_day_taken() -> None:
         "planned_end_on": date(2026, 2, 1),
     }
     assert last_day(planned) == date(2026, 2, 1)
+
+
+async def test_a_sample_time_the_person_changed_is_said_in_fhir_with_the_patient_as_author(
+    owner_engine: AsyncEngine, client_from: ClientFactory
+) -> None:
+    """Q65: a trough is read by its time - one the person typed in is never shown as the lab's."""
+    async with client_from() as c:
+        owner, base, pid = await _profile(c, owner_engine)
+        async with owner_engine.connect() as conn, conn.begin():  # as if read from the PDF
+            await conn.execute(
+                bound_text("update lab_reports set source = 'read' where patient_id = :p"),
+                {"p": pid},
+            )
+        bundle = json.loads((await c.get(f"{base}/export.fhir.json", headers=owner)).content)
+        assert "Provenance" not in [e["resource"]["resourceType"] for e in bundle["entry"]]
+        async with owner_engine.connect() as conn, conn.begin():
+            await conn.execute(
+                bound_text(
+                    "update lab_reports set collected_at = collected_at + interval '1 hour'"
+                    " where patient_id = :p"
+                ),
+                {"p": pid},
+            )
+        data = json.loads((await c.get(f"{base}/export.json", headers=owner)).content)
+        assert data["lab_results"][0]["collected_by_user"] is True
+        bundle = json.loads((await c.get(f"{base}/export.fhir.json", headers=owner)).content)
+        obs = next(e for e in bundle["entry"] if e["resource"]["resourceType"] == "Observation")
+        prov = next(e for e in bundle["entry"] if e["resource"]["resourceType"] == "Provenance")
+        assert prov["resource"]["target"] == [{"reference": obs["fullUrl"]}]
+        assert prov["resource"]["agent"][0]["who"] == {"reference": "urn:uuid:patient"}
+        assert prov["resource"]["agent"][0]["type"]["coding"][0]["code"] == "author"
+        assert "entered or corrected by a person" in obs["resource"]["note"][0]["text"]
+        # the doctor's summary marks the date and says why (medical review M2)
+        r = await c.get(f"{base}/summary.pdf", headers=owner)
+        with pdfplumber.open(io.BytesIO(r.content)) as pdf:
+            text = "\n".join(page.extract_text() or "" for page in pdf.pages)
+        assert "* Огноо, цагийг хэрэглэгч оруулсан эсвэл зассан" in text

@@ -444,3 +444,31 @@ async def test_an_implausible_value_is_accepted_only_when_typed_again(
     )
     assert r.status_code == 200, r.text
     assert "implausible" in _rows(r.json())[0]["acknowledged"]
+
+
+async def test_a_sample_time_the_person_sets_is_marked_theirs_for_good(
+    client: AsyncClient, owner_engine: AsyncEngine
+) -> None:
+    """Q65: the database marks a changed date/time; the app can neither set nor clear it."""
+    h, base, report = await _draft(client, owner_engine)
+    async with owner_engine.connect() as conn, conn.begin():  # as if read from the PDF
+        await conn.execute(
+            bound_text("update lab_reports set source = 'read' where id = :r"), {"r": UUID(report)}
+        )
+    r = await client.patch(f"{base}/reports/{report}", headers=h, json={"lab_name": "Лаб 2"})
+    assert r.json()["collected_by_user"] is False  # read from the document, untouched
+    r = await client.patch(
+        f"{base}/reports/{report}",
+        headers=h,
+        json={"collected_at": "2025-05-03T08:30:00+08:00", "collected_precision": "minute"},
+    )
+    assert r.json()["collected_by_user"] is True
+    r = await client.patch(f"{base}/reports/{report}", headers=h, json={"lab_name": "Лаб 3"})
+    assert r.json()["collected_by_user"] is True  # an edit of something else keeps it
+    async with owner_engine.connect() as conn, conn.begin():
+        await conn.execute(
+            bound_text("update lab_reports set collected_edited = false where id = :r"),
+            {"r": UUID(report)},
+        )
+    r = await client.get(f"{base}/reports/{report}", headers=h)
+    assert r.json()["collected_by_user"] is True  # never cleared, not even by the owner role

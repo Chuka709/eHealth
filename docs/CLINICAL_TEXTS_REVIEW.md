@@ -1,6 +1,6 @@
 # Эмнэлзүйн текстийн хяналт (Q12)
 
-_Нийт 1049 текст._
+_Нийт 1050 текст._
 
 **Зорилго:** шилжүүлэн суулгалтын эмч + лабораторийн эмч апп-ын эмнэлзүйн текстийг нэг дор хянана (эмчийн шийдвэр 2026.11.18, ★). Одоогоор зөвхөн такролимусын CV%-ийн карт хянуулах хүртэл өвчтөнд нуугдсан; бусад текст апп-д харагдаж байгаа тул бетаг нээхээс өмнө хянагдсан байх ёстой (BETA B5).
 
@@ -10,7 +10,7 @@ _Нийт 1049 текст._
 
 ## Шинжилгээний хариу хянах (ноорог, тэмдэглэгээ, критик)
 
-Хянагч: лабын эмч. Түлхүүр: `app.upload.review` (114).
+Хянагч: лабын эмч. Түлхүүр: `app.upload.review` (115).
 
 | Түлхүүр | Монгол | English | Санал |
 |---|---|---|---|
@@ -124,6 +124,7 @@ _Нийт 1049 текст._
 | `retype.hint` | Энэ утга апп-ын хүлээх хэмжээнээс хол байна — ихэнхдээ уншилт эсвэл нэгжийн алдаа. Цаасан/PDF хариугаа хараад тоог яг тэр хэвээр нь бичиж, нэгжийг ({unit}) мөн тулгана уу. Хариун дээр өөр тоо эсвэл нэгж байвал «Засах»-аар засна уу. | This value is far from what the app expects — most often a misread or a wrong unit. Look at the paper/PDF report, type the number exactly as printed and check the unit ({unit}) too. If the report shows another number or unit, use "Edit". | |
 | `retype.confirm` | Хариутай тулгасан | Checked against the report | |
 | `retype.hidden` | (уншсан утгыг нуусан — хариунаасаа бичнэ үү) | (the value read is hidden — type it from your report) | |
+| `collectedByUser` | Огноо, цагийг хэрэглэгч оруулсан эсвэл зассан (апп уншаагүй) | Date/time entered or corrected by a person, not read from the report | |
 | `sampleTime.why` | Эмийн түвшний хариунд дээж авсан цаг бичигдээгүй байна. Цагийг баримтаас (жишээ нь лабын баримт) мэдэж байвал нэмбэл сүүлийн тунгаас хэдэн цагийн дараа авсныг харуулна. Санамжаар бүү бичээрэй — мэдэхгүй бол хоосон үлдээнэ үү. Цаг нэмбэл энэ хариуны шалгасан мөрүүдийг дахин тулгана. | This drug level result has no sample time. If you know it from a document (for example the lab's slip), adding it shows how many hours after the last dose it was taken. Do not guess — leave it empty if you are not sure. Adding a time asks you to check this report's rows again. | |
 | `sampleTime.add` | Дээж авсан цагийг нэмэх | Add the sample time | |
 | `sampleTime.time` | Дээж авсан цаг | Sample time | |

@@ -138,6 +138,7 @@ export function ReportReview({
       </Text>
       <Text style={[styles.meta, { color: p.textMuted }]}>
         {collected ? t("collected", { date: collected }) : t("dateUnknown")}
+        {collected && report.collected_by_user ? ` · ${t("collectedByUser")}` : ""}
       </Text>
 
       {draft && report.has_unconfirmed_critical && (
@@ -232,6 +233,7 @@ export function ReportReview({
             first={i === 0}
             draft={draft}
             lastDoses={report.last_doses.filter((d) => d.test_code === row.test_code)}
+            timeByUser={report.collected_by_user}
             onAccept={(issue, retyped) =>
               actions.editResult.mutate({
                 resultId: row.id,
@@ -382,6 +384,7 @@ function ResultCard({
   first,
   draft,
   lastDoses,
+  timeByUser,
   onAccept,
   onEdit,
   onDelete,
@@ -390,6 +393,8 @@ function ResultCard({
   first: boolean;
   draft: boolean;
   lastDoses: LabReport["last_doses"];
+  /** the sample's date/time was typed in or changed (Q65): said beside every "N h before" */
+  timeByUser: boolean;
   onAccept: (issue: string, retyped?: string) => void;
   onEdit: () => void;
   onDelete: () => void;
@@ -425,6 +430,9 @@ function ResultCard({
             minutes: d.minutes_before % 60,
           }),
       d.other_records > 0 ? t("lastDoseExtra", { count: d.other_records }) : null,
+      timeByUser && !d.time_unknown && d.taken_at !== null && d.minutes_before !== null
+        ? t("collectedByUser")
+        : null,
     ]
       .filter(Boolean)
       .join(" · "),

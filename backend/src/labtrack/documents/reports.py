@@ -82,6 +82,8 @@ class Report:
     specimen: str | None
     collected_at: datetime | None
     collected_precision: str
+    # the date/time the person typed in or changed, not the lab's printed one (Q65)
+    collected_by_user: bool
     analysed_at: datetime | None
     reported_at: datetime | None
     date_ambiguous: bool
@@ -95,7 +97,8 @@ class Report:
 
 _REPORTS = bound_text(
     "select r.id, r.document_id, run.method, r.status::text as status, r.lab_name,"
-    " r.panel_name, r.specimen, r.collected_at, r.collected_precision, r.analysed_at,"
+    " r.panel_name, r.specimen, r.collected_at, r.collected_precision,"
+    " (r.source = 'typed' or r.collected_edited) as collected_by_user, r.analysed_at,"
     " r.reported_at, r.date_ambiguous,"
     # how the printed name matched: for the profile's writers only, like the run (security
     # review 4.6) - a reader sees the confirmed values, not how they were read

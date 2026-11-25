@@ -18550,6 +18550,10 @@
             "type": "string",
             "title": "Collected Precision"
           },
+          "collected_by_user": {
+            "type": "boolean",
+            "title": "Collected By User"
+          },
           "analysed_at": {
             "anyOf": [
               {
@@ -18628,6 +18632,7 @@
           "specimen",
           "collected_at",
           "collected_precision",
+          "collected_by_user",
           "analysed_at",
           "reported_at",
           "date_ambiguous",
@@ -22364,6 +22369,10 @@
             "type": "string",
             "title": "Collected Precision"
           },
+          "collected_by_user": {
+            "type": "boolean",
+            "title": "Collected By User"
+          },
           "lab_name": {
             "anyOf": [
               {
@@ -22483,6 +22492,7 @@
         "required": [
           "collected_at",
           "collected_precision",
+          "collected_by_user",
           "lab_name",
           "test_code",
           "test_name_mn",
@@ -25188,6 +25198,10 @@
             "type": "string",
             "title": "Collected Precision"
           },
+          "collected_by_user": {
+            "type": "boolean",
+            "title": "Collected By User"
+          },
           "days_since_transplant": {
             "anyOf": [
               {
@@ -25358,6 +25372,7 @@
           "raw_name",
           "collected_at",
           "collected_precision",
+          "collected_by_user",
           "days_since_transplant",
           "around_transplant",
           "raw_value",

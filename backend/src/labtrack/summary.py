@@ -48,6 +48,7 @@ _LABELS: dict[str, dict[str, str]] = {
         "no_meds": "Эм бүртгээгүй.",
         "labs": "Шинжилгээний хариу (батлагдсан)",
         "no_labs": "Энэ хугацаанд батлагдсан хариу алга.",
+        "by_user": "* Огноо, цагийг хэрэглэгч оруулсан эсвэл зассан (апп уншаагүй).",
         "targets": "Эмчийн тогтоосон зорилт",
         "events": "Сүүлийн үйл явдал",
         "vitals": "Амин үзүүлэлт (сүүлийн хэмжилт)",
@@ -77,6 +78,7 @@ _LABELS: dict[str, dict[str, str]] = {
         "no_meds": "No medicine recorded.",
         "labs": "Lab results (confirmed)",
         "no_labs": "No confirmed results in this period.",
+        "by_user": "* Date/time entered or corrected by a person, not read from the report.",
         "targets": "Doctor's targets",
         "events": "Recent events",
         "vitals": "Vital signs (latest)",
@@ -241,7 +243,9 @@ async def gather(db: AsyncSession, patient_id: object, months: int) -> dict[str,
         ),
         "labs": await _rows(
             db,
-            "select r.collected_at, r.collected_precision, coalesce(t.name_mn, v.raw_name)"
+            "select r.collected_at, r.collected_precision,"
+            " (r.source = 'typed' or r.collected_edited) as collected_by_user,"
+            " coalesce(t.name_mn, v.raw_name)"
             " as name_mn, coalesce(t.name_en, v.raw_name) as name_en, v.raw_value, v.raw_unit,"
             " v.ref_text, v.flag::text as flag"
             " from lab_reports r join lab_results v on v.report_id = r.id"
@@ -362,10 +366,14 @@ def render_html(data: dict[str, Any], lang: str) -> str:  # noqa: PLR0912, PLR09
             value = " ".join(v for v in (r["raw_value"], r["raw_unit"]) if v)
             flag = flags.get(r["flag"] or "unknown", flags["unknown"])
             out.append(
-                f"<tr><td>{_day(r['collected_at'])}</td><td>{_e(name)}</td><td>{_e(value)}</td>"
+                # a date the person typed in or changed is marked, never shown as the lab's (Q65)
+                f"<tr><td>{_day(r['collected_at'])}{'*' if r['collected_by_user'] else ''}</td>"
+                f"<td>{_e(name)}</td><td>{_e(value)}</td>"
                 f"<td>{_e(r['ref_text'] or '—')}</td><td>{_e(flag)}</td></tr>"
             )
         out.append("</tbody></table>")
+        if any(r["collected_by_user"] for r in data["labs"]):
+            out.append(f"<p>{_e(t['by_user'])}</p>")
     else:
         out.append(f"<p>{_e(t['no_labs'])}</p>")
     if data["events"]:

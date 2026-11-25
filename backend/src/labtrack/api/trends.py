@@ -50,6 +50,7 @@ class TrendPointOut(BaseModel):
     raw_name: str
     collected_at: datetime
     collected_precision: str  # 'day': only the day was printed
+    collected_by_user: bool  # the date/time a person typed in or changed (Q65)
     days_since_transplant: int | None
     # a month/year-only transplant date: the point falls in that window ("around it")
     around_transplant: bool
@@ -193,6 +194,7 @@ async def get_trend(  # noqa: PLR0917 - path, filters and the session
                 raw_name=p.row.raw_name,
                 collected_at=p.row.collected_at,
                 collected_precision=p.row.collected_precision,
+                collected_by_user=p.row.collected_by_user,
                 days_since_transplant=p.days_since,
                 around_transplant=p.around_transplant,
                 raw_value=p.row.raw_value,

@@ -115,6 +115,7 @@ const REPORT = {
   specimen: "Ийлдэс",
   collected_at: "2025-05-02T16:00:00Z",
   collected_precision: "day",
+  collected_by_user: false,
   analysed_at: null,
   reported_at: null,
   date_ambiguous: false,
@@ -315,6 +316,42 @@ test("a drug level without the sample time may get one, on the printed date (Q54
   await fireEvent.press(screen.getByRole("button", { name: "Дээж авсан цагийг нэмэх" }));
   expect(screen.getByRole("button", { name: "Цагийг хадгалах" })).toBeDisabled();
   expect(screen.getByText(/Дээж авсан цаг/)).toBeOnTheScreen();
+});
+
+test("Q65: a date or time the person entered says so, never shown as the lab's", async () => {
+  documents = [document("needs_review")];
+  reports = [{ ...REPORT, collected_by_user: true }];
+  await openResults();
+  await fireEvent.press(await screen.findByTestId(`document-${DOC}`));
+  expect(
+    await screen.findByText(/Огноо, цагийг хэрэглэгч оруулсан эсвэл зассан \(апп уншаагүй\)/),
+  ).toBeOnTheScreen();
+});
+
+test("Q65: the time since the last dose says the sample time is the person's", async () => {
+  documents = [document("needs_review")];
+  reports = [
+    {
+      ...REPORT,
+      collected_by_user: true,
+      last_doses: [
+        {
+          test_code: "CREA",
+          medication_id: "m1",
+          medication_name: "Такролимус",
+          taken_at: "2025-05-02T12:00:00Z",
+          minutes_before: 720,
+          time_unknown: false,
+          other_records: 0,
+        },
+      ],
+    },
+  ];
+  await openResults();
+  await fireEvent.press(await screen.findByTestId(`document-${DOC}`));
+  expect(
+    await screen.findByText(/Такролимус.*12 цаг.*· Огноо, цагийг хэрэглэгч оруулсан эсвэл зассан/),
+  ).toBeOnTheScreen();
 });
 
 test("a draft that may be critical opens under a red banner, its row first", async () => {

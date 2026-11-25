@@ -3314,6 +3314,8 @@ export interface components {
             collected_at: string | null;
             /** Collected Precision */
             collected_precision: string;
+            /** Collected By User */
+            collected_by_user: boolean;
             /** Analysed At */
             analysed_at: string | null;
             /** Reported At */
@@ -4521,6 +4523,8 @@ export interface components {
             collected_at: string;
             /** Collected Precision */
             collected_precision: string;
+            /** Collected By User */
+            collected_by_user: boolean;
             /** Lab Name */
             lab_name: string | null;
             /** Test Code */
@@ -5265,6 +5269,8 @@ export interface components {
             collected_at: string;
             /** Collected Precision */
             collected_precision: string;
+            /** Collected By User */
+            collected_by_user: boolean;
             /** Days Since Transplant */
             days_since_transplant: number | null;
             /** Around Transplant */

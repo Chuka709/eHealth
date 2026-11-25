@@ -67,6 +67,7 @@ const point = (over: Partial<Trend["points"][number]>): Trend["points"][number] 
   raw_name: "Такролимус",
   collected_at: "2026-05-01T00:30:00Z",
   collected_precision: "minute",
+  collected_by_user: false,
   days_since_transplant: 300,
   around_transplant: false,
   raw_value: "7,2",

@@ -55,6 +55,7 @@ async def test_a_typed_in_result_is_a_draft_checked_like_a_read_one(
         document_id,
         "typed",
     )
+    assert report["collected_by_user"] is True  # the person's own date and time (Q65)
     first, _second = sorted(report["results"], key=lambda x: x["position"])
     assert (first["flag"], first["value_canonical"]) == ("normal", "12.0")
     # typed from a photo: whose name is on it is the person's to confirm (H2)

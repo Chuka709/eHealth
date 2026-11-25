@@ -37,6 +37,7 @@ const FLAGS = new Set([
 export default async function ShareViewPage() {
   const t = await getTranslations("web.share");
   const tf = await getTranslations("app.upload.review.flags");
+  const tr = await getTranslations("app.upload.review");
   const tl = await getTranslations();
   const tm = await getTranslations("app.meds");
   if (!(await shareSession())) return <Ended text={t("noSession")} title={t("endedTitle")} />;
@@ -188,7 +189,7 @@ export default async function ShareViewPage() {
           {data.labs.length === 0 ? (
             <p>{t("none")}</p>
           ) : (
-            <LabTable labs={data.labs} t={t} tf={tf} />
+            <LabTable labs={data.labs} t={t} tf={tf} tr={tr} />
           )}
         </Card>
       ) : null}
@@ -277,10 +278,12 @@ function LabTable({
   labs,
   t,
   tf,
+  tr,
 }: {
   labs: Lab[];
   t: Awaited<ReturnType<typeof getTranslations<"web.share">>>;
   tf: Awaited<ReturnType<typeof getTranslations<"app.upload.review.flags">>>;
+  tr: Awaited<ReturnType<typeof getTranslations<"app.upload.review">>>;
 }) {
   return (
     // a wide table scrolls sideways: the region takes focus so the keyboard can scroll it
@@ -318,6 +321,9 @@ function LabTable({
                   {r.collected_precision === "day"
                     ? formatDate(r.collected_at)
                     : formatDate(r.collected_at, true)}
+                  {r.collected_by_user ? (
+                    <div className="text-slate-600">{tr("collectedByUser")}</div>
+                  ) : null}
                   {r.lab_name ? <div className="text-slate-600">{r.lab_name}</div> : null}
                 </td>
                 <th scope="row" className="py-1 font-normal">

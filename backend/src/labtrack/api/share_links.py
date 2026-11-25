@@ -349,6 +349,7 @@ class SharedSummaryOut(BaseModel):
 class SharedLabOut(BaseModel):
     collected_at: datetime
     collected_precision: str  # 'day': no time of day is known
+    collected_by_user: bool  # typed in or changed by the person, not printed (Q65)
     lab_name: str | None
     test_code: str | None
     test_name_mn: str | None

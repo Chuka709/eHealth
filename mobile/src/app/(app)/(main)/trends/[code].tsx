@@ -171,6 +171,8 @@ const PointRow = memo(function PointRow({
     point.collected_precision === "day"
       ? formatDate(point.collected_at)
       : formatDateTime(point.collected_at);
+  // a time the person typed in or changed is never shown as the lab's (Q65)
+  const byUser = point.collected_by_user ? tr("collectedByUser") : null;
   const range = point.ref_text ? tr("range", { range: point.ref_text }) : tr("noRange");
   const critical = point.critical_text ? tr("critical", { range: point.critical_text }) : null;
   const days = point.around_transplant
@@ -202,6 +204,7 @@ const PointRow = memo(function PointRow({
     >
       <View style={styles.line}>
         <Text style={[styles.when, { color: p.text }]}>{when}</Text>
+        {byUser && <Text style={[styles.meta, { color: p.textMuted }]}>{byUser}</Text>}
         <Text style={[styles.value, { color: p.text }]}>{value}</Text>
       </View>
       <View style={[styles.flag, { backgroundColor: colour.bg }]}>
