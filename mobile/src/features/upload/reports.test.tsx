@@ -350,7 +350,7 @@ test("Q65: the time since the last dose says the sample time is the person's", a
   await openResults();
   await fireEvent.press(await screen.findByTestId(`document-${DOC}`));
   expect(
-    await screen.findByText(/Такролимус.*12 цаг.*· Огноо, цагийг хэрэглэгч оруулсан эсвэл зассан/),
+    await screen.findByText(/Такролимус.*12 цаг.*· ✎ Огноо, цагийг гараар оруулсан\/зассан/),
   ).toBeOnTheScreen();
 });
 

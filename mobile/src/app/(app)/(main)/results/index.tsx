@@ -1,15 +1,16 @@
 import { fontSize, radius, space } from "@labtrack/shared";
-import { useRouter } from "expo-router";
+import { Stack, useRouter } from "expo-router";
 import { Pressable, StyleSheet, View } from "react-native";
 import { useTranslations } from "use-intl";
 
 import { Text } from "@/components/app-text";
 import { Button } from "@/components/button";
 import { FormMessage } from "@/components/form-message";
+import { HeaderAdd } from "@/components/header-add";
 import { Icon, type IconName } from "@/components/icon";
 import { Screen } from "@/components/screen";
 import { LoadingView, RetryView } from "@/components/state-view";
-import { Paragraph, Title } from "@/components/text";
+import { Paragraph } from "@/components/text";
 import { useRecordProfile } from "@/features/health/record-screens";
 import { useTypedReports } from "@/features/review/use-review";
 import { dismissFailedUpload } from "@/features/upload/upload-queue";
@@ -79,7 +80,18 @@ export default function ResultsScreen() {
           />
         </View>
       ))}
-      <Title>{t("listTitle")}</Title>
+      {/* the header already says "Шинжилгээний хариунууд" (UX audit #9) */}
+      <Stack.Screen
+        options={{
+          headerRight: () => (
+            <HeaderAdd
+              label={t("open")}
+              onPress={() => router.push("/upload")}
+              testID="results-add-header"
+            />
+          ),
+        }}
+      />
       {own && <Paragraph muted>{t("whoseList", { name: own.full_name })}</Paragraph>}
       {documents.isPending && own && documents.fetchStatus === "paused" ? (
         <Paragraph muted>{t("listOffline")}</Paragraph>

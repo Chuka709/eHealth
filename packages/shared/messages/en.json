@@ -595,7 +595,7 @@
         "notFound": "Medicine not found.",
         "alarmMed": "Ring like an alarm in silent mode",
         "alarmMedFailed": "Could not save. Please try again.",
-        "alarmMedHint": "On this phone only, on Android, while \"Ring like an alarm\" is on. On by default for immunosuppressants, corticosteroids and medicines of unknown kind. When off, this medicine's reminders use the ordinary loud notification and may stay silent in silent mode.",
+        "alarmMedHint": "On this phone only, while \"Ring like an alarm\" is on. When off, this medicine's reminders use the ordinary loud notification and may stay silent in silent mode.",
         "reminderOn": "Reminders on",
         "reminderOff": "Reminders off",
         "stopTitle": "Stop this medicine",
@@ -1373,6 +1373,7 @@
           "confirm": "Checked against the report",
           "hidden": "(the value read is hidden — type it from your report)"
         },
+        "collectedByUserShort": "✎ Date/time entered/corrected by hand",
         "collectedByUser": "Date/time entered or corrected by a person, not read from the report",
         "sampleTime": {
           "why": "This drug level result has no sample time. If you know it from a document (for example the lab's slip), adding it shows how many hours after the last dose it was taken. Do not guess — leave it empty if you are not sure. Adding a time asks you to check this report's rows again.",
@@ -1403,6 +1404,7 @@
       },
       "daysApprox": "The transplant date is known only to the month or year, so the day count is approximate (never more than the real time).",
       "chartLabel": "Trend chart of {name}, {count} results. Every value is in the list below.",
+      "howToRead": "How to read the chart",
       "legend": "Thin grey steps: the reference range printed on each result (it may change with the lab). Red dashed: the critical limit printed on the result. Point shapes: ● within range, ▲ outside range, ◆ critical, hollow - no range, or a \"<\"/\">\" value. Dotted vertical lines: transplant, events.",
       "legendDose": "Dashed steps (right axis): the recorded daily dose of {medicine}.",
       "doseNote": "Doses are shown as recorded. Your doctor interprets how dose and results relate; talk to your doctor about any dose change.",

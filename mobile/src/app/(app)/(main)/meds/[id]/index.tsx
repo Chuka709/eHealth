@@ -122,25 +122,6 @@ export default function MedicationScreen() {
         {med.reminders_enabled ? t("detail.reminderOn") : t("detail.reminderOff")}
       </Paragraph>
       <CaregiverReminderNote patientId={own.id} remindersOn={med.reminders_enabled} />
-      {/* this phone reminds only the user's own profile (Q79-3) */}
-      {Platform.OS === "android" &&
-        med.reminders_enabled &&
-        med.is_current &&
-        own.id === ownProfile(patients.data)?.id && <MedAlarmSwitch medication={med} />}
-      {/* a hand-typed medicine: what the user says it is (Q34); the card shows the dose of two */}
-      {!med.catalog_code && own.access_level !== "doctor" && own.access_level !== "viewer" && (
-        <Choices
-          label={t("form.category.question")}
-          options={USER_CATEGORIES}
-          value={asCategory(med.user_category) ?? "unknown"}
-          labelOf={(c) => t(`form.category.${c}`)}
-          onSelect={(c) => update.mutate(fieldsOf(med, { user_category: sentCategory(c) }))}
-        />
-      )}
-      {!med.catalog_code && own.access_level !== "doctor" && own.access_level !== "viewer" && (
-        <Paragraph muted>{t("form.category.why")}</Paragraph>
-      )}
-      {failure && <FormMessage kind="error" text={errorText(failure)} />}
 
       {med.is_current && (
         <Section title={t("detail.currentDose")}>
@@ -196,6 +177,27 @@ export default function MedicationScreen() {
         </Section>
       )}
 
+      {/* settings of the medicine after its dose: the dose is what is looked for first (UX audit #4) */}
+      {/* this phone reminds only the user's own profile (Q79-3) */}
+      {Platform.OS === "android" &&
+        med.reminders_enabled &&
+        med.is_current &&
+        own.id === ownProfile(patients.data)?.id && <MedAlarmSwitch medication={med} />}
+      {/* a hand-typed medicine: what the user says it is (Q34); the card shows the dose of two */}
+      {!med.catalog_code && own.access_level !== "doctor" && own.access_level !== "viewer" && (
+        <Choices
+          label={t("form.category.question")}
+          options={USER_CATEGORIES}
+          value={asCategory(med.user_category) ?? "unknown"}
+          labelOf={(c) => t(`form.category.${c}`)}
+          onSelect={(c) => update.mutate(fieldsOf(med, { user_category: sentCategory(c) }))}
+        />
+      )}
+      {!med.catalog_code && own.access_level !== "doctor" && own.access_level !== "viewer" && (
+        <Paragraph muted>{t("form.category.why")}</Paragraph>
+      )}
+      {/* next to the settings it may be about (ui review) */}
+      {failure && <FormMessage kind="error" text={errorText(failure)} />}
       <Section title={t("detail.history")}>
         {med.regimens.map((r) => (
           <View key={r.id} style={[styles.entry, { borderColor: p.border }]}>

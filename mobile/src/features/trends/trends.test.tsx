@@ -102,6 +102,7 @@ const TREND: Trend = {
     point({
       result_id: "r2",
       collected_at: "2026-06-01T00:30:00Z",
+      collected_by_user: true, // Q65
       raw_value: "12.4",
       value: "12.4",
       ref_low: "4",
@@ -288,6 +289,12 @@ test("the Trends tab lists tested tests and opens a chart with every value as te
   expect(screen.getByText("Хариун дээрх нэр: Tacrolimus (CMIA)")).toBeOnTheScreen();
   expect(screen.queryByText("Хариун дээрх нэр: Такролимус")).toBeNull();
   expect(screen.getByText(/Тун ба шинжилгээний хариуны холбоог эмч тайлбарлана/)).toBeOnTheScreen();
+  // Q65: a short mark on the point, the full words in what a screen reader says for the row
+  expect(screen.getByText("✎ Огноо, цагийг гараар оруулсан/зассан")).toBeOnTheScreen();
+  expect(screen.getByTestId("point-r2").props.accessibilityLabel).toMatch(
+    /Огноо, цагийг хэрэглэгч оруулсан эсвэл зассан \(апп уншаагүй\)/,
+  );
+  expect(screen.getByTestId("point-r1").props.accessibilityLabel).not.toMatch(/хэрэглэгч оруулсан/);
   expect(trendQueries[0]).toMatch(/since=/); // 1 year by default
   await fireEvent.press(screen.getByRole("radio", { name: "Бүгд" }));
   await waitFor(() => expect(trendQueries.at(-1)).toBe(""));

@@ -431,7 +431,7 @@ function ResultCard({
           }),
       d.other_records > 0 ? t("lastDoseExtra", { count: d.other_records }) : null,
       timeByUser && !d.time_unknown && d.taken_at !== null && d.minutes_before !== null
-        ? t("collectedByUser")
+        ? t("collectedByUserShort")
         : null,
     ]
       .filter(Boolean)

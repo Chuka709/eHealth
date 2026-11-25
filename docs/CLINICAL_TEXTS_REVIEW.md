@@ -1,6 +1,6 @@
 # Эмнэлзүйн текстийн хяналт (Q12)
 
-_Нийт 1050 текст._
+_Нийт 1052 текст._
 
 **Зорилго:** шилжүүлэн суулгалтын эмч + лабораторийн эмч апп-ын эмнэлзүйн текстийг нэг дор хянана (эмчийн шийдвэр 2026.11.18, ★). Одоогоор зөвхөн такролимусын CV%-ийн карт хянуулах хүртэл өвчтөнд нуугдсан; бусад текст апп-д харагдаж байгаа тул бетаг нээхээс өмнө хянагдсан байх ёстой (BETA B5).
 
@@ -10,7 +10,7 @@ _Нийт 1050 текст._
 
 ## Шинжилгээний хариу хянах (ноорог, тэмдэглэгээ, критик)
 
-Хянагч: лабын эмч. Түлхүүр: `app.upload.review` (115).
+Хянагч: лабын эмч. Түлхүүр: `app.upload.review` (116).
 
 | Түлхүүр | Монгол | English | Санал |
 |---|---|---|---|
@@ -124,6 +124,7 @@ _Нийт 1050 текст._
 | `retype.hint` | Энэ утга апп-ын хүлээх хэмжээнээс хол байна — ихэнхдээ уншилт эсвэл нэгжийн алдаа. Цаасан/PDF хариугаа хараад тоог яг тэр хэвээр нь бичиж, нэгжийг ({unit}) мөн тулгана уу. Хариун дээр өөр тоо эсвэл нэгж байвал «Засах»-аар засна уу. | This value is far from what the app expects — most often a misread or a wrong unit. Look at the paper/PDF report, type the number exactly as printed and check the unit ({unit}) too. If the report shows another number or unit, use "Edit". | |
 | `retype.confirm` | Хариутай тулгасан | Checked against the report | |
 | `retype.hidden` | (уншсан утгыг нуусан — хариунаасаа бичнэ үү) | (the value read is hidden — type it from your report) | |
+| `collectedByUserShort` | ✎ Огноо, цагийг гараар оруулсан/зассан | ✎ Date/time entered/corrected by hand | |
 | `collectedByUser` | Огноо, цагийг хэрэглэгч оруулсан эсвэл зассан (апп уншаагүй) | Date/time entered or corrected by a person, not read from the report | |
 | `sampleTime.why` | Эмийн түвшний хариунд дээж авсан цаг бичигдээгүй байна. Цагийг баримтаас (жишээ нь лабын баримт) мэдэж байвал нэмбэл сүүлийн тунгаас хэдэн цагийн дараа авсныг харуулна. Санамжаар бүү бичээрэй — мэдэхгүй бол хоосон үлдээнэ үү. Цаг нэмбэл энэ хариуны шалгасан мөрүүдийг дахин тулгана. | This drug level result has no sample time. If you know it from a document (for example the lab's slip), adding it shows how many hours after the last dose it was taken. Do not guess — leave it empty if you are not sure. Adding a time asks you to check this report's rows again. | |
 | `sampleTime.add` | Дээж авсан цагийг нэмэх | Add the sample time | |
@@ -156,7 +157,7 @@ _Нийт 1050 текст._
 
 ## Хандлагын график
 
-Хянагч: эмч, лабын эмч. Түлхүүр: `app.trends` (45).
+Хянагч: эмч, лабын эмч. Түлхүүр: `app.trends` (46).
 
 | Түлхүүр | Монгол | English | Санал |
 |---|---|---|---|
@@ -176,6 +177,7 @@ _Нийт 1050 текст._
 | `axes.days` | Суулгалтаас хойш (хоног) | Since transplant (days) | |
 | `daysApprox` | Шилжүүлэн суулгасан огноо зөвхөн сар/он тул хоногийн тоо ойролцоо (бодит хугацаанаас илүү гарахгүй). | The transplant date is known only to the month or year, so the day count is approximate (never more than the real time). | |
 | `chartLabel` | {name}-ийн хандлагын график, {count} хариу. Утга бүр доорх жагсаалтад байна. | Trend chart of {name}, {count} results. Every value is in the list below. | |
+| `howToRead` | Графикийг хэрхэн унших | How to read the chart | |
 | `legend` | Нарийн саарал шат — тухайн хариу дээр бичигдсэн лавлах хэмжээ (лаборатори солигдоход өөрчлөгдөж болно). Улаан тасархай — хариу дээр бичигдсэн критик хязгаар. Цэгийн дүрс: ● лавлах хэмжээнд, ▲ лавлахаас гадуур, ◆ критик, хоосон дүрс — лавлах хэмжээгүй эсвэл «<», «>» утга. Цэгэн босоо шугам — шилжүүлэн суулгалт, үйл явдал. | Thin grey steps: the reference range printed on each result (it may change with the lab). Red dashed: the critical limit printed on the result. Point shapes: ● within range, ▲ outside range, ◆ critical, hollow - no range, or a "<"/">" value. Dotted vertical lines: transplant, events. | |
 | `legendDose` | Тасархай шат (баруун тэнхлэг) — бүртгэсэн {medicine}: өдрийн тун. | Dashed steps (right axis): the recorded daily dose of {medicine}. | |
 | `doseNote` | Тунг бүртгэсэнээр нь харуулав. Тун ба шинжилгээний хариуны холбоог эмч тайлбарлана; тунгийн өөрчлөлтийг эмчтэйгээ ярилцана уу. | Doses are shown as recorded. Your doctor interprets how dose and results relate; talk to your doctor about any dose change. | |
@@ -497,7 +499,7 @@ _Нийт 1050 текст._
 | `detail.notFound` | Эм олдсонгүй. | Medicine not found. | |
 | `detail.alarmMed` | Чимээгүй горимд сэрүүлэг шиг дуугаргах | Ring like an alarm in silent mode | |
 | `detail.alarmMedFailed` | Хадгалж чадсангүй. Дахин оролдоно уу. | Could not save. Please try again. | |
-| `detail.alarmMedHint` | Зөвхөн энэ утсанд, Android-д, «Сэрүүлэг шиг чанга дуугаргах» тохиргоо асаалттай үед. Анхдагчаар дархлаа дарангуйлагч, кортикостероид болон төрөл нь тодорхойгүй эмэнд асаалттай. Унтраавал энэ эмийн сануулга энгийн чанга мэдэгдлээр ирж, чимээгүй горимд дуугарахгүй байж болно. | On this phone only, on Android, while "Ring like an alarm" is on. On by default for immunosuppressants, corticosteroids and medicines of unknown kind. When off, this medicine's reminders use the ordinary loud notification and may stay silent in silent mode. | |
+| `detail.alarmMedHint` | Зөвхөн энэ утсанд, «Сэрүүлэг шиг чанга дуугаргах» тохиргоо асаалттай үед. Унтраавал энэ эмийн сануулга энгийн чанга мэдэгдлээр ирж, чимээгүй горимд дуугарахгүй байж болно. | On this phone only, while "Ring like an alarm" is on. When off, this medicine's reminders use the ordinary loud notification and may stay silent in silent mode. | |
 | `detail.reminderOn` | Сануулга асаалттай | Reminders on | |
 | `detail.reminderOff` | Сануулга унтраалттай | Reminders off | |
 | `detail.stopTitle` | Эмийг зогсоох | Stop this medicine | |

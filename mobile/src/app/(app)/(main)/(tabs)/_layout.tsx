@@ -48,6 +48,8 @@ export default function TabsLayout() {
         headerTintColor: p.text,
         // one line, scaled to at most 1.3x: at 200% text the title crowded the header buttons
         headerTitle: ({ children }) => <HeaderTitle color={p.text}>{children}</HeaderTitle>,
+        // the emergency card one tap away from every tab, not only Home (UX audit #1, H17)
+        headerRight: () => <EmergencyButton />,
       }}
     >
       <Tabs.Screen

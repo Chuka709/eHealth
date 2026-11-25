@@ -5,6 +5,7 @@ import { ActivityIndicator, FlatList, Pressable, StyleSheet, View } from "react-
 import { useTranslations } from "use-intl";
 
 import { Text } from "@/components/app-text";
+import { Button } from "@/components/button";
 import { Chart } from "@/components/chart";
 import { Segmented } from "@/components/segmented";
 import { LoadingView, RetryView } from "@/components/state-view";
@@ -49,6 +50,7 @@ export default function TrendScreen() {
   const { own } = useRecordProfile();
   const [period, setPeriod] = useState<Period>("1y");
   const [axis, setAxis] = useState<Axis>("date");
+  const [howTo, setHowTo] = useState(false);
   const since = useMemo(() => periodStart(period, new Date()), [period]);
   const trend = useTrend(own?.id, code, since);
   // a dose unit is a code (mg, mcg ...): shown in the person's language (H23: one spelling each)
@@ -120,12 +122,20 @@ export default function TrendScreen() {
       )}
       {axis === "date" && medicine && (
         <>
+          {/* the safety note and what the dashed dose line is stay in sight; the rest of the
+              key is one tap away (UX #6, medical review L2) */}
           <Paragraph muted>{t("legendDose", { medicine: medicine.name })}</Paragraph>
           <Paragraph muted>{t("doseNote")}</Paragraph>
           {hasUndrawnDoses(data, today) && <Paragraph muted>{t("doseNotDrawn")}</Paragraph>}
         </>
       )}
-      <Paragraph muted>{t("legend")}</Paragraph>
+      <Button
+        variant="link"
+        label={t("howToRead")}
+        expanded={howTo}
+        onPress={() => setHowTo(!howTo)}
+      />
+      {howTo && <Paragraph muted>{t("legend")}</Paragraph>}
       {axis === "days" && approximate && <Paragraph muted>{t("daysApprox")}</Paragraph>}
       {data.truncated && <Paragraph muted>{t("truncated", { limit: TREND_LIMIT })}</Paragraph>}
       {medicine && <Doses trend={data} />}
@@ -195,7 +205,19 @@ const PointRow = memo(function PointRow({
     <Pressable
       onPress={() => router.push(`/results/${source}`)}
       accessibilityRole="button"
-      accessibilityLabel={[when, value, flagText, printed, range, critical, days, lab, notDrawn]
+      // the whole row is one element: the Q65 mark in full words is part of what it says
+      accessibilityLabel={[
+        when,
+        byUser,
+        value,
+        flagText,
+        printed,
+        range,
+        critical,
+        days,
+        lab,
+        notDrawn,
+      ]
         .filter(Boolean)
         .join(". ")}
       accessibilityHint={t("openSource")}
@@ -204,7 +226,10 @@ const PointRow = memo(function PointRow({
     >
       <View style={styles.line}>
         <Text style={[styles.when, { color: p.text }]}>{when}</Text>
-        {byUser && <Text style={[styles.meta, { color: p.textMuted }]}>{byUser}</Text>}
+        {/* a short mark on every point; the row's label says it in full (UX audit #5) */}
+        {byUser && (
+          <Text style={[styles.meta, { color: p.textMuted }]}>{tr("collectedByUserShort")}</Text>
+        )}
         <Text style={[styles.value, { color: p.text }]}>{value}</Text>
       </View>
       <View style={[styles.flag, { backgroundColor: colour.bg }]}>

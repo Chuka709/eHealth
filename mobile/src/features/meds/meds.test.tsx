@@ -266,7 +266,7 @@ test("today's doses come from the dose history; a tap records one through the qu
 test("adding a medicine: catalog search, a dose per time, ambiguous numbers refused", async () => {
   medications = [];
   await openMeds();
-  await press("Эм нэмэх");
+  await fireEvent.press(screen.getByTestId("meds-add-header")); // UX audit #3
   await fireEvent.changeText(await screen.findByLabelText("Эмийн нэрээр хайх"), "так");
   await press(/Такролимус · Prograf/);
   expect(await screen.findByText("Сонгосон: Такролимус")).toBeOnTheScreen();
@@ -307,7 +307,7 @@ test("adding a medicine: catalog search, a dose per time, ambiguous numbers refu
 test("a hand-typed medicine: the user says whether it is an immunosuppressant (Q34)", async () => {
   medications = [];
   await openMeds();
-  await press("Эм нэмэх");
+  await fireEvent.press(screen.getByTestId("meds-add-header")); // UX audit #3
   await fireEvent.changeText(await screen.findByLabelText("Эмийн нэрээр хайх"), "Сандиммун");
   await press("Жагсаалтад алга — гараар бичих");
   expect(await screen.findByText(/нэрээр нь таамаглахгүй/)).toBeOnTheScreen();
@@ -679,4 +679,12 @@ test("Q24: while the server is asked, the tapped dose says so and cannot be tapp
     answer();
     handlers[`GET /api/v1/patients/${OWN.id}/intakes`] = list;
   }
+});
+
+test("UX audit #1/#3: the Medicines tab has the emergency card and 'Эм нэмэх' in its header", async () => {
+  await openMeds();
+  expect(
+    await screen.findByRole("button", { name: "Яаралтай тусламжийн карт нээх" }),
+  ).toBeOnTheScreen();
+  expect(screen.getByTestId("meds-add-header")).toHaveProp("accessibilityLabel", "Эм нэмэх");
 });

@@ -1,10 +1,14 @@
-import { useRouter } from "expo-router";
+import { useNavigation, useRouter } from "expo-router";
+import { useLayoutEffect } from "react";
+import { StyleSheet, View } from "react-native";
 import { useTranslations } from "use-intl";
 import { Button } from "@/components/button";
+import { HeaderAdd } from "@/components/header-add";
 import { NavRow } from "@/components/nav-row";
 import { Screen } from "@/components/screen";
 import { LoadingView, RetryView } from "@/components/state-view";
 import { Paragraph, Title } from "@/components/text";
+import { EmergencyButton } from "@/features/emergency/emergency-button";
 import { MonthSummary } from "@/features/meds/month-summary";
 import { ReminderWarnings } from "@/features/meds/reminder-warnings";
 import { TodayList } from "@/features/meds/today-list";
@@ -26,6 +30,22 @@ export default function MedsScreen() {
   const patients = usePatients();
   const own = useActiveProfile(patients.data);
   const { doses, meds, zones, waitingForZone } = useTodayDoses(own?.id, now);
+  const navigation = useNavigation();
+  // "Эм нэмэх" without scrolling past today's doses (UX audit #3); the emergency card stays
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      headerRight: () => (
+        <View style={styles.header}>
+          <HeaderAdd
+            label={t("add")}
+            onPress={() => router.push("/meds/new")}
+            testID="meds-add-header"
+          />
+          <EmergencyButton />
+        </View>
+      ),
+    });
+  }, [navigation, router, t]);
 
   // offline with nothing kept the queries wait ("paused"): say so instead of loading forever
   // zones too: until they come, a "local" medicine's doses are held back (H20)
@@ -75,3 +95,5 @@ export default function MedsScreen() {
     </Screen>
   );
 }
+
+const styles = StyleSheet.create({ header: { flexDirection: "row", alignItems: "center" } });

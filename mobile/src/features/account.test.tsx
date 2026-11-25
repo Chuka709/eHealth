@@ -417,7 +417,8 @@ test("lab results: each file says how far it got; adding one asks whose result i
   expect(screen.getByText("Хүлээн авсан — уншихыг хүлээж байна")).toBeOnTheScreen();
   expect(screen.getByText("Хүлээж аваагүй — өөр файл оруулна уу")).toBeOnTheScreen();
   expect(screen.getByText("Файл аюулгүй биш тул хүлээж аваагүй.")).toBeOnTheScreen();
-  await fireEvent.press(screen.getByRole("button", { name: "Хариу оруулах" }));
+  // the header "+" and the list's own button both open it (UX audit #3)
+  await fireEvent.press(screen.getAllByRole("button", { name: "Хариу оруулах" })[0]);
   expect(await screen.findByText("Энэ профайлд нэмнэ: Бат")).toBeOnTheScreen();
   // scans never go to the phone's photos (CLAUDE.md rule 8) - and the user is told
   expect(screen.getByText(/зургийн санд хадгалагдахгүй/)).toBeOnTheScreen();
