@@ -1,4 +1,4 @@
-import { fireEvent, renderRouter, screen, waitFor } from "expo-router/testing-library";
+import { fireEvent, renderRouter, screen, waitFor, within } from "expo-router/testing-library";
 import { Alert, AppState, type AppStateStatus } from "react-native";
 
 import { clearAccessToken, setStatus } from "@/features/auth/session-store";
@@ -644,4 +644,39 @@ test("Q24: logging a dose someone logged meanwhile asks first, then keeps both",
   expect(asked[0]).toMatch(/профайлын эзэн «уусан» гэж тэмдэглэсэн байна/);
   await waitFor(() => expect(posts.filter((p) => p.key === "intake")).toHaveLength(2));
   jest.restoreAllMocks();
+});
+
+test("Q24: while the server is asked, the tapped dose says so and cannot be tapped again", async () => {
+  await openMeds();
+  await screen.findByTestId(`dose-${MED_ID}-08:00`);
+  const list = handlers[`GET /api/v1/patients/${OWN.id}/intakes`];
+  let answer: () => void = () => undefined;
+  const gate = new Promise<void>((resolve) => {
+    answer = resolve;
+  });
+  let asked = 0;
+  handlers[`GET /api/v1/patients/${OWN.id}/intakes`] = async (request) => {
+    asked += 1;
+    await gate;
+    return list(request);
+  };
+  try {
+    const [taken] = screen.getAllByRole("button", { name: /^Уусан — / });
+    await fireEvent.press(taken);
+    const row = screen.getByTestId(`dose-${MED_ID}-08:00`);
+    expect(
+      await within(row).findByText("Өмнө нь тэмдэглэсэн эсэхийг шалгаж байна…"),
+    ).toBeOnTheScreen();
+    // "Алгассан" waits too: the tap is in hand
+    expect(within(row).getByRole("button", { name: /^Алгассан — / })).toBeDisabled();
+    // a second tap on "Уусан" meanwhile neither asks again nor records (no double record)
+    await fireEvent.press(taken);
+    expect(asked).toBe(1);
+    answer();
+    await waitFor(() => expect(posts.filter((p) => p.key === "intake")).toHaveLength(1));
+    expect(within(row).queryByText(/шалгаж байна/)).toBeNull();
+  } finally {
+    answer();
+    handlers[`GET /api/v1/patients/${OWN.id}/intakes`] = list;
+  }
 });

@@ -68,6 +68,8 @@ export function TodayList({
   const [busy, setBusy] = useState<string | null>(null);
   // a second tap on "Уусан" must not land on the "Буцаах" that replaces it
   const [settling, setSettling] = useState<string | null>(null);
+  // Q24: while the server is asked (up to CHECK_TIMEOUT_MS) the tap must visibly be in hand
+  const [checking, setChecking] = useState<string | null>(null);
 
   const inFlight = useRef(new Set<string>());
   // a profile switch while the server is asked unmounts this list: no question about the
@@ -110,14 +112,16 @@ export function TodayList({
   const mark = async (dose: TodayDose, key: string, status: IntakeStatus) => {
     if (status !== "taken" || inFlight.current.has(key)) return save(dose, key, status);
     // held while asking the server: a second tap meanwhile does nothing
-    const checking = `${key}#check`;
-    if (inFlight.current.has(checking)) return;
-    inFlight.current.add(checking);
+    const checkKey = `${key}#check`;
+    if (inFlight.current.has(checkKey)) return;
+    inFlight.current.add(checkKey);
+    setChecking(key);
     let stored: Awaited<ReturnType<typeof currentRecord>>;
     try {
       stored = await currentRecord(patientId, dose.medication.id, dose.slot.scheduledAt);
     } finally {
-      inFlight.current.delete(checking);
+      inFlight.current.delete(checkKey);
+      if (mounted.current) setChecking((k) => (k === key ? null : k));
     }
     if (!mounted.current) return settle(patientId);
     // the list may have been closed (a profile switch) while the question was open
@@ -130,7 +134,7 @@ export function TodayList({
           { text: t("dose.alreadyCancel"), style: "cancel", onPress: () => settle(patientId) },
           { text: t("dose.alreadyRecord"), onPress: record },
         ],
-        { cancelable: true },
+        { cancelable: true, onDismiss: () => settle(patientId) },
       );
       return;
     }
@@ -146,7 +150,7 @@ export function TodayList({
         { text: t("dose.alreadyCancel"), style: "cancel", onPress: () => settle(patientId) },
         { text: t("dose.alreadyRecord"), onPress: record },
       ],
-      { cancelable: true },
+      { cancelable: true, onDismiss: () => settle(patientId) },
     );
   };
   const undo = (dose: TodayDose, key: string) =>
@@ -200,7 +204,8 @@ export function TodayList({
                   first={i === 0}
                   dose={dose}
                   due={dose.slot.scheduledAt <= now}
-                  busy={busy === key}
+                  busy={busy === key || checking === key}
+                  checking={checking === key}
                   settling={settling === key}
                   onMark={(status) => void mark(dose, key, status)}
                   onUndo={() => void undo(dose, key)}
@@ -238,6 +243,7 @@ function DoseRow({
   dose,
   due,
   busy,
+  checking,
   settling,
   onMark,
   onUndo,
@@ -246,6 +252,8 @@ function DoseRow({
   dose: TodayDose;
   due: boolean;
   busy: boolean;
+  /** "Уусан" tapped, the server is asked whether it is already recorded (Q24) */
+  checking: boolean;
   settling: boolean;
   onMark: (s: IntakeStatus) => void;
   onUndo: () => void;
@@ -263,8 +271,9 @@ function DoseRow({
   const name = dose.medication.name;
   const who = (by: string | null | undefined) => t(`dose.who.${by ?? "someone"}` as "dose.who.you");
   const at = (iso: string) => clockIn(Date.parse(iso), dose.zone);
-  const state =
-    dose.state === "taken"
+  const state = checking
+    ? t("dose.checking")
+    : dose.state === "taken"
       ? dose.recorded?.takenAt &&
         (dose.recorded.by === "owner" ||
           dose.recorded.by === "caregiver" ||

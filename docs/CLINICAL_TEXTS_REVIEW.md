@@ -1,6 +1,6 @@
 # Эмнэлзүйн текстийн хяналт (Q12)
 
-_Нийт 1045 текст._
+_Нийт 1046 текст._
 
 **Зорилго:** шилжүүлэн суулгалтын эмч + лабораторийн эмч апп-ын эмнэлзүйн текстийг нэг дор хянана (эмчийн шийдвэр 2026.11.18, ★). Одоогоор зөвхөн такролимусын CV%-ийн карт хянуулах хүртэл өвчтөнд нуугдсан; бусад текст апп-д харагдаж байгаа тул бетаг нээхээс өмнө хянагдсан байх ёстой (BETA B5).
 
@@ -345,7 +345,7 @@ _Нийт 1045 текст._
 
 ## Эм, тун, сануулга, каталоггүй эмийн ангилал
 
-Хянагч: эмч. Түлхүүр: `app.meds` (211).
+Хянагч: эмч. Түлхүүр: `app.meds` (212).
 
 | Түлхүүр | Монгол | English | Санал |
 |---|---|---|---|
@@ -382,6 +382,7 @@ _Нийт 1045 текст._
 | `dose.who.caregiver` | асран хамгаалагч | a caregiver | |
 | `dose.who.someone` | өөр хэн нэгэн | someone else | |
 | `dose.alreadyBodyYou` | Та энэ тунг {time}-д «уусан» гэж аль хэдийн тэмдэглэсэн байна. Дахин тэмдэглэх үү? Шинэ тэмдэглэл тусад нь хадгалагдана. | You already logged this dose as taken at {time}. Log it again? The new entry is kept separately. | |
+| `dose.checking` | Өмнө нь тэмдэглэсэн эсэхийг шалгаж байна… | Checking whether it is already recorded… | |
 | `dose.uncheckedTitle` | Энэ тунг өмнө нь тэмдэглэсэн эсэхийг шалгаж чадсангүй | Could not check whether this dose is already recorded | |
 | `dose.uncheckedBody` | Өөр хүн тэмдэглэсэн байж магадгүй. «Уусан» гэж тэмдэглэх үү? | Someone else may have recorded it. Record it as taken? | |
 | `dose.takenAfter` | Товлосон цагаас {minutes, plural, =0 {{hours} цагийн} other {{hours, plural, =0 {} other {{hours} цаг }}{minutes} минутын}} дараа уусан | Taken {minutes, plural, =0 {{hours, plural, one {# hour} other {# hours}}} other {{hours, plural, =0 {} one {# hour } other {# hours }}{minutes} min}} after its time | |

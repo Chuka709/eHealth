@@ -467,6 +467,7 @@
           "someone": "someone else"
         },
         "alreadyBodyYou": "You already logged this dose as taken at {time}. Log it again? The new entry is kept separately.",
+        "checking": "Checking whether it is already recorded…",
         "uncheckedTitle": "Could not check whether this dose is already recorded",
         "uncheckedBody": "Someone else may have recorded it. Record it as taken?",
         "takenAfter": "Taken {minutes, plural, =0 {{hours, plural, one {# hour} other {# hours}}} other {{hours, plural, =0 {} one {# hour } other {# hours }}{minutes} min}} after its time",
