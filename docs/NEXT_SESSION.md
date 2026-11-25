@@ -16,12 +16,13 @@ LabTrack MN: бодит утасны (B6) шалгалтыг үргэлжлүү�
    Messenger/Files-аас share, F5 офлайн нэмэх (файл/бичлэг), F6 яаралтай карт (түгжээтэй
    дэлгэц, wallpaper, PDF share), F7 гарахад cache/дараалал цэвэрлэгдэх
    (`adb shell run-as mn.munkhly.labtrack.development ls cache files`).
-2. Үлдсэн сануулга: чимээгүй горим (0) дахь чанга суваг (ringer-ийг `dumpsys audio`-оор
-   баталгаажуул), R6 батарей хэмнэлт асаалттай, R11 (боломжтой бол).
+2. Үлдсэн сануулга: R6 батарей хэмнэлт асаалттай, R11 (боломжтой бол). Чимээгүй горим
+   шалгагдсан (дуугүй — Q79 хэрэглэгчийн шийдвэр хүлээж байна). F2-ийн суурь: галерейн
+   сүүлийн зураг _id=1000015228 (`content query --uri content://media/external/images/media`).
 3. Олдсон алдааг засах (тест + хянагч), DEVICE_TEST.md-д бүртгэх, commit + push.
 4. Боломжтой бол: Q24 шалгалтын үеийн (0–8 с) хүлээлтийн төлөв — ui-reviewer.
 
-## Одоогийн төлөв (2026.11.25, салбар phase-2, сүүлийн commit 0bda4d9)
+## Одоогийн төлөв (2026.11.25, салбар phase-2, сүүлийн commit 3a8d086)
 - R1–R4 (11.19), R5 ◐ (MIUI deep Doze adb-ээр орохгүй), R7, R8, R9, R10, R12 ✅ (11.25).
 - 11.25-ны засварууд: e785e72 expo-notifications foreground broadcast patch
   (`patches/expo-notifications.patch` + `mobile/package.json` buildFromSource — үгүй бол
