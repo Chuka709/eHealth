@@ -7,15 +7,20 @@ import {
   CHANNEL_ALARM,
   CHANNEL_SILENT,
   cancelSnoozeOf,
+  defaultMedAlarm,
   dismissDoseCopies,
   dismissRecordedReminders,
   doseSound,
   exactAlarmState,
+  medAlarmChoices,
+  medAlarmOn,
   registerReminderKinds,
   rememberExactAlarm,
   rememberSound,
   resetRegisteredKinds,
+  ringsFor,
   setAlarmSound,
+  setMedAlarm,
   snooze,
   snoozeAlarms,
   soundChanged,
@@ -560,5 +565,98 @@ test("Q79/H-1: a late reminder shown at once is loud - no alarm clock rings for 
   } finally {
     Platform.OS = was;
     mockAlarm.available = false;
+  }
+});
+
+test("Q79-3: immunosuppressants, corticosteroids and medicines of no known kind ring by default", async () => {
+  expect(defaultMedAlarm("immunosuppressant")).toBe(true);
+  expect(defaultMedAlarm("corticosteroid")).toBe(true);
+  expect(defaultMedAlarm(null)).toBe(true); // typed in, "unknown": the safe side
+  expect(defaultMedAlarm("antiviral")).toBe(false);
+  expect(defaultMedAlarm("antihypertensive")).toBe(false);
+  // the user's choice on this phone wins either way
+  await setMedAlarm(A, false);
+  await setMedAlarm(B, true);
+  const choices = await medAlarmChoices();
+  expect(medAlarmOn({ id: A, category: "immunosuppressant" }, choices)).toBe(false);
+  expect(medAlarmOn({ id: B, category: "antiviral" }, choices)).toBe(true);
+  mockStored.delete("prefs.med_alarm.v1");
+});
+
+test("Q79-3: a reminder rings by the alarm clock when a dose it lists does; the rest stay loud", async () => {
+  const was = Platform.OS;
+  Platform.OS = "android";
+  try {
+    await setAlarmSound(true);
+    mockAlarm.available = true;
+    const at = Date.now() + 3_600_000;
+    const rings = ringsFor(new Set([A]));
+    const planned = [
+      dose(`dose.${at}.a`, at, [A]),
+      dose(`dose.${at + 60_000}.b`, at + 60_000, [B]),
+      dose(`dose.${at + 120_000}.ab`, at + 120_000, [A, B]),
+    ];
+    await syncReminders(planned, keepAll, always, () => false, false, rings);
+    const channel = (id: string) =>
+      (os.get(id) as unknown as { trigger: { channelId: string } }).trigger.channelId;
+    expect(channel(`dose.${at}.a`)).toBe(CHANNEL_SILENT);
+    expect(channel(`dose.${at + 60_000}.b`)).toBe(CHANNEL_ALARM);
+    expect(channel(`dose.${at + 120_000}.ab`)).toBe(CHANNEL_SILENT);
+    expect(alarmClocksFor(planned, Date.now(), rings).map((x) => x.id)).toEqual([
+      `dose.${at}.a`,
+      `dose.${at + 120_000}.ab`,
+    ]);
+  } finally {
+    Platform.OS = was;
+    mockAlarm.available = false;
+  }
+});
+
+test("Q79-3: '10 мин дараа' of a medicine not ringing like an alarm sets no alarm clock", async () => {
+  const was = Platform.OS;
+  Platform.OS = "android";
+  try {
+    await setAlarmSound(true);
+    mockAlarm.available = true;
+    const at = Date.now() - 60_000;
+    await snooze(
+      `dose.${at}.c`,
+      {
+        title: "t",
+        body: "1 тун",
+        data: { kind: "dose", p: P, d: [{ m: B, at: Math.floor(at / 60_000) * 60_000 }] },
+      },
+      always,
+      false,
+    );
+    const set = os.get(`snooze.dose.${at}.c`) as unknown as { trigger: { channelId: string } };
+    expect(set.trigger.channelId).toBe(CHANNEL_ALARM);
+    expect(mockAlarm.add).not.toHaveBeenCalled();
+  } finally {
+    Platform.OS = was;
+    mockAlarm.available = false;
+  }
+});
+
+test("Q79-3: turning a medicine's alarm on or off sets the reminders anew; a new medicine does not", async () => {
+  const was = Platform.OS;
+  Platform.OS = "android";
+  try {
+    await setAlarmSound(true);
+    mockAlarm.available = true;
+    await rememberSound({ [A]: true });
+    expect(await soundChanged({ [A]: true })).toBe(false);
+    expect(await soundChanged({ [A]: true, [B]: false })).toBe(false); // B is new: set as it is
+    // remembered after that sync: B turned on later is set anew (medical review H-1)
+    await rememberSound({ [A]: true, [B]: false });
+    expect(await soundChanged({ [A]: true, [B]: true })).toBe(true);
+    expect(await soundChanged({ [A]: false })).toBe(true);
+    // a value from before Q79-3 (the channel alone): set anew once
+    mockStored.set("reminders.channel.v1", CHANNEL_SILENT);
+    expect(await soundChanged({ [A]: true })).toBe(true);
+  } finally {
+    Platform.OS = was;
+    mockAlarm.available = false;
+    mockStored.delete("reminders.channel.v1");
   }
 });

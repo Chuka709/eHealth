@@ -71,19 +71,95 @@ export async function setAlarmSound(on: boolean): Promise<void> {
   (await localStore()).set(ALARM_KEY, on);
 }
 
-const CHANNEL_KEY = "reminders.channel.v1";
+const MED_ALARM_KEY = "prefs.med_alarm.v1";
 
-/** Whether the reminders already on the phone were set on another channel or sound (the
- * setting changed, or an update brought the loud one): then they are all set anew. */
-export async function soundChanged(): Promise<boolean> {
-  const { channel } = await doseSound();
-  const before = (await localStore()).getString(CHANNEL_KEY);
-  return (before ?? CHANNEL) !== channel;
+/** Categories whose doses ring like an alarm unless the user turns it off (Q79-3: a missed
+ * dose can cost the graft). A medicine of no known category (typed in, "unknown") rings too:
+ * it may be one of them - the safe side. */
+const ALARM_BY_DEFAULT = new Set(["immunosuppressant", "corticosteroid"]);
+
+export const defaultMedAlarm = (category: string | null | undefined): boolean =>
+  category == null || ALARM_BY_DEFAULT.has(category);
+
+/** The user's own choices per medicine (this phone only), by medication id. */
+export async function medAlarmChoices(): Promise<Record<string, boolean>> {
+  const raw = (await localStore()).getString(MED_ALARM_KEY);
+  if (!raw) return {};
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (typeof parsed !== "object" || parsed === null) return {};
+    return Object.fromEntries(
+      Object.entries(parsed).filter((e): e is [string, boolean] => typeof e[1] === "boolean"),
+    );
+  } catch {
+    return {};
+  }
 }
 
-export async function rememberSound(): Promise<void> {
+export async function setMedAlarm(medicationId: string, on: boolean): Promise<void> {
+  const store = await localStore();
+  const all = await medAlarmChoices();
+  all[medicationId] = on;
+  store.set(MED_ALARM_KEY, JSON.stringify(all));
+}
+
+/** Whether this medicine's doses ring like an alarm (Q79-3): the user's choice, else by kind. */
+export const medAlarmOn = (
+  m: { id: string; category: string | null | undefined },
+  choices: Readonly<Record<string, boolean>>,
+): boolean => choices[m.id] ?? defaultMedAlarm(m.category);
+
+/** A dose reminder rings like an alarm when any dose it lists does. */
+export const ringsFor =
+  (on: ReadonlySet<string>) =>
+  (n: Pick<Planned, "kind" | "data">): boolean =>
+    n.kind === "dose" && "d" in n.data && n.data.d.some((x) => on.has(x.m));
+
+const CHANNEL_KEY = "reminders.channel.v1";
+
+/** What the reminders already on the phone were set with: the channel and, per medicine,
+ * whether it rang like an alarm. */
+function soundKey(channel: string, medicines: Readonly<Record<string, boolean>>): string {
+  const sorted = Object.keys(medicines)
+    .sort()
+    .map((id) => `${id}=${medicines[id] ? 1 : 0}`);
+  return JSON.stringify({ channel, medicines: sorted });
+}
+
+/** Whether the reminders already on the phone were set on another channel or sound (the
+ * setting changed, an update brought the loud one, or a medicine's alarm was turned on or off -
+ * Q79-3): then they are all set anew. A medicine new since then changes nothing (its reminders
+ * are new anyway). */
+export async function soundChanged(
+  medicines: Readonly<Record<string, boolean>> = {},
+): Promise<boolean> {
   const { channel } = await doseSound();
-  (await localStore()).set(CHANNEL_KEY, channel);
+  const raw = (await localStore()).getString(CHANNEL_KEY);
+  let before: { channel?: unknown; medicines?: unknown } = { channel: raw ?? CHANNEL };
+  try {
+    if (raw?.startsWith("{")) before = JSON.parse(raw) as typeof before;
+  } catch {
+    return true;
+  }
+  if (before.channel !== channel) return true;
+  // a value from before Q79-3 (the channel alone): set anew once, now with the medicines
+  if (!Array.isArray(before.medicines)) return raw !== null && Object.keys(medicines).length > 0;
+  const was = new Map(
+    before.medicines
+      .filter((x): x is string => typeof x === "string")
+      .map((x) => {
+        const [id, on] = x.split("=");
+        return [id, on === "1"] as const;
+      }),
+  );
+  return Object.entries(medicines).some(([id, on]) => was.has(id) && was.get(id) !== on);
+}
+
+export async function rememberSound(
+  medicines: Readonly<Record<string, boolean>> = {},
+): Promise<void> {
+  const { channel } = await doseSound();
+  (await localStore()).set(CHANNEL_KEY, soundKey(channel, medicines));
 }
 
 /**
@@ -113,9 +189,11 @@ export async function doseSound(): Promise<{
 export function alarmClocksFor(
   planned: readonly Planned[],
   now: number,
+  /** Q79-3: only the reminders of medicines that ring like an alarm */
+  rings: (n: Planned) => boolean = () => true,
 ): { id: string; at: number }[] {
   return planned
-    .filter((n) => n.kind === "dose" && !n.due && n.at > now)
+    .filter((n) => n.kind === "dose" && !n.due && n.at > now && rings(n))
     .map((n) => ({ id: n.id, at: n.at }));
 }
 
@@ -240,6 +318,8 @@ export async function syncReminders(
   /** schedule every reminder still to come anew (the exact-alarm permission changed: the
    * OS keeps an alarm as exact or inexact as it was set - H18) */
   renewAll = false,
+  /** Q79-3: a dose reminder the alarm clock rings for; the others ring on the loud channel */
+  rings: (n: Planned) => boolean = () => true,
 ): Promise<void> {
   const existing = await Notifications.getAllScheduledNotificationsAsync();
   const { channel, fallback, sound } = await doseSound();
@@ -319,8 +399,9 @@ export async function syncReminders(
           trigger: {
             type: Notifications.SchedulableTriggerInputTypes.DATE,
             date: n.due ? now + 2_000 : n.at,
-            // shown at once (late): no alarm clock rings for it - the loud channel does
-            channelId: n.kind !== "dose" ? CHANNEL : n.due ? fallback : channel,
+            // shown at once (late), or of a medicine not ringing like an alarm (Q79-3): no
+            // alarm clock rings for it - the loud channel does
+            channelId: n.kind !== "dose" ? CHANNEL : n.due || !rings(n) ? fallback : channel,
           },
         }),
       ),
@@ -352,6 +433,8 @@ export async function snooze(
   identifier: string,
   shown: { title: string; body: string; data: unknown },
   valid: () => boolean,
+  /** Q79-3: whether a dose it lists rings like an alarm (as the reminder it delays) */
+  ringsAlarm = true,
 ): Promise<void> {
   const data = doseData(shown.data);
   if (!data || !valid()) return;
@@ -359,7 +442,9 @@ export async function snooze(
   const at = Date.now() + SNOOZE_MS;
   // asked for by the user: rings like the reminder it delays (also through silent mode - after
   // a snoozed repeat nothing else would ring; medical review M-1)
-  const { channel, fallback, sound, alarmClock } = await doseSound();
+  const sounds = await doseSound();
+  const { channel, fallback, sound } = sounds;
+  const alarmClock = sounds.alarmClock && ringsAlarm;
   await Notifications.scheduleNotificationAsync({
     identifier: id,
     content: content({ title: shown.title, body: shown.body, data, kind: "dose" }, sound),

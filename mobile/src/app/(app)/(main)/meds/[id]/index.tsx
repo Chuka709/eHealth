@@ -1,7 +1,7 @@
 import { fontSize, radius, space } from "@labtrack/shared";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useState } from "react";
-import { Alert, StyleSheet, View } from "react-native";
+import { Alert, Platform, StyleSheet, View } from "react-native";
 import { useTranslations } from "use-intl";
 import { Text } from "@/components/app-text";
 import { Button } from "@/components/button";
@@ -13,6 +13,7 @@ import { LoadingView, RetryView } from "@/components/state-view";
 import { Paragraph, Title } from "@/components/text";
 import { TextField } from "@/components/text-field";
 import { CaregiverReminderNote } from "@/features/caregivers/reminder-note";
+import { MedAlarmSwitch } from "@/features/meds/med-alarm-switch";
 import { sentCategory, USER_CATEGORIES, type UserCategory } from "@/features/meds/med-draft";
 import { useRegimenText } from "@/features/meds/use-med-text";
 import {
@@ -25,7 +26,7 @@ import {
 } from "@/features/meds/use-medications";
 import { useActiveProfile } from "@/features/records/active-profile";
 import { ProfileBanner } from "@/features/records/profile-banner";
-import { usePatients } from "@/features/records/use-profile";
+import { ownProfile, usePatients } from "@/features/records/use-profile";
 import { formatDate } from "@/lib/dates";
 import { useErrorText } from "@/lib/use-error-text";
 import { usePalette } from "@/theme/use-palette";
@@ -121,6 +122,11 @@ export default function MedicationScreen() {
         {med.reminders_enabled ? t("detail.reminderOn") : t("detail.reminderOff")}
       </Paragraph>
       <CaregiverReminderNote patientId={own.id} remindersOn={med.reminders_enabled} />
+      {/* this phone reminds only the user's own profile (Q79-3) */}
+      {Platform.OS === "android" &&
+        med.reminders_enabled &&
+        med.is_current &&
+        own.id === ownProfile(patients.data)?.id && <MedAlarmSwitch medication={med} />}
       {/* a hand-typed medicine: what the user says it is (Q34); the card shows the dose of two */}
       {!med.catalog_code && own.access_level !== "doctor" && own.access_level !== "viewer" && (
         <Choices

@@ -1,6 +1,6 @@
 # Эмнэлзүйн текстийн хяналт (Q12)
 
-_Нийт 1046 текст._
+_Нийт 1049 текст._
 
 **Зорилго:** шилжүүлэн суулгалтын эмч + лабораторийн эмч апп-ын эмнэлзүйн текстийг нэг дор хянана (эмчийн шийдвэр 2026.11.18, ★). Одоогоор зөвхөн такролимусын CV%-ийн карт хянуулах хүртэл өвчтөнд нуугдсан; бусад текст апп-д харагдаж байгаа тул бетаг нээхээс өмнө хянагдсан байх ёстой (BETA B5).
 
@@ -345,7 +345,7 @@ _Нийт 1046 текст._
 
 ## Эм, тун, сануулга, каталоггүй эмийн ангилал
 
-Хянагч: эмч. Түлхүүр: `app.meds` (212).
+Хянагч: эмч. Түлхүүр: `app.meds` (215).
 
 | Түлхүүр | Монгол | English | Санал |
 |---|---|---|---|
@@ -494,6 +494,9 @@ _Нийт 1046 текст._
 | `detail.deleteConfirm` | Энэ эм, түүний тунгийн түүх, тэмдэглэлүүд бүгд устна. Буцаах боломжгүй. | This medicine, its dose history and records will all be deleted. This cannot be undone. | |
 | `detail.deleteYes` | Тийм, устгах | Yes, delete | |
 | `detail.notFound` | Эм олдсонгүй. | Medicine not found. | |
+| `detail.alarmMed` | Чимээгүй горимд сэрүүлэг шиг дуугаргах | Ring like an alarm in silent mode | |
+| `detail.alarmMedFailed` | Хадгалж чадсангүй. Дахин оролдоно уу. | Could not save. Please try again. | |
+| `detail.alarmMedHint` | Зөвхөн энэ утсанд, Android-д, «Сэрүүлэг шиг чанга дуугаргах» тохиргоо асаалттай үед. Анхдагчаар дархлаа дарангуйлагч, кортикостероид болон төрөл нь тодорхойгүй эмэнд асаалттай. Унтраавал энэ эмийн сануулга энгийн чанга мэдэгдлээр ирж, чимээгүй горимд дуугарахгүй байж болно. | On this phone only, on Android, while "Ring like an alarm" is on. On by default for immunosuppressants, corticosteroids and medicines of unknown kind. When off, this medicine's reminders use the ordinary loud notification and may stay silent in silent mode. | |
 | `detail.reminderOn` | Сануулга асаалттай | Reminders on | |
 | `detail.reminderOff` | Сануулга унтраалттай | Reminders off | |
 | `detail.stopTitle` | Эмийг зогсоох | Stop this medicine | |

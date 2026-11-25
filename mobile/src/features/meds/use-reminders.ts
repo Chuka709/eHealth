@@ -35,9 +35,12 @@ import {
   doseSound,
   exactAlarmState,
   LOCAL_DOSE_ID,
+  medAlarmChoices,
+  medAlarmOn,
   registerReminderKinds,
   rememberExactAlarm,
   rememberSound,
+  ringsFor,
   showAppointmentDetails,
   showNames,
   snooze,
@@ -189,6 +192,14 @@ export function useReminderSync(): void {
         )
       : [];
     const enabled = new Set(medicines.map((m) => m.id));
+    // Q79-3: which reminded medicines ring like an alarm (this phone's choice, else by kind)
+    const choices = await medAlarmChoices().catch(() => ({}));
+    const alarmOf: Record<string, boolean> = Object.fromEntries(
+      (doseData?.meds ?? [])
+        .filter((m) => enabled.has(m.id))
+        .map((m) => [m.id, medAlarmOn(m, choices)]),
+    );
+    const rings = ringsFor(new Set(Object.keys(alarmOf).filter((id) => alarmOf[id])));
     // a "10 мин дараа" stays only for doses still to take, of medicines still reminded; its
     // text was copied when snoozed, so a change of the names setting drops it too
     const keepSnooze = (items: { m: string; at: number }[], body: string) =>
@@ -201,9 +212,9 @@ export function useReminderSync(): void {
     // were set, and the change would be remembered with them never renewed
     const exact = await exactAlarmState().catch(() => null);
     // a new sound: the reminders already set keep the channel they were set with
-    const sound = await soundChanged().catch(() => false);
+    const sound = await soundChanged(alarmOf).catch(() => false);
     const renew = ((exact?.changed ?? false) || sound) && doseData !== null && visitsKnown;
-    await syncReminders([...planned, ...visits], keepSnooze, valid, keepUnplanned, renew);
+    await syncReminders([...planned, ...visits], keepSnooze, valid, keepUnplanned, renew, rings);
     // the alarm clocks (Android, Q79) follow the same plan - only once the doses are known
     if (doseData && valid()) {
       const { alarmClock } = await doseSound();
@@ -216,7 +227,7 @@ export function useReminderSync(): void {
       const snoozes = alarmClock ? await snoozeAlarms(now, scheduled) : [];
       // signed out while waiting: never set this account's alarms again (security review M2)
       if (valid()) {
-        syncAlarmClocks(alarmClock ? [...alarmClocksFor(planned, now), ...snoozes] : [], {
+        syncAlarmClocks(alarmClock ? [...alarmClocksFor(planned, now, rings), ...snoozes] : [], {
           title: t("notify.ringing"),
           body: t("notify.ringingBody"),
           stop: t("notify.stopAlarm"),
@@ -227,7 +238,12 @@ export function useReminderSync(): void {
     // only from a loaded list of records: an unloaded one would clear nothing anyway
     if (intakes.data && valid()) await dismissRecordedReminders(recorded).catch(() => undefined);
     if (renew && exact && valid()) await rememberExactAlarm(exact.granted).catch(() => undefined);
-    if (renew && valid()) await rememberSound().catch(() => undefined);
+    // what the reminders are now set with, after every sync that planned the doses: a medicine
+    // added since the last renew and then turned off is renewed too (medical review H-1). Not
+    // while a sound change still waits for its renew (another kind was not known yet)
+    if (doseData && (renew || !sound) && valid()) {
+      await rememberSound(alarmOf).catch(() => undefined);
+    }
   };
 
   const runRef = useRef<() => void>(() => undefined);
@@ -386,10 +402,18 @@ export function useReminderResponses(): void {
         return;
       }
       if (response.actionIdentifier === ACTION_SNOOZE && ours && data) {
+        // rings like the reminder it delays: by the medicines it lists (Q79-3)
+        const choices = await medAlarmChoices().catch(() => ({}));
+        const byId = new Map((list ?? []).map((m) => [m.id, m]));
+        const ringsAlarm = data.d.some((x) => {
+          const m = byId.get(x.m);
+          return m !== undefined && medAlarmOn(m, choices);
+        });
         await snooze(
           request.identifier,
           { title: request.content.title ?? "", body: request.content.body ?? "", data },
           sessionGuard(),
+          ringsAlarm,
         );
         await Notifications.dismissNotificationAsync(request.identifier).catch(() => undefined);
         return;
