@@ -629,7 +629,7 @@
       "reminders": {
         "title": "Reminders",
         "alarmSound": "Ring like an alarm",
-        "alarmSoundHint": "When on, reminders ring longer with an alarm sound and vibrate. On silent or vibrate, some phones only vibrate (Xiaomi, for example); in Do Not Disturb they do not ring. When off, reminders use the normal notification sound.",
+        "alarmSoundHint": "When on, reminders ring longer with an alarm sound and vibrate. On vibrate, some phones only vibrate (Xiaomi, for example); on silent they may neither ring nor vibrate - the reminder only shows on screen; in Do Not Disturb they do not ring. When off, reminders use the normal notification sound.",
         "repeatHint": "Whatever this setting: a dose not marked on this phone is reminded once more 15 minutes later (not on Android phones without exact alarms, where the order is not sure).",
         "open": "Reminders",
         "openHint": "Lock screen, time zone",

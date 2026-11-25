@@ -1,6 +1,6 @@
 # Эмнэлзүйн текстийн хяналт (Q12)
 
-_Нийт 997 текст._
+_Нийт 1041 текст._
 
 **Зорилго:** шилжүүлэн суулгалтын эмч + лабораторийн эмч апп-ын эмнэлзүйн текстийг нэг дор хянана (эмчийн шийдвэр 2026.11.18, ★). Одоогоор зөвхөн такролимусын CV%-ийн карт хянуулах хүртэл өвчтөнд нуугдсан; бусад текст апп-д харагдаж байгаа тул бетаг нээхээс өмнө хянагдсан байх ёстой (BETA B5).
 
@@ -155,7 +155,7 @@ _Нийт 997 текст._
 
 ## Хандлагын график
 
-Хянагч: эмч, лабын эмч. Түлхүүр: `app.trends` (44).
+Хянагч: эмч, лабын эмч. Түлхүүр: `app.trends` (45).
 
 | Түлхүүр | Монгол | English | Санал |
 |---|---|---|---|
@@ -184,6 +184,7 @@ _Нийт 997 текст._
 | `values` | Хариунууд | Results | |
 | `openSource` | Эх хариуг нээх | Open the source result | |
 | `lab` | Лаборатори: {lab} | Lab: {lab} | |
+| `printedName` | Хариун дээрх нэр: {name} | Name on the result: {name} | |
 | `truncated` | Хамгийн сүүлийн {limit} хариуг харуулав. Хугацааг богиносгоно уу. | The latest {limit} results are shown. Choose a shorter period. | |
 | `noValues` | Энэ хугацаанд хариу алга. | No results in this period. | |
 | `doses` | Тунгийн түүх ({medicine}) | Dose history ({medicine}) | |
@@ -254,7 +255,7 @@ _Нийт 997 текст._
 
 ## Эмчийн зорилт, тэмдэглэл, такролимусын CV%
 
-Хянагч: эмч. Түлхүүр: `app.clinician` (67).
+Хянагч: эмч. Түлхүүр: `app.clinician` (83).
 
 | Түлхүүр | Монгол | English | Санал |
 |---|---|---|---|
@@ -325,10 +326,26 @@ _Нийт 997 текст._
 | `notes.new` | Шинэ тэмдэглэл | New note | |
 | `notes.newHint` | Профайлын эзэн болон түүнд хуваалцсан хүмүүс таны нэртэйгээр харна. | The owner and the people the profile is shared with see it under your name. | |
 | `notes.add` | Тэмдэглэл нэмэх | Add note | |
+| `steroid.title` | Стероидын яаралтай карт | Steroid emergency card | |
+| `steroid.what` | Удаан хугацаанд стероид (преднизолон гэх мэт) уусан хүнд бөөрний дээд булчирхайн дутагдал үүсч болно. Тэмдэглэсэн бол яаралтай картад анхааруулга харагдана. Хэрэгтэй эсэхийг эмч шийднэ — апп эмийн бүртгэлээс дүгнэхгүй. | Long use of steroids (such as prednisolone) can lead to adrenal insufficiency. When marked, the emergency card shows a warning. A doctor decides whether it is needed — the app does not infer it from the medicines. | |
+| `steroid.threshold` | NHS England-ийн 2020 оны аюулгүй байдлын сэрэмжлүүлэг (NatPSA/2020/005/NHSPS) ба Society for Endocrinology-ийн зөвлөмжөөр стероидын яаралтай карт олгоно: преднизолон ≥ 5 мг/өдөр (эсвэл түүнтэй тэнцэх стероид) ≥ 4 долоо хоног; ≥ 40 мг/өдөр 1 долоо хоногоос дээш; 12 сард ≥ 3 богино, өндөр тунтай курс; өндөр тунтай амьсгалын/арьсны стероид, тарилга мөн хамаарч болно. Эрсдэл зогсоосноос хойш 12 сар хүртэл үргэлжилнэ. Апп үүнийг эмийн бүртгэлээс дүгнэхгүй — та шийднэ. Тэмдэглэвэл өвчтөний яаралтай картад анхааруулга гарна. | NHS England National Patient Safety Alert 2020 (NatPSA/2020/005/NHSPS) and Society for Endocrinology guidance: a steroid emergency card is advised after prednisolone ≥ 5 mg/day (or an equivalent steroid) for ≥ 4 weeks; ≥ 40 mg/day for more than 1 week; ≥ 3 short high-dose courses within 12 months; high-dose inhaled or topical steroids and injections may also count. The risk lasts up to 12 months after stopping. The app does not infer this from the medicines — you decide. When marked, the patient's emergency card shows a warning. | |
+| `steroid.ownerHint` | Эмч тань стероидын яаралтай карт хэрэгтэй гэж хэлсэн бол тэмдэглэнэ үү. | Mark it if your doctor told you that you need a steroid emergency card. | |
+| `steroid.none` | Тэмдэглээгүй. | Not marked. | |
+| `steroid.markedByDoctor` | Эмч {name} тэмдэглэсэн ({date}). | Marked by Dr {name} ({date}). | |
+| `steroid.markedBySelf` | Эмчийн зөвлөснөөр өөрөө тэмдэглэсэн ({date}). | Marked by the patient on their doctor's advice ({date}). | |
+| `steroid.mark` | Яаралтай картад тэмдэглэх | Mark on the emergency card | |
+| `steroid.markTitle` | Стероидын яаралтай карт тэмдэглэх үү? | Mark the steroid emergency card? | |
+| `steroid.markBody` | Яаралтай картад «Стероидын яаралтай карт» анхааруулга харагдана. | The emergency card will show the “Steroid emergency card” warning. | |
+| `steroid.clear` | Тэмдэглэгээг арилгах | Remove the mark | |
+| `steroid.clearTitle` | Тэмдэглэгээг арилгах уу? | Remove the mark? | |
+| `steroid.clearBody` | Яаралтай картаас стероидын анхааруулга арилна. | The steroid warning is removed from the emergency card. | |
+| `steroid.cancel` | Болих | Cancel | |
+| `steroid.markedByFormerDoctor` | Эмч тэмдэглэсэн ({date}). | Marked by a doctor ({date}). | |
+| `steroid.markAction` | Тэмдэглэх | Mark | |
 
 ## Эм, тун, сануулга, каталоггүй эмийн ангилал
 
-Хянагч: эмч. Түлхүүр: `app.meds` (198).
+Хянагч: эмч. Түлхүүр: `app.meds` (207).
 
 | Түлхүүр | Монгол | English | Санал |
 |---|---|---|---|
@@ -490,6 +507,9 @@ _Нийт 997 текст._
 | `failed.dismiss` | Ойлголоо | Got it | |
 | `notify.channel` | Эмийн сануулга | Medicine reminders | |
 | `notify.title` | Эм уух цаг боллоо | Time for your medicine | |
+| `notify.channelAlarm` | Эмийн сануулга – сэрүүлгийн дуутай | Medicine reminders – alarm sound | |
+| `notify.again` | Тэмдэглэгдээгүй: {title} | Not marked yet: {title} | |
+| `notify.againBody` | Уусан бол «Уусан»-ыг дарна уу. {body} | If you took it, tap “Taken”. {body} | |
 | `notify.timedTitle` | {time}-ийн эмийн сануулга | {time} medicine reminder | |
 | `notify.count` | {n} тун | {n, plural, one {# dose} other {# doses}} | |
 | `notify.item` | {name} {amount} | {name} {amount} | |
@@ -501,6 +521,9 @@ _Нийт 997 текст._
 | `notify.apptTitle` | Танд товлол байна | You have an appointment | |
 | `notify.ubTime` | {time} (Улаанбаатарын цагаар) | {time} (Ulaanbaatar time) | |
 | `reminders.title` | Сануулга | Reminders | |
+| `reminders.alarmSound` | Сэрүүлэг шиг чанга дуугаргах | Ring like an alarm | |
+| `reminders.alarmSoundHint` | Асаалттай үед сануулга сэрүүлгийн дуугаар удаан дуугарч, чичирнэ. Чичиргээний горимд зарим утас (жишээ нь Xiaomi) зөвхөн чичирнэ; чимээгүй горимд дуугарахгүй, чичрэхгүй байж болно — зөвхөн дэлгэц дээр гарна; «Бүү саад бол» горимд дуугарахгүй. Унтраавал энгийн мэдэгдлийн дуугаар сануулна. | When on, reminders ring longer with an alarm sound and vibrate. On vibrate, some phones only vibrate (Xiaomi, for example); on silent they may neither ring nor vibrate - the reminder only shows on screen; in Do Not Disturb they do not ring. When off, reminders use the normal notification sound. | |
+| `reminders.repeatHint` | Энэ тохиргооноос үл хамааран: энэ утсанд тэмдэглэгдээгүй тунг 15 минутын дараа нэг удаа дахин сануулна (сануулга яг цагтаа ирэх зөвшөөрөлгүй Android утсанд дараалал баталгаагүй тул дахин сануулахгүй). | Whatever this setting: a dose not marked on this phone is reminded once more 15 minutes later (not on Android phones without exact alarms, where the order is not sure). | |
 | `reminders.open` | Сануулга | Reminders | |
 | `reminders.openHint` | Түгжээтэй дэлгэц, цагийн бүс | Lock screen, time zone | |
 | `reminders.showNames` | Мэдэгдэлд эмийн нэрийг харуулах | Show medicine names in reminders | |
@@ -525,7 +548,10 @@ _Нийт 997 текст._
 | `health.batteryTitle` | Батарей хэмнэлт | Battery saving | |
 | `health.batteryBody` | Зарим утас батарей хэмнэхийн тулд апп-ын сануулгыг саатуулдаг. Сануулга хоцорч эсвэл огт ирэхгүй бол энэ апп-ыг батарей хэмнэлтээс чөлөөлнө үү. Цэс, шошгын нэр утасны загвар, хувилбараас хамаарч өөр байж болно: | Some phones delay app reminders to save battery. If reminders come late or not at all, exempt this app from battery saving. Menu and label names differ by phone model and version: | |
 | `health.batterySamsung` | Samsung: Тохиргоо → Апп → LabTrack → Батарей → «Хязгааргүй» (Unrestricted). | Samsung: Settings → Apps → LabTrack → Battery → “Unrestricted”. | |
-| `health.batteryXiaomi` | Xiaomi: Тохиргоо → Апп → Апп удирдах → LabTrack → Батарей хэмнэгч → «Хязгаарлалтгүй» (No restrictions); мөн «Автоматаар эхлэх» (Autostart)-ыг асаана. | Xiaomi: Settings → Apps → Manage apps → LabTrack → Battery saver → “No restrictions”, and turn on “Autostart”. | |
+| `health.batteryXiaomi` | Xiaomi, Redmi, POCO: Тохиргоо → Апп → Апп удирдах → LabTrack → Battery saver → «No restrictions». Мөн «Background autostart»-д LabTrack-ийг асаана (доорх товч). | Xiaomi, Redmi, POCO: Settings → Apps → Manage apps → LabTrack → Battery saver → “No restrictions”. Also turn LabTrack on in “Background autostart” (button below). | |
+| `health.autostartOff` | Таны утсанд «Background autostart» (автоматаар эхлэх) тохиргоо LabTrack-д унтраалттай байж магадгүй. Тэгвэл утсаа дахин асаасны дараа (эсвэл апп-ыг хүчээр хаасны дараа) апп-аа нээх хүртэл эмийн сануулга ирэхгүй. Доорх товчоор нээж, LabTrack-ийг асаана уу. | “Background autostart” may be off for LabTrack on this phone. If so, medicine reminders stop after a restart (or after the app is force-stopped) until you open the app. Use the button below to turn it on. | |
+| `health.autostartOpen` | Background autostart нээх | Open Background autostart | |
+| `health.autostartDone` | Асаасан, дахин сануулахгүй | I turned it on, don’t remind me again | |
 | `health.batteryOppo` | Oppo / Realme: Тохиргоо → Апп → Апп удирдах → LabTrack → Батарейн хэрэглээ → «Арын дэвсгэрт ажиллахыг зөвшөөрөх» (Allow background activity). | Oppo / Realme: Settings → Apps → App management → LabTrack → Battery usage → “Allow background activity”. | |
 | `health.batteryOther` | Бусад утас: Тохиргоо → Апп → LabTrack → Батарей → хязгаарлалтгүй. | Other phones: Settings → Apps → LabTrack → Battery → unrestricted. | |
 | `health.openSettings` | Апп-ын тохиргоог нээх | Open the app's settings | |
@@ -734,7 +760,7 @@ _Нийт 997 текст._
 
 ## Амин үзүүлэлт, эрүүл мэндийн бүртгэл
 
-Хянагч: эмч. Түлхүүр: `app.health` (155).
+Хянагч: эмч. Түлхүүр: `app.health` (167).
 
 | Түлхүүр | Монгол | English | Санал |
 |---|---|---|---|
@@ -893,6 +919,18 @@ _Нийт 997 текст._
 | `groups.care` | Шилжүүлэн суулгалт ба эмчилгээ | Transplant and care | |
 | `groups.health` | Эрүүл мэнд | Health | |
 | `groups.people` | Хүмүүс | People | |
+| `nka.hint` | Харшил бүртгээгүй нь харшилгүй гэсэн үг биш. Эм, хоол болон бусад зүйлд харшил байгааг мэдэхгүй бол баталж болно. | No allergy recorded does not mean no allergies. If you know of no allergy to medicines, food or anything else, you can confirm it. | |
+| `nka.confirmed` | Мэдэгдэж буй харшилгүй гэж баталсан ({date}). Харшил нэмбэл энэ баталгаа автоматаар арилна. | No known allergies, confirmed {date}. Adding an allergy removes this confirmation. | |
+| `nka.confirm` | Мэдэгдэж буй харшилгүй гэж батлах | Confirm no known allergies | |
+| `nka.confirmTitle` | Мэдэгдэж буй харшилгүй гэж батлах уу? | Confirm no known allergies? | |
+| `nka.confirmBody` | Эм, хоол болон бусад зүйлд харшил байгааг мэдэхгүй гэдгээ баталж байна. Яаралтай картад «Мэдэгдэж буй харшилгүй» гэж өнөөдрийн огноотой харагдана. Эргэлзэж байвал батлахгүй орхино уу. | You confirm you know of no allergy to medicines, food or anything else. The emergency card will show “No known allergies” with today's date. If you are unsure, leave it unconfirmed. | |
+| `nka.clear` | Баталгааг цуцлах | Withdraw the confirmation | |
+| `nka.clearTitle` | Баталгааг цуцлах уу? | Withdraw the confirmation? | |
+| `nka.clearBody` | Картад «Харшлын мэдээлэл оруулаагүй» гэж харагдана. | The card will show “No allergy information entered”. | |
+| `nka.cancel` | Болих | Cancel | |
+| `nka.rowHint` | Мэдэгдэж буй харшилгүй | No known allergies | |
+| `nka.hintReadOnly` | Харшил бүртгээгүй нь харшилгүй гэсэн үг биш. | No allergy recorded does not mean no allergies. | |
+| `nka.confirmAction` | Батлах | Confirm | |
 
 ## Амин үзүүлэлтийн алдааны мессеж (сахарын нэгж г.м.)
 
@@ -909,7 +947,7 @@ _Нийт 997 текст._
 
 ## Яаралтай карт
 
-Хянагч: эмч. Түлхүүр: `app.emergency` (102).
+Хянагч: эмч. Түлхүүр: `app.emergency` (107).
 
 | Түлхүүр | Монгол | English | Санал |
 |---|---|---|---|
@@ -1015,46 +1053,11 @@ _Нийт 997 текст._
 | `recentlyStopped` | Саяхан (14 хоногийн дотор) зогсоосон дархлаа дарангуйлагч | Immunosuppressants stopped recently (within 14 days) | |
 | `recentStop` | {name} — {date}-ноос эхлэн уугаагүй | {name} — not taken since {date} | |
 | `transplantBloodBefore` | Цусны бүлэг шилжүүлэн суулгахаас өмнө: хүлээн авагч {recipient}, донор {donor} — одоогийн бүлгийг лабораторид тодорхойлно | Blood type before the transplant: recipient {recipient}, donor {donor} — the current type is to be tested by the lab | |
-
-## Харшилгүй гэж баталсан, стероидын яаралтай карт (D5b; Q39, Q36)
-
-Хянагч: эмч. Тайлбар: картад NHS картын «гидрокортизон 100 мг IV/IM» мөрийг дүрэм 10-ын улмаас оруулаагүй — эмч оруулах эсэхийг шийднэ (Q66 г).
-
-| Түлхүүр | Монгол | English | Санал |
-|---|---|---|---|
-| `app.emergency.noKnownAllergy` | Мэдэгдэж буй харшилгүй (өөрөө баталсан, {date}). | No known allergies (self-reported, confirmed {date}). | |
-| `app.emergency.steroidCardTitle` | ⚠ Стероидын яаралтай карт | ⚠ Steroid emergency card | |
-| `app.emergency.steroidCard` | Стероидын эмчилгээнээс хамааралтай — бөөрний дээд булчирхайн дутагдлын (хямралын) эрсдэлтэй. Стероидыг гэнэт зогсоож болохгүй. Хүнд өвчин, гэмтэл, мэс засал, бөөлжих эсвэл суулгах үед яаралтай эмнэлгийн тусламж шаардлагатай — хойшлуулахгүй. | Steroid dependent — at risk of adrenal insufficiency (adrenal crisis). Steroids must not be stopped suddenly. In serious illness, injury, surgery, vomiting or diarrhoea, emergency medical care is needed without delay. | |
-| `app.emergency.steroidCardByDoctor` | Эмч тэмдэглэсэн ({date}). | Marked by a doctor ({date}). | |
-| `app.emergency.steroidCardBySelf` | Эмчийн зөвлөснөөр өөрөө тэмдэглэсэн ({date}). | Marked by the patient on their doctor's advice ({date}). | |
-| `app.health.nka.hint` | Харшил бүртгээгүй нь харшилгүй гэсэн үг биш. Эм, хоол болон бусад зүйлд харшил байгааг мэдэхгүй бол баталж болно. | No allergy recorded does not mean no allergies. If you know of no allergy to medicines, food or anything else, you can confirm it. | |
-| `app.health.nka.confirmed` | Мэдэгдэж буй харшилгүй гэж баталсан ({date}). Харшил нэмбэл энэ баталгаа автоматаар арилна. | No known allergies, confirmed {date}. Adding an allergy removes this confirmation. | |
-| `app.health.nka.confirm` | Мэдэгдэж буй харшилгүй гэж батлах | Confirm no known allergies | |
-| `app.health.nka.confirmTitle` | Мэдэгдэж буй харшилгүй гэж батлах уу? | Confirm no known allergies? | |
-| `app.health.nka.confirmBody` | Эм, хоол болон бусад зүйлд харшил байгааг мэдэхгүй гэдгээ баталж байна. Яаралтай картад «Мэдэгдэж буй харшилгүй» гэж өнөөдрийн огноотой харагдана. Эргэлзэж байвал батлахгүй орхино уу. | You confirm you know of no allergy to medicines, food or anything else. The emergency card will show “No known allergies” with today's date. If you are unsure, leave it unconfirmed. | |
-| `app.health.nka.clear` | Баталгааг цуцлах | Withdraw the confirmation | |
-| `app.health.nka.clearTitle` | Баталгааг цуцлах уу? | Withdraw the confirmation? | |
-| `app.health.nka.clearBody` | Картад «Харшлын мэдээлэл оруулаагүй» гэж харагдана. | The card will show “No allergy information entered”. | |
-| `app.health.nka.cancel` | Болих | Cancel | |
-| `app.health.nka.rowHint` | Мэдэгдэж буй харшилгүй | No known allergies | |
-| `app.health.nka.hintReadOnly` | Харшил бүртгээгүй нь харшилгүй гэсэн үг биш. | No allergy recorded does not mean no allergies. | |
-| `app.health.nka.confirmAction` | Батлах | Confirm | |
-| `app.clinician.steroid.title` | Стероидын яаралтай карт | Steroid emergency card | |
-| `app.clinician.steroid.what` | Удаан хугацаанд стероид (преднизолон гэх мэт) уусан хүнд бөөрний дээд булчирхайн дутагдал үүсч болно. Тэмдэглэсэн бол яаралтай картад анхааруулга харагдана. Хэрэгтэй эсэхийг эмч шийднэ — апп эмийн бүртгэлээс дүгнэхгүй. | Long use of steroids (such as prednisolone) can lead to adrenal insufficiency. When marked, the emergency card shows a warning. A doctor decides whether it is needed — the app does not infer it from the medicines. | |
-| `app.clinician.steroid.threshold` | NHS England-ийн 2020 оны аюулгүй байдлын сэрэмжлүүлэг (NatPSA/2020/005/NHSPS) ба Society for Endocrinology-ийн зөвлөмжөөр стероидын яаралтай карт олгоно: преднизолон ≥ 5 мг/өдөр (эсвэл түүнтэй тэнцэх стероид) ≥ 4 долоо хоног; ≥ 40 мг/өдөр 1 долоо хоногоос дээш; 12 сард ≥ 3 богино, өндөр тунтай курс; өндөр тунтай амьсгалын/арьсны стероид, тарилга мөн хамаарч болно. Эрсдэл зогсоосноос хойш 12 сар хүртэл үргэлжилнэ. Апп үүнийг эмийн бүртгэлээс дүгнэхгүй — та шийднэ. Тэмдэглэвэл өвчтөний яаралтай картад анхааруулга гарна. | NHS England National Patient Safety Alert 2020 (NatPSA/2020/005/NHSPS) and Society for Endocrinology guidance: a steroid emergency card is advised after prednisolone ≥ 5 mg/day (or an equivalent steroid) for ≥ 4 weeks; ≥ 40 mg/day for more than 1 week; ≥ 3 short high-dose courses within 12 months; high-dose inhaled or topical steroids and injections may also count. The risk lasts up to 12 months after stopping. The app does not infer this from the medicines — you decide. When marked, the patient's emergency card shows a warning. | |
-| `app.clinician.steroid.ownerHint` | Эмч тань стероидын яаралтай карт хэрэгтэй гэж хэлсэн бол тэмдэглэнэ үү. | Mark it if your doctor told you that you need a steroid emergency card. | |
-| `app.clinician.steroid.none` | Тэмдэглээгүй. | Not marked. | |
-| `app.clinician.steroid.markedByDoctor` | Эмч {name} тэмдэглэсэн ({date}). | Marked by Dr {name} ({date}). | |
-| `app.clinician.steroid.markedBySelf` | Эмчийн зөвлөснөөр өөрөө тэмдэглэсэн ({date}). | Marked by the patient on their doctor's advice ({date}). | |
-| `app.clinician.steroid.mark` | Яаралтай картад тэмдэглэх | Mark on the emergency card | |
-| `app.clinician.steroid.markTitle` | Стероидын яаралтай карт тэмдэглэх үү? | Mark the steroid emergency card? | |
-| `app.clinician.steroid.markBody` | Яаралтай картад «Стероидын яаралтай карт» анхааруулга харагдана. | The emergency card will show the “Steroid emergency card” warning. | |
-| `app.clinician.steroid.clear` | Тэмдэглэгээг арилгах | Remove the mark | |
-| `app.clinician.steroid.clearTitle` | Тэмдэглэгээг арилгах уу? | Remove the mark? | |
-| `app.clinician.steroid.clearBody` | Яаралтай картаас стероидын анхааруулга арилна. | The steroid warning is removed from the emergency card. | |
-| `app.clinician.steroid.cancel` | Болих | Cancel | |
-| `app.clinician.steroid.markedByFormerDoctor` | Эмч тэмдэглэсэн ({date}). | Marked by a doctor ({date}). | |
-| `app.clinician.steroid.markAction` | Тэмдэглэх | Mark | |
+| `noKnownAllergy` | Мэдэгдэж буй харшилгүй (өөрөө баталсан, {date}). | No known allergies (self-reported, confirmed {date}). | |
+| `steroidCardTitle` | ⚠ Стероидын яаралтай карт | ⚠ Steroid emergency card | |
+| `steroidCard` | Стероидын эмчилгээнээс хамааралтай — бөөрний дээд булчирхайн дутагдлын (хямралын) эрсдэлтэй. Стероидыг гэнэт зогсоож болохгүй. Хүнд өвчин, гэмтэл, мэс засал, бөөлжих эсвэл суулгах үед яаралтай эмнэлгийн тусламж шаардлагатай — хойшлуулахгүй. | Steroid dependent — at risk of adrenal insufficiency (adrenal crisis). Steroids must not be stopped suddenly. In serious illness, injury, surgery, vomiting or diarrhoea, emergency medical care is needed without delay. | |
+| `steroidCardByDoctor` | Эмч тэмдэглэсэн ({date}). | Marked by a doctor ({date}). | |
+| `steroidCardBySelf` | Эмчийн зөвлөснөөр өөрөө тэмдэглэсэн ({date}). | Marked by the patient on their doctor's advice ({date}). | |
 
 ## Апп-ын тухай (зориулалт, хийдэггүй зүйлс)
 
@@ -1080,7 +1083,7 @@ _Нийт 997 текст._
 
 ## Web-ээр хуваалцсан мэдээлэл (эмч харна)
 
-Хянагч: эмч, лабын эмч. Түлхүүр: `web.share` (51).
+Хянагч: эмч, лабын эмч. Түлхүүр: `web.share` (52).
 
 | Түлхүүр | Монгол | English | Санал |
 |---|---|---|---|
@@ -1110,6 +1113,7 @@ _Нийт 997 текст._
 | `birthDate` | Төрсөн огноо | Date of birth | |
 | `allergies` | Харшил | Allergies | |
 | `noAllergies` | Харшил бүртгээгүй. | No allergy recorded. | |
+| `noKnownAllergies` | Мэдэгдэж буй харшилгүй (өөрөө баталсан, {date}). | No known allergies (self-reported, confirmed {date}). | |
 | `none` | Бүртгэл алга. | Nothing recorded. | |
 | `organ` | Эрхтэн | Organ | |
 | `date` | Огноо | Date | |
