@@ -32,7 +32,8 @@ LabTrack MN: бодит утасны (B6) шалгалтыг үргэлжлүү�
   patch build-д орохгүй): синк 51 сануулга 0.7 с, хүргэлт <1 с; 4c28c24 офлайн дараалал 30 с,
   Q24 шалгалт 8 с (дараа нь асууна), refresh 20 с timeout; тэмдэглэсэн тунгийн сануулга
   tray-ээс арилна.
-- Q11 шийдсэн: Supabase + Render + KMS; Valkey → Postgres дараалал (тусдаа алхам, эхлээгүй).
+- Q11: Supabase руу шилжихийг цуцалсан (11.25) — одоогийн стек (Postgres, Celery + Valkey,
+  S3, Caddy) хэвээр; production-ийн байршил нээлттэй.
 - Q79: `mobile/modules/dose-alarm` (local Expo module, `setAlarmClock` + mediaPlayback FGS,
   USAGE_ALARM, 60 с, `FLAG_RECEIVER_FOREGROUND`); v7 APK утсанд суусан (`dist/labtrack-dev-arm64.apk`).
   Release-ийн өмнө: Play FGS declaration, Android 14+ `systemExempted` (STORE_RELEASE §5).
