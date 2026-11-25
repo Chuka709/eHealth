@@ -42,9 +42,17 @@ class DoseAlarmService : Service() {
     }
     val notification = buildNotification()
     try {
-      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-        startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK)
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+        // Android 14+: allowed while the app holds the exact-alarm permission; without it this
+        // throws and the loud fallback below rings instead
+        startForeground(
+          NOTIFICATION_ID,
+          notification,
+          ServiceInfo.FOREGROUND_SERVICE_TYPE_SYSTEM_EXEMPTED,
+        )
       } else {
+        // before Android 14 only location/camera/microphone types are checked; the manifest's
+        // systemExempted bit (0x400) is ignored there - no Build.VERSION_CODES.Q branch needed
         startForeground(NOTIFICATION_ID, notification)
       }
     } catch (_: Exception) {

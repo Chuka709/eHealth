@@ -2,7 +2,10 @@
   <!-- A dose reminder that rings like an alarm clock: on the alarm stream, so the phone's
        silent mode does not mute it (user decision Q79, 2026.11.25). -->
   <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-  <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+  <!-- systemExempted: Android's type for an app holding SCHEDULE_EXACT_ALARM that rings an alarm
+       (the alarm is only set while that permission is held); mediaPlayback would be "automatic
+       playback", which Play's FGS policy refuses (STORE_RELEASE §3, security review M3) -->
+  <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SYSTEM_EXEMPTED" />
   <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
   <uses-permission android:name="android.permission.VIBRATE" />
 
@@ -18,6 +21,6 @@
     <service
       android:name="expo.modules.dosealarm.DoseAlarmService"
       android:exported="false"
-      android:foregroundServiceType="mediaPlayback" />
+      android:foregroundServiceType="systemExempted" />
   </application>
 </manifest>

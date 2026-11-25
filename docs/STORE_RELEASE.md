@@ -108,7 +108,7 @@ Crash: апп-д crash SDK байхгүй; серверийн Sentry (DSN тох
   (09 зориулалт): оношлох, эмчилгээ/тун санал болгох функц байхгүй. Зохицуулалтын баталгаа
   шаардвал — хуульч (Q12).
 - **Foreground service (Q79 сэрүүлэг, 2026.11.25-нд эх сурвалжаар шалгасан):**
-  - Одоо `mediaPlayback`. Play-ийн тодорхойлолтоор media playback нь *хэрэглэгчийн эхлүүлсэн*
+  - Өмнө нь `mediaPlayback` байсан (2026.11.26 хүртэл). Play-ийн тодорхойлолтоор media playback нь *хэрэглэгчийн эхлүүлсэн*
     тоглуулалт байх ёстой, «автомат дуу» тохирохгүй
     ([answer/13392821](https://support.google.com/googleplay/android-developer/answer/13392821)) —
     цагтаа өөрөө дуугарах сануулга review-д татгалзагдах эрсдэлтэй.
@@ -117,19 +117,21 @@ Crash: апп-д crash SDK байхгүй; серверийн Sentry (DSN тох
     ([service-types](https://developer.android.com/develop/background-work/services/fgs/service-types));
     Play-ийн declaration-ийн жагсаалтад энэ төрлийн мөр байхгүй. Манай сэрүүлэг зөвхөн exact alarm
     зөвшөөрөлтэй үед товлогддог (`alarmClockAvailable` → `canScheduleExactAlarms`) тул нөхцөл таарна.
-  - **Санал (release-ийн өмнө, код):** төрлийг `systemExempted` болгох —
+  - **Хийгдсэн (2026.11.26):** төрлийг `systemExempted` болгосон —
     `FOREGROUND_SERVICE_SYSTEM_EXEMPTED` зөвшөөрөл, manifest-ийн `foregroundServiceType`,
     `startForeground`-д API 34+ дээр `FOREGROUND_SERVICE_TYPE_SYSTEM_EXEMPTED`;
     `FOREGROUND_SERVICE_MEDIA_PLAYBACK`-ийг хасах. Зөвшөөрөл цуцлагдсан үед
     `ForegroundServiceTypeNotAllowedException` → одоогийн нөөц мэдэгдэл (`DoseAlarmFallback`).
-    Android 14+ эмулятор (Pixel API 36) ба POCO (Android 12) дээр шалгана — dev build дахин хийх.
+    Android 16 эмулятор (Pixel API 36): чимээгүй горимд `types=0x400` (systemExempted),
+    MediaPlayer `USAGE_ALARM` тоглосон, апп нээхэд зогссон; AAB-д `FOREGROUND_SERVICE_MEDIA_PLAYBACK`
+    байхгүй (`aapt2 dump permissions`). POCO (Android 12)-д дахин суулгаж шалгах үлдсэн.
   - Сэрүүлгийн broadcast-аас FGS эхлүүлэх нь баримтын үл хамаарах нөхцөл (*exact alarm-аар
     хэрэглэгчийн хүссэн үйлдэл*,
     [restrictions-bg-start](https://developer.android.com/develop/background-work/services/fgs/restrictions-bg-start)).
     Android 15-ийн `BOOT_COMPLETED`-ээс FGS эхлүүлэх хязгаар бидэнд хамаарахгүй — boot-д зөвхөн
     сэрүүлгийг дахин товлоно, FGS эхлүүлэхгүй.
   - Play Console App content → Foreground service: `systemExempted`-д мөр байхгүй бол
-    Console-ийн асуулгыг тухайн үед нь дагана; `mediaPlayback` хэвээр үлдвэл доорх текст +
+    Console-ийн асуулгыг тухайн үед нь дагана; Console эсвэл review тайлбар асуувал доорх текст +
     видео (≤ 1 мин: эмийн сануулга тохируулах → утас чимээгүй → цагтаа дуугарах → «Уусан»):
     > **Description (en):** At a medicine time the user set, the app rings an alarm tone for at most
     > 60 seconds so the reminder is heard even in silent mode, like an alarm clock. It starts from
@@ -186,8 +188,8 @@ Crash: апп-д crash SDK байхгүй; серверийн Sentry (DSN тох
 - Build-ийн дараа AAB-ийн эцсийн зөвшөөрлүүд (Gradle-ийн merge-ийн дараа — introspect харахгүй):
   `aapt2 dump permissions <apk>` (`bundletool build-apks --mode=universal`-аас) — `USE_EXACT_ALARM`,
   `SYSTEM_ALERT_WINDOW`, `RECORD_AUDIO` байхгүй. Q79-ийн сэрүүлэг (`mobile/modules/dose-alarm`)
-  `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_MEDIA_PLAYBACK`, `RECEIVE_BOOT_COMPLETED` нэмдэг —
-  **release-ийн өмнө:** `systemExempted` руу шилжүүлж Android 14+ дээр шалгах, Play Console-ийн
+  `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_SYSTEM_EXEMPTED`, `RECEIVE_BOOT_COMPLETED` нэмдэг —
+  `systemExempted` руу шилжсэн (Android 16 эмуляторт шалгасан); **release-ийн өмнө:** Play Console-ийн
   foreground service declaration — §3 «Foreground service» (security review M3; Data safety
   өөрчлөгдөхгүй — §2).
 - 09 «Release бүрийн шалгалт» (B6 утасны матриц, medical-reviewer); `just restore-drill` энэ
