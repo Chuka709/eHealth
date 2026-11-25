@@ -95,6 +95,10 @@ Anthropic — B10) «хуваалцах»-д тооцогдохгүй. **AI-аа
 (хуваалцахад тооцохгүй) — хуульчаар баталгаажуулна.
 ² Expo/FCM — зөвхөн мэдэгдэл хүргэх; мэдэгдэлд PHI байхгүй (дүрэм 3).
 
+Q79-ийн сэрүүлэг Data safety-г **өөрчлөхгүй:** сэрүүлгийн цаг ба мэдэгдлийн текст (эмийн нэргүй)
+зөвхөн утсан дээр (`DoseAlarmStore`, SharedPreferences, гарахад устана), сервер рүү юу ч илгээхгүй —
+«цуглуулах» гэдэг нь утаснаас гадагш дамжуулахыг хэлдэг тул шинэ мөр нэмэхгүй.
+
 Crash: апп-д crash SDK байхгүй; серверийн Sentry (DSN тохируулсан үед) PHI-гүй (`scrub_event`) —
 «App info and performance → Crash logs/Diagnostics» нь апп-аас цуглуулахгүй тул сонгохгүй.
 
@@ -103,6 +107,38 @@ Crash: апп-д crash SDK байхгүй; серверийн Sentry (DSN тох
   эмийн сануулга/менежмент (маягтын жагсаалтаас яг сонгоно). «Эмнэлгийн хэрэгсэл биш»
   (09 зориулалт): оношлох, эмчилгээ/тун санал болгох функц байхгүй. Зохицуулалтын баталгаа
   шаардвал — хуульч (Q12).
+- **Foreground service (Q79 сэрүүлэг, 2026.11.25-нд эх сурвалжаар шалгасан):**
+  - Одоо `mediaPlayback`. Play-ийн тодорхойлолтоор media playback нь *хэрэглэгчийн эхлүүлсэн*
+    тоглуулалт байх ёстой, «автомат дуу» тохирохгүй
+    ([answer/13392821](https://support.google.com/googleplay/android-developer/answer/13392821)) —
+    цагтаа өөрөө дуугарах сануулга review-д татгалзагдах эрсдэлтэй.
+  - Android-ийн баримт `systemExempted`-ийг *SCHEDULE_EXACT_ALARM эсвэл USE_EXACT_ALARM эзэмшигч*
+    апп-д зөвшөөрдөг
+    ([service-types](https://developer.android.com/develop/background-work/services/fgs/service-types));
+    Play-ийн declaration-ийн жагсаалтад энэ төрлийн мөр байхгүй. Манай сэрүүлэг зөвхөн exact alarm
+    зөвшөөрөлтэй үед товлогддог (`alarmClockAvailable` → `canScheduleExactAlarms`) тул нөхцөл таарна.
+  - **Санал (release-ийн өмнө, код):** төрлийг `systemExempted` болгох —
+    `FOREGROUND_SERVICE_SYSTEM_EXEMPTED` зөвшөөрөл, manifest-ийн `foregroundServiceType`,
+    `startForeground`-д API 34+ дээр `FOREGROUND_SERVICE_TYPE_SYSTEM_EXEMPTED`;
+    `FOREGROUND_SERVICE_MEDIA_PLAYBACK`-ийг хасах. Зөвшөөрөл цуцлагдсан үед
+    `ForegroundServiceTypeNotAllowedException` → одоогийн нөөц мэдэгдэл (`DoseAlarmFallback`).
+    Android 14+ эмулятор (Pixel API 36) ба POCO (Android 12) дээр шалгана — dev build дахин хийх.
+  - Сэрүүлгийн broadcast-аас FGS эхлүүлэх нь баримтын үл хамаарах нөхцөл (*exact alarm-аар
+    хэрэглэгчийн хүссэн үйлдэл*,
+    [restrictions-bg-start](https://developer.android.com/develop/background-work/services/fgs/restrictions-bg-start)).
+    Android 15-ийн `BOOT_COMPLETED`-ээс FGS эхлүүлэх хязгаар бидэнд хамаарахгүй — boot-д зөвхөн
+    сэрүүлгийг дахин товлоно, FGS эхлүүлэхгүй.
+  - Play Console App content → Foreground service: `systemExempted`-д мөр байхгүй бол
+    Console-ийн асуулгыг тухайн үед нь дагана; `mediaPlayback` хэвээр үлдвэл доорх текст +
+    видео (≤ 1 мин: эмийн сануулга тохируулах → утас чимээгүй → цагтаа дуугарах → «Уусан»):
+    > **Description (en):** At a medicine time the user set, the app rings an alarm tone for at most
+    > 60 seconds so the reminder is heard even in silent mode, like an alarm clock. It starts from
+    > the user's own exact alarm, shows an ongoing notification with "Stop sound", and stops when the
+    > user taps "Taken", "Stop sound" or opens the app. Users can turn it off in Settings →
+    > Medicine reminders.
+    > **If deferred:** the reminder would ring late; a missed or late immunosuppressant dose can harm
+    > a transplant recipient. **If interrupted:** the sound stops and only a silent notification
+    > remains, so the dose may be missed.
 - **App access:** §4-ийн аккаунт + тэмдэглэл.
 - **Exact alarm, Ads (байхгүй), Target audience** (18+; хүүхдийн профайлыг эцэг эх хөтөлнө —
   хүүхэд өөрөө хэрэглэгч биш), **Content rating** (асуулгад «эрүүл мэндийн мэдээлэл» гэж
@@ -127,7 +163,10 @@ Crash: апп-д crash SDK байхгүй; серверийн Sentry (DSN тох
    > suggest treatment or doses, does not check drug interactions and is not a medical device;
    > reference ranges come only from the user's documents. To test adding a lab result, use the sample PDF at [link] via
    > "Add a result → File (PDF)" or the Android share sheet. Reminders: Settings → Medicine
-   > reminders (exact alarm permission is optional; without it reminders run inexact).
+   > reminders (exact alarm permission is optional; without it reminders run inexact). With
+   > "Ring like an alarm" on and exact alarms allowed, a dose time rings for up to 1 minute on
+   > Android even in silent mode (an alarm-clock foreground service); "Taken", "Stop sound" or
+   > opening the app stops it.
 4. Review дууссаны дараа: аккаунтыг admin web-ээр **идэвхгүй болгож**, `.env.review`-ийг устгана
    (нууц үг операторын машинд хугацаагүй үлдэхгүй). Дараагийн review-д шинэ нэрээр:
    `REVIEW_USERNAME=review_store2 just seed-review https://…` (нэр `review_`-ээр эхэлнэ — админ
@@ -148,10 +187,9 @@ Crash: апп-д crash SDK байхгүй; серверийн Sentry (DSN тох
   `aapt2 dump permissions <apk>` (`bundletool build-apks --mode=universal`-аас) — `USE_EXACT_ALARM`,
   `SYSTEM_ALERT_WINDOW`, `RECORD_AUDIO` байхгүй. Q79-ийн сэрүүлэг (`mobile/modules/dose-alarm`)
   `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_MEDIA_PLAYBACK`, `RECEIVE_BOOT_COMPLETED` нэмдэг —
-  **release-ийн өмнө:** Play Console-ийн foreground service declaration (төрөл, видео); Android 14+
-  дээр `mediaPlayback`-ийн оронд сэрүүлгийн апп-д зориулсан төрөл (`systemExempted` — exact alarm
-  эзэмшигч) тохирох эсэхийг Android 14+ утсан дээр шалгаж шийднэ (security review M3, нээлттэй);
-  Data safety-д тайлбар.
+  **release-ийн өмнө:** `systemExempted` руу шилжүүлж Android 14+ дээр шалгах, Play Console-ийн
+  foreground service declaration — §3 «Foreground service» (security review M3; Data safety
+  өөрчлөгдөхгүй — §2).
 - 09 «Release бүрийн шалгалт» (B6 утасны матриц, medical-reviewer); `just restore-drill` энэ
   сард; internal → closed testing дээр ≥ 7 хоног асуудалгүй.
 
