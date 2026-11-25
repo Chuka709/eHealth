@@ -239,6 +239,9 @@ test("today's doses come from the dose history; a tap records one through the qu
   await openMeds();
   const morning = await screen.findByTestId(`dose-${MED_ID}-08:00`);
   expect(morning).toBeOnTheScreen();
+  // the later time of the day is folded away until asked for (UX audit #2)
+  expect(screen.queryByTestId(`dose-${MED_ID}-20:00`)).toBeNull();
+  await press(/^Өнөөдрийн дараагийн тунгууд/);
   expect(screen.getByTestId(`dose-${MED_ID}-20:00`)).toBeOnTheScreen();
   // a dose whose time has passed reads "not recorded", a coming one "not yet due" - never missed
   expect(screen.getAllByText(/^(Тэмдэглээгүй|Цаг нь болоогүй)$/)).toHaveLength(2);

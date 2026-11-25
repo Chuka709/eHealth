@@ -1,4 +1,4 @@
-import { space } from "@labtrack/shared";
+import { radius, space } from "@labtrack/shared";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
 import { useTranslations } from "use-intl";
 
@@ -6,19 +6,57 @@ import { usePalette } from "@/theme/use-palette";
 
 import { Button } from "./button";
 import { FormMessage } from "./form-message";
+import { Icon, type IconName } from "./icon";
 import { Paragraph } from "./text";
 
-/** Full-screen loading state with a spoken label. */
+/**
+ * Full-screen loading state with a spoken label, over grey placeholders of the list to come
+ * (UX audit #10): the screen looks like itself at once, never empty.
+ */
 export function LoadingView() {
   const t = useTranslations("app.common");
   const p = usePalette();
   return (
     <View
       accessibilityLiveRegion="polite"
-      style={[styles.center, styles.gap, { backgroundColor: p.background }]}
+      style={[styles.top, styles.gap, { backgroundColor: p.background }]}
     >
-      <ActivityIndicator color={p.primary} accessibilityLabel={t("loading")} />
-      <Paragraph muted>{t("loading")}</Paragraph>
+      <View style={styles.row}>
+        {/* the words below are what is read out, once (ui review L7) */}
+        <ActivityIndicator color={p.primary} importantForAccessibility="no" accessible={false} />
+        <Paragraph muted>{t("loading")}</Paragraph>
+      </View>
+      {[0, 1, 2].map((i) => (
+        <View
+          key={i}
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
+          style={[styles.placeholder, { backgroundColor: p.surface, borderColor: p.border }]}
+        >
+          <View style={[styles.barWide, { backgroundColor: p.border }]} />
+          <View style={[styles.barShort, { backgroundColor: p.border }]} />
+        </View>
+      ))}
+    </View>
+  );
+}
+
+/** Nothing here yet: a glyph, what it means, and the way to add the first one (UX audit #10). */
+export function EmptyState({
+  icon,
+  text,
+  action,
+}: {
+  icon: IconName;
+  text: string;
+  action?: { label: string; onPress: () => void };
+}) {
+  const p = usePalette();
+  return (
+    <View style={[styles.empty, { backgroundColor: p.surface, borderColor: p.border }]}>
+      <Icon name={icon} color={p.textMuted} size={32} />
+      <Paragraph>{text}</Paragraph>
+      {action && <Button label={action.label} variant="secondary" onPress={action.onPress} />}
     </View>
   );
 }
@@ -37,5 +75,22 @@ export function RetryView({ text, onRetry }: { text: string; onRetry: () => void
 
 const styles = StyleSheet.create({
   center: { flex: 1, justifyContent: "center", padding: space.lg },
+  top: { flex: 1, padding: space.lg },
   gap: { gap: space.lg },
+  row: { flexDirection: "row", alignItems: "center", gap: space.sm },
+  placeholder: {
+    borderRadius: radius.lg,
+    borderWidth: StyleSheet.hairlineWidth,
+    padding: space.lg,
+    gap: space.sm,
+  },
+  barWide: { height: space.md, width: "70%", borderRadius: radius.sm },
+  barShort: { height: space.md, width: "40%", borderRadius: radius.sm },
+  empty: {
+    alignItems: "center",
+    gap: space.md,
+    padding: space.lg,
+    borderRadius: radius.lg,
+    borderWidth: StyleSheet.hairlineWidth,
+  },
 });

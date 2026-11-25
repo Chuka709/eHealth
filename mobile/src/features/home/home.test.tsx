@@ -2,6 +2,7 @@ import { fireEvent, renderRouter, screen, waitFor } from "expo-router/testing-li
 import { Alert } from "react-native";
 
 import { clearAccessToken, setStatus } from "@/features/auth/session-store";
+import { localDay } from "@/features/meds/use-today";
 import { apiBaseUrl } from "@/lib/api-base";
 import { queryClient } from "@/lib/query-client";
 
@@ -354,5 +355,122 @@ test("H20: a local-time medicine waits for the zones - never placed in Ulaanbaat
     expect(screen.queryByText("Өнөөдөр товлосон тун алга.")).toBeNull();
   } finally {
     handlers[`GET /api/v1/patients/${OWN.id}/timezone`] = zones;
+  }
+});
+
+const MMF_ID = "44444444-4444-4444-8444-444444444444";
+// both at 00:00: always due whatever the time the test runs ("Бүгдийг уусан" is for due times)
+const atMidnight = <T extends typeof TACROLIMUS>(m: T, regimenId: string): T => {
+  const r = regimen(regimenId, "2026-01-01", [{ at: "00:00", amount: "1" }]);
+  return { ...m, current_regimen: r, regimens: [r] };
+};
+const TAC0 = atMidnight(TACROLIMUS, "33333333-3333-4333-8333-333333333330");
+const MMF0 = atMidnight(
+  { ...TACROLIMUS, id: MMF_ID, catalog_code: "MYCOPHENOLATE", name: "Микофенолат" },
+  "33333333-3333-4333-8333-333333333331",
+);
+// 00:00 in Ulaanbaatar on the phone's own day, as the list plans it
+const midnightDose = () => new Date(localDay(new Date()).start).toISOString();
+
+test("UX audit #2: 'Бүгдийг уусан' says every medicine and amount, then records each open dose", async () => {
+  medications = [TAC0, MMF0];
+  const asked: string[] = [];
+  jest.spyOn(Alert, "alert").mockImplementation((title, message, buttons) => {
+    asked.push(`${title}|${message ?? ""}`);
+    buttons?.find((b) => b.style !== "cancel")?.onPress?.();
+  });
+  try {
+    await openHome();
+    await fireEvent.press(
+      await screen.findByRole("button", { name: "00:00-ийн 2 тунг бүгдийг уусан гэж тэмдэглэх" }),
+    );
+    await waitFor(() => expect(posts.filter((p) => p.key === "intake")).toHaveLength(2));
+    // asked first, with each medicine and its amount (medical review M1)
+    expect(asked).toHaveLength(1);
+    expect(asked[0]).toMatch(
+      /^00:00: бүгдийг уусан гэж тэмдэглэх үү\?\|• Такролимус 1 мг\n• Микофенолат 1 мг/,
+    );
+    expect(posts.map((p) => p.body.medication_id).sort()).toEqual([MED_ID, MMF_ID].sort());
+    expect(posts.every((p) => p.body.status === "taken")).toBe(true);
+  } finally {
+    jest.restoreAllMocks();
+  }
+});
+
+test("UX audit #2: cancelling the question records nothing", async () => {
+  medications = [TAC0, MMF0];
+  jest.spyOn(Alert, "alert").mockImplementation((_title, _message, buttons) => {
+    buttons?.find((b) => b.style === "cancel")?.onPress?.();
+  });
+  try {
+    await openHome();
+    await fireEvent.press(
+      await screen.findByRole("button", { name: "00:00-ийн 2 тунг бүгдийг уусан гэж тэмдэглэх" }),
+    );
+    await waitFor(() => expect(Alert.alert).toHaveBeenCalledTimes(1));
+    expect(posts.filter((p) => p.key === "intake")).toHaveLength(0);
+  } finally {
+    jest.restoreAllMocks();
+  }
+});
+
+test("UX audit #2/Q24: when one dose of the time was recorded meanwhile, nothing is recorded by the one tap", async () => {
+  medications = [TAC0, MMF0];
+  const asked: string[] = [];
+  jest.spyOn(Alert, "alert").mockImplementation((title) => {
+    asked.push(String(title));
+  });
+  try {
+    await openHome();
+    const all = await screen.findByRole("button", {
+      name: "00:00-ийн 2 тунг бүгдийг уусан гэж тэмдэглэх",
+    });
+    // another phone records the MMF dose after this list was read
+    posts.push({
+      key: "intake",
+      body: {
+        client_id: "55555555-5555-4555-8555-555555555555",
+        medication_id: MMF_ID,
+        scheduled_at: midnightDose(),
+        taken_at: midnightDose(),
+        status: "taken",
+        recorded_by: "owner",
+      },
+    });
+    await fireEvent.press(all);
+    await waitFor(() => expect(asked).toEqual(["Тун бүрийг тусад нь тэмдэглэнэ үү"]));
+    expect(posts.filter((p) => p.key === "intake")).toHaveLength(1); // only the other phone's
+  } finally {
+    jest.restoreAllMocks();
+  }
+});
+
+test("UX audit #2: a dose skipped meanwhile is never overridden by the one tap (medical review M2)", async () => {
+  medications = [TAC0, MMF0];
+  const asked: string[] = [];
+  jest.spyOn(Alert, "alert").mockImplementation((title) => {
+    asked.push(String(title));
+  });
+  try {
+    await openHome();
+    const all = await screen.findByRole("button", {
+      name: "00:00-ийн 2 тунг бүгдийг уусан гэж тэмдэглэх",
+    });
+    posts.push({
+      key: "intake",
+      body: {
+        client_id: "66666666-6666-4666-8666-666666666666",
+        medication_id: MMF_ID,
+        scheduled_at: midnightDose(),
+        taken_at: null,
+        status: "skipped",
+        recorded_by: "caregiver",
+      },
+    });
+    await fireEvent.press(all);
+    await waitFor(() => expect(asked).toEqual(["Тун бүрийг тусад нь тэмдэглэнэ үү"]));
+    expect(posts.filter((p) => p.key === "intake")).toHaveLength(1);
+  } finally {
+    jest.restoreAllMocks();
   }
 });

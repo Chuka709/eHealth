@@ -213,7 +213,7 @@ const lines = (text: ReturnType<typeof cardText>) =>
 test("the card's text says the same as the card screen, in either language", () => {
   const mn = lines(cardText(CARD, "mn"));
   expect(mn).toContain("Нэр: Бат");
-  expect(mn).toContain("Програф · 1 мг (Дархлаа дарангуйлагч): 08:00 · 2 мг");
+  expect(mn).toContain("Програф (Дархлаа дарангуйлагч; Эмийн агууламж: 1 мг): 08:00 · 2 мг");
   expect(mn).toContain("Харшлын мэдээлэл оруулаагүй — харшилгүй гэсэн үг биш.");
   expect(mn.some((l) => l.includes("лабораторийн шинжилгээгээр"))).toBe(true);
   const en = lines(cardText(CARD, "en"));
@@ -225,7 +225,7 @@ test("the wallpaper leaves out the name and date of birth unless chosen", () => 
   const out = lines(cardText(CARD, "mn", { name: false, birthDate: false }));
   expect(out.some((l) => l.includes("Бат"))).toBe(false);
   expect(out.some((l) => l.includes("1980"))).toBe(false);
-  expect(out).toContain("Програф · 1 мг (Дархлаа дарангуйлагч): 08:00 · 2 мг");
+  expect(out).toContain("Програф (Дархлаа дарангуйлагч; Эмийн агууламж: 1 мг): 08:00 · 2 мг");
 });
 
 test("the wallet card escapes what the user typed and loads nothing from outside", () => {
@@ -294,7 +294,7 @@ test("Medical ID: the steps and the card's text to copy by hand", async () => {
   expect(screen.getByText("Android — Яаралтай мэдээлэл")).toBeOnTheScreen();
   const text = screen.getByTestId("medical-id-text");
   expect(text.props.selectable).toBe(true);
-  expect(text.props.children).toContain("Програф · 1 мг");
+  expect(text.props.children).toContain("Програф (Дархлаа дарангуйлагч; Эмийн агууламж: 1 мг)");
 });
 
 test("exported files are removed: the export folder and expo-print's own", () => {

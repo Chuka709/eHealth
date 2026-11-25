@@ -70,6 +70,10 @@ export function TodayList({
   const [settling, setSettling] = useState<string | null>(null);
   // Q24: while the server is asked (up to CHECK_TIMEOUT_MS) the tap must visibly be in hand
   const [checking, setChecking] = useState<string | null>(null);
+  // "Бүгдийг уусан" of one dose time in hand (UX audit #2)
+  const [groupBusy, setGroupBusy] = useState<string | null>(null);
+  // later dose times folded away until asked for (UX audit #2)
+  const [showLater, setShowLater] = useState(false);
 
   const inFlight = useRef(new Set<string>());
   // a profile switch while the server is asked unmounts this list: no question about the
@@ -153,6 +157,92 @@ export function TodayList({
       { cancelable: true, onDismiss: () => settle(patientId) },
     );
   };
+  /**
+   * "Бүгдийг уусан" for one dose time (UX audit #2). Each dose is checked first (Q24): if any
+   * is already recorded - by anyone - or cannot be checked, nothing is recorded and the user is
+   * asked to record them one by one, where each says who recorded what (never a double dose by
+   * one tap). Otherwise every open dose of that time is recorded taken.
+   */
+  const markGroup = async (groupKey: string, items: TodayDose[]) => {
+    const open = items.filter((d) => d.state === null);
+    const keys = open.map(doseKey);
+    // never while one of its doses is being recorded or checked on its own (ui review M3)
+    if (
+      open.length < 2 ||
+      inFlight.current.has(groupKey) ||
+      keys.some((k) => inFlight.current.has(k) || inFlight.current.has(`${k}#check`))
+    ) {
+      return;
+    }
+    inFlight.current.add(groupKey);
+    // and the other way: a dose's own "Уусан" waits while the group is recorded
+    for (const k of keys) inFlight.current.add(k);
+    setGroupBusy(groupKey);
+    try {
+      const stored = await Promise.all(
+        open.map((d) =>
+          currentRecord(patientId, d.medication.id, d.slot.scheduledAt, { anyStatus: true }),
+        ),
+      );
+      if (!mounted.current) return settle(patientId);
+      if (stored.some((s) => s !== null)) {
+        Alert.alert(t("dose.groupOneByOneTitle"), t("dose.groupOneByOneBody"), [
+          { text: t("dose.groupOneByOneOk"), onPress: () => settle(patientId) },
+        ]);
+        return;
+      }
+      // every medicine and amount said before one tap records them all: a dose not taken is
+      // never recorded taken by accident (medical review M1)
+      const time = open[0] ? clockIn(open[0].slot.scheduledAt, open[0].zone) : "";
+      const sure = await new Promise<boolean>((resolve) =>
+        Alert.alert(
+          t("dose.groupConfirmTitle", { time }),
+          t("dose.groupConfirmBody", {
+            list: open.map((d) => `• ${doseLabel(d)}`).join("\n"),
+          }),
+          [
+            { text: t("dose.alreadyCancel"), style: "cancel", onPress: () => resolve(false) },
+            { text: t("dose.groupTaken"), onPress: () => resolve(true) },
+          ],
+          { cancelable: true, onDismiss: () => resolve(false) },
+        ),
+      );
+      if (!sure || !mounted.current) return settle(patientId);
+      let failed: Notice = null;
+      for (const d of open) {
+        if (!mounted.current) {
+          settle(patientId); // closed meanwhile: the list is read again, the rest not recorded
+          break;
+        }
+        try {
+          const result = await recordDose(patientId, {
+            medicationId: d.medication.id,
+            scheduledAt: d.slot.scheduledAt,
+            status: "taken",
+          });
+          if (result === "full") failed = "full";
+        } catch {
+          failed = "saveFailed";
+        }
+      }
+      if (mounted.current) setNotice(failed);
+    } finally {
+      inFlight.current.delete(groupKey);
+      for (const k of keys) inFlight.current.delete(k);
+      if (mounted.current) setGroupBusy((k) => (k === groupKey ? null : k));
+    }
+  };
+  /** "Такролимус 2 мг": the medicine and the amount of this dose, as its row shows them. */
+  const doseLabel = (d: TodayDose) => {
+    const regimen = d.medication.current_regimen ?? d.medication.regimens[0];
+    const unit = regimen?.dose_unit
+      ? regimen.dose_unit === "other"
+        ? (regimen.dose_unit_text ?? "")
+        : t(`units.${regimen.dose_unit}` as "units.mg")
+      : "";
+    const amount = d.slot.amount ? `${d.slot.amount} ${unit}`.trim() : "";
+    return amount ? `${d.medication.name} ${amount}` : d.medication.name;
+  };
   const undo = (dose: TodayDose, key: string) =>
     run(key, async () => {
       if (!dose.recorded) return "undoFailed";
@@ -170,6 +260,10 @@ export function TodayList({
         return "undoFailed";
       }
     });
+
+  const groups = byTime(doses);
+  const { shown, later } = splitLater(groups, now);
+  const visible = showLater ? groups : shown;
 
   return (
     <View style={styles.list}>
@@ -189,22 +283,42 @@ export function TodayList({
       {doses.length === 0 && waiting.length === 0 && (
         <Text style={[styles.body, { color: p.text }]}>{t("todayEmpty")}</Text>
       )}
-      {byTime(doses).map(({ key: groupKey, time, items }) => (
+      {visible.map(({ key: groupKey, time, items }) => (
         <View key={groupKey} style={styles.group}>
-          {/* the time only: Home lists a part of the day, so a count here could mislead */}
-          <Text accessibilityRole="header" style={[styles.groupTime, { color: p.text }]}>
-            {time}
-          </Text>
+          <View style={styles.groupHead}>
+            {/* the time only: Home lists a part of the day, so a count here could mislead */}
+            <Text accessibilityRole="header" style={[styles.groupTime, { color: p.text }]}>
+              {time}
+            </Text>
+            {/* due times only: a dose not yet due is recorded on its own (ui review M2, Q25) */}
+            {(items[0]?.slot.scheduledAt ?? Number.POSITIVE_INFINITY) <= now &&
+              items.filter((d) => d.state === null).length >= 2 && (
+                <Button
+                  compact
+                  variant="secondary"
+                  label={t("dose.groupTaken")}
+                  accessibilityLabel={t("dose.groupTakenLabel", {
+                    time,
+                    n: items.filter((d) => d.state === null).length,
+                  })}
+                  busy={
+                    groupBusy === groupKey ||
+                    items.some((d) => busy === doseKey(d) || checking === doseKey(d))
+                  }
+                  onPress={() => void markGroup(groupKey, items)}
+                />
+              )}
+          </View>
           <View style={[styles.card, { backgroundColor: p.surface, borderColor: p.border }]}>
             {items.map((dose, i) => {
-              const key = `${dose.medication.id}@${dose.slot.scheduledAt}@${dose.slot.at}`;
+              const key = doseKey(dose);
               return (
                 <DoseRow
                   key={key}
                   first={i === 0}
                   dose={dose}
                   due={dose.slot.scheduledAt <= now}
-                  busy={busy === key || checking === key}
+                  busy={busy === key || checking === key || groupBusy === groupKey}
                   checking={checking === key}
                   settling={settling === key}
                   onMark={(status) => void mark(dose, key, status)}
@@ -215,8 +329,38 @@ export function TodayList({
           </View>
         </View>
       ))}
+      {later.length > 0 && (
+        <Button
+          variant="link"
+          label={
+            showLater
+              ? t("dose.laterHide")
+              : t("dose.laterTimes", { n: later.reduce((n, g) => n + g.items.length, 0) })
+          }
+          expanded={showLater}
+          onPress={() => setShowLater(!showLater)}
+        />
+      )}
     </View>
   );
+}
+
+/** One dose of the list, for busy states and the one-tap-at-a-time guard. */
+const doseKey = (dose: TodayDose) =>
+  `${dose.medication.id}@${dose.slot.scheduledAt}@${dose.slot.at}`;
+
+/**
+ * The times shown at once: every time already due (an open dose there matters now) and the next
+ * one to come; the later ones of the day fold away behind one line (UX audit #2). A list with
+ * nothing due yet shows the first time.
+ */
+export function splitLater<G extends { items: readonly TodayDose[] }>(
+  groups: readonly G[],
+  now: number,
+): { shown: G[]; later: G[] } {
+  const firstFuture = groups.findIndex((g) => (g.items[0]?.slot.scheduledAt ?? 0) > now);
+  if (firstFuture === -1) return { shown: [...groups], later: [] };
+  return { shown: groups.slice(0, firstFuture + 1), later: groups.slice(firstFuture + 1) };
 }
 
 /**
@@ -413,6 +557,13 @@ function FailedDoses({ patientId, doses }: { patientId: string; doses: TodayDose
 const styles = StyleSheet.create({
   list: { gap: space.md },
   group: { gap: space.sm },
+  groupHead: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    flexWrap: "wrap",
+    gap: space.sm,
+  },
   groupTime: {
     fontSize: fontSize.title,
     fontWeight: "700",

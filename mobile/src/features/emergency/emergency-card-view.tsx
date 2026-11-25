@@ -147,8 +147,11 @@ export function EmergencyCardView({ card, copy }: { card: EmergencyCard; copy: C
       {keyed(card.dosed_medications, (x) => `${x.name}${x.strength}`).map(([k, m]) => (
         <View key={k} style={[styles.box, { borderColor: p.border }]}>
           <Text accessibilityLanguage={lang} style={[styles.medName, { color: p.text }]}>
-            {[m.name, m.brand, m.strength].filter(Boolean).join(" · ")}
+            {[m.name, m.brand].filter(Boolean).join(" · ")}
           </Text>
+          {/* the tablet's strength apart from the dose taken - read together they were mistaken
+              for each other ("Такролимус · 1 мг" over "2 мг"; UX audit #7) */}
+          {m.strength && line(e("strength", { strength: m.strength }), true)}
           {line(e(`category.${m.category}`), true)}
           {line(m.dose ? dose(m.dose) : e("noDose"))}
           {keyed(m.upcoming_doses, (x) => x.effective_from).map(([k2, d]) => (
@@ -159,12 +162,14 @@ export function EmergencyCardView({ card, copy }: { card: EmergencyCard; copy: C
           {m.planned_end_on && line(e("endsOn", { date: dated(m.planned_end_on) }), true)}
         </View>
       ))}
-      {card.other_medications.length > 0 &&
-        line(
-          `${e("otherMeds")}: ${card.other_medications
-            .map((m) => (m.brand ? `${m.name} (${m.brand})` : m.name))
-            .join(", ")}`,
-        )}
+      {/* one per line, not one long comma list (UX audit #7) */}
+      {card.other_medications.length > 0 && line(`${e("otherMeds")}:`, true)}
+      {card.other_medications.map((m, i) => (
+        // biome-ignore lint/suspicious/noArrayIndexKey: names may repeat; the order is the card's
+        <View key={`${m.name}-${i}`}>
+          {line(`• ${m.brand ? `${m.name} (${m.brand})` : m.name}`)}
+        </View>
+      ))}
 
       {recentStopLines(card, e as never).length > 0 && (
         <View style={[styles.box, { borderColor: p.border }]}>

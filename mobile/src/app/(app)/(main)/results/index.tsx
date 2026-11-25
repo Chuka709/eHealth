@@ -9,7 +9,7 @@ import { FormMessage } from "@/components/form-message";
 import { HeaderAdd } from "@/components/header-add";
 import { Icon, type IconName } from "@/components/icon";
 import { Screen } from "@/components/screen";
-import { LoadingView, RetryView } from "@/components/state-view";
+import { EmptyState, LoadingView, RetryView } from "@/components/state-view";
 import { Paragraph } from "@/components/text";
 import { useRecordProfile } from "@/features/health/record-screens";
 import { useTypedReports } from "@/features/review/use-review";
@@ -94,13 +94,14 @@ export default function ResultsScreen() {
       />
       {own && <Paragraph muted>{t("whoseList", { name: own.full_name })}</Paragraph>}
       {documents.isPending && own && documents.fetchStatus === "paused" ? (
-        <Paragraph muted>{t("listOffline")}</Paragraph>
+        // offline as on the other lists: said, with a way to try again (UX audit #10)
+        <RetryView text={t("listOffline")} onRetry={() => void documents.refetch()} />
       ) : documents.isPending && own ? (
         <LoadingView />
       ) : !documents.data ? (
         <RetryView text={errorText(documents.error)} onRetry={() => void documents.refetch()} />
       ) : documents.data.length === 0 ? (
-        <Paragraph>{t("empty")}</Paragraph>
+        <EmptyState icon="file-document-outline" text={t("empty")} />
       ) : (
         <View style={[styles.card, { backgroundColor: p.surface, borderColor: p.border }]}>
           {documents.data.map((d, i) => (

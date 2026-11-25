@@ -199,14 +199,17 @@ test("🆘 on Home opens the card as the server assembled it (H17)", async () =>
   ).toBeOnTheScreen();
   expect(screen.queryByText(/Цус сэлбэхийн өмнө/)).toBeNull(); // only with a shown type
   expect(screen.getByText(/Бөөр · 2021\.06\.14/)).toBeOnTheScreen();
-  expect(screen.getByText("Преднизолон · 5 мг")).toBeOnTheScreen();
+  // the tablet's strength said as such, apart from the dose (UX audit #7)
+  expect(screen.getByText("Преднизолон")).toBeOnTheScreen();
+  expect(screen.getByText("Эмийн агууламж: 5 мг")).toBeOnTheScreen();
   expect(screen.getByText("Кортикостероид")).toBeOnTheScreen();
   expect(screen.getByText("08:00 · 10 мг")).toBeOnTheScreen();
   expect(screen.getByText("2026.11.20 өдрөөс эхлэх тун: 08:00 · 7,5 мг")).toBeOnTheScreen();
   expect(screen.getByText(/одоогийн жортой зөрж болно/)).toBeOnTheScreen();
   // a corticosteroid alone does not claim immunosuppression
   expect(screen.queryByText("Дархлаа дарангуйлах эм тогтмол уудаг.")).toBeNull();
-  expect(screen.getByText("Бусад эм: Витамин Д")).toBeOnTheScreen();
+  expect(screen.getByText("Бусад эм:")).toBeOnTheScreen();
+  expect(screen.getByText("• Витамин Д")).toBeOnTheScreen(); // one per line (UX audit #7)
   // for blood products (Q35) and a recent stop (Q37), each as recorded
   // records that disagree (this card's blood type is withheld): the type before the transplant
   expect(

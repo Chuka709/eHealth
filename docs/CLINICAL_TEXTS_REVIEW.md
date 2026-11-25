@@ -1,6 +1,6 @@
 # Эмнэлзүйн текстийн хяналт (Q12)
 
-_Нийт 1052 текст._
+_Нийт 1062 текст._
 
 **Зорилго:** шилжүүлэн суулгалтын эмч + лабораторийн эмч апп-ын эмнэлзүйн текстийг нэг дор хянана (эмчийн шийдвэр 2026.11.18, ★). Одоогоор зөвхөн такролимусын CV%-ийн карт хянуулах хүртэл өвчтөнд нуугдсан; бусад текст апп-д харагдаж байгаа тул бетаг нээхээс өмнө хянагдсан байх ёстой (BETA B5).
 
@@ -348,7 +348,7 @@ _Нийт 1052 текст._
 
 ## Эм, тун, сануулга, каталоггүй эмийн ангилал
 
-Хянагч: эмч. Түлхүүр: `app.meds` (215).
+Хянагч: эмч. Түлхүүр: `app.meds` (224).
 
 | Түлхүүр | Монгол | English | Санал |
 |---|---|---|---|
@@ -386,6 +386,15 @@ _Нийт 1052 текст._
 | `dose.who.someone` | өөр хэн нэгэн | someone else | |
 | `dose.alreadyBodyYou` | Та энэ тунг {time}-д «уусан» гэж аль хэдийн тэмдэглэсэн байна. Дахин тэмдэглэх үү? Шинэ тэмдэглэл тусад нь хадгалагдана. | You already logged this dose as taken at {time}. Log it again? The new entry is kept separately. | |
 | `dose.checking` | Өмнө нь тэмдэглэсэн эсэхийг шалгаж байна… | Checking whether it is already recorded… | |
+| `dose.groupTaken` | Бүгдийг уусан | All taken | |
+| `dose.groupTakenLabel` | {time}-ийн {n} тунг бүгдийг уусан гэж тэмдэглэх | Record all {n} doses of {time} as taken | |
+| `dose.groupConfirmTitle` | {time}: бүгдийг уусан гэж тэмдэглэх үү? | {time}: record all as taken? | |
+| `dose.groupConfirmBody` | {list}  Уугаагүй эм байвал тус бүрийн «Уусан»-ыг дарна уу. | {list}  If you did not take one of them, tap "Taken" on each dose instead. | |
+| `dose.groupOneByOneTitle` | Тун бүрийг тусад нь тэмдэглэнэ үү | Please record each dose on its own | |
+| `dose.groupOneByOneBody` | Энэ цагийн зарим тунг өмнө нь тэмдэглэсэн эсвэл шалгаж чадсангүй. Давхар тэмдэглэлээс сэргийлж тун бүрийн «Уусан»-ыг тусад нь дарна уу. | Some doses of this time were already recorded or could not be checked. To avoid a double record, tap "Taken" on each dose. | |
+| `dose.groupOneByOneOk` | Ойлголоо | OK | |
+| `dose.laterHide` | Дараагийн тунгуудыг нуух | Hide later doses | |
+| `dose.laterTimes` | Өнөөдрийн дараагийн тунгууд ({n}) | Later doses today ({n}) | |
 | `dose.uncheckedTitle` | Энэ тунг өмнө нь тэмдэглэсэн эсэхийг шалгаж чадсангүй | Could not check whether this dose is already recorded | |
 | `dose.uncheckedBody` | Өөр хүн тэмдэглэсэн байж магадгүй. «Уусан» гэж тэмдэглэх үү? | Someone else may have recorded it. Record it as taken? | |
 | `dose.takenAfter` | Товлосон цагаас {minutes, plural, =0 {{hours} цагийн} other {{hours, plural, =0 {} other {{hours} цаг }}{minutes} минутын}} дараа уусан | Taken {minutes, plural, =0 {{hours, plural, one {# hour} other {# hours}}} other {{hours, plural, =0 {} one {# hour } other {# hours }}{minutes} min}} after its time | |
@@ -958,7 +967,7 @@ _Нийт 1052 текст._
 
 ## Яаралтай карт
 
-Хянагч: эмч. Түлхүүр: `app.emergency` (107).
+Хянагч: эмч. Түлхүүр: `app.emergency` (108).
 
 | Түлхүүр | Монгол | English | Санал |
 |---|---|---|---|
@@ -989,6 +998,7 @@ _Нийт 1052 текст._
 | `upcoming` | {date} өдрөөс эхлэх тун: {dose} | Planned from {date}: {dose} | |
 | `endsOn` | Төлөвлөсөн дуусах огноо: {date} | Planned end: {date} | |
 | `noDosed` | Дархлаа дарангуйлагч, кортикостероид эм апп-д бүртгэгдээгүй — уудаггүй гэсэн үг биш. | No immunosuppressant or corticosteroid recorded in the app — this does not mean none are taken. | |
+| `strength` | Эмийн агууламж: {strength} | Strength: {strength} | |
 | `otherMeds` | Бусад эм | Other medicines | |
 | `allergies` | Харшил | Allergies | |
 | `noAllergy` | Харшлын мэдээлэл оруулаагүй — харшилгүй гэсэн үг биш. | No allergy information entered — this does not mean no allergies. | |

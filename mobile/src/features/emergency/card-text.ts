@@ -172,9 +172,11 @@ export function cardText(
 
   const medLines: string[] = card.dosed_medications.length ? [e("doseNote")] : [e("noDosed")];
   for (const m of card.dosed_medications) {
-    const name = [m.name, m.brand, m.strength].filter(Boolean).join(" · ");
+    const name = [m.name, m.brand].filter(Boolean).join(" · ");
+    // the strength said as such, apart from the dose (UX audit #7)
+    const strength = m.strength ? `; ${e("strength", { strength: m.strength })}` : "";
     medLines.push(
-      `${name} (${e(`category.${m.category}`)}): ${m.dose ? regimenText(meds, m.dose) : e("noDose")}`,
+      `${name} (${e(`category.${m.category}`)}${strength}): ${m.dose ? regimenText(meds, m.dose) : e("noDose")}`,
     );
     for (const d of m.upcoming_doses) {
       medLines.push(e("upcoming", { date: dated(d.effective_from), dose: regimenText(meds, d) }));

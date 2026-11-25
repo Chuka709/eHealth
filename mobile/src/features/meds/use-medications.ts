@@ -256,6 +256,9 @@ export async function currentRecord(
   patientId: string,
   medicationId: string,
   scheduledAt: number,
+  /** any record of the dose, "skipped" too ("Бүгдийг уусан" never overrides a skip unseen -
+   * medical review M2) */
+  { anyStatus = false }: { anyStatus?: boolean } = {},
 ): Promise<Intake | null | "unknown"> {
   // no answer in time: the user is asked, as when the server could not say ("unknown") - a
   // check that never answered made the tap look ignored and it was tapped again (real phone
@@ -275,7 +278,7 @@ export async function currentRecord(
       },
     });
     if (!data) return "unknown";
-    return data.find((i) => i.status !== "skipped") ?? null;
+    return (anyStatus ? data[0] : data.find((i) => i.status !== "skipped")) ?? null;
   } catch {
     return controller.signal.aborted ? "unknown" : null; // null: offline
   } finally {

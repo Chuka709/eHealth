@@ -6,7 +6,7 @@ import { Button } from "@/components/button";
 import { HeaderAdd } from "@/components/header-add";
 import { NavRow } from "@/components/nav-row";
 import { Screen } from "@/components/screen";
-import { LoadingView, RetryView } from "@/components/state-view";
+import { EmptyState, LoadingView, RetryView } from "@/components/state-view";
 import { Paragraph, Title } from "@/components/text";
 import { EmergencyButton } from "@/features/emergency/emergency-button";
 import { MonthSummary } from "@/features/meds/month-summary";
@@ -71,7 +71,13 @@ export default function MedsScreen() {
       <MonthSummary patientId={own.id} now={now} />
 
       <Title>{t("current")}</Title>
-      {current.length === 0 && <Paragraph>{t("noMeds")}</Paragraph>}
+      {current.length === 0 && (
+        <EmptyState
+          icon="pill"
+          text={t("noMeds")}
+          action={{ label: t("add"), onPress: () => router.push("/meds/new") }}
+        />
+      )}
       {current.map((m) => (
         <NavRow
           key={m.id}
@@ -81,7 +87,7 @@ export default function MedsScreen() {
           testID={`med-${m.id}`}
         />
       ))}
-      <Button label={t("add")} onPress={() => router.push("/meds/new")} />
+      {current.length > 0 && <Button label={t("add")} onPress={() => router.push("/meds/new")} />}
 
       {past.length > 0 && <Title>{t("past")}</Title>}
       {past.map((m) => (
