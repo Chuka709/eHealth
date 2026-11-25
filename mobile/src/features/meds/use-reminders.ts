@@ -28,6 +28,7 @@ import {
   ACTION_TAKEN,
   cancelSnoozeOf,
   dismissDoseCopies,
+  dismissRecordedReminders,
   doseData,
   exactAlarmState,
   LOCAL_DOSE_ID,
@@ -198,6 +199,8 @@ export function useReminderSync(): void {
     const sound = await soundChanged().catch(() => false);
     const renew = ((exact?.changed ?? false) || sound) && doseData !== null && visitsKnown;
     await syncReminders([...planned, ...visits], keepSnooze, valid, keepUnplanned, renew);
+    // only from a loaded list of records: an unloaded one would clear nothing anyway
+    if (intakes.data && valid()) await dismissRecordedReminders(recorded).catch(() => undefined);
     if (renew && exact && valid()) await rememberExactAlarm(exact.granted).catch(() => undefined);
     if (renew && valid()) await rememberSound().catch(() => undefined);
   };

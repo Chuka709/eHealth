@@ -257,8 +257,14 @@ export async function currentRecord(
   medicationId: string,
   scheduledAt: number,
 ): Promise<Intake | null | "unknown"> {
+  // no answer in time: the user is asked, as when the server could not say ("unknown") - a
+  // check that never answered made the tap look ignored and it was tapped again (real phone
+  // R8), and recording without asking would skip Q24's warning on a slow network
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), CHECK_TIMEOUT_MS);
   try {
     const { data } = await api.GET("/api/v1/patients/{patient_id}/intakes", {
+      signal: controller.signal,
       params: {
         path: { patient_id: patientId },
         query: {
@@ -271,9 +277,14 @@ export async function currentRecord(
     if (!data) return "unknown";
     return data.find((i) => i.status !== "skipped") ?? null;
   } catch {
-    return null;
+    return controller.signal.aborted ? "unknown" : null; // null: offline
+  } finally {
+    clearTimeout(timer);
   }
 }
+
+/** How long "Уусан" waits to hear whether the dose is already recorded (Q24). */
+export const CHECK_TIMEOUT_MS = 8_000;
 
 /**
  * "Буцаах": records still waiting in the queue are taken out; a stored record of this dose is

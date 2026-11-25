@@ -17,11 +17,12 @@ onlineManager.setEventListener((setOnline) =>
   }),
 );
 
-export function sendQueued(write: QueuedWrite): Promise<Response> {
+export function sendQueued(write: QueuedWrite, signal?: AbortSignal): Promise<Response> {
   return authFetch(`${apiBaseUrl}${write.path}`, {
     method: write.method,
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(write.body),
+    signal,
   });
 }
 

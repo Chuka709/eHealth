@@ -11,7 +11,16 @@ import { queryClient } from "@/lib/query-client";
 
 import { currentEpoch, establishSession, refreshSession, wipeLocal } from "../auth/session";
 import { setStatus, tokenSubject } from "../auth/session-store";
-import { dismissFailed, enqueue, failedWrites, flush, pendingWrites, type Send } from "./queue";
+import {
+  dismissFailed,
+  enqueue,
+  failedWrites,
+  flush,
+  pendingWrites,
+  type QueuedWrite,
+  SEND_TIMEOUT_MS,
+  type Send,
+} from "./queue";
 
 const mockStore = new Map<string, string>();
 jest.mock("expo-secure-store", () => ({
@@ -178,6 +187,39 @@ describe("offline queue", () => {
 
     for (let n = 0; n < 500; n += 1) expect(await enqueue(write(1000 + n))).toBe(true);
     expect(await enqueue(write(9999))).toBe(false);
+  });
+
+  it("a request that never answers lets go of the queue (R8, real phone)", async () => {
+    jest.useFakeTimers();
+    try {
+      await enqueue(write(1));
+      await enqueue(write(2));
+      let aborted = false;
+      const hung = jest.fn(
+        (_w: QueuedWrite, signal: AbortSignal) =>
+          new Promise<Response>(() => {
+            signal.addEventListener("abort", () => {
+              aborted = true;
+            });
+          }),
+      );
+      const first = flush(hung);
+      await jest.advanceTimersByTimeAsync(SEND_TIMEOUT_MS);
+      expect(await first).toBe(0);
+      expect(aborted).toBe(true); // the socket is let go, not only the promise
+      expect((await pendingWrites()).map((w) => w.id)).toEqual([write(1).id, write(2).id]);
+      // the next flush is a new one (not joined to the stuck one) and sends both, in order
+      const seen: string[] = [];
+      expect(
+        await flush(async (w) => {
+          seen.push(w.id);
+          return answer(201);
+        }),
+      ).toBe(2);
+      expect(seen).toEqual([write(1).id, write(2).id]);
+    } finally {
+      jest.useRealTimers();
+    }
   });
 
   it("does not write a sent item back after a sign-out wiped the queue", async () => {

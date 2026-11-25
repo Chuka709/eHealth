@@ -2,7 +2,14 @@ import { apiBaseUrl } from "@/lib/api-base";
 import { queryClient } from "@/lib/query-client";
 
 import { apiPath, createAuthFetch } from "./auth-fetch";
-import { establishSession, refreshSession, restoreSession, signOut, wipeLocal } from "./session";
+import {
+  establishSession,
+  REFRESH_TIMEOUT_MS,
+  refreshSession,
+  restoreSession,
+  signOut,
+  wipeLocal,
+} from "./session";
 import { clearAccessToken, getAccessToken, getStatus, setStatus } from "./session-store";
 
 const mockStore = new Map<string, string>();
@@ -118,6 +125,31 @@ test("an unreadable Keychain (locked phone) does not delete the session", async 
   expect(getStatus()).toBe("signedOut");
   expect(await refreshSession()).toBe("offline");
   expect(mockStore.get("lt.refresh")).toBe("r0");
+});
+
+test("R8: a refresh that never answers counts as offline - the session and token stay, the next one goes", async () => {
+  mockStore.set("lt.refresh", "r0");
+  await restoreSession();
+  jest.useFakeTimers();
+  try {
+    route({
+      "/api/v1/auth/refresh": (request) =>
+        new Promise<Response>((_, reject) => {
+          request.signal.addEventListener("abort", () => reject(new TypeError("aborted")));
+        }),
+    });
+    const first = refreshSession();
+    await jest.advanceTimersByTimeAsync(REFRESH_TIMEOUT_MS);
+    expect(await first).toBe("offline");
+    expect(mockStore.get("lt.refresh")).toBe("r0");
+    expect(getStatus()).toBe("signedIn");
+    // not joined to the stuck one: a new refresh is sent and works
+    route({ "/api/v1/auth/refresh": () => tokens(1) });
+    expect(await refreshSession()).toBe("ok");
+    expect(getAccessToken()).toBe("access-1");
+  } finally {
+    jest.useRealTimers();
+  }
 });
 
 test("sign-out during a refresh is not undone by the refresh response", async () => {

@@ -344,6 +344,30 @@ export async function dismissDoseCopies(identifier: string): Promise<void> {
   );
 }
 
+/**
+ * Reminders already in the tray whose every dose is recorded now (in the app's list, by another
+ * device, offline): taken out, so a reminder left showing never reads as a dose still to take
+ * (H40, real phone 2026.11.25). One listing several doses stays while any of them is open.
+ */
+export async function dismissRecordedReminders(recorded: ReadonlySet<string>): Promise<void> {
+  const shown = await Notifications.getPresentedNotificationsAsync();
+  const done = shown
+    .map((n) => n.request)
+    .filter((r) => {
+      if (!LOCAL_DOSE_ID.test(r.identifier)) return false;
+      const data = doseData(r.content.data);
+      // every item must be a valid one: an item dropped as malformed never counts as recorded
+      const listed = (r.content.data as { d?: unknown } | null)?.d;
+      return (
+        data !== null &&
+        Array.isArray(listed) &&
+        listed.length === data.d.length &&
+        data.d.every((x) => recorded.has(`${x.m}@${x.at}`))
+      );
+    });
+  await Promise.allSettled(done.map((r) => Notifications.dismissNotificationAsync(r.identifier)));
+}
+
 /** A recorded dose: its "10 мин дараа" copies and its 15-minute repeat are no longer wanted. */
 export async function cancelSnoozeOf(identifier: string): Promise<void> {
   const base = identifier.replace(/^snooze\./, "").replace(/^again\./, "");

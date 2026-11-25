@@ -10,7 +10,7 @@ import { localStore, openLocalStore } from "@/lib/local-store";
  * (migration 0014), so sending an item twice - the app killed between "sent" and "removed" -
  * never duplicates it. Outcomes:
  *   2xx           sent: removed
- *   network, 5xx, 429, 401   not now: kept, the flush stops and is retried later (a 401 means
+ *   network, timeout, 5xx, 429, 401   not now: kept, the flush stops and is retried later (a 401 means
  *                 the session is being refreshed or has ended - a wipe then clears the queue)
  *   other 4xx     the server refused it (validation, conflict, no access): moved to `failed`,
  *                 kept for the user to see - a record is never dropped silently
@@ -30,7 +30,31 @@ const PENDING = "queue.pending.v1";
 const FAILED = "queue.failed.v1";
 const MAX_PENDING = 500;
 
-export type Send = (write: QueuedWrite) => Promise<Response>;
+/** `signal` aborts the request when it takes longer than SEND_TIMEOUT_MS. */
+export type Send = (write: QueuedWrite, signal: AbortSignal) => Promise<Response>;
+
+/**
+ * A request that never answers (React Native's fetch has no timeout; a socket left behind by a
+ * network change, real phone 2026.11.25) held the single-flight flush, and with it every
+ * later dose record, until the app was restarted. After this long it counts as offline: the
+ * write stays queued and is sent again - its client_id keeps a resend from duplicating it.
+ */
+export const SEND_TIMEOUT_MS = 30_000;
+
+function sendWithin(send: Send, write: QueuedWrite): Promise<Response> {
+  const controller = new AbortController();
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  // started first: a send that throws at once leaves no timer behind
+  const request = send(write, controller.signal);
+  const late = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => {
+      controller.abort();
+      reject(new Error("timeout"));
+    }, SEND_TIMEOUT_MS);
+  });
+  // the race, not the abort, frees the queue: a send that ignores the signal still lets go
+  return Promise.race([request, late]).finally(() => clearTimeout(timer));
+}
 
 function read<T>(raw: string | undefined): T[] {
   if (!raw) return [];
@@ -136,9 +160,9 @@ async function run(send: Send, epoch: number): Promise<number> {
     let response: Response;
     sending = next.id;
     try {
-      response = await send(next);
+      response = await sendWithin(send, next);
     } catch {
-      return sent; // offline: try again later
+      return sent; // offline or no answer in time: try again later
     } finally {
       sending = null;
     }

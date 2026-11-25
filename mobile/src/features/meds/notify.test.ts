@@ -5,6 +5,7 @@ import { showRemindersInForeground } from "@/lib/notifications";
 import {
   cancelSnoozeOf,
   dismissDoseCopies,
+  dismissRecordedReminders,
   exactAlarmState,
   registerReminderKinds,
   rememberExactAlarm,
@@ -354,4 +355,38 @@ test("H6: a failed registration is tried again by the next sync", async () => {
   await expect(registerReminderKinds(texts)).rejects.toThrow("os");
   await registerReminderKinds(texts);
   expect(Notifications.setNotificationCategoryAsync).toHaveBeenCalledTimes(3);
+});
+
+test("H40: a reminder in the tray goes once every dose it lists is recorded, not before", async () => {
+  const at = 1_795_573_200_000; // a whole minute
+  const shownReq = (identifier: string, d: string[]) => ({
+    request: {
+      identifier,
+      content: { data: { kind: "dose", p: P, d: d.map((m) => ({ m, at })) } },
+    },
+  });
+  (Notifications.getPresentedNotificationsAsync as jest.Mock).mockResolvedValueOnce([
+    shownReq(`dose.${at}.one`, [A]),
+    shownReq(`again.dose.${at}.both`, [A, B]),
+    shownReq("appt.1.x", [A]), // not a dose reminder
+    // a malformed item beside a recorded one: never counted as recorded
+    {
+      request: {
+        identifier: `dose.${at}.bad`,
+        content: {
+          data: {
+            kind: "dose",
+            p: P,
+            d: [
+              { m: A, at },
+              { m: "x", at },
+            ],
+          },
+        },
+      },
+    },
+  ]);
+  await dismissRecordedReminders(new Set([`${A}@${at}`]));
+  expect(Notifications.dismissNotificationAsync).toHaveBeenCalledTimes(1);
+  expect(Notifications.dismissNotificationAsync).toHaveBeenCalledWith(`dose.${at}.one`);
 });

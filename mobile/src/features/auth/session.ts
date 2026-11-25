@@ -155,8 +155,25 @@ async function runRefresh(): Promise<RefreshOutcome> {
   return "offline"; // 429 / 5xx: the session may still be valid
 }
 
-function postRefresh(refreshToken: string) {
-  return publicApi.POST("/api/v1/auth/refresh", { body: { refresh_token: refreshToken } });
+/**
+ * Single-flight: a refresh that never answers (a dead socket - React Native's fetch has no
+ * timeout) held every signed-in request until the app restarted. After this long it counts as
+ * offline. If the server did rotate meanwhile, the old token is now spent and the next refresh
+ * ends the session (reuse detection) - as an app restart would have; never a hang.
+ */
+export const REFRESH_TIMEOUT_MS = 20_000;
+
+async function postRefresh(refreshToken: string) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), REFRESH_TIMEOUT_MS);
+  try {
+    return await publicApi.POST("/api/v1/auth/refresh", {
+      body: { refresh_token: refreshToken },
+      signal: controller.signal,
+    });
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 /** User sign-out: revoke the session family on the server (best effort), then wipe locally. */
