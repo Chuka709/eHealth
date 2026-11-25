@@ -23,13 +23,16 @@ import { setActiveProfile } from "@/features/records/active-profile";
 import { ownProfile, type Patient, patientsKey, usePatients } from "@/features/records/use-profile";
 import { formatDateTime } from "@/lib/dates";
 import { queryClient } from "@/lib/query-client";
+import { stopRinging, syncAlarmClocks } from "../../../modules/dose-alarm";
 import {
   ACTION_SNOOZE,
   ACTION_TAKEN,
+  alarmClocksFor,
   cancelSnoozeOf,
   dismissDoseCopies,
   dismissRecordedReminders,
   doseData,
+  doseSound,
   exactAlarmState,
   LOCAL_DOSE_ID,
   registerReminderKinds,
@@ -38,6 +41,7 @@ import {
   showAppointmentDetails,
   showNames,
   snooze,
+  snoozeAlarms,
   soundChanged,
   syncReminders,
 } from "./notify";
@@ -153,6 +157,7 @@ export function useReminderSync(): void {
     await registerReminderKinds({
       channel: t("notify.channel"),
       channelAlarm: t("notify.channelAlarm"),
+      channelSilent: t("notify.channelSilent"),
       taken: t("notify.taken"),
       takenAll: t("notify.takenAll"),
       snooze: t("notify.snooze"),
@@ -199,6 +204,26 @@ export function useReminderSync(): void {
     const sound = await soundChanged().catch(() => false);
     const renew = ((exact?.changed ?? false) || sound) && doseData !== null && visitsKnown;
     await syncReminders([...planned, ...visits], keepSnooze, valid, keepUnplanned, renew);
+    // the alarm clocks (Android, Q79) follow the same plan - only once the doses are known
+    if (doseData && valid()) {
+      const { alarmClock } = await doseSound();
+      const now = Date.now();
+      const scheduled = alarmClock
+        ? new Set(
+            (await Notifications.getAllScheduledNotificationsAsync()).map((n) => n.identifier),
+          )
+        : new Set<string>();
+      const snoozes = alarmClock ? await snoozeAlarms(now, scheduled) : [];
+      // signed out while waiting: never set this account's alarms again (security review M2)
+      if (valid()) {
+        syncAlarmClocks(alarmClock ? [...alarmClocksFor(planned, now), ...snoozes] : [], {
+          title: t("notify.ringing"),
+          body: t("notify.ringingBody"),
+          stop: t("notify.stopAlarm"),
+          fallback: t("notify.title"),
+        });
+      }
+    }
     // only from a loaded list of records: an unloaded one would clear nothing anyway
     if (intakes.data && valid()) await dismissRecordedReminders(recorded).catch(() => undefined);
     if (renew && exact && valid()) await rememberExactAlarm(exact.granted).catch(() => undefined);
@@ -250,6 +275,7 @@ export function useReminderSync(): void {
     const off = onReminderSync(() => runRef.current());
     const sub = AppState.addEventListener("change", (state) => {
       if (state !== "active") return;
+      stopRinging(); // opened while a reminder rings: it has been heard
       runRef.current();
       // after every other listener: back after a long while locks the app first, and nothing
       // is requested before it is unlocked (lock test) - the unlock refreshes instead
@@ -284,6 +310,7 @@ export function useReminderResponses(): void {
 
   useEffect(() => {
     const handle = async (response: Notifications.NotificationResponse) => {
+      stopRinging(); // any answer to a reminder silences the alarm clock
       const request = response.notification.request;
       Notifications.clearLastNotificationResponse();
       const trigger = request.trigger as { type?: string } | null;

@@ -3,9 +3,13 @@ import { Platform } from "react-native";
 import { showRemindersInForeground } from "@/lib/notifications";
 
 import {
+  alarmClocksFor,
+  CHANNEL_ALARM,
+  CHANNEL_SILENT,
   cancelSnoozeOf,
   dismissDoseCopies,
   dismissRecordedReminders,
+  doseSound,
   exactAlarmState,
   registerReminderKinds,
   rememberExactAlarm,
@@ -13,6 +17,7 @@ import {
   resetRegisteredKinds,
   setAlarmSound,
   snooze,
+  snoozeAlarms,
   soundChanged,
   syncReminders,
 } from "./notify";
@@ -25,6 +30,13 @@ type Scheduled = {
 };
 // the encrypted local store needs a session: an in-memory one here (shared across modules)
 const mockStored = new Map<string, boolean | string>();
+// the Android alarm clock (Q79): a fake whose availability the tests set
+const mockAlarm = { available: false, cancel: jest.fn(), add: jest.fn() };
+jest.mock("../../../modules/dose-alarm", () => ({
+  alarmClockAvailable: () => mockAlarm.available,
+  cancelAlarmClock: (id: string) => mockAlarm.cancel(id),
+  addAlarmClock: (id: string, at: number) => mockAlarm.add(id, at),
+}));
 jest.mock("@/lib/local-store", () => ({
   localStore: async () => ({
     getBoolean: (k: string) => mockStored.get(k) as boolean | undefined,
@@ -333,6 +345,7 @@ test("'Уусан' takes every copy of that dose time out of the tray (medical r
 const texts = {
   channel: "Эмийн сануулга",
   channelAlarm: "Эмийн сануулга (чанга)",
+  channelSilent: "Эмийн сануулга (сэрүүлэг дуугарах үед)",
   taken: "Уусан",
   takenAll: "Бүгдийг уусан",
   snooze: "10 мин дараа",
@@ -389,4 +402,163 @@ test("H40: a reminder in the tray goes once every dose it lists is recorded, not
   await dismissRecordedReminders(new Set([`${A}@${at}`]));
   expect(Notifications.dismissNotificationAsync).toHaveBeenCalledTimes(1);
   expect(Notifications.dismissNotificationAsync).toHaveBeenCalledWith(`dose.${at}.one`);
+});
+
+test("Q79: on Android with exact alarms the alarm clock rings and the reminder itself is silent", async () => {
+  const was = Platform.OS;
+  Platform.OS = "android";
+  try {
+    await setAlarmSound(true);
+    mockAlarm.available = true;
+    expect(await doseSound()).toMatchObject({
+      channel: CHANNEL_SILENT,
+      fallback: CHANNEL_ALARM,
+      alarmClock: true,
+    });
+    // without the permission (H18) the loud channel stays, no alarm clock
+    mockAlarm.available = false;
+    expect(await doseSound()).toMatchObject({ channel: CHANNEL_ALARM, alarmClock: false });
+    // the quiet setting: neither
+    await setAlarmSound(false);
+    mockAlarm.available = true;
+    expect(await doseSound()).toMatchObject({ channel: "doses", alarmClock: false });
+  } finally {
+    Platform.OS = was;
+    mockAlarm.available = false;
+    await setAlarmSound(true);
+  }
+});
+
+test("Q79: iOS never uses the alarm clock", async () => {
+  const was = Platform.OS;
+  Platform.OS = "ios";
+  try {
+    mockAlarm.available = true;
+    expect((await doseSound()).alarmClock).toBe(false);
+  } finally {
+    Platform.OS = was;
+    mockAlarm.available = false;
+  }
+});
+
+test("Q79: the alarm clock rings doses and repeats still to come - never a late one or a renew notice", () => {
+  const now = Date.now();
+  const soon = now + 600_000;
+  const planned = [
+    dose(`dose.${soon}.a`, soon, [A]),
+    { ...dose(`again.dose.${soon}.a`, soon + 900_000, [A]), id: `again.dose.${soon}.a` },
+    dose(`dose.${now - 60_000}.b`, now - 60_000, [B], true),
+    {
+      id: `renew.${soon}.x`,
+      at: soon,
+      title: "renew",
+      body: "",
+      kind: "renew" as const,
+      data: { kind: "renew" as const, p: P, d: [] },
+      due: false,
+    },
+  ];
+  expect(alarmClocksFor(planned, now)).toEqual([
+    { id: `dose.${soon}.a`, at: soon },
+    { id: `again.dose.${soon}.a`, at: soon + 900_000 },
+  ]);
+});
+
+test("Q79: a recorded dose cancels its alarm clock and its repeat's at once", async () => {
+  mockAlarm.cancel.mockClear();
+  await cancelSnoozeOf("snooze.again.dose.1795573200000.abc");
+  expect(mockAlarm.cancel.mock.calls.map(([id]) => id)).toEqual([
+    "dose.1795573200000.abc",
+    "again.dose.1795573200000.abc",
+    "snooze.dose.1795573200000.abc",
+    "snooze.again.dose.1795573200000.abc",
+  ]);
+});
+
+test("Q79: '10 мин дараа' rings by the alarm clock too, and is kept on the next sync while still set", async () => {
+  const was = Platform.OS;
+  Platform.OS = "android";
+  try {
+    await setAlarmSound(true);
+    mockAlarm.available = true;
+    mockAlarm.add.mockClear();
+    const at = Date.now() - 60_000;
+    await snooze(
+      `dose.${at}.a`,
+      {
+        title: "t",
+        body: "1 тун",
+        data: { kind: "dose", p: P, d: [{ m: A, at: Math.floor(at / 60_000) * 60_000 }] },
+      },
+      always,
+    );
+    const set = os.get(`snooze.dose.${at}.a`) as unknown as {
+      trigger: { channelId: string; date: number };
+    };
+    expect(set.trigger.channelId).toBe(CHANNEL_SILENT); // the alarm clock rings, not the notification
+    expect(mockAlarm.add).toHaveBeenCalledWith(`snooze.dose.${at}.a`, set.trigger.date);
+    const now = Date.now();
+    expect(await snoozeAlarms(now, new Set([`snooze.dose.${at}.a`]))).toEqual([
+      { id: `snooze.dose.${at}.a`, at: set.trigger.date },
+    ]);
+    // the OS no longer has it (the dose was recorded): forgotten
+    expect(await snoozeAlarms(now, new Set())).toEqual([]);
+    expect(await snoozeAlarms(now, new Set([`snooze.dose.${at}.a`]))).toEqual([]);
+  } finally {
+    Platform.OS = was;
+    mockAlarm.available = false;
+  }
+});
+
+test("Q79: without the alarm clock '10 мин дараа' uses the loud channel", async () => {
+  const was = Platform.OS;
+  Platform.OS = "android";
+  try {
+    await setAlarmSound(true);
+    mockAlarm.available = false;
+    mockAlarm.add.mockClear();
+    const at = Date.now() - 60_000;
+    await snooze(
+      `dose.${at}.b`,
+      {
+        title: "t",
+        body: "1 тун",
+        data: { kind: "dose", p: P, d: [{ m: B, at: Math.floor(at / 60_000) * 60_000 }] },
+      },
+      always,
+    );
+    const set = os.get(`snooze.dose.${at}.b`) as unknown as { trigger: { channelId: string } };
+    expect(set.trigger.channelId).toBe(CHANNEL_ALARM);
+    expect(mockAlarm.add).not.toHaveBeenCalled();
+  } finally {
+    Platform.OS = was;
+  }
+});
+
+test("Q79/H-1: a late reminder shown at once is loud - no alarm clock rings for it", async () => {
+  const was = Platform.OS;
+  Platform.OS = "android";
+  try {
+    await setAlarmSound(true);
+    mockAlarm.available = true;
+    const late = Math.floor((Date.now() - 120_000) / 60_000) * 60_000;
+    // an alarm still pending after its time (held back), renewed: shown at once
+    await Notifications.scheduleNotificationAsync({
+      identifier: `dose.${late}.late`,
+      content: { title: "t", body: "1 тун" },
+      trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: late },
+    });
+    await syncReminders(
+      [dose(`dose.${late}.late`, late, [A], true)],
+      keepAll,
+      always,
+      () => false,
+      true,
+    );
+    const set = os.get(`dose.${late}.late`) as unknown as { trigger: { channelId: string } };
+    expect(set.trigger.channelId).toBe(CHANNEL_ALARM);
+  } finally {
+    Platform.OS = was;
+    mockAlarm.available = false;
+  }
 });

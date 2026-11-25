@@ -2,6 +2,7 @@ import * as Notifications from "expo-notifications";
 import { Platform } from "react-native";
 import type { PlannedAppointmentReminder } from "@/features/health/appointment-reminders";
 import { localStore } from "@/lib/local-store";
+import { addAlarmClock, alarmClockAvailable, cancelAlarmClock } from "../../../modules/dose-alarm";
 
 import type { DoseItem, PlannedNotification } from "./reminders";
 
@@ -17,6 +18,9 @@ export const CHANNEL = "doses";
  * unnoticed. Channels are fixed once made: the quiet one stays for whoever turns this off. */
 export const CHANNEL_ALARM = "doses-alarm";
 export const ALARM_SOUND = "dose_alarm.wav";
+/** Android with the alarm clock (Q79): the app rings itself on the alarm stream, so the
+ * reminder's own notification stays silent - never two sounds at once. */
+export const CHANNEL_SILENT = "doses-silent";
 export const CATEGORY_ONE = "dose_one";
 export const CATEGORY_MANY = "dose_many";
 export const ACTION_TAKEN = "taken";
@@ -29,6 +33,7 @@ const NAMES_KEY = "prefs.reminder_names.v1";
 export type NotifyTexts = {
   channel: string;
   channelAlarm: string;
+  channelSilent: string;
   taken: string;
   takenAll: string;
   snooze: string;
@@ -81,10 +86,37 @@ export async function rememberSound(): Promise<void> {
   (await localStore()).set(CHANNEL_KEY, channel);
 }
 
-/** The channel (Android) and sound (iOS) dose reminders use now. */
-export async function doseSound(): Promise<{ channel: string; sound: string | true }> {
+/**
+ * The channel (Android) and sound (iOS) dose reminders use now. Ringing like an alarm on
+ * Android with exact alarms: the alarm clock rings (also in silent mode - Q79) and the
+ * notification is silent; `fallback` is the channel for what no alarm clock covers (a late
+ * reminder shown at once). Without exact alarms (H18): the loud channel.
+ */
+export async function doseSound(): Promise<{
+  channel: string;
+  fallback: string;
+  sound: string | true;
+  alarmClock: boolean;
+}> {
   const loud = await alarmSound().catch(() => true);
-  return loud ? { channel: CHANNEL_ALARM, sound: ALARM_SOUND } : { channel: CHANNEL, sound: true };
+  if (!loud) return { channel: CHANNEL, fallback: CHANNEL, sound: true, alarmClock: false };
+  const clock = Platform.OS === "android" && alarmClockAvailable();
+  return {
+    channel: clock ? CHANNEL_SILENT : CHANNEL_ALARM,
+    fallback: CHANNEL_ALARM,
+    sound: ALARM_SOUND,
+    alarmClock: clock,
+  };
+}
+
+/** The dose reminders (and their repeats) still to come that the alarm clock rings for. */
+export function alarmClocksFor(
+  planned: readonly Planned[],
+  now: number,
+): { id: string; at: number }[] {
+  return planned
+    .filter((n) => n.kind === "dose" && !n.due && n.at > now)
+    .map((n) => ({ id: n.id, at: n.at }));
 }
 
 /** the texts the channels and categories were last registered with in this app process */
@@ -114,6 +146,13 @@ async function registerKinds(texts: NotifyTexts): Promise<void> {
       importance: Notifications.AndroidImportance.HIGH,
       // the secure lock screen shows "content hidden", never the text
       lockscreenVisibility: Notifications.AndroidNotificationVisibility.PRIVATE,
+    });
+    await Notifications.setNotificationChannelAsync(CHANNEL_SILENT, {
+      name: texts.channelSilent,
+      importance: Notifications.AndroidImportance.HIGH,
+      lockscreenVisibility: Notifications.AndroidNotificationVisibility.PRIVATE,
+      sound: null,
+      enableVibrate: false,
     });
     await Notifications.setNotificationChannelAsync(CHANNEL_ALARM, {
       name: texts.channelAlarm,
@@ -203,7 +242,7 @@ export async function syncReminders(
   renewAll = false,
 ): Promise<void> {
   const existing = await Notifications.getAllScheduledNotificationsAsync();
-  const { channel, sound } = await doseSound();
+  const { channel, fallback, sound } = await doseSound();
   if (!valid()) return;
   const wanted = new Map(planned.map((n) => [n.id, n]));
   const scheduled: string[] = [];
@@ -280,7 +319,8 @@ export async function syncReminders(
           trigger: {
             type: Notifications.SchedulableTriggerInputTypes.DATE,
             date: n.due ? now + 2_000 : n.at,
-            channelId: n.kind === "dose" ? channel : CHANNEL,
+            // shown at once (late): no alarm clock rings for it - the loud channel does
+            channelId: n.kind !== "dose" ? CHANNEL : n.due ? fallback : channel,
           },
         }),
       ),
@@ -316,17 +356,69 @@ export async function snooze(
   const data = doseData(shown.data);
   if (!data || !valid()) return;
   const id = `snooze.${identifier.replace(/^snooze\./, "")}`;
-  const { channel, sound } = await doseSound();
+  const at = Date.now() + SNOOZE_MS;
+  // asked for by the user: rings like the reminder it delays (also through silent mode - after
+  // a snoozed repeat nothing else would ring; medical review M-1)
+  const { channel, fallback, sound, alarmClock } = await doseSound();
   await Notifications.scheduleNotificationAsync({
     identifier: id,
     content: content({ title: shown.title, body: shown.body, data, kind: "dose" }, sound),
     trigger: {
       type: Notifications.SchedulableTriggerInputTypes.DATE,
-      date: Date.now() + SNOOZE_MS,
-      channelId: channel,
+      date: at,
+      channelId: alarmClock ? channel : fallback,
     },
   });
-  if (!valid()) await Notifications.cancelScheduledNotificationAsync(id); // signed out meanwhile
+  if (alarmClock && valid()) {
+    addAlarmClock(id, at);
+    await rememberSnoozeAlarm(id, at).catch(() => undefined);
+  }
+  if (!valid()) {
+    // signed out meanwhile
+    cancelAlarmClock(id);
+    await Notifications.cancelScheduledNotificationAsync(id);
+  }
+}
+
+const SNOOZE_ALARMS_KEY = "reminders.snooze_alarms.v1";
+
+async function rememberSnoozeAlarm(id: string, at: number): Promise<void> {
+  const store = await localStore();
+  const all = readSnoozeAlarms(store.getString(SNOOZE_ALARMS_KEY));
+  all[id] = at;
+  store.set(SNOOZE_ALARMS_KEY, JSON.stringify(all));
+}
+
+function readSnoozeAlarms(raw: string | undefined): Record<string, number> {
+  if (!raw) return {};
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (typeof parsed !== "object" || parsed === null) return {};
+    return Object.fromEntries(
+      Object.entries(parsed).filter(
+        (e): e is [string, number] => /^snooze\./.test(e[0]) && Number.isFinite(e[1]),
+      ),
+    );
+  } catch {
+    return {};
+  }
+}
+
+/**
+ * The "10 мин дараа" alarm clocks to keep on the next sync: those still to come whose
+ * notification the OS still has (a recorded dose or a changed plan cancelled it). The rest are
+ * forgotten.
+ */
+export async function snoozeAlarms(
+  now: number,
+  scheduled: ReadonlySet<string>,
+): Promise<{ id: string; at: number }[]> {
+  const store = await localStore();
+  const kept = Object.entries(readSnoozeAlarms(store.getString(SNOOZE_ALARMS_KEY))).filter(
+    ([id, at]) => at > now && scheduled.has(id),
+  );
+  store.set(SNOOZE_ALARMS_KEY, JSON.stringify(Object.fromEntries(kept)));
+  return kept.map(([id, at]) => ({ id, at }));
 }
 
 /** This phone's own local dose reminders (a push message can never look like one). */
@@ -371,6 +463,9 @@ export async function dismissRecordedReminders(recorded: ReadonlySet<string>): P
 /** A recorded dose: its "10 мин дараа" copies and its 15-minute repeat are no longer wanted. */
 export async function cancelSnoozeOf(identifier: string): Promise<void> {
   const base = identifier.replace(/^snooze\./, "").replace(/^again\./, "");
+  for (const id of [base, `again.${base}`, `snooze.${base}`, `snooze.again.${base}`]) {
+    cancelAlarmClock(id);
+  }
   await Promise.allSettled(
     [`snooze.${base}`, `snooze.again.${base}`, `again.${base}`].map((id) =>
       Notifications.cancelScheduledNotificationAsync(id),

@@ -1,6 +1,6 @@
 # Эмнэлзүйн текстийн хяналт (Q12)
 
-_Нийт 1041 текст._
+_Нийт 1045 текст._
 
 **Зорилго:** шилжүүлэн суулгалтын эмч + лабораторийн эмч апп-ын эмнэлзүйн текстийг нэг дор хянана (эмчийн шийдвэр 2026.11.18, ★). Одоогоор зөвхөн такролимусын CV%-ийн карт хянуулах хүртэл өвчтөнд нуугдсан; бусад текст апп-д харагдаж байгаа тул бетаг нээхээс өмнө хянагдсан байх ёстой (BETA B5).
 
@@ -345,7 +345,7 @@ _Нийт 1041 текст._
 
 ## Эм, тун, сануулга, каталоггүй эмийн ангилал
 
-Хянагч: эмч. Түлхүүр: `app.meds` (207).
+Хянагч: эмч. Түлхүүр: `app.meds` (211).
 
 | Түлхүүр | Монгол | English | Санал |
 |---|---|---|---|
@@ -508,6 +508,10 @@ _Нийт 1041 текст._
 | `notify.channel` | Эмийн сануулга | Medicine reminders | |
 | `notify.title` | Эм уух цаг боллоо | Time for your medicine | |
 | `notify.channelAlarm` | Эмийн сануулга – сэрүүлгийн дуутай | Medicine reminders – alarm sound | |
+| `notify.channelSilent` | Эмийн сануулга – дуугүй (сэрүүлэг тусдаа дуугарна) | Medicine reminders – silent (the alarm rings separately) | |
+| `notify.stopAlarm` | Дууг унтраах | Stop sound | |
+| `notify.ringingBody` | Зөвхөн дууг унтраана. Уусан бол сануулга дээрх «Уусан»-ыг дарна уу. | This only stops the sound. If you took it, tap "Taken" on the reminder. | |
+| `notify.ringing` | Эмийн сануулга дуугарч байна | A medicine reminder is ringing | |
 | `notify.again` | Тэмдэглэгдээгүй: {title} | Not marked yet: {title} | |
 | `notify.againBody` | Уусан бол «Уусан»-ыг дарна уу. {body} | If you took it, tap “Taken”. {body} | |
 | `notify.timedTitle` | {time}-ийн эмийн сануулга | {time} medicine reminder | |
@@ -522,7 +526,7 @@ _Нийт 1041 текст._
 | `notify.ubTime` | {time} (Улаанбаатарын цагаар) | {time} (Ulaanbaatar time) | |
 | `reminders.title` | Сануулга | Reminders | |
 | `reminders.alarmSound` | Сэрүүлэг шиг чанга дуугаргах | Ring like an alarm | |
-| `reminders.alarmSoundHint` | Асаалттай үед сануулга сэрүүлгийн дуугаар удаан дуугарч, чичирнэ. Чичиргээний горимд зарим утас (жишээ нь Xiaomi) зөвхөн чичирнэ; чимээгүй горимд дуугарахгүй, чичрэхгүй байж болно — зөвхөн дэлгэц дээр гарна; «Бүү саад бол» горимд дуугарахгүй. Унтраавал энгийн мэдэгдлийн дуугаар сануулна. | When on, reminders ring longer with an alarm sound and vibrate. On vibrate, some phones only vibrate (Xiaomi, for example); on silent they may neither ring nor vibrate - the reminder only shows on screen; in Do Not Disturb they do not ring. When off, reminders use the normal notification sound. | |
+| `reminders.alarmSoundHint` | Асаалттай үед эмийн цаг, 15 минутын дахин сануулга, «10 мин дараа» нь сэрүүлэг шиг 1 минут хүртэл дуугарч, чичирнэ — Android-д утас чимээгүй горимд байсан ч (утасны сэрүүлгийн дууны түвшнээр; «Сэрүүлэг ба сануулга» зөвшөөрөл хэрэгтэй). «Уусан», «Дууг унтраах» дарах эсвэл апп нээхэд зогсоно. Хоцорч ирсэн сануулга энгийн чанга мэдэгдлээр ирнэ. «Бүү саад бол» горим сэрүүлгийг хаасан бол дуугарахгүй; iPhone-д чимээгүй горимд дуугарахгүй. Унтраавал энгийн мэдэгдлийн дуугаар сануулна. | When on, dose times, the 15-minute repeat and "In 10 min" ring like an alarm for up to 1 minute and vibrate - on Android even in silent mode (at the phone's alarm volume; needs the "Alarms & reminders" permission). "Taken", "Stop sound" or opening the app stops it. A reminder that comes late uses the ordinary loud notification. Not when Do Not Disturb blocks alarms; on iPhone not in silent mode. When off, reminders use the normal notification sound. | |
 | `reminders.repeatHint` | Энэ тохиргооноос үл хамааран: энэ утсанд тэмдэглэгдээгүй тунг 15 минутын дараа нэг удаа дахин сануулна (сануулга яг цагтаа ирэх зөвшөөрөлгүй Android утсанд дараалал баталгаагүй тул дахин сануулахгүй). | Whatever this setting: a dose not marked on this phone is reminded once more 15 minutes later (not on Android phones without exact alarms, where the order is not sure). | |
 | `reminders.open` | Сануулга | Reminders | |
 | `reminders.openHint` | Түгжээтэй дэлгэц, цагийн бүс | Lock screen, time zone | |

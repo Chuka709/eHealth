@@ -146,7 +146,12 @@ Crash: апп-д crash SDK байхгүй; серверийн Sentry (DSN тох
   (шалтгаантай, 2027.02.01-нд дахин хянана).
 - Build-ийн дараа AAB-ийн эцсийн зөвшөөрлүүд (Gradle-ийн merge-ийн дараа — introspect харахгүй):
   `aapt2 dump permissions <apk>` (`bundletool build-apks --mode=universal`-аас) — `USE_EXACT_ALARM`,
-  `SYSTEM_ALERT_WINDOW`, `RECORD_AUDIO` байхгүй.
+  `SYSTEM_ALERT_WINDOW`, `RECORD_AUDIO` байхгүй. Q79-ийн сэрүүлэг (`mobile/modules/dose-alarm`)
+  `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_MEDIA_PLAYBACK`, `RECEIVE_BOOT_COMPLETED` нэмдэг —
+  **release-ийн өмнө:** Play Console-ийн foreground service declaration (төрөл, видео); Android 14+
+  дээр `mediaPlayback`-ийн оронд сэрүүлгийн апп-д зориулсан төрөл (`systemExempted` — exact alarm
+  эзэмшигч) тохирох эсэхийг Android 14+ утсан дээр шалгаж шийднэ (security review M3, нээлттэй);
+  Data safety-д тайлбар.
 - 09 «Release бүрийн шалгалт» (B6 утасны матриц, medical-reviewer); `just restore-drill` энэ
   сард; internal → closed testing дээр ≥ 7 хоног асуудалгүй.
 

@@ -12,17 +12,20 @@ LabTrack MN: бодит утасны (B6) шалгалтыг үргэлжлүү�
 - docs/09_CLINICAL_SAFETY.md — зөвхөн H6, H40 мөр
 
 ## Хийх
+0. **Эхлээд v7 Q79 сэрүүлгийн богино шалгалт** (DEVICE_TEST 13): утас чимээгүйд,
+   `test_reminder.py 3` → цагтаа дуугарах, heads-up-д «Дууг унтраах» + тайлбар, «Уусан»/апп
+   нээхэд зогсох, «10 мин дараа» дахин сэрүүлгээр дуугарах. Дараа нь утсыг энгийн горимд буцаа.
 1. Урсгалууд POCO X3 NFC (MIUI 14) дээр: F2 скан (камер, галерейд хадгалахгүй), F4 Viber/
    Messenger/Files-аас share, F5 офлайн нэмэх (файл/бичлэг), F6 яаралтай карт (түгжээтэй
    дэлгэц, wallpaper, PDF share), F7 гарахад cache/дараалал цэвэрлэгдэх
    (`adb shell run-as mn.munkhly.labtrack.development ls cache files`).
-2. Үлдсэн сануулга: R6 батарей хэмнэлт асаалттай, R11 (боломжтой бол). Чимээгүй горим
-   шалгагдсан (дуугүй — Q79 хэрэглэгчийн шийдвэр хүлээж байна). F2-ийн суурь: галерейн
+2. Үлдсэн сануулга: R6 батарей хэмнэлт асаалттай, R11 (боломжтой бол). Чимээгүй горим —
+   Q79 сэрүүлгээр шийдсэн (Android; iOS — Critical Alerts, компанийн шийдвэр). F2-ийн суурь: галерейн
    сүүлийн зураг _id=1000015228 (`content query --uri content://media/external/images/media`).
 3. Олдсон алдааг засах (тест + хянагч), DEVICE_TEST.md-д бүртгэх, commit + push.
 4. Боломжтой бол: Q24 шалгалтын үеийн (0–8 с) хүлээлтийн төлөв — ui-reviewer.
 
-## Одоогийн төлөв (2026.11.25, салбар phase-2, сүүлийн commit 3a8d086)
+## Одоогийн төлөв (2026.11.25, салбар phase-2, Q79 сэрүүлэг commit хийгдсэн)
 - R1–R4 (11.19), R5 ◐ (MIUI deep Doze adb-ээр орохгүй), R7, R8, R9, R10, R12 ✅ (11.25).
 - 11.25-ны засварууд: e785e72 expo-notifications foreground broadcast patch
   (`patches/expo-notifications.patch` + `mobile/package.json` buildFromSource — үгүй бол
@@ -30,7 +33,10 @@ LabTrack MN: бодит утасны (B6) шалгалтыг үргэлжлүү�
   Q24 шалгалт 8 с (дараа нь асууна), refresh 20 с timeout; тэмдэглэсэн тунгийн сануулга
   tray-ээс арилна.
 - Q11 шийдсэн: Supabase + Render + KMS; Valkey → Postgres дараалал (тусдаа алхам, эхлээгүй).
-- Тест: mobile Jest 351, backend 1384.
+- Q79: `mobile/modules/dose-alarm` (local Expo module, `setAlarmClock` + mediaPlayback FGS,
+  USAGE_ALARM, 60 с, `FLAG_RECEIVER_FOREGROUND`); v7 APK утсанд суусан (`dist/labtrack-dev-arm64.apk`).
+  Release-ийн өмнө: Play FGS declaration, Android 14+ `systemExempted` (STORE_RELEASE §5).
+- Тест: mobile Jest 359, backend 1384.
 
 ## Бодит утасны тохиргоо (POCO X3 NFC, Android 12, MIUI 14)
 - adb serial `8f2c0cf9`; dev APK `dist/labtrack-dev-arm64.apk` (patch-тай, 11.25) суусан.
