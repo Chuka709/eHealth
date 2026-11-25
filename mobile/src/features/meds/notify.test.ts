@@ -6,8 +6,10 @@ import {
   cancelSnoozeOf,
   dismissDoseCopies,
   exactAlarmState,
+  registerReminderKinds,
   rememberExactAlarm,
   rememberSound,
+  resetRegisteredKinds,
   setAlarmSound,
   snooze,
   soundChanged,
@@ -325,4 +327,31 @@ test("'Уусан' takes every copy of that dose time out of the tray (medical r
   expect(dismissed).toEqual(
     ["again.dose.1.a", "dose.1.a", "snooze.again.dose.1.a", "snooze.dose.1.a"].sort(),
   );
+});
+
+const texts = {
+  channel: "Эмийн сануулга",
+  channelAlarm: "Эмийн сануулга (чанга)",
+  taken: "Уусан",
+  takenAll: "Бүгдийг уусан",
+  snooze: "10 мин дараа",
+  placeholder: "Эм уух цаг боллоо",
+};
+
+test("H6: channels and categories are registered once per app process, again for a new language", async () => {
+  resetRegisteredKinds();
+  await registerReminderKinds(texts);
+  await registerReminderKinds(texts);
+  // each is a slow OS round trip on some phones (MIUI): a sync never waits on them again
+  expect(Notifications.setNotificationCategoryAsync).toHaveBeenCalledTimes(2);
+  await registerReminderKinds({ ...texts, taken: "Taken" });
+  expect(Notifications.setNotificationCategoryAsync).toHaveBeenCalledTimes(4);
+});
+
+test("H6: a failed registration is tried again by the next sync", async () => {
+  resetRegisteredKinds();
+  (Notifications.setNotificationCategoryAsync as jest.Mock).mockRejectedValueOnce(new Error("os"));
+  await expect(registerReminderKinds(texts)).rejects.toThrow("os");
+  await registerReminderKinds(texts);
+  expect(Notifications.setNotificationCategoryAsync).toHaveBeenCalledTimes(3);
 });

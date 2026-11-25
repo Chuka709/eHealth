@@ -107,6 +107,13 @@
         "expo-web-browser",
         "jest-expo"
       ]
+    },
+    "autolinking": {
+      "android": {
+        "buildFromSource": [
+          "expo-notifications"
+        ]
+      }
     }
   }
 }

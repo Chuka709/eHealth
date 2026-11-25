@@ -46,6 +46,7 @@ allowBuilds:
   '@parcel/watcher': false
   '@swc/core': false
 patchedDependencies:
+  expo-notifications: patches/expo-notifications.patch
   expo-share-intent@9.0.0: patches/expo-share-intent@9.0.0.patch
 # Security fixes in transitive packages (8.4 dependency scan): node-forge in @expo/cli.
 overrides:

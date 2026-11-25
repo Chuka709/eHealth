@@ -87,8 +87,27 @@ export async function doseSound(): Promise<{ channel: string; sound: string | tr
   return loud ? { channel: CHANNEL_ALARM, sound: ALARM_SOUND } : { channel: CHANNEL, sound: true };
 }
 
-/** Channel and categories, in the app's language (re-registered on each sync). */
+/** the texts the channels and categories were last registered with in this app process */
+let registeredTexts: string | null = null;
+
+/**
+ * Channel and categories, in the app's language: once per app process and again when the
+ * language changes. Each call is a round trip through the OS (seconds on MIUI, real phone
+ * 2026.11.25), and a sync must not wait on them before setting the next reminder.
+ */
 export async function registerReminderKinds(texts: NotifyTexts): Promise<void> {
+  const key = JSON.stringify(texts);
+  if (registeredTexts === key) return;
+  await registerKinds(texts);
+  registeredTexts = key; // not on a failure: the next sync tries again
+}
+
+/** Tests: a fresh app process. */
+export function resetRegisteredKinds(): void {
+  registeredTexts = null;
+}
+
+async function registerKinds(texts: NotifyTexts): Promise<void> {
   if (Platform.OS === "android") {
     await Notifications.setNotificationChannelAsync(CHANNEL, {
       name: texts.channel,
