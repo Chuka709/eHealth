@@ -2952,6 +2952,12 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+            /** Lab Name */
+            lab_name?: string | null;
+            /** Collected At */
+            collected_at?: string | null;
+            /** Collected Precision */
+            collected_precision?: string | null;
         };
         /**
          * DoseAlertOut

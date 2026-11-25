@@ -47,6 +47,10 @@ class DocumentOut(BaseModel):
     status: str
     error_code: str | None
     created_at: datetime
+    # from its first read report, when there is one the caller may see (UX audit #14)
+    lab_name: str | None = None
+    collected_at: datetime | None = None
+    collected_precision: str | None = None
 
 
 def _out(document: service.Document) -> DocumentOut:

@@ -335,7 +335,7 @@ async function openTab(name: RegExp) {
 }
 
 test("the owner sees who has the profile, who opened it, and invites for a chosen time", async () => {
-  await openTab(/^Профайл,/);
+  await openTab(/^Бүртгэл,/);
   await fireEvent.press(await screen.findByTestId("profile-shares"));
   expect(await screen.findAllByText("Д. Ганбат")).not.toHaveLength(0);
   expect(screen.getAllByText("Цуцлах хүртэл").length).toBeGreaterThan(1); // the card and the choice
@@ -357,7 +357,7 @@ test("the owner sees who has the profile, who opened it, and invites for a chose
 });
 
 test("the owner revokes an access after confirming", async () => {
-  await openTab(/^Профайл,/);
+  await openTab(/^Бүртгэл,/);
   await fireEvent.press(await screen.findByTestId("profile-shares"));
   await fireEvent.press(
     await screen.findByRole("button", { name: "Д. Ганбат-ийн эрхийг цуцлах уу?" }),
@@ -383,7 +383,7 @@ test("an invited doctor sees who asks, as what and for how long, and accepts kno
 
 test("a doctor can step back from a shared profile, and cannot manage its sharing", async () => {
   setActiveProfile(PATIENT.id);
-  await openTab(/^Профайл,/);
+  await openTab(/^Бүртгэл,/);
   await screen.findByTestId("profile-leave-share");
   expect(screen.queryByTestId("profile-shares")).toBeNull();
   await fireEvent.press(screen.getByTestId("profile-leave-share"));
@@ -403,7 +403,7 @@ test("a doctor's or a viewer's invitation reads as such in the notices", () => {
 });
 
 test("the owner makes a link with a QR code, sees the PIN once, and revokes a link", async () => {
-  await openTab(/^Профайл,/);
+  await openTab(/^Бүртгэл,/);
   await fireEvent.press(await screen.findByTestId("profile-share-links"));
   expect(await screen.findByText("Идэвхтэй")).toBeOnTheScreen();
   expect(screen.getByText("1/3 удаа нээсэн")).toBeOnTheScreen();
@@ -444,7 +444,7 @@ test("the owner makes a link with a QR code, sees the PIN once, and revokes a li
 });
 
 test("the owner reads the doctor's targets and notes, writes nothing, and sees no level numbers yet", async () => {
-  await openTab(/^Профайл,/);
+  await openTab(/^Бүртгэл,/);
   await fireEvent.press(await screen.findByTestId("profile-doctor"));
   expect(await screen.findByText("5 – 8 ng/mL")).toBeOnTheScreen();
   expect(screen.getByText("Тогтоосон: Д. Ганбат")).toBeOnTheScreen();
@@ -460,7 +460,7 @@ test("the owner reads the doctor's targets and notes, writes nothing, and sees n
 
 test("a doctor sets a target, ends one, and adds and removes a note", async () => {
   setActiveProfile(PATIENT.id);
-  await openTab(/^Профайл,/);
+  await openTab(/^Бүртгэл,/);
   await fireEvent.press(await screen.findByTestId("profile-doctor"));
   expect(await screen.findByText("Стандарт хазайлт")).toBeOnTheScreen();
   expect(screen.getByText("18.8%")).toBeOnTheScreen();
@@ -506,7 +506,7 @@ test("a doctor sets a target, ends one, and adds and removes a note", async () =
 
 test("the owner makes the summary PDF and the FHIR export, each straight to the share sheet", async () => {
   setActiveProfile(OWN.id);
-  await openTab(/^Профайл,/);
+  await openTab(/^Бүртгэл,/);
   await fireEvent.press(await screen.findByTestId("profile-summary"));
   await fireEvent.press(await screen.findByRole("radio", { name: "Сүүлийн 12 сар" }));
   await fireEvent.press(screen.getByRole("radio", { name: "English" }));
@@ -528,7 +528,7 @@ test("the owner makes the summary PDF and the FHIR export, each straight to the 
 
 test("a doctor gets the summary PDF but not the owner's export", async () => {
   setActiveProfile(PATIENT.id);
-  await openTab(/^Профайл,/);
+  await openTab(/^Бүртгэл,/);
   await fireEvent.press(await screen.findByTestId("profile-summary"));
   expect(await screen.findByRole("button", { name: "PDF үүсгэх" })).toBeOnTheScreen();
   expect(screen.queryByRole("button", { name: "JSON файл авах" })).toBeNull();
@@ -536,7 +536,7 @@ test("a doctor gets the summary PDF but not the owner's export", async () => {
 
 test("the owner marks the steroid card as their doctor told them (Q36)", async () => {
   setActiveProfile(OWN.id);
-  await openTab(/^Профайл,/);
+  await openTab(/^Бүртгэл,/);
   await fireEvent.press(await screen.findByTestId("profile-doctor"));
   expect(await screen.findByText("Тэмдэглээгүй.")).toBeOnTheScreen();
   expect(screen.queryByText(/^NHS England-ийн 2020 оны/)).toBeNull();
@@ -547,7 +547,7 @@ test("the owner marks the steroid card as their doctor told them (Q36)", async (
 
 test("the steroid card: the doctor sees the NHS threshold and clears a mark, the owner marks as told (Q36)", async () => {
   setActiveProfile(PATIENT.id);
-  await openTab(/^Профайл,/);
+  await openTab(/^Бүртгэл,/);
   await fireEvent.press(await screen.findByTestId("profile-doctor"));
   expect(await screen.findByText(/^NHS England-ийн 2020 оны/)).toBeOnTheScreen();
   expect(await screen.findByText("Эмч Д. Ганбат тэмдэглэсэн (2026.11.17).")).toBeOnTheScreen();

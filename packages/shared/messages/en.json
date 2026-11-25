@@ -140,7 +140,7 @@
     "settings": {
       "title": "Settings",
       "open": "Settings",
-      "profile": "Profile",
+      "profile": "My details",
       "profileHint": "Name, language",
       "password": "Change password",
       "devices": "Signed-in devices",
@@ -162,7 +162,7 @@
       }
     },
     "profile": {
-      "title": "Profile",
+      "title": "My details",
       "username": "Username",
       "displayName": "Display name",
       "displayNameRequired": "Enter your name.",
@@ -427,7 +427,7 @@
       "home": "Home",
       "meds": "Medicines",
       "settings": "Settings",
-      "profile": "Profile",
+      "profile": "Records",
       "trends": "Trends"
     },
     "meds": {
@@ -687,7 +687,7 @@
       "zoneWait": "{names}: taken by local time. Today's doses show here once the time zone is loaded."
     },
     "health": {
-      "title": "Profile",
+      "title": "Records",
       "transplants": "Transplants",
       "appointments": "Appointments",
       "vitals": "Vitals",
@@ -870,6 +870,7 @@
       "groups": {
         "care": "Transplant and care",
         "health": "Health",
+        "share": "Share with your doctor",
         "people": "People"
       },
       "nka": {
@@ -1240,6 +1241,8 @@
       "refused": "The file was not accepted.",
       "dismiss": "OK",
       "empty": "No results added yet.",
+      "uploadedOn": "Added: {date}",
+      "sampleOn": "Sample taken: {date}",
       "kindPdf": "PDF",
       "kindPicture": "Picture",
       "pages": "Pages: {n}",

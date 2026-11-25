@@ -56,6 +56,7 @@ export function MultiChoices<T extends string | number>({
   labelOf,
   onToggle,
   error,
+  compact = false,
 }: {
   label: string;
   options: readonly T[];
@@ -63,8 +64,30 @@ export function MultiChoices<T extends string | number>({
   labelOf: (option: T) => string;
   onToggle: (option: T) => void;
   error?: string;
+  /** small chips that wrap onto as few lines as they need - filters above a list (UX audit
+   * #11); wrapped, not scrolled sideways: every choice stays in sight (ui review M1) */
+  compact?: boolean;
 }) {
   const p = usePalette();
+  if (compact) {
+    return (
+      <View style={styles.group}>
+        <Text style={[styles.label, { color: p.text }]}>{label}</Text>
+        <View style={styles.chips}>
+          {options.map((option) => (
+            <Button
+              key={String(option)}
+              compact
+              label={labelOf(option)}
+              variant="secondary"
+              checked={values.includes(option)}
+              onPress={() => onToggle(option)}
+            />
+          ))}
+        </View>
+      </View>
+    );
+  }
   return (
     <View style={styles.group}>
       <Text style={[styles.label, { color: p.text }]}>{label}</Text>
@@ -145,6 +168,7 @@ export function SelectList<T extends string | number>({
 }
 
 const styles = StyleSheet.create({
+  chips: { flexDirection: "row", flexWrap: "wrap", gap: space.sm },
   group: { gap: space.sm },
   choices: { gap: space.sm },
   grid: { flexDirection: "row", flexWrap: "wrap", gap: space.sm },

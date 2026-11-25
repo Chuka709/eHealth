@@ -73,6 +73,9 @@ const document = (status: string, error_code: string | null = null) => ({
   status,
   error_code,
   created_at: "2026-11-12T03:00:00Z",
+  lab_name: null as string | null,
+  collected_at: null as string | null,
+  collected_precision: null as string | null,
 });
 const result = (position: number, extra: Record<string, unknown>) => ({
   id: `33333333-3333-4333-8333-33333333333${position}`,
@@ -449,4 +452,20 @@ test("editing a row sends only what changed; the server computes the rest", asyn
   expect(await screen.findByTestId("document-reports")).toBeOnTheScreen();
   const patch = sent.find((x) => x.method === "PATCH");
   expect(patch?.body).toEqual({ raw_value: "1,3" });
+});
+
+test("UX audit #14: a confirmed document is listed by its lab and the sample's day", async () => {
+  documents = [
+    {
+      ...document("confirmed"),
+      lab_name: "УНТЭ",
+      collected_at: "2025-05-03T00:00:00Z",
+      collected_precision: "day",
+    },
+  ];
+  await openResults();
+  const row = await screen.findByTestId(`document-${DOC}`);
+  expect(row).toHaveTextContent(/УНТЭ/);
+  expect(row).toHaveTextContent(/Дээж авсан: 2025\.05\.03/);
+  expect(row).toHaveTextContent(/PDF · 2 хуудас/); // the file's kind stays, below
 });

@@ -128,7 +128,7 @@ afterEach(() => queryClient.clear());
 
 test("the record screens follow the chosen profile and say whose it is", async () => {
   await renderRouter("./src/app", { initialUrl: "/" });
-  await fireEvent.press(await screen.findByRole("button", { name: /^Профайл,/ }));
+  await fireEvent.press(await screen.findByRole("button", { name: /^Бүртгэл,/ }));
   expect(await screen.findByText("Пенициллин")).toBeOnTheScreen();
   await fireEvent.press(await screen.findByTestId("profile-switcher"));
   await fireEvent.press(await screen.findByRole("radio", { name: /Дулмаа · асран хамгаалагч/ }));
@@ -151,7 +151,7 @@ test("a profile no longer shared falls back to the user's own", () => {
 
 test("the emergency card and its saved copy stay the user's own on someone else's profile", async () => {
   await renderRouter("./src/app", { initialUrl: "/" });
-  await fireEvent.press(await screen.findByRole("button", { name: /^Профайл,/ }));
+  await fireEvent.press(await screen.findByRole("button", { name: /^Бүртгэл,/ }));
   await fireEvent.press(await screen.findByTestId("profile-switcher"));
   await fireEvent.press(await screen.findByRole("radio", { name: /Дулмаа · асран хамгаалагч/ }));
   expect(await screen.findByText("Сульфаниламид")).toBeOnTheScreen();

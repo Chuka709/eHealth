@@ -205,7 +205,7 @@ async function openTab(name: RegExp) {
 }
 
 test("the owner invites by username after checking it, and sees the caregivers", async () => {
-  await openTab(/^Профайл,/);
+  await openTab(/^Бүртгэл,/);
   await fireEvent.press(await screen.findByTestId("profile-caregivers"));
   expect(await screen.findByText("Сараа")).toBeOnTheScreen();
   expect(
@@ -222,7 +222,7 @@ test("the owner invites by username after checking it, and sees the caregivers",
 
 test("without the sharing consent the owner is sent to give it", async () => {
   inviteStatus = 409;
-  await openTab(/^Профайл,/);
+  await openTab(/^Бүртгэл,/);
   await fireEvent.press(await screen.findByTestId("profile-caregivers"));
   await fireEvent.changeText(await screen.findByTestId("caregiver-username"), "sara.b");
   await fireEvent.press(screen.getByRole("button", { name: "Урих" }));
@@ -253,7 +253,7 @@ test("an invitation is answered: yes after saying what it means, or no", async (
 
 test("a caregiver's alerts: 30 minutes offered, what is watched, what no alert means", async () => {
   setActiveProfile(MOTHER.id);
-  await openTab(/^Профайл,/);
+  await openTab(/^Бүртгэл,/);
   await fireEvent.press(await screen.findByTestId("profile-caregiver-alerts"));
   expect(await screen.findByRole("radio", { name: "30 минут", selected: true })).toBeOnTheScreen();
   expect(screen.getByText("Хянагдаж буй эм: 2")).toBeOnTheScreen();
@@ -303,7 +303,7 @@ test("only caregivers who get alerts count for the reminders-off note", () => {
 
 test("leaving as caregiver drops what the phone kept of that person", async () => {
   setActiveProfile(MOTHER.id);
-  await openTab(/^Профайл,/);
+  await openTab(/^Бүртгэл,/);
   queryClient.setQueryData(["medications", MOTHER.id], [{ id: "m1", regimens: [] }]);
   queryClient.setQueryData(["medications", OWN.id], [{ id: "m0", regimens: [] }]);
   await fireEvent.press(await screen.findByTestId("profile-caregiver-alerts"));
@@ -342,7 +342,7 @@ test("a profile gone from the list leaves no saved emergency card or lock-screen
 test("a caregiver is told when the owner's phone may show reminders late (Q48)", async () => {
   alerts = { ...alerts, late_reminders: true };
   setActiveProfile(MOTHER.id);
-  await openTab(/^Профайл,/);
+  await openTab(/^Бүртгэл,/);
   await fireEvent.press(await screen.findByTestId("profile-caregiver-alerts"));
   expect(await screen.findByText(/хамгийн багадаа 90 минутын дараа/)).toBeOnTheScreen();
 });

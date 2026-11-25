@@ -39,6 +39,11 @@ class Document:
     status: str
     error_code: str | None
     created_at: datetime
+    # what was read from it (its first report, under the reader's RLS): named in the list by the
+    # lab and the sample's date instead of "PDF · 2 хуудас" (UX audit #14); None until read
+    lab_name: str | None = None
+    collected_at: datetime | None = None
+    collected_precision: str | None = None
 
 
 @dataclass(frozen=True)
@@ -47,14 +52,22 @@ class Uploaded:
     created: bool  # False: a retry or the same file again - the stored document
 
 
+# what was read from it - its first confirmed report, under the reader's RLS: an AI draft or
+# a rejected reading never names a document (rule 4; security review M) - no f-strings in SQL
 _SELECT = (
-    "select id, mime_type, size_bytes, page_count, has_text_layer, status::text as status,"
-    " error_code, created_at from documents where patient_id = :p"
+    "select d.id, d.mime_type, d.size_bytes, d.page_count, d.has_text_layer,"
+    " d.status::text as status, d.error_code, d.created_at,"
+    " fr.lab_name, fr.collected_at, fr.collected_precision"
+    " from documents d left join lateral (select r.lab_name, r.collected_at,"
+    " r.collected_precision from lab_reports r where r.document_id = d.id"
+    " and r.status = 'confirmed'"
+    " and r.patient_id = d.patient_id order by r.collected_at nulls last, r.id limit 1) fr"
+    " on true where d.patient_id = :p"
 )
-_BY_ID = bound_text(_SELECT + " and id = :i")
-_BY_CLIENT = bound_text(_SELECT + " and client_id = :c")
-_BY_HASH = bound_text(_SELECT + " and sha256 = :h")
-_LIST = bound_text(_SELECT + " order by created_at desc limit :n")
+_BY_ID = bound_text(_SELECT + " and d.id = :i")
+_BY_CLIENT = bound_text(_SELECT + " and d.client_id = :c")
+_BY_HASH = bound_text(_SELECT + " and d.sha256 = :h")
+_LIST = bound_text(_SELECT + " order by d.created_at desc limit :n")
 
 
 def _aad(document_id: UUID) -> bytes:

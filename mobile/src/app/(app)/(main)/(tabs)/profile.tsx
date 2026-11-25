@@ -144,6 +144,9 @@ export default function ProfileScreen() {
           onPress={go("/doctor")}
           testID="profile-doctor"
         />
+      </NavGroup>
+      {/* sharing and what is shown to a doctor, apart from the people (UX audit #8) */}
+      <NavGroup title={t("groups.share")}>
         <NavRow
           icon="file-pdf-box"
           label={tx("row")}
@@ -151,6 +154,24 @@ export default function ProfileScreen() {
           onPress={go("/summary")}
           testID="profile-summary"
         />
+        {own?.access_level === "owner" && (
+          <NavRow
+            icon="account-eye-outline"
+            label={ts("rowOwner")}
+            hint={ts("rowOwnerHint")}
+            onPress={go("/shares")}
+            testID="profile-shares"
+          />
+        )}
+        {own?.access_level === "owner" && (
+          <NavRow
+            icon="qrcode"
+            label={tl("row")}
+            hint={tl("rowHint")}
+            onPress={go("/shares/links")}
+            testID="profile-share-links"
+          />
+        )}
       </NavGroup>
       <NavGroup title={t("groups.people")}>
         <NavRow
@@ -169,24 +190,6 @@ export default function ProfileScreen() {
             hint={tg("rowOwnerHint")}
             onPress={go("/caregivers")}
             testID="profile-caregivers"
-          />
-        )}
-        {own?.access_level === "owner" && (
-          <NavRow
-            icon="stethoscope"
-            label={ts("rowOwner")}
-            hint={ts("rowOwnerHint")}
-            onPress={go("/shares")}
-            testID="profile-shares"
-          />
-        )}
-        {own?.access_level === "owner" && (
-          <NavRow
-            icon="qrcode"
-            label={tl("row")}
-            hint={tl("rowHint")}
-            onPress={go("/shares/links")}
-            testID="profile-share-links"
           />
         )}
         {(own?.access_level === "doctor" || own?.access_level === "viewer") && (

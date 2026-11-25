@@ -1,6 +1,6 @@
 # Эмнэлзүйн текстийн хяналт (Q12)
 
-_Нийт 1062 текст._
+_Нийт 1063 текст._
 
 **Зорилго:** шилжүүлэн суулгалтын эмч + лабораторийн эмч апп-ын эмнэлзүйн текстийг нэг дор хянана (эмчийн шийдвэр 2026.11.18, ★). Одоогоор зөвхөн такролимусын CV%-ийн карт хянуулах хүртэл өвчтөнд нуугдсан; бусад текст апп-д харагдаж байгаа тул бетаг нээхээс өмнө хянагдсан байх ёстой (BETA B5).
 
@@ -780,11 +780,11 @@ _Нийт 1062 текст._
 
 ## Амин үзүүлэлт, эрүүл мэндийн бүртгэл
 
-Хянагч: эмч. Түлхүүр: `app.health` (167).
+Хянагч: эмч. Түлхүүр: `app.health` (168).
 
 | Түлхүүр | Монгол | English | Санал |
 |---|---|---|---|
-| `title` | Профайл | Profile | |
+| `title` | Бүртгэл | Records | |
 | `transplants` | Шилжүүлэн суулгалт | Transplants | |
 | `appointments` | Товлол | Appointments | |
 | `vitals` | Амин үзүүлэлт | Vitals | |
@@ -938,6 +938,7 @@ _Нийт 1062 текст._
 | `deleteTitle` | «{name}»-г устгах уу? | Delete “{name}”? | |
 | `groups.care` | Шилжүүлэн суулгалт ба эмчилгээ | Transplant and care | |
 | `groups.health` | Эрүүл мэнд | Health | |
+| `groups.share` | Хуваалцах, эмчид үзүүлэх | Share with your doctor | |
 | `groups.people` | Хүмүүс | People | |
 | `nka.hint` | Харшил бүртгээгүй нь харшилгүй гэсэн үг биш. Эм, хоол болон бусад зүйлд харшил байгааг мэдэхгүй бол баталж болно. | No allergy recorded does not mean no allergies. If you know of no allergy to medicines, food or anything else, you can confirm it. | |
 | `nka.confirmed` | Мэдэгдэж буй харшилгүй гэж баталсан ({date}). Харшил нэмбэл энэ баталгаа автоматаар арилна. | No known allergies, confirmed {date}. Adding an allergy removes this confirmation. | |

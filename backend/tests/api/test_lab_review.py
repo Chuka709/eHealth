@@ -472,3 +472,25 @@ async def test_a_sample_time_the_person_sets_is_marked_theirs_for_good(
         )
     r = await client.get(f"{base}/reports/{report}", headers=h)
     assert r.json()["collected_by_user"] is True  # never cleared, not even by the owner role
+
+
+async def test_the_document_list_names_a_read_document_by_its_lab_and_sample_day(
+    client: AsyncClient, owner_engine: AsyncEngine
+) -> None:
+    """UX audit #14: "Лаб · 2025.05.03" instead of "PDF · 2 хуудас" once something was read."""
+    h, base, report_id = await _draft(client, owner_engine)
+    # a draft (read, not confirmed) never names the document (rule 4)
+    [doc] = (await client.get(f"{base}/documents", headers=h)).json()
+    assert doc["lab_name"] is None
+    async with owner_engine.connect() as conn, conn.begin():
+        await conn.execute(
+            bound_text(
+                "update lab_reports set status = 'confirmed', confirmed_at = now() where id = :r"
+            ),
+            {"r": UUID(report_id)},
+        )
+    r = await client.get(f"{base}/documents", headers=h)
+    assert r.status_code == 200, r.text
+    [doc] = r.json()
+    assert (doc["lab_name"], doc["collected_precision"]) == ("Лаб", "day")
+    assert doc["collected_at"].startswith("2025-05-03")

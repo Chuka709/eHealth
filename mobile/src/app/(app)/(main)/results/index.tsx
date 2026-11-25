@@ -21,7 +21,7 @@ import {
   useDocuments,
   useUploadQueue,
 } from "@/features/upload/use-uploads";
-import { formatDateTime } from "@/lib/dates";
+import { formatDate, formatDateTime } from "@/lib/dates";
 import { queryClient } from "@/lib/query-client";
 import { useErrorText } from "@/lib/use-error-text";
 import { usePalette } from "@/theme/use-palette";
@@ -175,12 +175,29 @@ function DocumentRow({ document, first }: { document: DocumentItem; first: boole
   const opens = document.status === "needs_review" || document.status === "confirmed";
   const status = t(`status.${document.status}` as "status.uploaded");
   const why = reason ? t(`failReason.${reason}`) : null;
+  // once read: named by the lab and the sample's date, the file's kind below (UX audit #14)
+  const file = [kind, pages].filter(Boolean).join(" · ");
+  const title = document.lab_name || file;
+  const sample = document.collected_at
+    ? t("sampleOn", {
+        date:
+          document.collected_precision === "day"
+            ? formatDate(document.collected_at)
+            : formatDateTime(document.collected_at),
+      })
+    : null;
   return (
     <Pressable
       disabled={!opens}
       onPress={() => router.push({ pathname: "/results/[id]", params: { id: document.id } })}
       accessibilityRole={opens ? "button" : undefined}
-      accessibilityLabel={[kind, pages, formatDateTime(document.created_at), status, why]
+      accessibilityLabel={[
+        title,
+        sample ?? t("uploadedOn", { date: formatDateTime(document.created_at) }),
+        document.lab_name ? file : null,
+        status,
+        why,
+      ]
         .filter(Boolean)
         .join(". ")}
       accessibilityHint={opens ? t("review.open") : undefined}
@@ -198,12 +215,11 @@ function DocumentRow({ document, first }: { document: DocumentItem; first: boole
         color={bad ? p.danger : p.primary}
       />
       <View style={styles.text}>
-        <Text style={[styles.name, { color: p.text }]}>
-          {[kind, pages].filter(Boolean).join(" · ")}
-        </Text>
+        <Text style={[styles.name, { color: p.text }]}>{title}</Text>
         <Text style={[styles.meta, { color: p.textMuted }]}>
-          {formatDateTime(document.created_at)}
+          {sample ?? t("uploadedOn", { date: formatDateTime(document.created_at) })}
         </Text>
+        {document.lab_name && <Text style={[styles.meta, { color: p.textMuted }]}>{file}</Text>}
         <Text style={[styles.meta, { color: bad ? p.danger : p.text }]}>{status}</Text>
         {why && <Text style={[styles.meta, { color: p.textMuted }]}>{why}</Text>}
         {/* not read automatically (a scan or photo - Q50): the person types the values in */}

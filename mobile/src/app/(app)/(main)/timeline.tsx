@@ -86,6 +86,7 @@ export default function TimelineScreen() {
   const header = (
     <View style={styles.header}>
       <MultiChoices
+        compact
         label={t("show")}
         options={GROUPS}
         values={groups}

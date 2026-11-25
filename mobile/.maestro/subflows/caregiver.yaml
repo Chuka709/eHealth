@@ -31,9 +31,9 @@ appId: ${MAESTRO_APP_ID}
 - back
 
 # --- the owner: invite by username ------------------------------------------------------------
-# via Home: the Settings screen has a "Профайл" row of its own
+# the records tab (named «Бүртгэл» since the UX audit)
 - tapOn: "Нүүр"
-- tapOn: "Профайл"
+- tapOn: "Бүртгэл"
 - scrollUntilVisible:
     element:
       id: "profile-caregivers"
@@ -115,9 +115,9 @@ appId: ${MAESTRO_APP_ID}
       - back
 
 # --- the caregiver on the owner's profile ---------------------------------------------------------
-# via Home: the Settings screen has a "Профайл" row of its own
+# the records tab (named «Бүртгэл» since the UX audit)
 - tapOn: "Нүүр"
-- tapOn: "Профайл"
+- tapOn: "Бүртгэл"
 - extendedWaitUntil:
     visible:
       id: "profile-switcher"
