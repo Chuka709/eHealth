@@ -8,56 +8,47 @@ LabTrack MN: бодит утасны (B6) шалгалтыг үргэлжлүү�
 Эхлээд 4–6 мөр төлөвлөгөө өгч батлуул.
 
 ## Эхлээд унш (зөвхөн эдгээрийг)
-- docs/DEVICE_TEST.md — бүхэлд нь (жагсаалт, 2026.11.19-ний үр дүн, олдвор)
-- docs/09_CLINICAL_SAFETY.md — зөвхөн H6, H18, H40 мөр
-- docs/ANDROID_EMULATOR.md «Б. Локал build» хэсэг
+- docs/DEVICE_TEST.md — «Урсгалууд» хүснэгт, 2026.11.25-ны «Олдвор» (1–11)
+- docs/09_CLINICAL_SAFETY.md — зөвхөн H6, H40 мөр
 
 ## Хийх
-1. Үлдсэн сануулгын тохиолдлууд POCO X3 NFC (MIUI 14) дээр: R5 Doze
-   (`dumpsys deviceidle force-idle`), R6 батарей хэмнэлт, R7 exact alarm зөвшөөрөлгүй
-   (давталт гарахгүй, «хоцорч болно» анхааруулга), R8 нислэгийн горим (офлайн «Уусан» дараалал),
-   R9 цагийн бүс (home/local), R10 мэдэгдлийн «Уусан»/«10 мин дараа» (апп хаалттай үед — давталт
-   ба tray-ийн бүх хуулбар арилах), R12 дахин товлолтын дараа давхар alarm байхгүй, чимээгүй
-   горим (0) дахь чанга суваг.
-2. Урсгалууд F2 скан (камер), F4 Viber/Messenger-ээс share, F5 офлайн, F6 яаралтай карт,
-   F7 гарахад cache цэвэрлэгдэх.
+1. Урсгалууд POCO X3 NFC (MIUI 14) дээр: F2 скан (камер, галерейд хадгалахгүй), F4 Viber/
+   Messenger/Files-аас share, F5 офлайн нэмэх (файл/бичлэг), F6 яаралтай карт (түгжээтэй
+   дэлгэц, wallpaper, PDF share), F7 гарахад cache/дараалал цэвэрлэгдэх
+   (`adb shell run-as mn.munkhly.labtrack.development ls cache files`).
+2. Үлдсэн сануулга: чимээгүй горим (0) дахь чанга суваг (ringer-ийг `dumpsys audio`-оор
+   баталгаажуул), R6 батарей хэмнэлт асаалттай, R11 (боломжтой бол).
 3. Олдсон алдааг засах (тест + хянагч), DEVICE_TEST.md-д бүртгэх, commit + push.
-4. Боломжтой бол: cold start-ийн эхний синк бүгдийг дахин товлодог тул шинэ эм ~2 мин хоцорч
-   орно — нэмэгдсэн/өөрчлөгдсөн өгөгдлийг renew-ээс түрүүлж товлох (H6 үлдэгдэл).
+4. Боломжтой бол: Q24 шалгалтын үеийн (0–8 с) хүлээлтийн төлөв — ui-reviewer.
 
-## Одоогийн төлөв (2026.11.19, салбар phase-2, сүүлийн commit 9385382)
-- Phase 0–8 код талаас дууссан; бодит утсан дээр R1–R4 ✅, 3 бодит алдаа засагдсан
-  (синкийн хурд, өөр газраас нэмсэн эм, MIUI autostart), чанга суваг + 15 минутын давталт
-  (хэрэглэгчийн шийдвэр) — энгийн горимд дуугарсан, MIUI чичиргээний горимд зөвхөн чичирдэг.
-- eGFR/MELD: Q68–Q77 шийдсэн (одоо тооцохгүй; лабын eGFR «eGFR (лабын хариу)», хариун дээрх
-  нэр хандлагын графикт).
-- Тест: backend 1384, mobile Jest 342, web 21, shared 13.
-- Нээлттэй: Q78 (давталтын текст — эмч), Q65, Q66, Q67, Q12, BETA B1–B8, B10 (компани),
-  iPhone огт туршаагүй (iOS 64-ийн хязгаар, дуу).
+## Одоогийн төлөв (2026.11.25, салбар phase-2, сүүлийн commit 0bda4d9)
+- R1–R4 (11.19), R5 ◐ (MIUI deep Doze adb-ээр орохгүй), R7, R8, R9, R10, R12 ✅ (11.25).
+- 11.25-ны засварууд: e785e72 expo-notifications foreground broadcast patch
+  (`patches/expo-notifications.patch` + `mobile/package.json` buildFromSource — үгүй бол
+  patch build-д орохгүй): синк 51 сануулга 0.7 с, хүргэлт <1 с; 4c28c24 офлайн дараалал 30 с,
+  Q24 шалгалт 8 с (дараа нь асууна), refresh 20 с timeout; тэмдэглэсэн тунгийн сануулга
+  tray-ээс арилна.
+- Q11 шийдсэн: Supabase + Render + KMS; Valkey → Postgres дараалал (тусдаа алхам, эхлээгүй).
+- Тест: mobile Jest 351, backend 1384.
 
 ## Бодит утасны тохиргоо (POCO X3 NFC, Android 12, MIUI 14)
-- adb serial `8f2c0cf9`; USB debugging + «USB debugging (Security settings)» асаалттай;
-  Background autostart LabTrack-д асаалттай, Battery saver → No restrictions.
-- `adb install` MIUI-д хаагддаг → APK-г хэрэглэгч өөрөө хуулж суулгана:
-  `F:\My Projects\eHealth\dist\labtrack-dev-arm64.apk` (одоо суусан хувилбар чанга сувагтай).
-- Холболт: `adb reverse tcp:8081 tcp:8081` ба `tcp:8080 tcp:8080` (утас дахин асахад алга
-  болно); Metro — `.claude/launch.json` `metro-emulator` (preview_start); апп нээх:
+- adb serial `8f2c0cf9`; dev APK `dist/labtrack-dev-arm64.apk` (patch-тай, 11.25) суусан.
+- APK дахин суулгавал MIUI Autostart/Battery saver тохиргоо арилна — хэрэглэгчээр асаалгана.
+- `adb reverse tcp:8081 tcp:8081` ба `tcp:8080 tcp:8080`; Metro — `.claude/launch.json`
+  `metro-emulator` (preview_start); апп нээх:
   `adb shell am start -a android.intent.action.VIEW -d "exp+labtrack://expo-development-client/?url=http%3A%2F%2Flocalhost%3A8081"`.
-- Туршилтын сануулга: `cd backend && uv run python scripts/test_reminder.py 4 8` (одооноос
-  +4, +8 мин), дараа нь апп-ыг урд гаргах/дахин эхлүүлэх; шалгах:
-  `adb shell dumpsys alarm | grep labtrack`, `dumpsys notification --noredact`.
-- MIUI-д `uiautomator dump` ажиллахгүй — `exec-out screencap -p` + `input tap x y`.
+- Туршилтын сануулга: `cd backend && uv run python scripts/test_reminder.py 4 8`, дараа нь
+  апп-ыг Home → урд гаргах (сүүлийн татлагаас 30 с өнгөрсөн байх ёстой — RESUME_STALE_MS).
 - Нэвтрэх: demo_kidney, нууц үг `.env.demo`-оос (хэвлэхгүй, `input text`-ээр).
 
 ## Сургамж
-- Утас дэлгэц унтарсан/түгжээтэй үед апп синк хийхгүй — хэмжилтийн өмнө хэрэглэгчээр дэлгэцийг
-  нээлгэнэ (Settings → Display → Sleep 10 мин).
-- Native build-ийн өмнө Docker-оо зогсоо (`docker compose ... stop`), эс бөгөөс clang
-  «out of memory»; `expo prebuild` нь `mobile/android/local.properties`-ийг устгадаг —
-  `dist/mobile-release/android/local.properties`-оос (CMake 4.1.2) хуулж, `app/.cxx` устгана.
-- Metro CI горимд кодын өөрчлөлтийг харахгүй — засварын дараа preview_stop/preview_start.
-- `adb` гацвал `taskkill //F //IM adb.exe`; foreground `sleep` хориотой — `timeout N tail -f /dev/null`.
-- Expo SDK 58 `File.copy/move/write` async — заавал await.
-- Python heredoc доторх `\n` бодит мөр таслалт болдог — код засварыг Write/Edit-ээр.
-- Jest-ийг Metro/эмулятор эсвэл бүтэн `just test-api` ажиллаж байхад бүү ажиллуул.
+- Утасны цаг PC-ээс ~40 с хоцорно — `adb shell date` ашигла.
+- Офлайн турших: нислэгийн горим + `docker stop labtrack-caddy-1` (`adb reverse --remove`
+  нээлттэй keep-alive холболтыг тасалдаггүй); дараа нь `docker start`, airplane off.
+- Цагийн бүс: `settings put global auto_time_zone 0` + `service call alarm 3 s16 Asia/Tokyo`;
+  буцааж `Asia/Ulaanbaatar` + `auto_time_zone 1`.
+- MIUI мэдэгдлийг adb-ээр дэлгэх боломжгүй — мэдэгдлийн товчийг хэрэглэгч дарна.
+- Ар талд түр лог хэрэгтэй бол `console.log` → Metro `preview_logs` (commit-оос өмнө устга).
+- Native build-ийн өмнө Docker зогсоо; Metro CI горимд өөрчлөлт харахгүй — preview_stop/start.
+- Jest-ийг Metro ажиллаж байхад бүү ажиллуул; `adb` гацвал `taskkill //F //IM adb.exe`.
 ```
