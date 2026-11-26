@@ -37,6 +37,7 @@ export default function MedsScreen() {
   // visit to the tab opens as usual (ui review M2)
   const params = useLocalSearchParams<{ at?: string; n?: string }>();
   const [focus, setFocus] = useState<{ at: number; since: number } | null>(null);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: "n" re-runs it for a second tap on the same time
   useEffect(() => {
     if (!params.at || !/^\d+$/.test(params.at)) return;
     groupY.current = null;

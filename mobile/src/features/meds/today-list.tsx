@@ -277,6 +277,7 @@ export function TodayList({
   const ys = useRef(new Map<string, number>());
   const focusKey = focused?.key ?? null;
   const focusTime = focused?.time ?? null;
+  // biome-ignore lint/correctness/useExhaustiveDependencies: focusAt re-runs it when a reminder opens the same time again
   useEffect(() => {
     if (focusKey === null || focusTime === null) return;
     const y = ys.current.get(focusKey);
