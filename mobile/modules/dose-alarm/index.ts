@@ -26,7 +26,7 @@ export type AlarmTexts = {
   title: string;
   /** under it: stopping the sound does not record the dose */
   body: string;
-  /** its button: "Дууг унтраах" */
+  /** its button: "Дуу хаах" */
   stop: string;
   /** the loud fallback when the alarm cannot ring: the reminder title */
   fallback: string;

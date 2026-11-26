@@ -16,6 +16,7 @@ import android.os.Build
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
+import android.os.PowerManager
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
@@ -29,7 +30,7 @@ import android.service.notification.StatusBarNotification
  *
  * One notification per dose time (the user's choice 2026.11.26, after a real phone showed two):
  * it takes the app's own reminder of that time over as its notification - title, medicine list,
- * "Уусан" / "10 мин дараа" and tap kept, "Дууг унтраах" added - and gives it back to the tray
+ * "Уусан" / "10 мин дараа" and tap kept, "Дуу хаах" added - and gives it back to the tray
  * when the sound runs out or is stopped by its button, so an unanswered reminder stays. Private on the lock
  * screen: when the phone hides sensitive content only a name-free version shows (H10). When it
  * cannot start or play, the reminder itself rings loud instead (DoseAlarmFallback).
@@ -93,9 +94,28 @@ class DoseAlarmService : Service() {
       handler.postDelayed(look, DoseReminders.LOOK_EVERY_MS)
     }
     if (!startRinging()) return START_NOT_STICKY
+    wakeScreen()
     handler.removeCallbacks(timeout)
     handler.postDelayed(timeout, RING_MS)
     return START_NOT_STICKY
+  }
+
+  /**
+   * The screen on for a few seconds, like an alarm clock: a notification alone does not wake it
+   * (real phone 2026.11.27: it rang with the screen dark, nothing to read). The lock screen then
+   * shows the reminder (its name-free version where the phone hides sensitive content - H10).
+   */
+  private fun wakeScreen() {
+    val power = getSystemService(PowerManager::class.java) ?: return
+    if (power.isInteractive) return
+    runCatching {
+      @Suppress("DEPRECATION") // still turns the screen on; an activity would open the app
+      power.newWakeLock(
+        PowerManager.SCREEN_BRIGHT_WAKE_LOCK or PowerManager.ACQUIRE_CAUSES_WAKEUP or
+          PowerManager.ON_AFTER_RELEASE,
+        "labtrack:dose-alarm",
+      ).acquire(WAKE_MS)
+    }
   }
 
   /** The reminder came a moment after the alarm: it becomes this notification now. */
@@ -175,7 +195,7 @@ class DoseAlarmService : Service() {
 
   /**
    * giveBack: the reminder returns to the tray - only when the sound ran out or the user
-   * pressed "Дууг унтраах" or swiped it away (unanswered, it must stay - medical review M2:
+   * pressed "Дуу хаах" or swiped it away (unanswered, it must stay - medical review M2:
    * swiping an alarm is how people silence it). Never when the app stops it: the app was
    * opened, a dose recorded or snoozed ("Уусан" must not leave a copy behind - security
    * review M2), or a sign-out.
@@ -342,6 +362,7 @@ class DoseAlarmService : Service() {
     private const val OLD_CHANNEL = "dose-alarm-ringing-v2"
     private const val NOTIFICATION_ID = 7301
     const val RING_MS = 60_000L
+    private const val WAKE_MS = 10_000L
     private val PATTERN = longArrayOf(0, 700, 300, 700, 300, 700, 1200)
 
     /** From the app (opened, answered, signed out): the reminder is not given back. */

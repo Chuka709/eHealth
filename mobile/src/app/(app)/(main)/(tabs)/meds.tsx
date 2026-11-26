@@ -1,13 +1,14 @@
-import { useNavigation, useRouter } from "expo-router";
-import { useLayoutEffect } from "react";
+import { space } from "@labtrack/shared";
+import { useFocusEffect, useLocalSearchParams, useNavigation, useRouter } from "expo-router";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { StyleSheet, View } from "react-native";
 import { useTranslations } from "use-intl";
 import { Button } from "@/components/button";
 import { HeaderAdd } from "@/components/header-add";
 import { NavRow } from "@/components/nav-row";
-import { Screen } from "@/components/screen";
+import { Screen, type ScreenScroll } from "@/components/screen";
 import { EmptyState, LoadingView, RetryView } from "@/components/state-view";
-import { Paragraph, Title } from "@/components/text";
+import { Title } from "@/components/text";
 import { EmergencyButton } from "@/features/emergency/emergency-button";
 import { MonthSummary } from "@/features/meds/month-summary";
 import { ReminderWarnings } from "@/features/meds/reminder-warnings";
@@ -31,6 +32,35 @@ export default function MedsScreen() {
   const own = useActiveProfile(patients.data);
   const { doses, meds, zones, waitingForZone } = useTodayDoses(own?.id, now);
   const navigation = useNavigation();
+  // opened from a reminder: its dose time ("at", an instant; "n" tells two taps apart) is
+  // scrolled to and marked while the user stays here - taken off the route at once, so a later
+  // visit to the tab opens as usual (ui review M2)
+  const params = useLocalSearchParams<{ at?: string; n?: string }>();
+  const [focus, setFocus] = useState<{ at: number; since: number } | null>(null);
+  useEffect(() => {
+    if (!params.at || !/^\d+$/.test(params.at)) return;
+    groupY.current = null;
+    setFocus({ at: Number(params.at), since: Date.now() });
+    router.setParams({ at: undefined, n: undefined });
+  }, [params.at, params.n, router]);
+  useFocusEffect(useCallback(() => () => setFocus(null), []));
+  const scrollRef = useRef<ScreenScroll>(null);
+  const listY = useRef<number | null>(null);
+  const groupY = useRef<number | null>(null);
+  // followed while the screen settles (failed doses, warnings, later times load above it)
+  const scrollToFocus = useCallback(() => {
+    if (focus === null || Date.now() - focus.since > SETTLE_MS) return;
+    if (listY.current === null || groupY.current === null) return;
+    const y = Math.max(0, listY.current + groupY.current - space.lg);
+    requestAnimationFrame(() => scrollRef.current?.scrollTo({ y, animated: false }));
+  }, [focus]);
+  const onFocusLayout = useCallback(
+    (y: number) => {
+      groupY.current = y;
+      scrollToFocus();
+    },
+    [scrollToFocus],
+  );
   // "Эм нэмэх" without scrolling past today's doses (UX audit #3); the emergency card stays
   useLayoutEffect(() => {
     navigation.setOptions({
@@ -63,11 +93,25 @@ export default function MedsScreen() {
   const past = meds.data.filter((m) => !m.is_current);
 
   return (
-    <Screen>
+    <Screen scrollRef={scrollRef}>
       <ProfileSwitcher />
       {!isOthers(own, patients.data) && <ReminderWarnings late />}
       <Title>{t("today")}</Title>
-      <TodayList patientId={own.id} doses={doses} now={now.getTime()} waiting={waitingForZone} />
+      <View
+        onLayout={(e) => {
+          listY.current = e.nativeEvent.layout.y;
+          scrollToFocus();
+        }}
+      >
+        <TodayList
+          patientId={own.id}
+          doses={doses}
+          now={now.getTime()}
+          waiting={waitingForZone}
+          focusAt={focus?.at ?? null}
+          onFocusLayout={onFocusLayout}
+        />
+      </View>
       <MonthSummary patientId={own.id} now={now} />
 
       <Title>{t("current")}</Title>
@@ -101,5 +145,7 @@ export default function MedsScreen() {
     </Screen>
   );
 }
+
+const SETTLE_MS = 2_000;
 
 const styles = StyleSheet.create({ header: { flexDirection: "row", alignItems: "center" } });

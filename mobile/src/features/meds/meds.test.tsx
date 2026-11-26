@@ -468,6 +468,31 @@ test("'Уусан' on a reminder records that dose", async () => {
   });
 });
 
+test("a tap on a reminder opens today's list at that dose time (real phone 2026.11.27)", async () => {
+  await openMeds();
+  await screen.findByTestId(`dose-${MED_ID}-08:00`);
+  expect(screen.queryByTestId("today-focus")).toBeNull();
+  const listener = notifications.addNotificationResponseReceivedListener.mock.calls.at(-1)?.[0] as (
+    r: unknown,
+  ) => void;
+  const at = Date.parse(morningDose());
+  listener({
+    actionIdentifier: "expo.modules.notifications.actions.DEFAULT",
+    notification: {
+      date: Date.now(),
+      request: {
+        identifier: `dose.${at}.tap`,
+        content: { title: "", body: "", data: { kind: "dose", p: OWN.id, d: [{ m: MED_ID, at }] } },
+      },
+    },
+  });
+  const focus = await screen.findByTestId("today-focus");
+  expect(within(focus).getByTestId(`dose-${MED_ID}-08:00`)).toBeOnTheScreen();
+  // marked in words too, not by its border colour alone (ui review M1)
+  expect(within(focus).getByText("Сануулгаас")).toBeOnTheScreen();
+  expect(posts.filter((p) => p.key === "intake")).toHaveLength(0); // a tap records nothing
+});
+
 test("a reminder for another profile or medicine records nothing", async () => {
   await openMeds();
   await screen.findByTestId(`dose-${MED_ID}-08:00`);

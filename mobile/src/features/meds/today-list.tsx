@@ -1,6 +1,6 @@
 import { fontSize, radius, space } from "@labtrack/shared";
 import { useEffect, useRef, useState } from "react";
-import { Alert, StyleSheet, View } from "react-native";
+import { AccessibilityInfo, Alert, StyleSheet, View } from "react-native";
 import { useTranslations } from "use-intl";
 import { Text } from "@/components/app-text";
 import { Button } from "@/components/button";
@@ -55,10 +55,16 @@ export function TodayList({
   doses,
   now,
   waiting = [],
+  focusAt = null,
+  onFocusLayout,
 }: {
   patientId: string;
   doses: TodayDose[];
   now: number;
+  /** a reminder's dose time the user opened the app from: shown (even when later) and marked */
+  focusAt?: number | null;
+  /** where that time's group sits in this list, to scroll to it */
+  onFocusLayout?: (y: number) => void;
   /** "local" medicines whose doses wait for the profile's zones (see useTodayDoses) */
   waiting?: readonly Medication[];
 }) {
@@ -263,7 +269,21 @@ export function TodayList({
 
   const groups = byTime(doses);
   const { shown, later } = splitLater(groups, now);
-  const visible = showLater ? groups : shown;
+  const isFocus = (items: readonly TodayDose[]) =>
+    focusAt !== null && items.some((d) => d.slot.scheduledAt === focusAt);
+  const visible = showLater || later.some((g) => isFocus(g.items)) ? groups : shown;
+  const focused = visible.find((g) => isFocus(g.items)) ?? null;
+  // each group's place, so a new focus is reported even when nothing moves (ui review M2)
+  const ys = useRef(new Map<string, number>());
+  const focusKey = focused?.key ?? null;
+  const focusTime = focused?.time ?? null;
+  useEffect(() => {
+    if (focusKey === null || focusTime === null) return;
+    const y = ys.current.get(focusKey);
+    if (y !== undefined) onFocusLayout?.(y);
+    // not by colour alone: screen readers hear which time was opened (ui review M1)
+    AccessibilityInfo.announceForAccessibility(t("dose.fromReminderSay", { time: focusTime }));
+  }, [focusKey, focusTime, focusAt, onFocusLayout, t]);
 
   return (
     <View style={styles.list}>
@@ -284,12 +304,26 @@ export function TodayList({
         <Text style={[styles.body, { color: p.text }]}>{t("todayEmpty")}</Text>
       )}
       {visible.map(({ key: groupKey, time, items }) => (
-        <View key={groupKey} style={styles.group}>
+        <View
+          key={groupKey}
+          style={styles.group}
+          testID={isFocus(items) ? "today-focus" : undefined}
+          onLayout={(e) => {
+            ys.current.set(groupKey, e.nativeEvent.layout.y);
+            if (groupKey === focusKey) onFocusLayout?.(e.nativeEvent.layout.y);
+          }}
+        >
           <View style={styles.groupHead}>
             {/* the time only: Home lists a part of the day, so a count here could mislead */}
             <Text accessibilityRole="header" style={[styles.groupTime, { color: p.text }]}>
               {time}
             </Text>
+            {isFocus(items) && (
+              <View style={styles.fromReminder}>
+                <Icon name="bell-ring-outline" color={p.primary} size={20} />
+                <Text style={[styles.body, { color: p.primary }]}>{t("dose.fromReminder")}</Text>
+              </View>
+            )}
             {/* due times only: a dose not yet due is recorded on its own (ui review M2, Q25) */}
             {(items[0]?.slot.scheduledAt ?? Number.POSITIVE_INFINITY) <= now &&
               items.filter((d) => d.state === null).length >= 2 && (
@@ -309,7 +343,13 @@ export function TodayList({
                 />
               )}
           </View>
-          <View style={[styles.card, { backgroundColor: p.surface, borderColor: p.border }]}>
+          <View
+            style={[
+              styles.card,
+              { backgroundColor: p.surface, borderColor: isFocus(items) ? p.primary : p.border },
+              isFocus(items) && styles.focusCard,
+            ]}
+          >
             {items.map((dose, i) => {
               const key = doseKey(dose);
               return (
@@ -557,6 +597,8 @@ function FailedDoses({ patientId, doses }: { patientId: string; doses: TodayDose
 const styles = StyleSheet.create({
   list: { gap: space.md },
   group: { gap: space.sm },
+  focusCard: { borderWidth: 2 },
+  fromReminder: { flexDirection: "row", alignItems: "center", gap: space.xs, flexGrow: 1 },
   groupHead: {
     flexDirection: "row",
     alignItems: "center",

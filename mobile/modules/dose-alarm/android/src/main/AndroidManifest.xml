@@ -8,6 +8,9 @@
   <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SYSTEM_EXEMPTED" />
   <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
   <uses-permission android:name="android.permission.VIBRATE" />
+  <!-- turns the screen on for a few seconds when it rings, so the reminder is seen on the lock
+       screen (real phone 2026.11.27: it rang with the screen dark) -->
+  <uses-permission android:name="android.permission.WAKE_LOCK" />
 
   <application>
     <receiver

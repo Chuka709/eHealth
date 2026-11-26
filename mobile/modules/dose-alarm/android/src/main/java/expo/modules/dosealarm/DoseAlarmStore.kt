@@ -49,7 +49,7 @@ internal class DoseAlarmStore(context: Context) {
 
   fun body(): String? = prefs.getString(KEY_BODY, null)
 
-  fun stopLabel(): String = prefs.getString(KEY_STOP, null) ?: "Дууг унтраах"
+  fun stopLabel(): String = prefs.getString(KEY_STOP, null) ?: "Дуу хаах"
 
   fun fallbackTitle(): String = prefs.getString(KEY_FALLBACK, null) ?: "Эм уух цаг боллоо"
 

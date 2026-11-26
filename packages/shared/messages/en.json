@@ -475,6 +475,8 @@
         "groupOneByOneTitle": "Please record each dose on its own",
         "groupOneByOneBody": "Some doses of this time were already recorded or could not be checked. To avoid a double record, tap \"Taken\" on each dose.",
         "groupOneByOneOk": "OK",
+        "fromReminder": "From the reminder",
+        "fromReminderSay": "Opened from the reminder: {time} doses",
         "laterHide": "Hide later doses",
         "laterTimes": "Later doses today ({n})",
         "uncheckedTitle": "Could not check whether this dose is already recorded",

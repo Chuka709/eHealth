@@ -418,7 +418,17 @@ export function useReminderResponses(): void {
         await Notifications.dismissNotificationAsync(request.identifier).catch(() => undefined);
         return;
       }
-      router.navigate("/meds");
+      // a tap opens today's list at the reminded time (real phone 2026.11.27: it opened the
+      // top of the list) - the own profile's reminder only, its earliest dose time
+      const at =
+        data && profile && data.p === profile.id && data.d.length > 0
+          ? Math.min(...data.d.map((x) => x.at))
+          : null;
+      router.navigate(
+        at === null
+          ? "/meds"
+          : { pathname: "/meds", params: { at: String(at), n: String(Date.now()) } },
+      );
     };
     handleRef.current = handle;
     const sub = Notifications.addNotificationResponseReceivedListener((r) => {
