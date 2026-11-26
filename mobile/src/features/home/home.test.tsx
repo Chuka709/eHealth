@@ -359,9 +359,16 @@ test("H20: a local-time medicine waits for the zones - never placed in Ulaanbaat
 });
 
 const MMF_ID = "44444444-4444-4444-8444-444444444444";
-// both at 00:00: always due whatever the time the test runs ("Бүгдийг уусан" is for due times)
+// both at the phone's own midnight, written in Ulaanbaatar time (a "home" medicine): always
+// due whatever the time and zone the test runs in ("Бүгдийг уусан" is for due times; CI is UTC)
+const MIDNIGHT_AT = new Intl.DateTimeFormat("en-GB", {
+  timeZone: "Asia/Ulaanbaatar",
+  hour: "2-digit",
+  minute: "2-digit",
+  hourCycle: "h23",
+}).format(localDay(new Date()).start);
 const atMidnight = <T extends typeof TACROLIMUS>(m: T, regimenId: string): T => {
-  const r = regimen(regimenId, "2026-01-01", [{ at: "00:00", amount: "1" }]);
+  const r = regimen(regimenId, "2026-01-01", [{ at: MIDNIGHT_AT, amount: "1" }]);
   return { ...m, current_regimen: r, regimens: [r] };
 };
 const TAC0 = atMidnight(TACROLIMUS, "33333333-3333-4333-8333-333333333330");
@@ -369,7 +376,7 @@ const MMF0 = atMidnight(
   { ...TACROLIMUS, id: MMF_ID, catalog_code: "MYCOPHENOLATE", name: "Микофенолат" },
   "33333333-3333-4333-8333-333333333331",
 );
-// 00:00 in Ulaanbaatar on the phone's own day, as the list plans it
+// that dose on the phone's own day, as the list plans it
 const midnightDose = () => new Date(localDay(new Date()).start).toISOString();
 
 test("UX audit #2: 'Бүгдийг уусан' says every medicine and amount, then records each open dose", async () => {
@@ -382,13 +389,17 @@ test("UX audit #2: 'Бүгдийг уусан' says every medicine and amount, t
   try {
     await openHome();
     await fireEvent.press(
-      await screen.findByRole("button", { name: "00:00-ийн 2 тунг бүгдийг уусан гэж тэмдэглэх" }),
+      await screen.findByRole("button", {
+        name: `${MIDNIGHT_AT}-ийн 2 тунг бүгдийг уусан гэж тэмдэглэх`,
+      }),
     );
     await waitFor(() => expect(posts.filter((p) => p.key === "intake")).toHaveLength(2));
     // asked first, with each medicine and its amount (medical review M1)
     expect(asked).toHaveLength(1);
     expect(asked[0]).toMatch(
-      /^00:00: бүгдийг уусан гэж тэмдэглэх үү\?\|• Такролимус 1 мг\n• Микофенолат 1 мг/,
+      new RegExp(
+        `^${MIDNIGHT_AT}: бүгдийг уусан гэж тэмдэглэх үү\\?\\|• Такролимус 1 мг\\n• Микофенолат 1 мг`,
+      ),
     );
     expect(posts.map((p) => p.body.medication_id).sort()).toEqual([MED_ID, MMF_ID].sort());
     expect(posts.every((p) => p.body.status === "taken")).toBe(true);
@@ -405,7 +416,9 @@ test("UX audit #2: cancelling the question records nothing", async () => {
   try {
     await openHome();
     await fireEvent.press(
-      await screen.findByRole("button", { name: "00:00-ийн 2 тунг бүгдийг уусан гэж тэмдэглэх" }),
+      await screen.findByRole("button", {
+        name: `${MIDNIGHT_AT}-ийн 2 тунг бүгдийг уусан гэж тэмдэглэх`,
+      }),
     );
     await waitFor(() => expect(Alert.alert).toHaveBeenCalledTimes(1));
     expect(posts.filter((p) => p.key === "intake")).toHaveLength(0);
@@ -423,7 +436,7 @@ test("UX audit #2/Q24: when one dose of the time was recorded meanwhile, nothing
   try {
     await openHome();
     const all = await screen.findByRole("button", {
-      name: "00:00-ийн 2 тунг бүгдийг уусан гэж тэмдэглэх",
+      name: `${MIDNIGHT_AT}-ийн 2 тунг бүгдийг уусан гэж тэмдэглэх`,
     });
     // another phone records the MMF dose after this list was read
     posts.push({
@@ -454,7 +467,7 @@ test("UX audit #2: a dose skipped meanwhile is never overridden by the one tap (
   try {
     await openHome();
     const all = await screen.findByRole("button", {
-      name: "00:00-ийн 2 тунг бүгдийг уусан гэж тэмдэглэх",
+      name: `${MIDNIGHT_AT}-ийн 2 тунг бүгдийг уусан гэж тэмдэглэх`,
     });
     posts.push({
       key: "intake",
