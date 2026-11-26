@@ -3,6 +3,9 @@ package expo.modules.dosealarm
 import android.app.Activity
 import android.app.ActivityOptions
 import android.app.KeyguardManager
+import android.app.Notification
+import android.app.NotificationManager
+import android.app.admin.DevicePolicyManager
 import android.app.PendingIntent
 import android.os.Build
 import android.os.Bundle
@@ -117,9 +120,19 @@ class DoseAlarmActivity : Activity() {
   private fun namesAllowedHere(): Boolean {
     val keyguard = getSystemService(KeyguardManager::class.java) ?: return false
     if (!keyguard.isKeyguardLocked) return true
-    // either unreadable (a hidden setting) or off: hidden - the safe side (security review L3)
+    // every layer must allow it, as for the notification itself; anything unreadable or off:
+    // hidden - the safe side (security review L3, automated review 2026.11.27)
     return try {
-      Settings.Secure.getInt(contentResolver, SHOW_ON_LOCK_SCREEN, 0) != 0 &&
+      val policy = getSystemService(DevicePolicyManager::class.java)
+      val redacted = policy != null &&
+        policy.getKeyguardDisabledFeatures(null) and
+        DevicePolicyManager.KEYGUARD_DISABLE_UNREDACTED_NOTIFICATIONS != 0
+      val channelHides = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
+        getSystemService(NotificationManager::class.java)
+          ?.getNotificationChannel(DoseAlarmService.CHANNEL)
+          ?.lockscreenVisibility == Notification.VISIBILITY_SECRET
+      !redacted && !channelHides &&
+        Settings.Secure.getInt(contentResolver, SHOW_ON_LOCK_SCREEN, 0) != 0 &&
         Settings.Secure.getInt(contentResolver, PRIVATE_ON_LOCK_SCREEN, 0) != 0
     } catch (_: Exception) {
       false

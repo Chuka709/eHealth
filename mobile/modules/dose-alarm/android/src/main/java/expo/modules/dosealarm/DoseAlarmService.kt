@@ -416,7 +416,7 @@ class DoseAlarmService : Service() {
 
     // v3: private on the lock screen - it now carries the reminder's own text (a channel's
     // settings are fixed once made); v2 was public with a name-free text only
-    private const val CHANNEL = "dose-alarm-ringing-v3"
+    internal const val CHANNEL = "dose-alarm-ringing-v3"
     private const val OLD_CHANNEL = "dose-alarm-ringing-v2"
     private const val NOTIFICATION_ID = 7301
     const val RING_MS = 60_000L
