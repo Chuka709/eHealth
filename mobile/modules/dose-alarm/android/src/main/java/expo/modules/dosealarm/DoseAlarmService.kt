@@ -19,28 +19,50 @@ import android.os.Looper
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
+import android.service.notification.StatusBarNotification
 
 /**
  * Rings on the alarm stream (sounds in silent mode, like an alarm clock - Q79) with vibration
  * for at most RING_MS, then stops by itself (H40: a reminder that never stops would get the
  * reminders turned off). Stopped earlier by its notification's stop button, or by the app
- * (a dose recorded, the app opened). The notification names no medicine (H10). When it cannot
- * start or play, a loud fallback notification comes instead (DoseAlarmFallback).
+ * (a dose recorded, the app opened).
+ *
+ * One notification per dose time (the user's choice 2026.11.26, after a real phone showed two):
+ * it takes the app's own reminder of that time over as its notification - title, medicine list,
+ * "Уусан" / "10 мин дараа" and tap kept, "Дууг унтраах" added - and gives it back to the tray
+ * when the sound runs out or is stopped by its button, so an unanswered reminder stays. Private on the lock
+ * screen: when the phone hides sensitive content only a name-free version shows (H10). When it
+ * cannot start or play, the reminder itself rings loud instead (DoseAlarmFallback).
  */
 class DoseAlarmService : Service() {
   private var player: MediaPlayer? = null
   private var vibrator: Vibrator? = null
   private val handler = Handler(Looper.getMainLooper())
-  private val timeout = Runnable { stopRinging() }
+  private val timeout = Runnable { stopRinging(giveBack = true) }
+
+  /** the alarm ringing now (the app's reminder id) */
+  private var alarmId: String? = null
+
+  /** the app's reminder taken over as this service's notification, to give back */
+  private var taken: StatusBarNotification? = null
+  private var looked = 0L
+  private var epoch = 0
+  private val look = Runnable { takeOver() }
 
   override fun onBind(intent: Intent?): IBinder? = null
 
   override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
     if (intent?.action == ACTION_STOP) {
-      stopRinging()
+      stopRinging(giveBack = intent.getBooleanExtra(EXTRA_GIVE_BACK, false))
       return START_NOT_STICKY
     }
-    val notification = buildNotification()
+    // another alarm while one rings: the earlier reminder goes back to the tray first
+    giveBack()
+    alarmId = intent?.getStringExtra(EXTRA_ID)
+    epoch = DoseReminders.epoch
+    val found = alarmId?.let { DoseReminders.find(this, it) }
+    val merged = found?.let { takeOverNotification(it) }
+    val notification = merged ?: buildNotification()
     try {
       if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
         // Android 14+: allowed while the app holds the exact-alarm permission; without it this
@@ -56,17 +78,61 @@ class DoseAlarmService : Service() {
         startForeground(NOTIFICATION_ID, notification)
       }
     } catch (_: Exception) {
-      DoseAlarmFallback.post(this) // never a silent reminder (medical review H-1)
+      // never a silent reminder (medical review H-1)
+      DoseAlarmFallback.postWhenShown(applicationContext, alarmId, epoch) {}
+      alarmId = null
       stopSelf()
       return START_NOT_STICKY
     }
-    startRinging()
+    if (found != null && merged != null) {
+      taken = found
+      DoseReminders.cancel(this, found)
+    } else if (alarmId != null) {
+      looked = 0
+      handler.removeCallbacks(look)
+      handler.postDelayed(look, DoseReminders.LOOK_EVERY_MS)
+    }
+    if (!startRinging()) return START_NOT_STICKY
     handler.removeCallbacks(timeout)
     handler.postDelayed(timeout, RING_MS)
     return START_NOT_STICKY
   }
 
-  private fun startRinging() {
+  /** The reminder came a moment after the alarm: it becomes this notification now. */
+  private fun takeOver() {
+    val id = alarmId ?: return
+    if (taken != null || epoch != DoseReminders.epoch) return
+    val found = DoseReminders.find(this, id)
+    if (found == null) {
+      looked += DoseReminders.LOOK_EVERY_MS
+      if (looked < DoseReminders.LOOK_MS) handler.postDelayed(look, DoseReminders.LOOK_EVERY_MS)
+      return
+    }
+    val merged = takeOverNotification(found) ?: return // two notifications, never none
+    try {
+      getSystemService(NotificationManager::class.java)?.notify(NOTIFICATION_ID, merged)
+      taken = found
+      DoseReminders.cancel(this, found)
+    } catch (_: Exception) {
+      // the reminder stays as it is
+    }
+  }
+
+  /** The reminder back in the tray as it was (its own silent channel - no second sound). */
+  private fun giveBack() {
+    handler.removeCallbacks(look)
+    val sbn = taken ?: return
+    taken = null
+    if (epoch != DoseReminders.epoch) return // signed out meanwhile: the tray stays empty
+    try {
+      getSystemService(NotificationManager::class.java)?.notify(sbn.tag, sbn.id, sbn.notification)
+    } catch (_: Exception) {
+      // notifications turned off meanwhile: nothing to show it in
+    }
+  }
+
+  /** false when nothing could ring here: the reminder rang loud on its own and this stopped */
+  private fun startRinging(): Boolean {
     if (player == null) {
       val attributes = AudioAttributes.Builder()
         .setUsage(AudioAttributes.USAGE_ALARM)
@@ -81,8 +147,19 @@ class DoseAlarmService : Service() {
           start()
         }
       } catch (_: Exception) {
-        DoseAlarmFallback.post(this) // no sound possible here: the notification sound instead
         null
+      }
+      if (player == null) {
+        // no sound possible here: the reminder rings loud on its own instead, once
+        val sbn = taken
+        taken = null
+        if (sbn != null) {
+          DoseAlarmFallback.post(this, sbn)
+        } else {
+          DoseAlarmFallback.postWhenShown(applicationContext, alarmId, epoch) {}
+        }
+        stopRinging(giveBack = false)
+        return false
       }
     }
     if (vibrator == null) {
@@ -93,10 +170,25 @@ class DoseAlarmService : Service() {
         v.vibrate(effect, attributes)
       }
     }
+    return true
   }
 
-  private fun stopRinging() {
+  /**
+   * giveBack: the reminder returns to the tray - only when the sound ran out or the user
+   * pressed "Дууг унтраах" or swiped it away (unanswered, it must stay - medical review M2:
+   * swiping an alarm is how people silence it). Never when the app stops it: the app was
+   * opened, a dose recorded or snoozed ("Уусан" must not leave a copy behind - security
+   * review M2), or a sign-out.
+   */
+  private fun stopRinging(giveBack: Boolean) {
     handler.removeCallbacks(timeout)
+    if (giveBack) {
+      giveBack()
+    } else {
+      handler.removeCallbacks(look)
+      taken = null
+    }
+    alarmId = null
     player?.let {
       runCatching { it.stop() }
       runCatching { it.release() }
@@ -115,6 +207,7 @@ class DoseAlarmService : Service() {
 
   override fun onDestroy() {
     handler.removeCallbacks(timeout)
+    giveBack()
     player?.let { runCatching { it.release() } }
     player = null
     vibrator?.cancel()
@@ -140,55 +233,123 @@ class DoseAlarmService : Service() {
       getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
     }
 
-  private fun buildNotification(): Notification {
-    val store = DoseAlarmStore(this)
+  private fun ensureChannel(store: DoseAlarmStore) {
     val manager = getSystemService(NotificationManager::class.java)
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && manager != null) {
-      // shown on top (heads-up) but quiet: the service plays the sound itself
+      // shown on top (heads-up) but quiet: the service plays the sound itself; private on the
+      // lock screen - it carries the reminder's own text (H10)
+      manager.deleteNotificationChannel(OLD_CHANNEL)
       val channel = NotificationChannel(CHANNEL, store.title(), NotificationManager.IMPORTANCE_HIGH)
       channel.setSound(null, null)
       channel.enableVibration(false)
-      channel.lockscreenVisibility = Notification.VISIBILITY_PUBLIC
+      channel.lockscreenVisibility = Notification.VISIBILITY_PRIVATE
       manager.createNotificationChannel(channel)
     }
-    val stop = PendingIntent.getService(
-      this,
-      1,
-      Intent(this, DoseAlarmService::class.java).setAction(ACTION_STOP),
-      PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
-    )
-    val builder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+  }
+
+  private fun stopIntent(giveBack: Boolean): PendingIntent = PendingIntent.getService(
+    this,
+    if (giveBack) 1 else 2,
+    Intent(this, DoseAlarmService::class.java)
+      .setAction(ACTION_STOP)
+      .putExtra(EXTRA_GIVE_BACK, giveBack),
+    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+  )
+
+  private fun newBuilder(): Notification.Builder =
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
       Notification.Builder(this, CHANNEL)
     } else {
       @Suppress("DEPRECATION")
       Notification.Builder(this)
     }
-    return builder
+
+  private fun stopAction(store: DoseAlarmStore): Notification.Action =
+    Notification.Action.Builder(null, store.stopLabel(), stopIntent(giveBack = true)).build()
+
+  /**
+   * The app's reminder as the ringing notification. Under its medicine list the note that
+   * stopping the sound records nothing. Swiping it away silences it; the reminder stays.
+   * null when it cannot be made: the service's own notification instead.
+   */
+  private fun takeOverNotification(sbn: StatusBarNotification): Notification? {
+    val store = DoseAlarmStore(this)
+    return try {
+      ensureChannel(store)
+      val original = sbn.notification
+      val title = original.extras.getCharSequence(Notification.EXTRA_TITLE)
+      val text = original.extras.getCharSequence(Notification.EXTRA_TEXT)
+      // a copy: the builder writes into the notification it recovers, and the original is
+      // given back as it was (emulator 2026.11.26: it came back ongoing on the ringing channel)
+      val builder = Notification.Builder.recoverBuilder(this, original.clone())
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) builder.setChannelId(CHANNEL)
+      store.body()?.let { note ->
+        builder.setStyle(
+          Notification.BigTextStyle().bigText(if (text != null) "$text\n$note" else note),
+        )
+      }
+      val public = newBuilder()
+        .setSmallIcon(applicationInfo.icon)
+        .setContentTitle(title ?: store.title())
+        .setContentText(store.title())
+        .setCategory(Notification.CATEGORY_ALARM)
+        .addAction(stopAction(store))
+        .build()
+      builder
+        .setCategory(Notification.CATEGORY_ALARM)
+        .setOngoing(true)
+        .setAutoCancel(false)
+        .setOnlyAlertOnce(true)
+        .setVisibility(Notification.VISIBILITY_PRIVATE)
+        .setPublicVersion(public)
+        .setDeleteIntent(stopIntent(giveBack = true))
+        .addAction(stopAction(store))
+        .build()
+    } catch (_: Exception) {
+      null
+    }
+  }
+
+  /** Before the reminder is found (it may come a moment later) or when it cannot be: no name. */
+  private fun buildNotification(): Notification {
+    val store = DoseAlarmStore(this)
+    ensureChannel(store)
+    return newBuilder()
       .setSmallIcon(applicationInfo.icon)
       .setContentTitle(store.title())
       // "only the sound": stopping it never records the dose
-      .also { b -> store.body()?.let { b.setContentText(it).setStyle(Notification.BigTextStyle().bigText(it)) } }
+      .also { b ->
+        store.body()?.let { b.setContentText(it).setStyle(Notification.BigTextStyle().bigText(it)) }
+      }
       .setCategory(Notification.CATEGORY_ALARM)
       .setOngoing(true)
       .setVisibility(Notification.VISIBILITY_PUBLIC)
       .setContentIntent(DoseAlarmScheduler.openApp(this))
-      .setDeleteIntent(stop)
-      .addAction(Notification.Action.Builder(null, store.stopLabel(), stop).build())
+      .setDeleteIntent(stopIntent(giveBack = true))
+      .addAction(stopAction(store))
       .build()
   }
 
   companion object {
     const val ACTION_START = "expo.modules.dosealarm.START"
     const val ACTION_STOP = "expo.modules.dosealarm.STOP"
-    // v2: high importance for a heads-up (a channel's importance is fixed once made)
-    private const val CHANNEL = "dose-alarm-ringing-v2"
+    const val EXTRA_ID = "expo.modules.dosealarm.ID"
+    private const val EXTRA_GIVE_BACK = "expo.modules.dosealarm.GIVE_BACK"
+
+    // v3: private on the lock screen - it now carries the reminder's own text (a channel's
+    // settings are fixed once made); v2 was public with a name-free text only
+    private const val CHANNEL = "dose-alarm-ringing-v3"
+    private const val OLD_CHANNEL = "dose-alarm-ringing-v2"
     private const val NOTIFICATION_ID = 7301
     const val RING_MS = 60_000L
     private val PATTERN = longArrayOf(0, 700, 300, 700, 300, 700, 1200)
 
+    /** From the app (opened, answered, signed out): the reminder is not given back. */
     fun stop(context: Context) {
       // the loud fallback goes too: the reminder has been answered
       DoseAlarmFallback.cancel(context)
+      // at once, not after the service's turn on the main thread (a sign-out clears the tray)
+      runCatching { context.getSystemService(NotificationManager::class.java)?.cancel(NOTIFICATION_ID) }
       try {
         context.startService(Intent(context, DoseAlarmService::class.java).setAction(ACTION_STOP))
       } catch (_: Exception) {

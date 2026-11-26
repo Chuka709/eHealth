@@ -35,6 +35,7 @@ class DoseAlarmModule : Module() {
     Function("cancel") { id: String -> DoseAlarmScheduler.cancel(context, id) }
 
     Function("cancelAll") {
+      DoseReminders.signedOut()
       DoseAlarmScheduler.cancelAll(context)
       DoseAlarmService.stop(context)
     }

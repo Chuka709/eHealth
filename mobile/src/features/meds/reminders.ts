@@ -18,9 +18,10 @@
  * - A reminder whose time has just passed is kept for GRACE, never cancelled by a re-plan
  *   before it fires: without the exact-alarm permission Android may hold it back by up to an
  *   hour (window +1h, measured on the emulator in 2.10d - H18).
- * - Lock screen (H10): by default no medicine name anywhere in the notification - only "Эм уух
- *   цаг боллоо" with the scheduled time ("08:00-ийн эмийн сануулга"); names only when the user
- *   chose so. `data` carries ids and instants only.
+ * - One notification per dose time, its title the scheduled time ("08:00-ийн эмийн
+ *   сануулга") and its text the medicines with amounts - unless the user turned names off
+ *   ("2 тун"). Lock screen (H10): the channels are PRIVATE (and iOS hides previews when
+ *   locked), the title never names a medicine. `data` carries ids and instants only.
  */
 
 import type { MedicationPlan, Slot, ZoneSwitch } from "./slots";

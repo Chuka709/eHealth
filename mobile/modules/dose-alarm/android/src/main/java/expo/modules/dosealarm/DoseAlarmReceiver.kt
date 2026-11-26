@@ -15,6 +15,8 @@ class DoseAlarmReceiver : BroadcastReceiver() {
         if (id != null) DoseAlarmStore(context).remove(id)
         val ring = Intent(context, DoseAlarmService::class.java)
           .setAction(DoseAlarmService.ACTION_START)
+          // the service takes the app's reminder of this id over as its notification
+          .putExtra(DoseAlarmService.EXTRA_ID, id)
         try {
           if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             context.startForegroundService(ring)
@@ -22,8 +24,10 @@ class DoseAlarmReceiver : BroadcastReceiver() {
             context.startService(ring)
           }
         } catch (_: Exception) {
-          // not allowed to start now: the app's reminder is silent meanwhile - ring it loud
-          DoseAlarmFallback.post(context)
+          // not allowed to start now: the app's reminder is silent meanwhile - ring it loud,
+          // once it is in the tray (kept alive meanwhile)
+          val pending = goAsync()
+          DoseAlarmFallback.postWhenShown(context.applicationContext, id) { pending.finish() }
         }
       }
       Intent.ACTION_BOOT_COMPLETED, Intent.ACTION_MY_PACKAGE_REPLACED ->

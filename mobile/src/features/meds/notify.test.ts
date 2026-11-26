@@ -21,6 +21,8 @@ import {
   ringsFor,
   setAlarmSound,
   setMedAlarm,
+  setShowNames,
+  showNames,
   snooze,
   snoozeAlarms,
   soundChanged,
@@ -659,4 +661,13 @@ test("Q79-3: turning a medicine's alarm on or off sets the reminders anew; a new
     mockAlarm.available = false;
     mockStored.delete("reminders.channel.v1");
   }
+});
+
+test("reminders name the medicines unless the user turned it off (2026.11.26, H10)", async () => {
+  mockStored.clear();
+  expect(await showNames()).toBe(true);
+  await setShowNames(false);
+  expect(await showNames()).toBe(false);
+  await setShowNames(true);
+  expect(await showNames()).toBe(true);
 });

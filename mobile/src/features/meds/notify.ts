@@ -40,9 +40,12 @@ export type NotifyTexts = {
   placeholder: string; // iOS: shown instead of the text when previews are hidden
 };
 
-/** Whether the user chose to show medicine names in reminders (off by default - H10). */
+/** Whether reminders name the medicines and amounts: on unless the user turned it off (the
+ * user's choice 2026.11.26 - at 10:00 the person must know at once which medicine to take).
+ * The lock screen still hides them where the phone hides sensitive content (PRIVATE channels,
+ * iOS previews - H10). A store that cannot be read names nothing (use-reminders). */
 export async function showNames(): Promise<boolean> {
-  return (await localStore()).getBoolean(NAMES_KEY) ?? false;
+  return (await localStore()).getBoolean(NAMES_KEY) ?? true;
 }
 
 const DETAILS_KEY = "prefs.appointment_details.v1";
