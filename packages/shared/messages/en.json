@@ -631,6 +631,7 @@
         "channelSilent": "Medicine reminders – silent (the alarm rings separately)",
         "stopAlarm": "Stop sound",
         "ringingBody": "“Stop sound” only stops the sound. If you took it, tap “Taken”.",
+        "showMeds": "Show medicines",
         "ringing": "A medicine reminder is ringing",
         "again": "Not marked yet: {title}",
         "againBody": "If you took it, tap “Taken”. {body}. If unsure, contact your transplant team.",

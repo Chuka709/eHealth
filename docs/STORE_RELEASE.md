@@ -141,6 +141,13 @@ Crash: апп-д crash SDK байхгүй; серверийн Sentry (DSN тох
     > **If deferred:** the reminder would ring late; a missed or late immunosuppressant dose can harm
     > a transplant recipient. **If interrupted:** the sound stops and only a silent notification
     > remains, so the dose may be missed.
+- **Full-screen intent (`USE_FULL_SCREEN_INTENT`, 2026.11.27 — хэрэглэгчийн шийдвэр):** сэрүүлэг
+  дуугарах үед түгжээтэй/унтарсан утсанд сэрүүлгийн дэлгэц (`DoseAlarmActivity`), идэвхтэй утсанд
+  мэдэгдэл дуугарч дуустал дээрээ үлдэнэ. Android 14+-д Play энэ зөвшөөрлийг зөвхөн *сэрүүлэг эсвэл
+  дуудлага* үндсэн үйлдэлтэй апп-д анхдагчаар олгоно; бусдад хэрэглэгч тохиргооноос олгоно, олгоогүй бол
+  энгийн мэдэгдэл (өмнөх хэлбэр). Play Console → App content → *Full-screen intent* declaration-д:
+  «medication alarm that the user schedules» (сэрүүлгийн ангилал) гэж мэдүүлнэ; татгалзвал зөвшөөрлийг
+  хасах эсвэл тохиргоонд «Бүтэн дэлгэцийн сэрүүлэг» зөвшөөрөл асуух дэлгэц нэмнэ (`canUseFullScreenIntent`).
 - **App access:** §4-ийн аккаунт + тэмдэглэл.
 - **Exact alarm, Ads (байхгүй), Target audience** (18+; хүүхдийн профайлыг эцэг эх хөтөлнө —
   хүүхэд өөрөө хэрэглэгч биш), **Content rating** (асуулгад «эрүүл мэндийн мэдээлэл» гэж

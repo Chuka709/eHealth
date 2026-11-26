@@ -11,6 +11,10 @@
   <!-- turns the screen on for a few seconds when it rings, so the reminder is seen on the lock
        screen (real phone 2026.11.27: it rang with the screen dark) -->
   <uses-permission android:name="android.permission.WAKE_LOCK" />
+  <!-- the alarm screen over the lock screen while a dose reminder rings (user's choice
+       2026.11.27); Android 14+ grants it to alarm apps only - without it the notification
+       alone, as before (STORE_RELEASE: Play declaration) -->
+  <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
 
   <application>
     <receiver
@@ -21,6 +25,15 @@
         <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
       </intent-filter>
     </receiver>
+    <activity
+      android:name="expo.modules.dosealarm.DoseAlarmActivity"
+      android:exported="false"
+      android:excludeFromRecents="true"
+      android:launchMode="singleInstance"
+      android:taskAffinity=""
+      android:showWhenLocked="true"
+      android:turnScreenOn="true"
+      android:theme="@android:style/Theme.DeviceDefault.NoActionBar" />
     <service
       android:name="expo.modules.dosealarm.DoseAlarmService"
       android:exported="false"

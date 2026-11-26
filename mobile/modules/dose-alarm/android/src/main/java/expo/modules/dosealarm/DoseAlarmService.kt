@@ -85,8 +85,10 @@ class DoseAlarmService : Service() {
       stopSelf()
       return START_NOT_STICKY
     }
+    ringing = Ringing(null, null, emptyList())
     if (found != null && merged != null) {
       taken = found
+      ringing = snapshot(found)
       DoseReminders.cancel(this, found)
     } else if (alarmId != null) {
       looked = 0
@@ -132,6 +134,8 @@ class DoseAlarmService : Service() {
     try {
       getSystemService(NotificationManager::class.java)?.notify(NOTIFICATION_ID, merged)
       taken = found
+      ringing = snapshot(found)
+      DoseAlarmActivity.refresh()
       DoseReminders.cancel(this, found)
     } catch (_: Exception) {
       // the reminder stays as it is
@@ -209,6 +213,8 @@ class DoseAlarmService : Service() {
       taken = null
     }
     alarmId = null
+    ringing = null
+    DoseAlarmActivity.close()
     player?.let {
       runCatching { it.stop() }
       runCatching { it.release() }
@@ -227,6 +233,9 @@ class DoseAlarmService : Service() {
 
   override fun onDestroy() {
     handler.removeCallbacks(timeout)
+    // however it ends: no names kept, no screen left (security review M3)
+    ringing = null
+    DoseAlarmActivity.close()
     giveBack()
     player?.let { runCatching { it.release() } }
     player = null
@@ -276,6 +285,26 @@ class DoseAlarmService : Service() {
     PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
   )
 
+  /** The alarm screen: opened by the OS when the phone is locked or asleep (Android 14+: only
+   * while the app may use full-screen intents - else the notification alone, as before). */
+  private fun screenIntent(): PendingIntent = PendingIntent.getActivity(
+    this,
+    3,
+    Intent(this, DoseAlarmActivity::class.java)
+      .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_NO_USER_ACTION),
+    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+  )
+
+  /** What the alarm screen shows: the reminder's own title, list and buttons (memory only). */
+  private fun snapshot(sbn: StatusBarNotification): Ringing {
+    val n = sbn.notification
+    return Ringing(
+      n.extras.getCharSequence(Notification.EXTRA_TITLE),
+      n.extras.getCharSequence(Notification.EXTRA_TEXT),
+      n.actions?.toList() ?: emptyList(),
+    )
+  }
+
   private fun newBuilder(): Notification.Builder =
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
       Notification.Builder(this, CHANNEL)
@@ -323,6 +352,8 @@ class DoseAlarmService : Service() {
         .setVisibility(Notification.VISIBILITY_PRIVATE)
         .setPublicVersion(public)
         .setDeleteIntent(stopIntent(giveBack = true))
+        // on top until answered while the phone is in use; the alarm screen when locked
+        .setFullScreenIntent(screenIntent(), true)
         .addAction(stopAction(store))
         .build()
     } catch (_: Exception) {
@@ -346,11 +377,38 @@ class DoseAlarmService : Service() {
       .setVisibility(Notification.VISIBILITY_PUBLIC)
       .setContentIntent(DoseAlarmScheduler.openApp(this))
       .setDeleteIntent(stopIntent(giveBack = true))
+      .setFullScreenIntent(screenIntent(), true)
       .addAction(stopAction(store))
       .build()
   }
 
+  /** What rings, for the alarm screen: null when nothing does. Never stored (rule 3). */
+  data class Ringing(
+    val title: CharSequence?,
+    val text: CharSequence?,
+    val actions: List<Notification.Action>,
+  )
+
   companion object {
+    @Volatile
+    var ringing: Ringing? = null
+      private set
+
+    /** "Дуу хаах" on the alarm screen: as the notification's button - the reminder stays. */
+    fun stopFromScreen(context: Context) {
+      ringing = null
+      DoseAlarmActivity.close()
+      try {
+        context.startService(
+          Intent(context, DoseAlarmService::class.java)
+            .setAction(ACTION_STOP)
+            .putExtra(EXTRA_GIVE_BACK, true),
+        )
+      } catch (_: Exception) {
+        // not running: nothing rings
+      }
+    }
+
     const val ACTION_START = "expo.modules.dosealarm.START"
     const val ACTION_STOP = "expo.modules.dosealarm.STOP"
     const val EXTRA_ID = "expo.modules.dosealarm.ID"
@@ -369,6 +427,9 @@ class DoseAlarmService : Service() {
     fun stop(context: Context) {
       // the loud fallback goes too: the reminder has been answered
       DoseAlarmFallback.cancel(context)
+      // at once: a screen opening meanwhile finds nothing to show (security review M3)
+      ringing = null
+      DoseAlarmActivity.close()
       // at once, not after the service's turn on the main thread (a sign-out clears the tray)
       runCatching { context.getSystemService(NotificationManager::class.java)?.cancel(NOTIFICATION_ID) }
       try {

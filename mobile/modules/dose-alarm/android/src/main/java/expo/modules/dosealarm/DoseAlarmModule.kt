@@ -25,8 +25,8 @@ class DoseAlarmModule : Module() {
 
     Function("canSchedule") { DoseAlarmScheduler.canSchedule(context) }
 
-    Function("sync") { alarms: List<AlarmSpec>, title: String, body: String, stopLabel: String, fallback: String ->
-      DoseAlarmStore(context).saveTexts(title, body, stopLabel, fallback)
+    Function("sync") { alarms: List<AlarmSpec>, title: String, body: String, stopLabel: String, fallback: String, show: String ->
+      DoseAlarmStore(context).saveTexts(title, body, stopLabel, fallback, show)
       DoseAlarmScheduler.sync(context, alarms.associate { it.id to it.at.toLong() })
     }
 

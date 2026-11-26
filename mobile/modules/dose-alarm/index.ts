@@ -14,6 +14,7 @@ type DoseAlarmNative = {
     body: string,
     stopLabel: string,
     fallback: string,
+    show: string,
   ): void;
   add(id: string, at: number): void;
   cancel(id: string): void;
@@ -30,6 +31,8 @@ export type AlarmTexts = {
   stop: string;
   /** the loud fallback when the alarm cannot ring: the reminder title */
   fallback: string;
+  /** the alarm screen's button where the lock screen hides names: "Эмийг харах" */
+  show: string;
 };
 
 const native = requireOptionalNativeModule<DoseAlarmNative>("DoseAlarm");
@@ -57,7 +60,9 @@ export function syncAlarmClocks(
   alarms: readonly { id: string; at: number }[],
   texts: AlarmTexts,
 ): void {
-  quietly((n) => n.sync([...alarms], texts.title, texts.body, texts.stop, texts.fallback));
+  quietly((n) =>
+    n.sync([...alarms], texts.title, texts.body, texts.stop, texts.fallback, texts.show),
+  );
 }
 
 /** One alarm beside the plan ("10 мин дараа"). */

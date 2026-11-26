@@ -36,8 +36,9 @@ internal class DoseAlarmStore(context: Context) {
     saveAlarms(left)
   }
 
-  fun saveTexts(title: String, body: String, stop: String, fallback: String) {
+  fun saveTexts(title: String, body: String, stop: String, fallback: String, show: String) {
     prefs.edit()
+      .putString(KEY_SHOW, show)
       .putString(KEY_TITLE, title)
       .putString(KEY_BODY, body)
       .putString(KEY_STOP, stop)
@@ -53,6 +54,9 @@ internal class DoseAlarmStore(context: Context) {
 
   fun fallbackTitle(): String = prefs.getString(KEY_FALLBACK, null) ?: "Эм уух цаг боллоо"
 
+  /** the alarm screen's "Эмийг харах" (unlock first) where the lock screen hides names */
+  fun showLabel(): String = prefs.getString(KEY_SHOW, null) ?: "Эмийг харах"
+
   fun clear() {
     prefs.edit().clear().apply()
   }
@@ -63,5 +67,6 @@ internal class DoseAlarmStore(context: Context) {
     const val KEY_STOP = "text.stop"
     const val KEY_BODY = "text.body"
     const val KEY_FALLBACK = "text.fallback"
+    const val KEY_SHOW = "text.show"
   }
 }

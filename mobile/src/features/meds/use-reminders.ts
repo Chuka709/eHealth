@@ -232,6 +232,7 @@ export function useReminderSync(): void {
           body: t("notify.ringingBody"),
           stop: t("notify.stopAlarm"),
           fallback: t("notify.title"),
+          show: t("notify.showMeds"),
         });
       }
     }
