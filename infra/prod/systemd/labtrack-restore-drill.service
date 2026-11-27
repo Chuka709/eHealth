@@ -1,0 +1,6 @@
+[Unit]
+Description=LabTrack restore-drill reminder
+
+[Service]
+Type=oneshot
+ExecStart=/opt/labtrack/infra/prod/monitor.sh --remind "monthly restore drill due (OPS_RUNBOOK §4: just restore-drill on another machine)"

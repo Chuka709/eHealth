@@ -1,0 +1,24 @@
+# OpenBao on its own VM (not the app server). Copied to /etc/openbao with openbao.hcl and run
+# from there (SERVER_INSTALL_MANUAL.md §4): docker compose -f /etc/openbao/docker-compose.yml up -d
+# Host networking: a published Docker port would bypass the VM's ufw rules, and 8200 must answer
+# the app server alone (security review S3 H3). Bring ufw up BEFORE starting it - an
+# uninitialised OpenBao can be taken over by whoever runs `operator init` first.
+# Version: 2.7.2 tested by the app (2026.11.27); read the newest patch's notes before installing.
+services:
+  openbao:
+    image: openbao/openbao:2.7.2
+    # the image reads /openbao/config itself
+    command: ["server"]
+    restart: unless-stopped
+    network_mode: host
+    security_opt: ["no-new-privileges:true"]
+    volumes:
+      - ./openbao.hcl:/openbao/config/openbao.hcl:ro
+      - /etc/openbao/tls:/openbao/tls:ro
+      - /var/lib/openbao/data:/openbao/data
+      - /var/log/openbao:/openbao/audit
+      # the keepers' PGP public keys for `operator init -pgp-keys` (SERVER_INSTALL_MANUAL §4)
+      - /etc/openbao/pgp:/openbao/pgp:ro
+    logging:
+      driver: local
+      options: { max-size: "20m", max-file: "10" }

@@ -111,3 +111,30 @@ def test_an_empty_variable_is_no_value(monkeypatch: pytest.MonkeyPatch) -> None:
     # compose's `${X:-}` must not hide a secret file or a default (review S2 L7)
     monkeypatch.setenv("JWT_KID", "")
     assert _settings(environment="production").jwt_kid == "k1"
+
+
+async def test_setup_refuses_an_unaudited_openbao_and_still_revokes_the_admin_token(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from labtrack import openbao_setup  # noqa: PLC0415
+
+    calls: list[str] = []
+
+    def handle(request: httpx.Request) -> httpx.Response:
+        calls.append(f"{request.method} {request.url.path}")
+        if request.url.path.endswith("/sys/audit"):
+            return httpx.Response(200, json={"request_id": "x", "data": {}})
+        return httpx.Response(204)
+
+    real = httpx.AsyncClient
+
+    def client(**kwargs: object) -> httpx.AsyncClient:
+        return real(**kwargs, transport=httpx.MockTransport(handle))  # type: ignore[arg-type]
+
+    monkeypatch.setattr(httpx, "AsyncClient", client)
+    with pytest.raises(RuntimeError, match="audit device"):
+        await openbao_setup.bootstrap(
+            "https://bao:8200", "root", require_audit=True, revoke_admin=True
+        )
+    # nothing was made on it, and the admin token went anyway (review S3 L4)
+    assert calls == ["GET /v1/sys/audit", "POST /v1/auth/token/revoke-self"]

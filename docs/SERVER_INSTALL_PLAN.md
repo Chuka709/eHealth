@@ -43,7 +43,7 @@
 2. Initialize: **Shamir 5 хэсэг, 3-аар нээх** `[?6]` — хэсгүүдийг өөр өөр хүмүүс хадгална (цаас + сейф).
 3. Тохиргоог **нэг команд** хийнэ (апп серверээс, root token-оор; дараа нь root token цуцлагдана):
    `BAO_ADDR=https://<bao>:8200 BAO_TOKEN=<root> BAO_CACERT=<ca.pem> python -m labtrack.cli openbao-setup
-   --out /etc/labtrack/secrets/openbao --bound-cidr <апп серверийн IP>/32 --audit-file /openbao/audit/audit.log`
+   --out /etc/labtrack/secrets/openbao --bound-cidr <апп серверийн IP>/32` (аудит асаалтгүй OpenBao-д татгалзана)
    - `transit` engine + `labtrack-kek` (aes256-gcm96, экспортлохгүй, устгах боломжгүй);
    - 3 AppRole (token 1 цаг, хамгийн ихдээ 4 цаг, зөвхөн тухайн IP-ээс): **api** — KEK ба хэрэглэгчийн
      түлхүүрээр шифрлэх/тайлах, шинэ хэрэглэгчид түлхүүр үүсгэх (зөвхөн `type`); **worker** — KEK-ээр
@@ -53,7 +53,7 @@
    - Хэрэглэгчийн түлхүүр `u-<id>` аккаунттай хамт үүснэ; DB-ийн мөрөнд зөвхөн тэмдэг (`openbao:v1`).
 4. Апп-ын тохиргоо (S2): `OPENBAO_ADDR`, `OPENBAO_ROLE_ID`, secret `openbao_secret_id` (Docker secret, `/run/secrets`),
    `OPENBAO_CA_CERT` — api, worker, maint-worker тус бүр өөрийн role-оор.
-5. Аудит лог (`--audit-file`) — ≥ 35 хоног, өөр газар.
+5. Аудит лог — OpenBao 2.x-д зөвхөн тохиргооны файлаар (`infra/openbao/openbao.hcl`), ≥ 35 хоног, өөр газар.
 6. Дахин асахад unseal `[?7]`: гараар (3 хүн) эсвэл auto-unseal (HSM/өөр KMS — Монголд байхгүй бол гараар).
    OpenBao унтарсан/sealed үед апп 503 («Үйлчилгээ түр ажиллахгүй»), баримт хүлээгдэнэ (алдагдахгүй).
 7. Snapshot нөөц: OpenBao-ийн raft snapshot → age-ээр шифрлэж **өгөгдлийн нөөцөөс тусдаа** газар.
@@ -109,6 +109,8 @@
   шалгаж ажиллуулна), болохгүй бол гараар: алхам бүр хуулж ажиллуулах командын блок + хүлээгдэх гаралт
   (`docs/SERVER_INSTALL_MANUAL.md`, S3-т). Скриптүүд (`just prod-init`, `just deploy`) хоёр горимд ижил.
 - Домэйн: **байгаа** (нэрийг S2-т тодруулна).
+- **Зөвхөн хүн** (Claude SSH-ээр суулгаж байсан ч): OpenBao `init`/`unseal`, root token-той алхмууд, эхний
+  админ (`create-admin`, TOTP QR) — Shamir хэсэг, token, QR Claude-ын транскрипт, лог руу орохгүй (MANUAL §4–6 🔒).
 - Эхний алхам: **S1 OpenBao KeyProvider**.
 
 ## Асуултууд (хариулт хэрэгтэй)

@@ -65,7 +65,7 @@ async def bootstrap(
     *,
     ca_cert: str | None = None,
     bound_cidrs: list[str] | None = None,
-    audit_file: str | None = None,
+    require_audit: bool = False,
     allow_http: bool = False,
     revoke_admin: bool = False,
 ) -> list[RoleCredentials]:
@@ -93,6 +93,13 @@ async def bootstrap(
             return data
 
         try:
+            if require_audit:
+                # who encrypted, decrypted or destroyed what, when (values HMAC'd). OpenBao 2.x
+                # enables audit devices from its config only (infra/openbao/openbao.hcl): a
+                # server without one is refused before anything is made on it.
+                audits = await call("GET", "sys/audit")
+                if not audits.get("data"):
+                    raise RuntimeError("OpenBao has no audit device (infra/openbao/openbao.hcl)")
             mounts = await call("GET", "sys/mounts")
             if "transit/" not in mounts.get("data", mounts):
                 await call("POST", "sys/mounts/transit", {"type": "transit"})
@@ -100,15 +107,6 @@ async def bootstrap(
             await call("POST", f"transit/keys/{SERVICE_KEK}", {"type": "aes256-gcm96"})
             for name, policy in POLICIES.items():
                 await call("PUT", f"sys/policies/acl/{name}", {"policy": policy})
-            if audit_file:
-                # who encrypted, decrypted or destroyed what, when (values HMAC'd by OpenBao)
-                audits = await call("GET", "sys/audit")
-                if "file/" not in audits.get("data", audits):
-                    await call(
-                        "PUT",
-                        "sys/audit/file",
-                        {"type": "file", "options": {"file_path": audit_file}},
-                    )
             auths = await call("GET", "sys/auth")
             if "approle/" not in auths.get("data", auths):
                 await call("POST", "sys/auth/approle", {"type": "approle"})

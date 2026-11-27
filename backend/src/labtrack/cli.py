@@ -138,7 +138,7 @@ def _redelete(since: str, apply: bool) -> int:
     return 0
 
 
-def _openbao_setup(out: Path, bound_cidrs: list[str], audit_file: str | None) -> int:
+def _openbao_setup(out: Path, bound_cidrs: list[str]) -> int:
     """docs/SERVER_INSTALL_PLAN.md §3: BAO_ADDR, BAO_TOKEN (an admin token), BAO_CACERT. Each
     role's id and secret go to their own file (0600) - never to the terminal."""
     from labtrack.openbao_setup import bootstrap  # noqa: PLC0415
@@ -160,7 +160,7 @@ def _openbao_setup(out: Path, bound_cidrs: list[str], audit_file: str | None) ->
             token,
             ca_cert=os.environ.get("BAO_CACERT"),
             bound_cidrs=bound_cidrs,
-            audit_file=audit_file,
+            require_audit=True,
             revoke_admin=True,
         )
     )
@@ -203,7 +203,6 @@ def main(argv: list[str] | None = None) -> int:
     p_bao = sub.add_parser("openbao-setup", help="transit, the KEK, policies and AppRoles")
     p_bao.add_argument("--out", type=Path, required=True, help="folder for the role secrets")
     p_bao.add_argument("--bound-cidr", action="append", default=[], help="allowed client CIDR")
-    p_bao.add_argument("--audit-file", help="OpenBao's audit log path (on the OpenBao host)")
 
     args = parser.parse_args(argv)
     writers = {
@@ -218,7 +217,7 @@ def main(argv: list[str] | None = None) -> int:
         "seed": lambda: _seed(args.dir),
         "rewrap-user-keys": _rewrap,
         "unlock-admin": lambda: _unlock_admin(args.username),
-        "openbao-setup": lambda: _openbao_setup(args.out, args.bound_cidr, args.audit_file),
+        "openbao-setup": lambda: _openbao_setup(args.out, args.bound_cidr),
         "redelete": lambda: _redelete(args.since, args.apply),
         "create-admin": lambda: _create_admin(args.username, args.role),
     }
