@@ -18,6 +18,7 @@ import {
   enableExactAlarms,
   hasAutostartSetting,
   openAutostart,
+  openLockScreenPermission,
   useReminderHealth,
 } from "@/features/meds/use-reminder-health";
 import { requestReminderSync } from "@/features/meds/use-reminders";
@@ -119,6 +120,14 @@ export default function RemindersSettingsScreen() {
               label={th("autostartOpen")}
               variant="secondary"
               onPress={() => void openAutostart().catch(() => undefined)}
+            />
+          )}
+          {hasAutostartSetting() && <Paragraph>{th("lockXiaomi")}</Paragraph>}
+          {hasAutostartSetting() && (
+            <Button
+              label={th("lockOpen")}
+              variant="secondary"
+              onPress={() => void openLockScreenPermission().catch(() => undefined)}
             />
           )}
           <Paragraph>{th("batteryOppo")}</Paragraph>

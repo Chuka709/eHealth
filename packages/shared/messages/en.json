@@ -683,6 +683,8 @@
         "autostartOff": "“Background autostart” may be off for LabTrack on this phone. If so, medicine reminders stop after a restart (or after the app is force-stopped) until you open the app. Use the button below to turn it on.",
         "autostartOpen": "Open Background autostart",
         "autostartDone": "I turned it on, don’t remind me again",
+        "lockXiaomi": "Xiaomi, Redmi, POCO: for the alarm screen to show over the lock screen, open “Other permissions” → “Show on Lock screen” and set it to “Allow”. Otherwise the alarm rings but its screen stays behind the lock screen (button below).",
+        "lockOpen": "Open lock-screen permission",
         "batteryOppo": "Oppo / Realme: Settings → Apps → App management → LabTrack → Battery usage → “Allow background activity”.",
         "batteryOther": "Other phones: Settings → Apps → LabTrack → Battery → unrestricted.",
         "openSettings": "Open the app's settings"

@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import Constants from "expo-constants";
 import * as Device from "expo-device";
 import * as Notifications from "expo-notifications";
 import { useEffect } from "react";
@@ -38,6 +39,21 @@ export function hasAutostartSetting(): boolean {
 export async function openAutostart(): Promise<void> {
   try {
     await Linking.sendIntent("miui.intent.action.OP_AUTO_START");
+  } catch {
+    await Linking.openSettings();
+  }
+}
+
+/** The app's own MIUI permissions page ("Other permissions"), where "Show on Lock screen" is
+ * off for a new app: without it the alarm screen stays behind the lock screen (real phone
+ * 2026.11.27) - Android cannot tell us its state. Else the app's own settings. */
+export async function openLockScreenPermission(): Promise<void> {
+  const app = Constants.expoConfig?.android?.package;
+  try {
+    if (!app) throw new Error("no package");
+    await Linking.sendIntent("miui.intent.action.APP_PERM_EDITOR", [
+      { key: "extra_pkgname", value: app },
+    ]);
   } catch {
     await Linking.openSettings();
   }
