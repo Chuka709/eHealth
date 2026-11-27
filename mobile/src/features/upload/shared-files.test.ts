@@ -1,6 +1,6 @@
 import type { ShareIntentFile } from "expo-share-intent";
 
-import { readShared } from "@/features/upload/shared-files";
+import { readShared, sharedUri } from "@/features/upload/shared-files";
 
 const file = (over: Partial<ShareIntentFile>): ShareIntentFile => ({
   fileName: "result.pdf",
@@ -46,4 +46,15 @@ test("a URI of this app's own provider is refused", () => {
 
 test("no share at all gives nothing to add", () => {
   expect(readShared(null).picked).toEqual([]);
+});
+
+// security review 2026.11.27 M1: "#" and "?" stay part of the name, never a URI fragment/query
+test("a shared path becomes a file URI with every segment encoded", () => {
+  expect(sharedUri("/data/user/0/pkg/cache/upload-queue#x.pdf")).toBe(
+    "file:///data/user/0/pkg/cache/upload-queue%23x.pdf",
+  );
+  expect(sharedUri("/data/user/0/pkg/cache/шинжилгээ a?.pdf")).toBe(
+    `file:///data/user/0/pkg/cache/${encodeURIComponent("шинжилгээ a?.pdf")}`,
+  );
+  expect(sharedUri("content://com.example/1")).toBe("content://com.example/1");
 });

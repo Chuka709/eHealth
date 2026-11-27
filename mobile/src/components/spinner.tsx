@@ -10,7 +10,8 @@ import {
 
 import { usePalette } from "@/theme/use-palette";
 
-const SIZES = { small: 20, large: 44 } as const;
+export const SPINNER_LARGE = 44;
+const SIZES = { small: 20, large: SPINNER_LARGE } as const;
 // one turn eases in and out (a calm sweep, not a mechanical spin); a second arc trails it
 const TURN_MS = 1100;
 

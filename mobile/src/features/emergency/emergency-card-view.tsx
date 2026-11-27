@@ -10,7 +10,13 @@ import { useRegimenText } from "@/features/meds/use-med-text";
 import { elapsedText, transplantDateText } from "@/features/records/elapsed";
 import { formatDate, formatDateTime } from "@/lib/dates";
 import { usePalette } from "@/theme/use-palette";
-import { graftKey, recentStopLines, steroidLines, transplantBloodLines } from "./card-text";
+import {
+  graftKey,
+  recentStopLines,
+  steroidLines,
+  transplantBloodLines,
+  transplantIntro,
+} from "./card-text";
 import type { EmergencyCard } from "./snapshot";
 
 /** A number to dial: digits with an optional leading + (no pauses, codes or other characters);
@@ -89,7 +95,7 @@ export function EmergencyCardView({ card, copy }: { card: EmergencyCard; copy: C
         >
           {card.transplants.length > 0 && (
             <Text accessibilityLanguage={lang} style={[styles.lead, { color: p.text }]}>
-              {e("introTransplant")}
+              {transplantIntro(card.transplants, (key, values) => e(key as never, values as never))}
             </Text>
           )}
           {takesImmunosuppressant && (

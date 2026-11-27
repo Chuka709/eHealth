@@ -9,53 +9,46 @@ import { usePalette } from "@/theme/use-palette";
 import { Button } from "./button";
 import { FormMessage } from "./form-message";
 import { Icon, type IconName } from "./icon";
-import { Spinner } from "./spinner";
+import { SPINNER_LARGE, Spinner } from "./spinner";
 import { Paragraph } from "./text";
 
 const isOnline = () => onlineManager.isOnline();
 
 /**
- * Full-screen loading state with a spoken label, over grey placeholders of the list to come
- * (UX audit #10): the screen looks like itself at once, never empty. Offline with nothing
- * cached, a query waits (paused) until the network is back: then it says so instead of spinning
- * for ever (DEVICE_TEST 2026.11.27), and loads by itself once online.
+ * The app's one full-screen loading state (user request 2026.11.27: the same loader everywhere,
+ * centred - it sat in the top corner of screens without a header): the Spinner in the middle,
+ * the spoken words under it. Offline with nothing cached, a query waits (paused) until the
+ * network is back: then it says so instead of spinning for ever, and loads by itself once online.
  */
 export function LoadingView() {
   const t = useTranslations("app.common");
   const p = usePalette();
   const online = useSyncExternalStore(onlineManager.subscribe.bind(onlineManager), isOnline);
-  if (!online) {
-    return (
-      <View
-        accessibilityLiveRegion="polite"
-        style={[styles.center, styles.gap, styles.middle, { backgroundColor: p.background }]}
-      >
-        <Icon name="cloud-off-outline" color={p.textMuted} size={40} />
-        <Paragraph muted>{t("offlineWaiting")}</Paragraph>
-      </View>
-    );
-  }
   return (
     <View
       accessibilityLiveRegion="polite"
-      style={[styles.top, styles.gap, { backgroundColor: p.background }]}
+      style={[styles.center, styles.gap, styles.middle, { backgroundColor: p.background }]}
     >
-      <View style={styles.row}>
-        {/* the words below are what is read out, once (ui review L7) */}
+      {online ? (
         <Spinner size="large" />
-        <Paragraph muted>{t("loading")}</Paragraph>
-      </View>
-      {[0, 1, 2].map((i) => (
-        <View
-          key={i}
-          accessibilityElementsHidden
-          importantForAccessibility="no-hide-descendants"
-          style={[styles.placeholder, { backgroundColor: p.surface, borderColor: p.border }]}
-        >
-          <View style={[styles.barWide, { backgroundColor: p.border }]} />
-          <View style={[styles.barShort, { backgroundColor: p.border }]} />
-        </View>
-      ))}
+      ) : (
+        <Icon name="cloud-off-outline" color={p.textMuted} size={SPINNER_LARGE} />
+      )}
+      {/* the words are what is read out, once (ui review L7) */}
+      <Paragraph muted centered>
+        {t(online ? "loading" : "offlineWaiting")}
+      </Paragraph>
+    </View>
+  );
+}
+
+/** The same loader inside a section of a screen (a card still loading): small, with its words. */
+export function InlineLoading() {
+  const t = useTranslations("app.common");
+  return (
+    <View accessibilityLiveRegion="polite" style={styles.inline}>
+      <Spinner />
+      <Paragraph muted>{t("loading")}</Paragraph>
     </View>
   );
 }
@@ -95,17 +88,8 @@ export function RetryView({ text, onRetry }: { text: string; onRetry: () => void
 const styles = StyleSheet.create({
   center: { flex: 1, justifyContent: "center", padding: space.lg },
   middle: { alignItems: "center" },
-  top: { flex: 1, padding: space.lg },
+  inline: { flexDirection: "row", alignItems: "center", gap: space.sm },
   gap: { gap: space.lg },
-  row: { flexDirection: "row", alignItems: "center", gap: space.sm },
-  placeholder: {
-    borderRadius: radius.lg,
-    borderWidth: StyleSheet.hairlineWidth,
-    padding: space.lg,
-    gap: space.sm,
-  },
-  barWide: { height: space.md, width: "70%", borderRadius: radius.sm },
-  barShort: { height: space.md, width: "40%", borderRadius: radius.sm },
   empty: {
     alignItems: "center",
     gap: space.md,

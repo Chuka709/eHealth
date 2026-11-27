@@ -100,6 +100,26 @@ export function steroidLines(
   ];
 }
 
+/**
+ * The card's first line names what was transplanted (real phone 2026.11.27: "I have had a
+ * transplant" left a first responder asking which organ): "Би бөөр, элэг шилжүүлэн
+ * суулгуулсан." Each organ once, in the card's language; "other" alone keeps the general line.
+ */
+export function transplantIntro(transplants: readonly CardTransplant[], e: Tr): string {
+  const kinds = new Set(transplants.map((tr) => tr.organ).filter((organ) => organ !== "other"));
+  // a kidney-pancreas graft already names both (medical review L1)
+  if (kinds.has("kidney_pancreas")) {
+    kinds.delete("kidney");
+    kinds.delete("pancreas");
+  }
+  // the card's own words, made for a sentence ("бөөр ба нойр булчирхай", "blood stem cell (bone
+  // marrow)") - not the form's labels (medical review M1)
+  const organs = [...kinds].map((organ) => e(`introOrgan.${organ}`));
+  return organs.length > 0
+    ? e("introTransplantOf", { organs: organs.join(", ") })
+    : e("introTransplant");
+}
+
 /** Immunosuppressants stopped in the last 14 days, with the day (Q37); an older card has none. */
 export function recentStopLines(card: EmergencyCard, e: Tr): string[] {
   return [...(card.recently_stopped ?? [])]
@@ -132,7 +152,7 @@ export function cardText(
     t(`app.transplant.${key}`, values);
 
   const who: string[] = [];
-  if (card.transplants.length > 0) who.push(e("introTransplant"));
+  if (card.transplants.length > 0) who.push(transplantIntro(card.transplants, e));
   if (card.dosed_medications.some((m) => m.category === "immunosuppressant")) {
     who.push(e("introImmunosuppressed"));
   }

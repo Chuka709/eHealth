@@ -6,6 +6,7 @@ import { useTranslations } from "use-intl";
 import { Button } from "@/components/button";
 import { FormMessage } from "@/components/form-message";
 import { NavRow } from "@/components/nav-row";
+import { InlineLoading } from "@/components/state-view";
 import { Paragraph, Title } from "@/components/text";
 import { APPOINTMENTS, type Appointment, useRecords } from "@/features/health/use-health";
 import { TodayList } from "@/features/meds/today-list";
@@ -16,7 +17,6 @@ import { formatDateTime } from "@/lib/dates";
 import { loading, OFFLINE_ERROR as OFFLINE } from "@/lib/query-state";
 import { useErrorText } from "@/lib/use-error-text";
 import { usePalette } from "@/theme/use-palette";
-
 import { doseCounts, latestTransplant, nextAppointment, useHomeDoses } from "./home-data";
 
 /** A section that could not load: says so and offers a retry, the rest of Home stays usable. */
@@ -46,12 +46,7 @@ function Failed({
 }
 
 function Loading() {
-  const t = useTranslations("app.common");
-  return (
-    <View accessibilityLiveRegion="polite">
-      <Paragraph muted>{t("loading")}</Paragraph>
-    </View>
-  );
+  return <InlineLoading />;
 }
 
 /**

@@ -901,6 +901,18 @@
       "switchTo": "Монгол",
       "switchToLabel": "Картыг монголоор харуулах",
       "introTransplant": "I have had a transplant.",
+      "introTransplantOf": "I have had a transplant: {organs}.",
+      "introOrgan": {
+        "kidney": "kidney",
+        "liver": "liver",
+        "heart": "heart",
+        "lung": "lung",
+        "pancreas": "pancreas",
+        "kidney_pancreas": "kidney and pancreas",
+        "intestine": "intestine",
+        "cornea": "cornea",
+        "hsct": "blood stem cell (bone marrow)"
+      },
       "name": "Name",
       "birthDate": "Date of birth",
       "transplants": "Transplants",

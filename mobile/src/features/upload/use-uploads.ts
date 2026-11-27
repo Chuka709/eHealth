@@ -10,7 +10,7 @@ import { apiBaseUrl } from "@/lib/api-base";
 import { queryClient } from "@/lib/query-client";
 import { newClientId } from "@/lib/random";
 
-import { EXTENSIONS, removeSourceCopy } from "./upload-files";
+import { EXTENSIONS, removeSharedCopy, removeSourceCopy } from "./upload-files";
 import {
   enqueueUpload,
   failedUploads,
@@ -74,9 +74,9 @@ export async function queueFiles(
     }
   } finally {
     // the scanner's or picker's own copies: ours are enough, and a full queue or a failed copy
-    // leaves none of them behind either (security review 8.5 L2). Never a shared file: another
-    // app chose that path (commit security review 3.5)
-    if (!shared) for (const file of files) removeSourceCopy(file.uri);
+    // leaves none of them behind either (security review 8.5 L2). A shared file: only the share
+    // library's copy straight in the cache - another app chose that path (security review 3.5)
+    for (const file of files) (shared ? removeSharedCopy : removeSourceCopy)(file.uri);
   }
   void queryClient.invalidateQueries({ queryKey: ["uploads"] });
   void sendWaitingUploads();

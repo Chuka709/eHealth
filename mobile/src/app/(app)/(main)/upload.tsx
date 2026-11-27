@@ -13,7 +13,8 @@ import { Screen } from "@/components/screen";
 import { Paragraph } from "@/components/text";
 import { useRecordProfile } from "@/features/health/record-screens";
 import { ProfileSwitcher } from "@/features/records/profile-switcher";
-import { readShared } from "@/features/upload/shared-files";
+import { readShared, sharedUri } from "@/features/upload/shared-files";
+import { removeSharedCopy } from "@/features/upload/upload-files";
 import {
   type Picked,
   pickPdf,
@@ -91,7 +92,11 @@ export default function UploadScreen() {
           <Button
             variant="link"
             label={t("ignoreShared")}
-            onPress={() => share.resetShareIntent()}
+            onPress={() => {
+              // every copy the share left, also of a kind we do not take (security review L1)
+              for (const f of share.shareIntent.files ?? []) removeSharedCopy(sharedUri(f.path));
+              share.resetShareIntent();
+            }}
           />
         </View>
       )}

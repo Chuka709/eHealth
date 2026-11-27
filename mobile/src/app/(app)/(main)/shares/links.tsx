@@ -9,7 +9,7 @@ import { MultiChoices } from "@/components/choices";
 import { FormMessage } from "@/components/form-message";
 import { Screen } from "@/components/screen";
 import { Segmented } from "@/components/segmented";
-import { LoadingView, RetryView } from "@/components/state-view";
+import { InlineLoading, LoadingView, RetryView } from "@/components/state-view";
 import { Paragraph, Title } from "@/components/text";
 import { useRecordProfile } from "@/features/health/record-screens";
 import { usePinnedProfile } from "@/features/records/active-profile";
@@ -288,8 +288,7 @@ function LinkCard({
 }
 
 function LoadingInline() {
-  const tc = useTranslations("app.common");
-  return <Paragraph muted>{tc("loading")}</Paragraph>;
+  return <InlineLoading />;
 }
 
 /** Shown once: the QR code and the link, the PIN apart, and a way to send the link alone. */

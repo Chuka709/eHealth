@@ -8,7 +8,7 @@ import { Button } from "@/components/button";
 import { FormMessage } from "@/components/form-message";
 import { Screen } from "@/components/screen";
 import { Segmented } from "@/components/segmented";
-import { LoadingView, RetryView } from "@/components/state-view";
+import { InlineLoading, LoadingView, RetryView } from "@/components/state-view";
 import { Paragraph, Title } from "@/components/text";
 import { TextField } from "@/components/text-field";
 import { useRecordProfile } from "@/features/health/record-screens";
@@ -222,7 +222,7 @@ export default function SharesScreen() {
 
       <Title>{t("views.title")}</Title>
       <Paragraph muted>{t("views.hint")}</Paragraph>
-      {views.isPending && <Paragraph muted>{tc("loading")}</Paragraph>}
+      {views.isPending && <InlineLoading />}
       {views.isError && <FormMessage kind="error" text={errorText(views.error)} />}
       {views.data?.length === 0 && <Paragraph muted>{t("views.none")}</Paragraph>}
       {views.data?.map((v) => (

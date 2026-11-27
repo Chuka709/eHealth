@@ -76,6 +76,27 @@ export function removeSourceCopy(uri: string): void {
 }
 
 /**
+ * The share library's copy of a file shared from another app: written straight into the cache
+ * folder and otherwise kept until sign-out (real phone 2026.11.27, DEVICE_TEST 25). Only a file
+ * directly in the cache folder goes - never a sub-folder (the upload queue, the HTTP cache):
+ * the path came from another app (commit security review 3.5).
+ */
+export function removeSharedCopy(uri: string): void {
+  const cache = Paths.cache.uri.replace(/\/?$/, "/");
+  if (!uri.startsWith(cache)) return;
+  if (/[?#]/.test(uri)) return;
+  // checked here as decoded, not trusting how the caller encoded it (security review M1)
+  let name: string;
+  try {
+    name = decodeURIComponent(uri.slice(cache.length));
+  } catch {
+    return;
+  }
+  if (name === "" || name === "." || name === ".." || /[/\\\0]/.test(name)) return;
+  removeFile(uri);
+}
+
+/**
  * A file another app shared names its own path: never one inside this app's private data
  * (the encrypted store, the waiting files) - a malicious app could make the user upload them
  * (commit security review 3.5). The share library's copies in the cache are allowed, the

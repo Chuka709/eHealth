@@ -7,6 +7,7 @@ import { useTranslations } from "use-intl";
 import { Text } from "@/components/app-text";
 import { Button } from "@/components/button";
 import { FormMessage } from "@/components/form-message";
+import { InlineLoading } from "@/components/state-view";
 import { Paragraph, Title } from "@/components/text";
 import { CRITICAL_FLAGS, flagKey, flagToken } from "@/features/review/flag";
 import { formatDate, formatDateTime } from "@/lib/dates";
@@ -14,7 +15,6 @@ import { markOnce } from "@/lib/perf";
 import { loading, OFFLINE_ERROR } from "@/lib/query-state";
 import { useErrorText } from "@/lib/use-error-text";
 import { usePalette } from "@/theme/use-palette";
-
 import { Sparkline } from "./sparkline";
 import {
   type DashboardCard,
@@ -51,7 +51,7 @@ export function LabSections({ patientId, canEdit }: { patientId: string; canEdit
     if (data) markOnce("home-lab-ready");
   }, [data]);
   if (loading(dashboard)) {
-    return <Paragraph muted>{t("loading")}</Paragraph>;
+    return <InlineLoading />;
   }
   if (!data) {
     return (

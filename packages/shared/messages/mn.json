@@ -901,6 +901,18 @@
       "switchTo": "English",
       "switchToLabel": "Show the card in English",
       "introTransplant": "Би шилжүүлэн суулгалт хийлгэсэн.",
+      "introTransplantOf": "Би {organs} шилжүүлэн суулгуулсан.",
+      "introOrgan": {
+        "kidney": "бөөр",
+        "liver": "элэг",
+        "heart": "зүрх",
+        "lung": "уушги",
+        "pancreas": "нойр булчирхай",
+        "kidney_pancreas": "бөөр ба нойр булчирхай",
+        "intestine": "гэдэс",
+        "cornea": "эвэрлэг бүрхүүл",
+        "hsct": "цусны үүдэл эс"
+      },
       "name": "Нэр",
       "birthDate": "Төрсөн огноо",
       "transplants": "Шилжүүлэн суулгалт",

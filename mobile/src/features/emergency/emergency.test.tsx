@@ -164,7 +164,7 @@ async function openCard() {
   await fireEvent.press(
     await screen.findByRole("button", { name: "Яаралтай тусламжийн карт нээх" }),
   );
-  await screen.findByText("Би шилжүүлэн суулгалт хийлгэсэн.");
+  await screen.findByText("Би бөөр шилжүүлэн суулгуулсан.");
 }
 
 // a later visit: back to Home and 🆘 again (queries removed first, as after a cold start)
@@ -289,11 +289,11 @@ test("when access ends the saved copy leaves the phone", async () => {
 test("the card can be shown in English for a team abroad", async () => {
   await openCard();
   await fireEvent.press(screen.getByRole("button", { name: "Show the card in English" }));
-  expect(await screen.findByText("I have had a transplant.")).toBeOnTheScreen();
+  expect(await screen.findByText("I have had a transplant: kidney.")).toBeOnTheScreen();
   expect(screen.getByText("Allergies")).toBeOnTheScreen();
   expect(screen.getByText("Planned from 2026.11.20: 08:00 · 7,5 mg")).toBeOnTheScreen();
   await fireEvent.press(screen.getByRole("button", { name: "Картыг монголоор харуулах" }));
-  expect(await screen.findByText("Би шилжүүлэн суулгалт хийлгэсэн.")).toBeOnTheScreen();
+  expect(await screen.findByText("Би бөөр шилжүүлэн суулгуулсан.")).toBeOnTheScreen();
 });
 
 test("a withdrawn consent drops the saved card with the cache", async () => {

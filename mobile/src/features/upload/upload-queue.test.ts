@@ -210,6 +210,32 @@ test("the picker's own copy in the cache is removed once ours exists", async () 
   expect(mockFiles.has("file:///elsewhere/b.pdf")).toBe(true); // another app's file is untouched
 });
 
+// DEVICE_TEST 25: the share library's copies stayed in the cache until sign-out
+test("a shared file's copy straight in the cache goes; nothing deeper or elsewhere", () => {
+  const { removeSharedCopy } =
+    jest.requireActual<typeof import("./upload-files")>("./upload-files");
+  const cache = "file:///data/user/0/pkg/cache";
+  const kept = [
+    `${cache}/upload-queue/x.pdf`,
+    `${cache}/http-cache/journal`,
+    `${cache}/a%2Fb.pdf`,
+    "file:///elsewhere/b.pdf",
+  ];
+  for (const f of [`${cache}/lt-sample.pdf`, ...kept]) mockFiles.add(f);
+  const tricks = [
+    `${cache}/`,
+    `${cache}/..`,
+    `${cache}/%2e%2e`,
+    `${cache}/%2E`,
+    `${cache}/#`,
+  ].concat([`${cache}/upload-queue#x`, `${cache}/a?b`, `${cache}/upload-queue%2Fx.pdf`]);
+  for (const f of [`${cache}/lt-sample.pdf`, ...kept, ...tricks]) {
+    removeSharedCopy(f);
+  }
+  expect(mockFiles.has(`${cache}/lt-sample.pdf`)).toBe(false);
+  for (const f of kept) expect(mockFiles.has(f)).toBe(true);
+});
+
 test("a shared path inside this app's private data is refused (commit security review 3.5)", () => {
   const { isForeignFile } = jest.requireActual<typeof import("./upload-files")>("./upload-files");
   expect(isForeignFile("content://com.android.providers.media.documents/document/1")).toBe(true);

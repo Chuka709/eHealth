@@ -28,6 +28,16 @@ function isOwnProvider(path: string): boolean {
   );
 }
 
+/**
+ * A shared file's path as a file URI: each segment encoded on its own, so spaces, Cyrillic
+ * letters (review M4) and also "#" and "?" (a name like "upload-queue#x.pdf" must not become
+ * another file - security review 2026.11.27 M1) stay part of the name.
+ */
+export function sharedUri(path: string): string {
+  if (path.startsWith("file://") || path.startsWith("content://")) return path;
+  return `file://${path.split("/").map(encodeURIComponent).join("/")}`;
+}
+
 export type SharedNotice = "sharedUnreadable" | "sharedUnsupported" | null;
 
 /**
@@ -43,14 +53,7 @@ export function readShared(files: readonly ShareIntentFile[] | null | undefined)
     .filter((f) => f.mimeType !== null && ACCEPTED.has(f.mimeType))
     .filter((f) => !isOwnProvider(f.path))
     .filter((f) => isForeignFile(f.path.startsWith("/") ? `file://${f.path}` : f.path))
-    .map((f) => ({
-      // a plain path may hold spaces or Cyrillic letters: encoded into a file URI (review M4)
-      uri:
-        f.path.startsWith("file://") || f.path.startsWith("content://")
-          ? f.path
-          : `file://${encodeURI(f.path)}`,
-      mime: f.mimeType,
-    }));
+    .map((f) => ({ uri: sharedUri(f.path), mime: f.mimeType }));
   if (picked.length > 0) return { picked, notice: null };
   return { picked, notice: files?.length === 0 ? "sharedUnreadable" : "sharedUnsupported" };
 }
