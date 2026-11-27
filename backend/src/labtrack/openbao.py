@@ -155,18 +155,26 @@ class OpenBaoClient:
     async def destroy_key(self, key: str) -> None:
         """Deletes a key for good (crypto-shredding); a key already gone is fine.
 
-        OpenBao 2.7 answers both calls for a missing key with 400 ("no existing key", "not
-        found"); the maintenance policy allows nothing else that could give a 400 here."""
+        OpenBao 2.7 answers both calls for a missing key with 400 ("no existing key named ...
+        could be found", "could not delete key; not found"). Any other 400 ("deletion is not
+        allowed", ...) fails: the purge must not commit while the key lives (fail closed)."""
         r = await self._call(
             "POST", f"{self.config.mount}/keys/{key}/config", {"deletion_allowed": True}
         )
-        if r.status_code == httpx.codes.BAD_REQUEST:
-            return  # already gone (an earlier run destroyed it, then its transaction failed)
+        if _gone(r):
+            return  # an earlier run destroyed it, then its transaction failed
         if r.status_code not in {200, 204}:
             raise KeyServiceError(f"openbao destroy {r.status_code}")
         r = await self._call("DELETE", f"{self.config.mount}/keys/{key}")
-        if r.status_code not in {200, 204, 400}:
+        if r.status_code not in {200, 204} and not _gone(r):
             raise KeyServiceError(f"openbao destroy {r.status_code}")
+
+
+def _gone(r: httpx.Response) -> bool:
+    if r.status_code != httpx.codes.BAD_REQUEST:
+        return False
+    text = _errors(r)
+    return "not found" in text or "could be found" in text
 
 
 def _errors(r: httpx.Response) -> str:

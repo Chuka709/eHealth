@@ -1,11 +1,12 @@
 """OpenBao settings (SERVER_INSTALL_PLAN S1): complete or absent, https outside dev/test, and the
 secret id in no repr (a traceback, a log line)."""
 
+import httpx
 import pytest
 from pydantic import ValidationError
 
 from labtrack.config import Settings
-from labtrack.openbao import OpenBaoClient, OpenBaoConfig
+from labtrack.openbao import KeyServiceError, OpenBaoClient, OpenBaoConfig
 
 BASE = {"database_url": "postgresql+asyncpg://u:p@db:5432/x", "clamd_host": "clamav"}
 
@@ -48,3 +49,45 @@ def test_keys_never_cross_the_network_in_the_clear_outside_dev() -> None:
 
 def test_no_address_no_openbao() -> None:
     assert _settings(environment="production", openbao_addr="").openbao() is None
+
+
+def _answering(replies: dict[tuple[str, str], tuple[int, list[str]]]) -> OpenBaoClient:
+    """A client whose OpenBao answers `replies` ((method, path end) -> (status, errors))."""
+
+    def handle(request: httpx.Request) -> httpx.Response:
+        if request.url.path.endswith("/auth/approle/login"):
+            return httpx.Response(200, json={"auth": {"client_token": "t", "lease_duration": 3600}})
+        for (method, end), (status, errors) in replies.items():
+            if request.method == method and request.url.path.endswith(end):
+                return httpx.Response(status, json={"errors": errors} if errors else {})
+        return httpx.Response(500)
+
+    client = OpenBaoClient(OpenBaoConfig("https://bao:8200", "r", "s"))
+    client._client = lambda: httpx.AsyncClient(  # type: ignore[method-assign]
+        base_url="https://bao:8200/v1/", transport=httpx.MockTransport(handle)
+    )
+    return client
+
+
+async def test_a_key_already_gone_is_destroyed_enough() -> None:
+    gone = ["no existing key named u-1 could be found"]
+    await _answering({("POST", "/keys/u-1/config"): (400, gone)}).destroy_key("u-1")
+    await _answering(
+        {
+            ("POST", "/keys/u-1/config"): (204, []),
+            ("DELETE", "/keys/u-1"): (400, ["could not delete key; not found"]),
+        }
+    ).destroy_key("u-1")
+
+
+async def test_a_refused_deletion_never_passes_for_shredded() -> None:
+    # the purge must not commit while the key lives (commit security review: fail closed)
+    for replies in (
+        {("POST", "/keys/u-1/config"): (400, ["invalid request"])},
+        {
+            ("POST", "/keys/u-1/config"): (204, []),
+            ("DELETE", "/keys/u-1"): (400, ["deletion is not allowed for this key"]),
+        },
+    ):
+        with pytest.raises(KeyServiceError):
+            await _answering(replies).destroy_key("u-1")
