@@ -12,11 +12,9 @@ LabTrack MN: бодит утасны (B6) шалгалтыг үргэлжлүү�
 - docs/09_CLINICAL_SAFETY.md — зөвхөн H6, H40 мөр
 
 ## Хийх
-(2026.11.25 хийгдсэн: Q78, Q79-3 эм бүрийн сэрүүлэг, Q65 цагийн эх сурвалж. Үлдсэн утасгүй алхам: Q79 FGS →
-`systemExempted` — STORE_RELEASE §3, Android 14+ эмулятор; утсан дээр эмийн дэлгэцийн шинэ товчийг харах.)
-0. **Эхлээд v7 Q79 сэрүүлгийн богино шалгалт** (DEVICE_TEST 13): утас чимээгүйд,
-   `test_reminder.py 3` → цагтаа дуугарах, heads-up-д «Дууг унтраах» + тайлбар, «Уусан»/апп
-   нээхэд зогсох, «10 мин дараа» дахин сэрүүлгээр дуугарах. Дараа нь утсыг энгийн горимд буцаа.
+(2026.11.27 хийгдсэн: сэрүүлэг — нэг тунгийн цагт нэг мэдэгдэл эмийн нэртэй, сэрүүлгийн бүтэн
+дэлгэц түгжээтэй утсанд, Xiaomi «Түгжээтэй дэлгэцэнд харуулах» товч — DEVICE_TEST 15–16, POCO дээр
+шалгасан. Туршилтын эмүүдийг цэвэрлэсэн.)
 1. Урсгалууд POCO X3 NFC (MIUI 14) дээр: F2 скан (камер, галерейд хадгалахгүй), F4 Viber/
    Messenger/Files-аас share, F5 офлайн нэмэх (файл/бичлэг), F6 яаралтай карт (түгжээтэй
    дэлгэц, wallpaper, PDF share), F7 гарахад cache/дараалал цэвэрлэгдэх
@@ -27,22 +25,18 @@ LabTrack MN: бодит утасны (B6) шалгалтыг үргэлжлүү�
 3. Олдсон алдааг засах (тест + хянагч), DEVICE_TEST.md-д бүртгэх, commit + push.
 4. Q24 шалгалтын үеийн хүлээлтийн төлөв хийгдсэн — утсан дээр нэг удаа харах (интернэт удаан үед «шалгаж байна…»).
 
-## Одоогийн төлөв (2026.11.25, салбар phase-2, Q79 сэрүүлэг commit хийгдсэн)
-- R1–R4 (11.19), R5 ◐ (MIUI deep Doze adb-ээр орохгүй), R7, R8, R9, R10, R12 ✅ (11.25).
-- 11.25-ны засварууд: e785e72 expo-notifications foreground broadcast patch
-  (`patches/expo-notifications.patch` + `mobile/package.json` buildFromSource — үгүй бол
-  patch build-д орохгүй): синк 51 сануулга 0.7 с, хүргэлт <1 с; 4c28c24 офлайн дараалал 30 с,
-  Q24 шалгалт 8 с (дараа нь асууна), refresh 20 с timeout; тэмдэглэсэн тунгийн сануулга
-  tray-ээс арилна.
-- Q11: Supabase руу шилжихийг цуцалсан (11.25) — одоогийн стек (Postgres, Celery + Valkey,
-  S3, Caddy) хэвээр; production-ийн байршил нээлттэй.
-- Q79: `mobile/modules/dose-alarm` (local Expo module, `setAlarmClock` + mediaPlayback FGS,
-  USAGE_ALARM, 60 с, `FLAG_RECEIVER_FOREGROUND`); v7 APK утсанд суусан (`dist/labtrack-dev-arm64.apk`).
-  Release-ийн өмнө: Play FGS declaration, Android 14+ `systemExempted` (STORE_RELEASE §5).
-- Тест: mobile Jest 359, backend 1384.
+## Одоогийн төлөв (2026.11.27, салбар phase-2, 0d81311)
+- R1–R4, R7–R10, R12 ✅; R5 ◐ (MIUI deep Doze adb-ээр орохгүй).
+- Q79 сэрүүлэг: `mobile/modules/dose-alarm` — expo сануулгыг өөрийн мэдэгдэл болгон авч (нэг
+  мэдэгдэл), 60 с дуугарч буцаана; full-screen intent → `DoseAlarmActivity` (түгжээтэй утсанд,
+  FLAG_SECURE, нэрийг түгжээтэй дэлгэцийн бүх давхарга зөвшөөрвөл л). Утсан дээрх APK = e5ffce8.
+- MIUI: «Түгжээтэй дэлгэцэнд харуулах» (MIUIOP 10020) шинэ апп-д унтраалттай — үгүй бол сэрүүлгийн
+  дэлгэц түгжээний ард үлдэнэ; Тохиргоо → Сануулга-д товч бий. APK дахин суулгавал дахин асаана.
+- Release-ийн өмнө: Play FGS (`systemExempted`) ба USE_FULL_SCREEN_INTENT declaration (STORE_RELEASE).
+- Тест: mobile Jest 380, backend 1384.
 
 ## Бодит утасны тохиргоо (POCO X3 NFC, Android 12, MIUI 14)
-- adb serial `8f2c0cf9`; dev APK `dist/labtrack-dev-arm64.apk` (patch-тай, 11.25) суусан.
+- adb serial `8f2c0cf9`; dev APK `dist/labtrack-dev-arm64.apk` (e5ffce8, 11.27) суусан.
 - APK дахин суулгавал MIUI Autostart/Battery saver тохиргоо арилна — хэрэглэгчээр асаалгана.
 - `adb reverse tcp:8081 tcp:8081` ба `tcp:8080 tcp:8080`; Metro — `.claude/launch.json`
   `metro-emulator` (preview_start); апп нээх:
@@ -61,4 +55,7 @@ LabTrack MN: бодит утасны (B6) шалгалтыг үргэлжлүү�
 - Ар талд түр лог хэрэгтэй бол `console.log` → Metro `preview_logs` (commit-оос өмнө устга).
 - Native build-ийн өмнө Docker зогсоо; Metro CI горимд өөрчлөлт харахгүй — preview_stop/start.
 - Jest-ийг Metro ажиллаж байхад бүү ажиллуул; `adb` гацвал `taskkill //F //IM adb.exe`.
+- adb daemon дахин эхлэхэд `adb reverse` арилна (апп «Сервертэй холбогдож чадсангүй») — 8080, 8081-ийг дахин.
+- `test_reminder.py` ажиллуулах бүрт шинэ «Туршилтын эм» үүсгэнэ — дараа нь DELETE `/patients/{id}/medications/{id}`-ээр цэвэрлэ.
+- Сэрүүлгийн дэлгэц FLAG_SECURE тул uiautomator/screenshot хоосон — хэрэглэгчээс нүдээр асуу.
 ```
