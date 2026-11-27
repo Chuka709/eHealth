@@ -19,7 +19,7 @@ minimumReleaseAgeExclude:
   - expo-camera@58.0.14
   - expo-dev-client@58.0.17
   - expo-dev-launcher@58.0.17
-  - '@expo/config-plugins@58.0.12'
+  - '@expo/config-plugins@58.0.12 || 58.0.14'
   - '@expo/config@58.0.11'
   - '@expo/env@2.5.4 || 2.6.0'
   - '@expo/inline-modules@0.2.9'
@@ -31,12 +31,16 @@ minimumReleaseAgeExclude:
   - expo-modules-autolinking@58.0.17
   - '@expo/metro-runtime@58.0.17'
   - expo-linking@58.0.16 || 58.0.17
-  - expo-splash-screen@58.0.13
+  - expo-splash-screen@58.0.13 || 58.0.15
   - react-native-safe-area-context@5.11.1
   - jest-expo@58.0.14
-  - expo-notifications@58.1.8
+  - expo-notifications@58.1.8 || 58.1.10
   - expo-document-picker@58.0.5
   - '@expo/require-utils@58.0.6'
+  - expo-crypto@58.0.9
+  - expo-glass-effect@58.0.6
+  - expo-image@58.0.19
+  - expo-sharing@58.0.24
 # React Native / Metro / Jest resolve most reliably from a hoisted node_modules.
 nodeLinker: hoisted
 # Install scripts are opt-in (supply-chain hardening). Native binaries we rely on ship prebuilt.
