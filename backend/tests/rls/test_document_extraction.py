@@ -15,6 +15,7 @@ from labtrack.documents.service import _aad, storage_key
 from labtrack.extraction.isolated import Reading
 from labtrack.extraction.types import PrintedIdentity, ReadDocument, ReadReport, ReadResult
 from labtrack.keys import encrypt_bytes, get_key_provider
+from labtrack.openbao import KeyServiceError
 from labtrack.storage import MemoryObjectStore
 from labtrack.worker import extraction as worker
 
@@ -299,6 +300,30 @@ async def test_a_file_missing_from_storage_is_unreadable(
     await store.delete(storage_key(patient, doc))
     assert (await worker.extract(app_engine, store, doc, user)).result == "failed"
     assert await _status(app_engine, user, doc) == ("failed", "unreadable")
+
+
+async def test_the_key_service_away_hands_the_document_back(
+    app_engine: AsyncEngine, owner_engine: AsyncEngine, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    store, user = MemoryObjectStore(), await make_user(owner_engine)
+    patient = await make_patient(app_engine, user)
+    doc = await _queued(app_engine, store, user, patient)
+    monkeypatch.setattr(worker, "get_key_provider", _KeysDown)
+    assert (await worker.extract(app_engine, store, doc, user)).result == "waiting"
+    # "queued" again: the maintenance sweep hands it out once OpenBao is back
+    assert await _status(app_engine, user, doc) == ("queued", None)
+
+
+class _KeysDown:
+    """OpenBao away (security review S1 M2)."""
+
+    current_kek_id = "bao:labtrack-kek"
+
+    async def wrap(self, dek: bytes, aad: bytes) -> bytes:
+        raise KeyServiceError("openbao unreachable")
+
+    async def unwrap(self, kek_id: str, wrapped: bytes, aad: bytes) -> bytes:
+        raise KeyServiceError("openbao unreachable")
 
 
 @pytest.mark.parametrize("level", ["doctor", "viewer"])

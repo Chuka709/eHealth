@@ -6,6 +6,7 @@ import json
 import os
 import re
 import sys
+from collections.abc import Callable
 from pathlib import Path
 
 
@@ -71,11 +72,15 @@ def _create_admin(username: str, role: str) -> int:
 
 def _rewrap() -> int:
     from labtrack.admin.cli import rewrap_user_fields  # noqa: PLC0415
-    from labtrack.keys import get_key_provider  # noqa: PLC0415
+    from labtrack.keys import get_key_provider, get_openbao  # noqa: PLC0415
 
     url = os.environ.get("MIGRATION_DATABASE_URL")
     if not url:
         sys.stderr.write("MIGRATION_DATABASE_URL is not set (run in the migrate container)\n")
+        return 2
+    if get_openbao() is not None:
+        # values from before migration 0008 exist only in databases that began without OpenBao
+        sys.stderr.write("not with OpenBao: user keys there are made with the account\n")
         return 2
     moved = asyncio.run(rewrap_user_fields(url, get_key_provider()))
     sys.stdout.write(f"re-sealed {moved} values under user keys\n")
@@ -133,6 +138,45 @@ def _redelete(since: str, apply: bool) -> int:
     return 0
 
 
+def _openbao_setup(out: Path, bound_cidrs: list[str], audit_file: str | None) -> int:
+    """docs/SERVER_INSTALL_PLAN.md §3: BAO_ADDR, BAO_TOKEN (an admin token), BAO_CACERT. Each
+    role's id and secret go to their own file (0600) - never to the terminal."""
+    from labtrack.openbao_setup import bootstrap  # noqa: PLC0415
+
+    addr, token = os.environ.get("BAO_ADDR"), os.environ.get("BAO_TOKEN")
+    if not addr or not token:
+        sys.stderr.write("BAO_ADDR and BAO_TOKEN are required\n")
+        return 2
+    if not addr.startswith("https://"):
+        sys.stderr.write("BAO_ADDR must be https\n")
+        return 2
+    if not bound_cidrs:
+        # a leaked secret id is useless from anywhere but the app's server (review S1 M3)
+        sys.stderr.write("--bound-cidr is required (the app server's address)\n")
+        return 2
+    roles = asyncio.run(
+        bootstrap(
+            addr,
+            token,
+            ca_cert=os.environ.get("BAO_CACERT"),
+            bound_cidrs=bound_cidrs,
+            audit_file=audit_file,
+            revoke_admin=True,
+        )
+    )
+    out.mkdir(mode=0o700, parents=True, exist_ok=True)
+    out.chmod(0o700)
+    for cred in roles:
+        for kind, value in (("role_id", cred.role_id), ("secret_id", cred.secret_id)):
+            path = out / f"{cred.role}.{kind}"
+            fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+            os.fchmod(fd, 0o600)  # an existing file keeps its mode through O_TRUNC
+            with os.fdopen(fd, "w", encoding="ascii", newline="\n") as f:
+                f.write(value)
+    sys.stdout.write(f"openbao ready: {len(roles)} roles, credentials in {out}\n")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="labtrack")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -156,6 +200,11 @@ def main(argv: list[str] | None = None) -> int:
     p_redel.add_argument("--since", required=True, help="the backup's time (ISO, with a zone)")
     p_redel.add_argument("--apply", action="store_true", help="write (default: dry run)")
 
+    p_bao = sub.add_parser("openbao-setup", help="transit, the KEK, policies and AppRoles")
+    p_bao.add_argument("--out", type=Path, required=True, help="folder for the role secrets")
+    p_bao.add_argument("--bound-cidr", action="append", default=[], help="allowed client CIDR")
+    p_bao.add_argument("--audit-file", help="OpenBao's audit log path (on the OpenBao host)")
+
     args = parser.parse_args(argv)
     writers = {
         "openapi": _openapi,
@@ -165,15 +214,15 @@ def main(argv: list[str] | None = None) -> int:
     if args.command in writers:
         writers[args.command](args.out)
         return 0
-    if args.command == "seed":
-        return _seed(args.dir)
-    if args.command == "rewrap-user-keys":
-        return _rewrap()
-    if args.command == "unlock-admin":
-        return _unlock_admin(args.username)
-    if args.command == "redelete":
-        return _redelete(args.since, args.apply)
-    return _create_admin(args.username, args.role)
+    commands: dict[str, Callable[[], int]] = {
+        "seed": lambda: _seed(args.dir),
+        "rewrap-user-keys": _rewrap,
+        "unlock-admin": lambda: _unlock_admin(args.username),
+        "openbao-setup": lambda: _openbao_setup(args.out, args.bound_cidr, args.audit_file),
+        "redelete": lambda: _redelete(args.since, args.apply),
+        "create-admin": lambda: _create_admin(args.username, args.role),
+    }
+    return commands[args.command]()
 
 
 if __name__ == "__main__":

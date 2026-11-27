@@ -72,6 +72,22 @@ services:
       timeout: 3s
       retries: 20
 
+  # OpenBao in dev mode (in memory, a fixed root token) for the key-provider tests only: started
+  # with `just test-api`, never by `up`, and never the production setup (docs/SERVER_INSTALL_PLAN.md
+  # §3). 2.7.2: the newest release older than two weeks on 2026.11.27 - check for a newer one
+  # before production.
+  openbao:
+    image: openbao/openbao:2.7.2
+    profiles: ["test"]
+    command: ["server", "-dev", "-dev-listen-address=0.0.0.0:8200"]
+    environment:
+      BAO_DEV_ROOT_TOKEN_ID: dev-only-root
+    networks: [backend]
+    healthcheck:
+      test: ["CMD", "bao", "status", "-address=http://127.0.0.1:8200"]
+      interval: 2s
+      retries: 15
+
   # Dev-only object storage. Reachable only on the internal backend network; master/volume/filer
   # have no auth of their own (Phase 3 adds security.toml JWT signing before any document is stored).
   seaweedfs:
@@ -323,6 +339,9 @@ services:
       TEST_ADMIN_LOGIN_DATABASE_URL: postgresql+asyncpg://labtrack_admin_login:${LABTRACK_ADMIN_LOGIN_PASSWORD:?run just init}@postgres:5432/labtrack_test
       TEST_MAINT_DATABASE_URL: postgresql+asyncpg://labtrack_maint:${LABTRACK_MAINT_PASSWORD:?run just init}@postgres:5432/labtrack_test
       TEST_PUSH_DATABASE_URL: postgresql+asyncpg://labtrack_push:${LABTRACK_PUSH_PASSWORD:?run just init}@postgres:5432/labtrack_test
+      # tests/openbao: the dev server above (bootstrapped by the tests with its root token)
+      OPENBAO_TEST_ADDR: http://openbao:8200
+      OPENBAO_TEST_ROOT_TOKEN: dev-only-root
       MAINT_DATABASE_URL: postgresql+asyncpg://labtrack_maint:${LABTRACK_MAINT_PASSWORD:?run just init}@postgres:5432/labtrack_test
       ADMIN_DATABASE_URL: postgresql+asyncpg://labtrack_admin:${LABTRACK_ADMIN_PASSWORD:?run just init}@postgres:5432/labtrack_test
       ADMIN_LOGIN_DATABASE_URL: postgresql+asyncpg://labtrack_admin_login:${LABTRACK_ADMIN_LOGIN_PASSWORD:?run just init}@postgres:5432/labtrack_test
@@ -336,6 +355,7 @@ services:
       postgres: { condition: service_healthy }
       valkey: { condition: service_healthy }
       seaweedfs: { condition: service_healthy }
+      openbao: { condition: service_healthy }
 
   # Encrypted backups (8.2; docs/OPS_RUNBOOK.md): `just backup`. Never started by `up`.
   # Runs as labtrack_backup (password as a secret, not in the environment); holds only the age

@@ -15,7 +15,11 @@ from typing import TYPE_CHECKING, Final
 import structlog
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 
+from labtrack.config import get_settings
 from labtrack.db.sql import bound_text
+from labtrack.keys import get_openbao
+from labtrack.openbao import OpenBaoClient
+from labtrack.user_keys import openbao_key_name
 
 if TYPE_CHECKING:
     from labtrack.storage import ObjectStore
@@ -34,7 +38,7 @@ class MaintenanceResult:
     push_receipts_removed: int = 0
 
 
-async def _purge(engine: AsyncEngine) -> int:
+async def _purge(engine: AsyncEngine, bao: OpenBaoClient | None) -> int:
     purged = 0
     while True:  # one transaction per batch: a failure keeps earlier batches done
         async with engine.connect() as conn, conn.begin():
@@ -48,9 +52,15 @@ async def _purge(engine: AsyncEngine) -> int:
                 .scalars()
                 .all()
             )
-        # Production (OpenBao): the purged users' named keys are destroyed here as well; the
-        # dev/test key rows went with the accounts in the same transaction. An account that
-        # could not be purged is skipped and reported (security.purge_failed audit).
+            # Production (OpenBao): the purged users' keys are destroyed before the batch
+            # commits. If OpenBao fails the batch rolls back and the next run purges it again
+            # (a key already destroyed is fine); if the commit fails after, those accounts -
+            # 30 days deleted, their keys gone - are purged by the next run. Dev/test key rows
+            # went with the accounts. An account that could not be purged is skipped and
+            # reported (security.purge_failed audit).
+            if bao is not None:
+                for user_id in ids:
+                    await bao.destroy_key(openbao_key_name(user_id))
         purged += len(ids)
         if len(ids) < PURGE_BATCH:
             return purged
@@ -83,15 +93,15 @@ async def _receipt_retention(engine: AsyncEngine) -> int:
     return int(removed or 0)
 
 
-async def run_daily(maint_url: str) -> MaintenanceResult:
+async def run_daily(maint_url: str, bao: OpenBaoClient | None = None) -> MaintenanceResult:
     """Both jobs run even if the other fails; a failure is logged (IDs/counts only) and raised
-    so the task shows as failed."""
+    so the task shows as failed. `bao`: where user keys are destroyed (production)."""
     engine = create_async_engine(maint_url, hide_parameters=True)
     failures: list[BaseException] = []
     purged = removed = receipts = 0
     try:
         try:
-            purged = await _purge(engine)
+            purged = await _purge(engine, bao)
         except Exception as exc:  # reported below; retention still runs
             # no traceback: driver text can carry row values
             log.error("maintenance_purge_failed", error=type(exc).__name__)  # noqa: TRY400
@@ -121,7 +131,11 @@ async def run_daily(maint_url: str) -> MaintenanceResult:
 
 
 def run_daily_sync(maint_url: str) -> MaintenanceResult:
-    return asyncio.run(run_daily(maint_url))
+    bao = get_openbao()
+    if bao is None and get_settings().environment not in {"dev", "test"}:
+        # purging without OpenBao would leave the users' keys - and their backups readable
+        raise RuntimeError("OPENBAO_ADDR is required for the purge outside dev/test")
+    return asyncio.run(run_daily(maint_url, bao))
 
 
 # --- objects of deleted documents (Phase 3.3) ------------------------------------------------

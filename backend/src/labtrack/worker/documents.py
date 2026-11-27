@@ -20,6 +20,7 @@ from labtrack.db.sql import bound_text
 from labtrack.documents.scan import ScanUnavailableError, scan, scanner_configured
 from labtrack.documents.service import _aad
 from labtrack.keys import decrypt_bytes, get_key_provider
+from labtrack.openbao import KeyServiceError
 from labtrack.storage import ObjectStore, StorageError, get_store
 
 log = get_logger(__name__)
@@ -56,7 +57,7 @@ async def process(  # noqa: PLR0911 - one exit per outcome
             sealed = await store.get(row.storage_key)
             data = await decrypt_bytes(get_key_provider(), sealed, _aad(document_id))
             verdict = await asyncio.to_thread(scan, data)
-    except (ScanUnavailableError, StorageError):
+    except (ScanUnavailableError, StorageError, KeyServiceError):
         if not last_try:
             return Outcome("retry")
         return await _set(engine, user_id, document_id, "failed", "scan_unavailable")

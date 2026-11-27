@@ -139,6 +139,9 @@ def configure_logging(*, json: bool = True, level: int = logging.INFO) -> None:
     root.setLevel(level)
     # SQL echo would print statements with bound values.
     logging.getLogger("sqlalchemy.engine").setLevel(logging.WARNING)
+    # httpx logs every request's URL at INFO: OpenBao key names carry user ids
+    for name in ("httpx", "httpcore"):
+        logging.getLogger(name).setLevel(logging.WARNING)
     for name in ("uvicorn", "uvicorn.error", "celery"):
         logging.getLogger(name).handlers[:] = []
         logging.getLogger(name).propagate = True

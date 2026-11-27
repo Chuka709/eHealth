@@ -1847,6 +1847,7 @@
       "profile_required": "To add information to this child's profile, the parent who owns it must first give the consents on the child's behalf."
     },
     "internal": "Something went wrong. Try again; if it keeps happening, contact the system administrator.",
+    "service_unavailable": "The service is briefly unavailable. Please try again in a few minutes.",
     "me": {
       "no_recent_admin_action": "No admin action on your account in the last 30 days.",
       "notification_not_found": "Notification not found.",

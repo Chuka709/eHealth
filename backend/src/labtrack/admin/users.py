@@ -19,9 +19,8 @@ from labtrack.config import get_settings
 from labtrack.core.envelope import field_aad
 from labtrack.core.security import new_opaque_token
 from labtrack.db.sql import bound_text
-from labtrack.keys import get_key_provider
 from labtrack.sms import SmsSender, SmsTemplate, SmsUnavailableError
-from labtrack.user_keys import DbUserKeyStore, decrypt_user_field, encrypt_user_field
+from labtrack.user_keys import decrypt_user_field, encrypt_user_field, get_user_key_store
 
 log = structlog.get_logger(__name__)
 
@@ -82,7 +81,7 @@ def normalise_phone(raw: str) -> str:
 # Phone numbers are sealed under the user's own key: purging the account shreds every copy.
 async def _phone_enc(db: AsyncSession, user_id: UUID, phone: str) -> bytes:
     return await encrypt_user_field(
-        DbUserKeyStore(db, get_key_provider()),
+        get_user_key_store(db),
         user_id,
         phone,
         field_aad("users", "contact_phone_enc", user_id),
@@ -90,10 +89,8 @@ async def _phone_enc(db: AsyncSession, user_id: UUID, phone: str) -> bytes:
 
 
 async def _phone_dec(db: AsyncSession, user_id: UUID, blob: bytes) -> str:
-    provider = get_key_provider()
     return await decrypt_user_field(
-        DbUserKeyStore(db, provider),
-        provider,
+        get_user_key_store(db),
         user_id,
         blob,
         field_aad("users", "contact_phone_enc", user_id),

@@ -55,6 +55,7 @@ from labtrack.extraction.llm import PROMPT_VERSION
 from labtrack.extraction.types import PrintedIdentity, ReadDocument
 from labtrack.extraction.verify import check_against_source
 from labtrack.keys import decrypt_bytes, get_key_provider
+from labtrack.openbao import KeyServiceError
 from labtrack.storage import ObjectStore, StorageError, get_store
 from labtrack.worker.ai_handoff import Handoff, ValkeyHandoff
 
@@ -355,6 +356,11 @@ async def extract(  # noqa: PLR0911 - one exit per outcome
         log.warning("document_extraction_timeout", document_id=str(document_id))
         await _finish(engine, user_id, document_id, "failed", "extraction_timeout")
         return Outcome("failed")
+    except KeyServiceError:
+        # OpenBao away: back to "queued" - the maintenance sweep hands it out again
+        log.warning("document_extraction_deferred", document_id=str(document_id))
+        await _finish(engine, user_id, document_id, "queued", None)
+        return Outcome("waiting")
     except (StorageError, EnvelopeError):
         log.warning("document_extraction_unreadable", document_id=str(document_id))
         await _finish(engine, user_id, document_id, "failed", "unreadable")

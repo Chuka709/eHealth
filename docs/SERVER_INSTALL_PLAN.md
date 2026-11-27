@@ -7,7 +7,7 @@
 ## 0. Одоогийн байдал — сервер бэлэн болохоос өмнө кодод дутуу байгаа зүйлс
 | # | Дутуу | Яагаад заавал | Хэн |
 |---|---|---|---|
-| C1 | **OpenBao KeyProvider + UserKeyStore** (`keys.py`, `user_keys.py`) | `ENVIRONMENT=production` үед апп зориуд асахгүй (`no KeyProvider configured`). Dev KEK-ийг production-д хэрэглэхгүй (04 §1) | Claude (код + тест + security review) |
+| C1 ✓ | **OpenBao KeyProvider + UserKeyStore** (`openbao.py`, `keys.py`, `user_keys.py`, `openbao_setup.py`) — 2026.11.27 | `OPENBAO_ADDR` тохируулсан үед аль ч орчинд OpenBao; production-д заавал (https) | Claude ✓ (тест + security review) |
 | C2 | **Production compose overlay** `infra/docker-compose.prod.yml` | Одоогийнх нь `target: dev`, эх код mount хийдэг, dev KEK. Prod: `runtime` image, read-only rootfs, mount-гүй, `restart: unless-stopped`, нууцыг Docker secret файлаар, лог rotation | Claude |
 | C3 | **Production Caddyfile** | Одоо `auto_https off`, :8080. Prod: домэйн, Let's Encrypt, HSTS, CSP, 80→443, `ADMIN_ALLOWLIST` (default-гүй) | Claude |
 | C4 | **Postgres prod тохиргоо** | `log_statement=none`, параметргүй лог (04 checklist), `shared_buffers`, WAL архив (production PITR) | Claude |
@@ -38,14 +38,27 @@
 7. Swap 4 GB (ClamAV-ийн шинэчлэлтийн оргилд).
 
 ## 3. OpenBao (KEK) — тусдаа VM/машин
-1. OpenBao (MPL-2.0) суулгах, TLS-тэй, зөвхөн апп серверийн IP-ээс хүрэх (firewall).
+1. OpenBao (MPL-2.0) суулгах, TLS-тэй, зөвхөн апп серверийн IP-ээс хүрэх (firewall). Хувилбар: тест
+   2.7.2 дээр (2026.11.27); суулгахын өмнө хамгийн сүүлийн patch (2.7.3+)-ийн release note-ийг шалгана.
 2. Initialize: **Shamir 5 хэсэг, 3-аар нээх** `[?6]` — хэсгүүдийг өөр өөр хүмүүс хадгална (цаас + сейф).
-3. `transit` engine: `labtrack-kek` (aes256-gcm96), `labtrack-hmac`, хэрэглэгчийн түлхүүр (`u:<id>`, устгаж болох).
-4. AppRole: апп зөвхөн `encrypt/decrypt/hmac` (түлхүүр экспорт хийх эрхгүй); maintenance — хэрэглэгчийн
-   түлхүүр устгах эрх. Policy-г кодтой хамт (`infra/openbao/`).
-5. Аудит лог асаах (OpenBao audit device) — ≥ 35 хоног.
+3. Тохиргоог **нэг команд** хийнэ (апп серверээс, root token-оор; дараа нь root token цуцлагдана):
+   `BAO_ADDR=https://<bao>:8200 BAO_TOKEN=<root> BAO_CACERT=<ca.pem> python -m labtrack.cli openbao-setup
+   --out /etc/labtrack/secrets/openbao --bound-cidr <апп серверийн IP>/32 --audit-file /openbao/audit/audit.log`
+   - `transit` engine + `labtrack-kek` (aes256-gcm96, экспортлохгүй, устгах боломжгүй);
+   - 3 AppRole (token 1 цаг, хамгийн ихдээ 4 цаг, зөвхөн тухайн IP-ээс): **api** — KEK ба хэрэглэгчийн
+     түлхүүрээр шифрлэх/тайлах, шинэ хэрэглэгчид түлхүүр үүсгэх (зөвхөн `type`); **worker** — KEK-ээр
+     тайлах л; **maint** — хэрэглэгчийн түлхүүр устгах л. Хэн ч түлхүүр экспорт/backup хийх, тохиргоо
+     өөрчлөх эрхгүй (тест: `tests/openbao`);
+   - role бүрийн `role_id`/`secret_id` — тусдаа файл (0600); дахин ажиллуулахад хуучин secret_id цуцлагдана.
+   - Хэрэглэгчийн түлхүүр `u-<id>` аккаунттай хамт үүснэ; DB-ийн мөрөнд зөвхөн тэмдэг (`openbao:v1`).
+4. Апп-ын тохиргоо (S2): `OPENBAO_ADDR`, `OPENBAO_ROLE_ID`, `OPENBAO_SECRET_ID_FILE` (Docker secret),
+   `OPENBAO_CA_CERT` — api, worker, maint-worker тус бүр өөрийн role-оор.
+5. Аудит лог (`--audit-file`) — ≥ 35 хоног, өөр газар.
 6. Дахин асахад unseal `[?7]`: гараар (3 хүн) эсвэл auto-unseal (HSM/өөр KMS — Монголд байхгүй бол гараар).
+   OpenBao унтарсан/sealed үед апп 503 («Үйлчилгээ түр ажиллахгүй»), баримт хүлээгдэнэ (алдагдахгүй).
 7. Snapshot нөөц: OpenBao-ийн raft snapshot → age-ээр шифрлэж **өгөгдлийн нөөцөөс тусдаа** газар.
+   **Хадгалах хугацаа ≤ 35 хоног** (DB нөөцтэй адил): устгасан хэрэглэгчийн түлхүүр snapshot-д үлддэг тул
+   урт хадгалбал crypto-shredding хүчингүй болно. Snapshot-оос сэргээсний дараа `just redelete` (OPS_RUNBOOK §5.6).
 
 ## 4. Апп суулгах (Claude-ийн скриптээр, ~1 цаг)
 1. Репо: `git clone` (зөвхөн уншдаг deploy key) эсвэл image-ийг registry-ээс татах `[?8]`.

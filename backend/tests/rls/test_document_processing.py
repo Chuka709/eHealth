@@ -12,6 +12,7 @@ from labtrack.documents import scan as scan_module
 from labtrack.documents.scan import ScanUnavailableError
 from labtrack.documents.service import _aad, storage_key
 from labtrack.keys import encrypt_bytes, get_key_provider
+from labtrack.openbao import KeyServiceError
 from labtrack.storage import MemoryObjectStore
 from labtrack.worker import documents as worker
 from labtrack.worker.maintenance import delete_queued
@@ -87,6 +88,29 @@ async def test_a_scanner_that_stays_down_fails_the_document_after_retries(
     assert await _status(app_engine, user, doc) == ("uploaded", None)
     assert (await worker.process(app_engine, store, doc, user, last_try=True)).result == "failed"
     assert await _status(app_engine, user, doc) == ("failed", "scan_unavailable")
+
+
+async def test_the_key_service_away_is_retried_not_a_failed_document(
+    app_engine: AsyncEngine, owner_engine: AsyncEngine, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(worker, "scanner_configured", lambda: True)
+    store, user = MemoryObjectStore(), await make_user(owner_engine)
+    doc = await _uploaded(app_engine, store, user)
+    monkeypatch.setattr(worker, "get_key_provider", _KeysDown)
+    assert (await worker.process(app_engine, store, doc, user, last_try=False)).result == "retry"
+    assert await _status(app_engine, user, doc) == ("uploaded", None)
+
+
+class _KeysDown:
+    """OpenBao away (security review S1 M2)."""
+
+    current_kek_id = "bao:labtrack-kek"
+
+    async def wrap(self, dek: bytes, aad: bytes) -> bytes:
+        raise KeyServiceError("openbao unreachable")
+
+    async def unwrap(self, kek_id: str, wrapped: bytes, aad: bytes) -> bytes:
+        raise KeyServiceError("openbao unreachable")
 
 
 def test_production_without_a_scanner_accepts_nothing(monkeypatch: pytest.MonkeyPatch) -> None:

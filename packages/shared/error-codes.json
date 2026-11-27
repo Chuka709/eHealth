@@ -120,6 +120,7 @@
     "review.retype_mismatch",
     "review.too_many_rows",
     "review.unknown_test",
+    "service_unavailable",
     "share.invitation_not_found",
     "share.link_not_found",
     "share.not_found",

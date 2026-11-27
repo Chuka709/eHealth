@@ -1,4 +1,5 @@
 from functools import lru_cache
+from pathlib import Path
 from typing import Literal
 
 from pydantic import (
@@ -11,6 +12,8 @@ from pydantic import (
     model_validator,
 )
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+from labtrack.openbao import OpenBaoConfig
 
 
 class Settings(BaseSettings):
@@ -60,6 +63,16 @@ class Settings(BaseSettings):
 
     # Field encryption (keys.py): dev/test KEK; production uses OpenBao transit.
     dev_kek: SecretStr | None = Field(default=None, validation_alias="LABTRACK_DEV_KEK")
+    # OpenBao (keys.py, user_keys.py; docs/04 §1): set, it is used in any environment - the
+    # only key provider outside dev/test. AppRole per process (api: transit encrypt/decrypt;
+    # maint-worker: destroy user keys only - infra/openbao/policies). https outside dev/test.
+    openbao_addr: str | None = None
+    openbao_role_id: str | None = None
+    openbao_secret_id: SecretStr | None = None
+    # or from a file (a Docker secret: not in `docker inspect` or /proc/*/environ)
+    openbao_secret_id_file: str | None = None
+    openbao_ca_cert: str | None = None  # a private CA's certificate file
+    openbao_mount: str = "transit"
     # Pepper for the national-id identity check (0004: bcrypt in the database, 16-60 chars).
     identity_pepper: SecretStr | None = Field(default=None, min_length=16, max_length=60)
 
@@ -114,6 +127,11 @@ class Settings(BaseSettings):
         "s3_secret_key",
         "admin_allowed_networks",
         "expo_access_token",
+        "openbao_addr",
+        "openbao_role_id",
+        "openbao_secret_id",
+        "openbao_secret_id_file",
+        "openbao_ca_cert",
         "anthropic_api_key",
         "extraction_model",
         mode="before",
@@ -130,6 +148,38 @@ class Settings(BaseSettings):
         if self.environment not in {"dev", "test"} and not self.clamd_host:
             raise ValueError("CLAMD_HOST is required outside dev/test")
         return self
+
+    @model_validator(mode="after")
+    def _openbao_complete(self) -> "Settings":
+        if self.openbao_addr is None:
+            return self
+        if self.openbao_secret_id is None and self.openbao_secret_id_file is not None:
+            try:
+                secret = Path(self.openbao_secret_id_file).read_text(encoding="ascii").strip()
+            except (OSError, UnicodeDecodeError) as exc:
+                raise ValueError("OPENBAO_SECRET_ID_FILE cannot be read") from exc
+            object.__setattr__(self, "openbao_secret_id", SecretStr(secret) if secret else None)
+        if self.openbao_ca_cert is not None and not Path(self.openbao_ca_cert).is_file():
+            raise ValueError("OPENBAO_CA_CERT is not a file")
+        if not (self.openbao_role_id and self.openbao_secret_id):
+            raise ValueError("OPENBAO_ROLE_ID and OPENBAO_SECRET_ID go with OPENBAO_ADDR")
+        # keys and wrapped data keys never cross a network in the clear
+        if self.environment not in {"dev", "test"} and not self.openbao_addr.startswith("https://"):
+            raise ValueError("OPENBAO_ADDR must be https outside dev/test")
+        return self
+
+    def openbao(self) -> OpenBaoConfig | None:
+        if self.openbao_addr is None or self.openbao_role_id is None:
+            return None
+        if self.openbao_secret_id is None:
+            return None
+        return OpenBaoConfig(
+            addr=self.openbao_addr,
+            role_id=self.openbao_role_id,
+            secret_id=self.openbao_secret_id.get_secret_value(),
+            mount=self.openbao_mount,
+            ca_cert=self.openbao_ca_cert,
+        )
 
 
 @lru_cache
