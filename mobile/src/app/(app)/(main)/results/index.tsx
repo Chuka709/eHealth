@@ -23,7 +23,7 @@ import {
 } from "@/features/upload/use-uploads";
 import { formatDate, formatDateTime } from "@/lib/dates";
 import { queryClient } from "@/lib/query-client";
-import { useErrorText } from "@/lib/use-error-text";
+import { ApiError, useErrorText } from "@/lib/use-error-text";
 import { usePalette } from "@/theme/use-palette";
 
 const STATUS_ICON: Record<string, IconName> = {
@@ -67,7 +67,7 @@ export default function ResultsScreen() {
         <View key={f.id} style={styles.block}>
           <FormMessage
             kind="error"
-            text={`${t("refused")} ${f.code ? errorText({ code: f.code }) : ""}`.trim()}
+            text={`${t("refused")} ${f.code ? errorText(new ApiError(f.code)) : ""}`.trim()}
           />
           <Button
             variant="link"

@@ -32,7 +32,7 @@ export default function SettingsScreen() {
     );
 
   return (
-    <Screen>
+    <Screen bottomInset={false}>
       <NavGroup title={t("settings.groups.health")}>
         <NavRow
           icon="card-account-details-outline"

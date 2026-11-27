@@ -28,7 +28,7 @@ export default function HomeScreen() {
   const patients = usePatients();
   const active = useActiveProfile(patients.data);
   return (
-    <Screen testID="home-screen">
+    <Screen bottomInset={false} testID="home-screen">
       <AdminNoticeBanner />
       <ReminderWarnings />
       <ProfileSwitcher />

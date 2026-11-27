@@ -94,7 +94,7 @@ export default function MedsScreen() {
   const past = meds.data.filter((m) => !m.is_current);
 
   return (
-    <Screen scrollRef={scrollRef}>
+    <Screen bottomInset={false} scrollRef={scrollRef}>
       <ProfileSwitcher />
       {!isOthers(own, patients.data) && <ReminderWarnings late />}
       <Title>{t("today")}</Title>

@@ -329,6 +329,7 @@ describe("persistence edge cases", () => {
     onlineManager.setOnline(false);
     const mutation = queryClient.getMutationCache().build(queryClient, {
       mutationFn: async (_: { new_password: string }) => undefined,
+      networkMode: "online", // the app's default is "always"; a paused one is the case here
     });
     void mutation.execute({ new_password: "hunter22" }).catch(() => undefined);
     await Promise.resolve();

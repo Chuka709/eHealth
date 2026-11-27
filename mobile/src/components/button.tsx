@@ -1,7 +1,7 @@
 import { fontSize, minTouchTarget, radius, space } from "@labtrack/shared";
-import { ActivityIndicator, Platform, Pressable, StyleSheet } from "react-native";
+import { Platform, Pressable, StyleSheet } from "react-native";
 import { Text } from "@/components/app-text";
-
+import { Spinner } from "@/components/spinner";
 import { usePalette } from "@/theme/use-palette";
 
 interface ButtonProps {
@@ -71,7 +71,7 @@ export function Button({
         { opacity: disabled ? 0.5 : pressed ? 0.85 : 1 },
       ]}
     >
-      {busy && <ActivityIndicator color={filled ? p.onPrimary : tone} />}
+      {busy && <Spinner color={filled ? p.onPrimary : tone} />}
       <Text style={[styles.label, { color: filled ? p.onPrimary : tone }]}>
         {marked ? `✓ ${label}` : label}
       </Text>

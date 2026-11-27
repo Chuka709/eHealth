@@ -1,10 +1,9 @@
 import { feedbackGlyph, fontSize, minTouchTarget, radius, space } from "@labtrack/shared";
-import { ActivityIndicator, Platform, Pressable, StyleSheet, View } from "react-native";
+import { Platform, Pressable, StyleSheet, View } from "react-native";
 import { useTranslations } from "use-intl";
 import { Text } from "@/components/app-text";
-
+import { Spinner } from "@/components/spinner";
 import { usePalette } from "@/theme/use-palette";
-
 import { useHealth } from "./use-health";
 
 /** `problemsOnly`: nothing while checking or connected - only an unreachable server shows. */
@@ -18,7 +17,7 @@ export function HealthStatus({ problemsOnly = false }: { problemsOnly?: boolean 
   if (isPending) {
     return (
       <View style={styles.row} accessibilityRole="progressbar" accessibilityLabel={t("checking")}>
-        <ActivityIndicator color={p.primary} />
+        <Spinner />
         <Text style={[styles.body, { color: p.textMuted }]}>{t("checking")}</Text>
       </View>
     );

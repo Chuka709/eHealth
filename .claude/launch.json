@@ -20,6 +20,17 @@
         "EXPO_PUBLIC_ALLOW_SCREENSHOTS": "1",
         "CI": "1"
       }
+    },
+    {
+      "name": "metro-phone-8082",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "mobile", "exec", "expo", "start", "--port", "8082"],
+      "port": 8082,
+      "autoPort": false,
+      "env": {
+        "EXPO_PUBLIC_API_URL": "http://localhost:8080",
+        "EXPO_PUBLIC_ALLOW_SCREENSHOTS": "1"
+      }
     }
   ]
 }

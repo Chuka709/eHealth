@@ -155,3 +155,14 @@ jest.mock("echarts/core", () => {
     __charts: charts,
   };
 });
+
+// The Spinner's endless Animated.loop floods the test renderer's animation frames (screens with
+// a busy button timed out): in tests a loop never starts. The spinner itself still renders.
+{
+  const { Animated } = jest.requireActual<typeof import("react-native")>("react-native");
+  jest
+    .spyOn(Animated, "loop")
+    .mockImplementation(
+      () => ({ start: () => undefined, stop: () => undefined, reset: () => undefined }) as never,
+    );
+}

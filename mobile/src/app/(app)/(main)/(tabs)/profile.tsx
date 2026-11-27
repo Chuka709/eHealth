@@ -68,7 +68,7 @@ export default function ProfileScreen() {
   const known = (q: { data?: unknown; isError: boolean }, text: () => string) =>
     q.data ? text() : q.isError ? t("loadFailed") : undefined;
   return (
-    <Screen>
+    <Screen bottomInset={false}>
       <ProfileSwitcher />
       {leave.isError && <FormMessage kind="error" text={errorText(leave.error)} />}
       <NavGroup title={t("groups.care")}>

@@ -1,13 +1,14 @@
 import { flagGlyph, fontSize, radius, space } from "@labtrack/shared";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { memo, useCallback, useMemo, useState } from "react";
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, View } from "react-native";
+import { FlatList, Pressable, StyleSheet, View } from "react-native";
 import { useTranslations } from "use-intl";
 
 import { Text } from "@/components/app-text";
 import { Button } from "@/components/button";
 import { Chart } from "@/components/chart";
 import { Segmented } from "@/components/segmented";
+import { Spinner } from "@/components/spinner";
 import { LoadingView, RetryView } from "@/components/state-view";
 import { Paragraph, Title } from "@/components/text";
 import { useRecordProfile } from "@/features/health/record-screens";
@@ -97,7 +98,9 @@ export default function TrendScreen() {
               testID="trend-chart"
             />
             {trend.isFetching && (
-              <ActivityIndicator style={styles.busy} color={p.primary} accessibilityLabel="" />
+              <View style={styles.busy}>
+                <Spinner />
+              </View>
             )}
           </View>
         )

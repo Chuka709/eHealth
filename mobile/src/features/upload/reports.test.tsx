@@ -2,6 +2,7 @@ import { fireEvent, renderRouter, screen, waitFor } from "expo-router/testing-li
 
 import { clearAccessToken, setStatus } from "@/features/auth/session-store";
 import { apiBaseUrl } from "@/lib/api-base";
+import { localStore } from "@/lib/local-store";
 import { queryClient } from "@/lib/query-client";
 
 import { failReason, knownIssues } from "./use-reports";
@@ -405,6 +406,33 @@ test("a document not read automatically says so, and does not open", async () =>
   await openResults();
   expect(await screen.findByText(/Автоматаар уншиж чадсангүй/)).toBeOnTheScreen();
   expect(screen.queryByText("Уншсан утгуудыг харах")).toBeNull();
+});
+
+// DEVICE_TEST 2026.11.27: a broken PDF shared from Files said "error, try again" (the generic
+// text) - the server's code was passed as a plain object, which only an ApiError is mapped from.
+test("a file the server refused says why, never the generic error", async () => {
+  mockStore.set("lt.account", "00000000-0000-4000-8000-000000000001");
+  await openResults();
+  const store = await localStore();
+  store.set(
+    "uploads.failed.v1",
+    JSON.stringify([
+      {
+        id: "55555555-5555-4555-8555-555555555555",
+        patientId: OWN.id,
+        mime: "application/pdf",
+        createdAt: 0,
+        status: 422,
+        code: "document.unreadable",
+      },
+    ]),
+  );
+  await queryClient.invalidateQueries({ queryKey: ["uploads"] });
+  expect(
+    await screen.findByText(
+      "Файлыг хүлээж аваагүй. Файлыг уншиж чадсангүй. Өөр хувилбараар нь дахин оруулна уу.",
+    ),
+  ).toBeOnTheScreen();
 });
 
 test("an AI reading carries its warning", async () => {

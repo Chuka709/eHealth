@@ -7,6 +7,7 @@
       "offline": "Could not reach the server. Check your internet connection and try again.",
       "signOut": "Sign out",
       "loading": "Loading…",
+      "offlineWaiting": "No internet connection. This loads by itself once you are back online.",
       "back": "Back",
       "usernameFormat": "Enter the username exactly as on your sign-in card (Latin letters, digits, dot, underscore).",
       "cancel": "Cancel",

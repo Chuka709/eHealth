@@ -1,13 +1,14 @@
 import { fontSize, minTouchTarget, radius, space } from "@labtrack/shared";
 import { useRouter } from "expo-router";
 import { memo, useCallback, useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, FlatList, Platform, Pressable, StyleSheet, View } from "react-native";
+import { FlatList, Platform, Pressable, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useTranslations } from "use-intl";
 
 import { Text } from "@/components/app-text";
 import { Button } from "@/components/button";
 import { MultiChoices, SelectList } from "@/components/choices";
+import { Spinner } from "@/components/spinner";
 import { LoadingView } from "@/components/state-view";
 import { Paragraph, Title } from "@/components/text";
 import { useRecordProfile } from "@/features/health/record-screens";
@@ -136,7 +137,7 @@ export default function TimelineScreen() {
         }
         ListFooterComponent={
           timeline.isFetchingNextPage ? (
-            <ActivityIndicator color={p.primary} />
+            <Spinner />
           ) : timeline.isFetchNextPageError ? (
             <RetryLine
               text={errorText(timeline.error)}

@@ -38,7 +38,7 @@ export default function TrendsScreen() {
       r.test_code.toLocaleLowerCase().includes(needle),
   );
   return (
-    <Screen testID="trends-screen">
+    <Screen bottomInset={false} testID="trends-screen">
       <ProfileSwitcher />
       {(tested.data ?? []).length === 0 ? (
         <Paragraph muted>{t("empty")}</Paragraph>
