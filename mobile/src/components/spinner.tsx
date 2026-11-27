@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import {
   AccessibilityInfo,
   Animated,
@@ -7,18 +7,24 @@ import {
   StyleSheet,
   View,
 } from "react-native";
+import Svg, { Circle, Defs, LinearGradient, Stop } from "react-native-svg";
 
 import { usePalette } from "@/theme/use-palette";
 
-export const SPINNER_LARGE = 44;
+export const SPINNER_LARGE = 48;
 const SIZES = { small: 20, large: SPINNER_LARGE } as const;
-// one turn eases in and out (a calm sweep, not a mechanical spin); a second arc trails it
-const TURN_MS = 1100;
+// a steady, unhurried turn; the core breathes at about a resting heart rate
+const TURN_MS = 1000;
+const BREATH_MS = 900;
+// how much of the ring the comet covers
+const ARC = 0.72;
 
 /**
- * The app's one loading indicator (user request 2026.11.27, replaces ActivityIndicator): a faint
- * ring with a brand-coloured arc sweeping around it. Decorative - the words next to it (or the
- * button's label) are what a screen reader says. With "reduce motion" on it stands still.
+ * The app's one loading indicator (user request 2026.11.27: elegant, the same everywhere): a
+ * faint ring with a brand-coloured comet sweeping round it - a rounded head fading into its tail
+ * - and, at full size, a soft core that breathes like a heartbeat. Decorative: the words next to
+ * it (or the button's label) are what a screen reader says. With "reduce motion" on it stands
+ * still.
  */
 export function Spinner({
   size = "small",
@@ -32,37 +38,50 @@ export function Spinner({
   const p = usePalette();
   const tint = color ?? p.primary;
   const d = SIZES[size];
-  const stroke = Math.max(2, Math.round(d / 9));
+  const stroke = size === "large" ? 4 : 2.5;
+  const r = (d - stroke) / 2;
+  const length = 2 * Math.PI * r;
+  const gradient = `spin${useId().replace(/[^a-zA-Z0-9]/g, "")}`;
   const reduceMotion = useReduceMotion();
   const turn = useRef(new Animated.Value(0)).current;
+  const breath = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     if (reduceMotion) return;
-    const loop = Animated.loop(
+    const spin = Animated.loop(
       Animated.timing(turn, {
         toValue: 1,
         duration: TURN_MS,
-        easing: Easing.bezier(0.45, 0.05, 0.55, 0.95),
+        easing: Easing.linear,
         useNativeDriver: true,
       }),
     );
-    loop.start();
-    return () => loop.stop();
-  }, [reduceMotion, turn]);
+    const beat = Animated.loop(
+      Animated.sequence([
+        Animated.timing(breath, {
+          toValue: 1,
+          duration: BREATH_MS / 2,
+          easing: Easing.out(Easing.quad),
+          useNativeDriver: true,
+        }),
+        Animated.timing(breath, {
+          toValue: 0,
+          duration: BREATH_MS / 2,
+          easing: Easing.in(Easing.quad),
+          useNativeDriver: true,
+        }),
+      ]),
+    );
+    spin.start();
+    if (size === "large") beat.start();
+    return () => {
+      spin.stop();
+      beat.stop();
+    };
+  }, [reduceMotion, turn, breath, size]);
 
   const rotate = turn.interpolate({ inputRange: [0, 1], outputRange: ["0deg", "360deg"] });
-  // the trailing arc lags a little behind, so the sweep looks like it stretches and catches up
-  const trail = turn.interpolate({
-    inputRange: [0, 0.5, 1],
-    outputRange: ["-40deg", "150deg", "320deg"],
-  });
-  const ring = { width: d, height: d, borderRadius: d / 2, borderWidth: stroke };
-  const arc = {
-    borderTopColor: tint,
-    borderRightColor: "transparent",
-    borderBottomColor: "transparent",
-    borderLeftColor: "transparent",
-  } as const;
+  const core = d * 0.34;
 
   return (
     <View
@@ -70,20 +89,64 @@ export function Spinner({
       accessible={false}
       importantForAccessibility="no-hide-descendants"
       accessibilityElementsHidden
-      style={{ width: d, height: d }}
+      style={[styles.box, { width: d, height: d }]}
     >
-      <View style={[styles.layer, ring, { borderColor: tint, opacity: 0.22 }]} />
-      <Animated.View
-        style={[styles.layer, ring, arc, { opacity: 0.6, transform: [{ rotate: trail }] }]}
-      />
+      {size === "large" && (
+        <Animated.View
+          style={[
+            styles.core,
+            {
+              width: core,
+              height: core,
+              borderRadius: core / 2,
+              backgroundColor: tint,
+              opacity: breath.interpolate({ inputRange: [0, 1], outputRange: [0.18, 0.42] }),
+              transform: [
+                { scale: breath.interpolate({ inputRange: [0, 1], outputRange: [0.7, 1] }) },
+              ],
+            },
+          ]}
+        />
+      )}
+      <Svg width={d} height={d} style={StyleSheet.absoluteFill}>
+        <Circle
+          cx={d / 2}
+          cy={d / 2}
+          r={r}
+          stroke={tint}
+          strokeOpacity={0.14}
+          strokeWidth={stroke}
+          fill="none"
+        />
+      </Svg>
       <Animated.View
         style={[
-          styles.layer,
-          ring,
-          arc,
-          { borderRightColor: tint, transform: [{ rotate: reduceMotion ? "45deg" : rotate }] },
+          StyleSheet.absoluteFill,
+          { transform: [{ rotate: reduceMotion ? "0deg" : rotate }] },
         ]}
-      />
+      >
+        <Svg width={d} height={d}>
+          <Defs>
+            {/* the arc runs clockwise from the top: its leading end (lower left) is solid, the
+                tail back at the top fades out */}
+            <LinearGradient id={gradient} x1="1" y1="0" x2="0" y2="1">
+              <Stop offset="0.15" stopColor={tint} stopOpacity={0} />
+              <Stop offset="0.85" stopColor={tint} stopOpacity={1} />
+            </LinearGradient>
+          </Defs>
+          <Circle
+            cx={d / 2}
+            cy={d / 2}
+            r={r}
+            stroke={`url(#${gradient})`}
+            strokeWidth={stroke}
+            strokeLinecap="round"
+            strokeDasharray={`${length * ARC} ${length}`}
+            fill="none"
+            transform={`rotate(-90 ${d / 2} ${d / 2})`}
+          />
+        </Svg>
+      </Animated.View>
     </View>
   );
 }
@@ -107,5 +170,6 @@ function useReduceMotion(): boolean {
 }
 
 const styles = StyleSheet.create({
-  layer: { position: "absolute", top: 0, left: 0 },
+  box: { alignItems: "center", justifyContent: "center" },
+  core: { position: "absolute" },
 });

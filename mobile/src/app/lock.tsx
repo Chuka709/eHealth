@@ -58,7 +58,7 @@ export default function LockScreen() {
   if (shown) {
     // the card first (its title in the card's language); the way back after it
     return (
-      <Screen>
+      <Screen safeTop>
         <EmergencyCardPanel card={shown.card} copy="saved" top={<CardHeading />} />
         <Button variant="secondary" label={e("backToLock")} onPress={() => setShown(null)} />
       </Screen>
@@ -66,7 +66,7 @@ export default function LockScreen() {
   }
 
   return (
-    <Screen>
+    <Screen safeTop>
       <Title>{t("title")}</Title>
       {/* in both languages: the team may not read Mongolian */}
       {cards.map((c) => (

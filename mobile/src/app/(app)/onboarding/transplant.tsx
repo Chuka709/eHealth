@@ -9,5 +9,5 @@ export default function OnboardingTransplantScreen() {
     setWizardActive(true);
     return () => setWizardActive(false);
   }, []);
-  return <TransplantWizard canSkip onDone={() => setWizardActive(false)} />;
+  return <TransplantWizard canSkip safeTop onDone={() => setWizardActive(false)} />;
 }

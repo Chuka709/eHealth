@@ -40,9 +40,12 @@ import { useCreateTransplant, useTransplants } from "./use-transplants";
 export function TransplantWizard({
   onDone,
   canSkip = false,
+  safeTop = false,
 }: {
   onDone: () => void;
   canSkip?: boolean;
+  /** On a screen without a header (first sign-in): keeps clear of the status bar. */
+  safeTop?: boolean;
 }) {
   const t = useTranslations("app.transplant");
   const tc = useTranslations("app.common");
@@ -177,7 +180,7 @@ export function TransplantWizard({
 
   if (asked) {
     return (
-      <Screen>
+      <Screen safeTop={safeTop}>
         <FormMessage kind="success" text={t("saved")} />
         <Paragraph>{t("anotherQuestion")}</Paragraph>
         <Button label={t("anotherYes")} variant="secondary" onPress={another} />
@@ -188,7 +191,7 @@ export function TransplantWizard({
 
   const missing = tried && !stepComplete(step, draft);
   return (
-    <Screen scrollRef={scroll}>
+    <Screen scrollRef={scroll} safeTop={safeTop}>
       {index === 0 && <Paragraph>{t("wizardIntro")}</Paragraph>}
       <Text style={[styles.step, { color: p.textMuted }]}>
         {t("step", { current: index + 1, total: STEPS.length })}
