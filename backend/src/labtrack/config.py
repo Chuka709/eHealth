@@ -1,4 +1,5 @@
 from functools import lru_cache
+from ipaddress import ip_network
 from pathlib import Path
 from typing import Literal
 
@@ -15,11 +16,23 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from labtrack.openbao import OpenBaoConfig
 
+SECRETS_DIR = "/run/secrets"
+
 
 class Settings(BaseSettings):
     """Runtime configuration. Secrets come from the environment (Docker secrets in production)."""
 
-    model_config = SettingsConfigDict(env_file=None, extra="ignore", frozen=True)
+    # Docker secrets (production overlay): /run/secrets/<field name>, e.g. jwt_private_key,
+    # identity_pepper, s3_secret_key, openbao_secret_id - kept out of `docker inspect` and
+    # /proc/*/environ. A variable of the same name wins over the file.
+    model_config = SettingsConfigDict(
+        env_file=None,
+        extra="ignore",
+        frozen=True,
+        # `X=` (compose's `${X:-}`) is no value at all: a secret file or the default applies
+        env_ignore_empty=True,
+        secrets_dir=SECRETS_DIR if Path(SECRETS_DIR).is_dir() else None,
+    )
 
     # Required: a missing ENVIRONMENT must not silently mean "dev" (ephemeral JWT key, docs).
     environment: Literal["dev", "test", "staging", "production"]
@@ -69,8 +82,6 @@ class Settings(BaseSettings):
     openbao_addr: str | None = None
     openbao_role_id: str | None = None
     openbao_secret_id: SecretStr | None = None
-    # or from a file (a Docker secret: not in `docker inspect` or /proc/*/environ)
-    openbao_secret_id_file: str | None = None
     openbao_ca_cert: str | None = None  # a private CA's certificate file
     openbao_mount: str = "transit"
     # Pepper for the national-id identity check (0004: bcrypt in the database, 16-60 chars).
@@ -130,7 +141,6 @@ class Settings(BaseSettings):
         "openbao_addr",
         "openbao_role_id",
         "openbao_secret_id",
-        "openbao_secret_id_file",
         "openbao_ca_cert",
         "anthropic_api_key",
         "extraction_model",
@@ -150,15 +160,26 @@ class Settings(BaseSettings):
         return self
 
     @model_validator(mode="after")
+    def _admin_networks_outside_docker(self) -> "Settings":
+        # Inside the stack every container has an address in Docker's private pools: an
+        # allowlist that includes them lets any container that reaches the API past Caddy open
+        # /admin (security review S2 M2). Production lists the office/VPN's public ranges.
+        if self.environment in {"dev", "test"} or not self.admin_allowed_networks:
+            return self
+        docker = (
+            ip_network("172.16.0.0/12"),
+            ip_network("192.168.0.0/16"),
+            ip_network("10.0.0.0/8"),
+        )
+        for net in self.admin_allowed_networks:
+            if any(net.version == d.version and net.overlaps(d) for d in docker):
+                raise ValueError("ADMIN_ALLOWED_NETWORKS: no private ranges outside dev/test")
+        return self
+
+    @model_validator(mode="after")
     def _openbao_complete(self) -> "Settings":
         if self.openbao_addr is None:
             return self
-        if self.openbao_secret_id is None and self.openbao_secret_id_file is not None:
-            try:
-                secret = Path(self.openbao_secret_id_file).read_text(encoding="ascii").strip()
-            except (OSError, UnicodeDecodeError) as exc:
-                raise ValueError("OPENBAO_SECRET_ID_FILE cannot be read") from exc
-            object.__setattr__(self, "openbao_secret_id", SecretStr(secret) if secret else None)
         if self.openbao_ca_cert is not None and not Path(self.openbao_ca_cert).is_file():
             raise ValueError("OPENBAO_CA_CERT is not a file")
         if not (self.openbao_role_id and self.openbao_secret_id):

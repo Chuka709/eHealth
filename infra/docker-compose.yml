@@ -3,7 +3,9 @@ name: labtrack
 # Networks (least reachability):
 #   edge    - caddy, web, api            (the only network with published entry points)
 #   backend - api, worker, migrate, test, postgres, valkey, seaweedfs   (internal: no egress)
-#   egress  - api, worker, push-worker   (outbound: Claude API, Sentry, Expo push)
+#   egress  - api, push-worker, ai-proxy (outbound: Sentry, Expo push, api.anthropic.com); dev
+#             clamav for its signatures. Production (docker-compose.prod.yml) gives each of
+#             them a network of its own instead, and keys/scan networks of their own.
 # web cannot reach postgres, valkey or seaweedfs; the data stores cannot reach the internet.
 
 x-backend: &backend
@@ -16,8 +18,10 @@ x-backend: &backend
     DATABASE_URL: postgresql+asyncpg://labtrack_app:${LABTRACK_APP_PASSWORD:?run just init}@postgres:5432/labtrack
     REDIS_URL: redis://:${VALKEY_PASSWORD:?run just init}@valkey:6379/0
     SENTRY_DSN: ${SENTRY_DSN:-}
-    LABTRACK_DEV_KEK: ${LABTRACK_DEV_KEK:?run just init}
-    IDENTITY_PEPPER: ${IDENTITY_PEPPER:?run just init}
+    # dev/test only (`just init` writes them); production gives neither as a variable (the
+    # prod overlay: OpenBao, Docker secrets) - an unset dev value fails when it is first used
+    LABTRACK_DEV_KEK: ${LABTRACK_DEV_KEK:-}
+    IDENTITY_PEPPER: ${IDENTITY_PEPPER:-}
   volumes:
     - ../backend/src:/app/src:ro
     - ../backend/tests:/app/tests:ro
@@ -28,8 +32,9 @@ x-backend: &backend
 # uploaded documents (Phase 3): only the API, the worker and the tests hold the store's keys
 x-s3-env: &s3-env
   S3_ENDPOINT_URL: http://seaweedfs:8333
-  S3_ACCESS_KEY: ${S3_ACCESS_KEY:?run just init}
-  S3_SECRET_KEY: ${S3_SECRET_KEY:?run just init}
+  # dev's single S3 identity (the prod overlay gives each process its own)
+  S3_ACCESS_KEY: ${S3_ACCESS_KEY:-}
+  S3_SECRET_KEY: ${S3_SECRET_KEY:-}
   S3_BUCKET: ${S3_BUCKET:-labtrack-documents}
 
 services:
@@ -94,8 +99,8 @@ services:
     image: chrislusf/seaweedfs:4.50
     entrypoint: ["/bin/sh", "/entrypoint.sh"]
     environment:
-      S3_ACCESS_KEY: ${S3_ACCESS_KEY:?run just init}
-      S3_SECRET_KEY: ${S3_SECRET_KEY:?run just init}
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY:-}
+      S3_SECRET_KEY: ${S3_SECRET_KEY:-}
     volumes:
       - s3data:/data
       - ./seaweedfs/entrypoint.sh:/entrypoint.sh:ro
@@ -294,7 +299,7 @@ services:
   caddy:
     image: caddy:2-alpine
     volumes:
-      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./caddy:/etc/caddy:ro  # Caddyfile + the shared labtrack.caddy
     environment:
       ADMIN_ALLOWLIST: ${ADMIN_ALLOWLIST:-private_ranges}
     # Localhost only by default; set CADDY_BIND=0.0.0.0 in .env to test from a phone on the LAN.

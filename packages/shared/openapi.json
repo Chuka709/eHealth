@@ -33,7 +33,7 @@
           "health"
         ],
         "summary": "Readyz",
-        "description": "Readiness: database and queue reachable. Error details are never returned.",
+        "description": "Readiness: database, queue and the key service. Error details are never returned.\n\nThe keys are checked by sealing and opening a canary (SERVER_INSTALL_PLAN S2): an OpenBao\nthat is sealed, unreachable, refusing this role or missing the KEK makes the API unready -\nthe container healthcheck, and so Caddy's start and the monitoring, see it.",
         "operationId": "readyz_api_v1_readyz_get",
         "responses": {
           "200": {
@@ -21083,13 +21083,18 @@
           "queue": {
             "type": "boolean",
             "title": "Queue"
+          },
+          "keys": {
+            "type": "boolean",
+            "title": "Keys"
           }
         },
         "type": "object",
         "required": [
           "status",
           "database",
-          "queue"
+          "queue",
+          "keys"
         ],
         "title": "Readiness"
       },

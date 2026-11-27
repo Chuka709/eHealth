@@ -91,3 +91,23 @@ async def test_a_refused_deletion_never_passes_for_shredded() -> None:
     ):
         with pytest.raises(KeyServiceError):
             await _answering(replies).destroy_key("u-1")
+
+
+def test_admin_networks_never_include_dockers_private_ranges(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # any container that reaches the API past Caddy would pass as an admin (review S2 M2)
+    for private in ('["172.30.0.0/24"]', '["192.168.1.0/24"]', '["10.0.0.0/8"]', '["0.0.0.0/0"]'):
+        monkeypatch.setenv("ADMIN_ALLOWED_NETWORKS", private)
+        with pytest.raises(ValidationError, match="ADMIN_ALLOWED_NETWORKS"):
+            _settings(environment="production")
+    monkeypatch.setenv("ADMIN_ALLOWED_NETWORKS", '["203.0.113.0/24"]')
+    assert _settings(environment="production").admin_allowed_networks is not None
+    monkeypatch.setenv("ADMIN_ALLOWED_NETWORKS", '["10.0.0.0/8"]')
+    assert _settings(environment="dev").admin_allowed_networks is not None
+
+
+def test_an_empty_variable_is_no_value(monkeypatch: pytest.MonkeyPatch) -> None:
+    # compose's `${X:-}` must not hide a secret file or a default (review S2 L7)
+    monkeypatch.setenv("JWT_KID", "")
+    assert _settings(environment="production").jwt_kid == "k1"

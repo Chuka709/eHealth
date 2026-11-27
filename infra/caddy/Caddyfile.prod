@@ -1,0 +1,45 @@
+# Production entry point (docs/SERVER_INSTALL_PLAN.md §4; docs/04 §4): one domain, TLS from
+# Let's Encrypt (80 and 443 must be reachable from outside), http redirected to https.
+{
+	admin off
+	email {$ACME_EMAIL}
+	servers {
+		# a slow client cannot hold connections open (slowloris); an upload of 20 MB on a slow
+		# phone link still fits in the body time
+		timeouts {
+			read_header 10s
+			read_body 120s
+			write 120s
+			idle 120s
+		}
+	}
+}
+
+import /etc/caddy/labtrack.caddy
+
+# LABTRACK_DOMAIN: its own host (e.g. app.<company>.mn) - HSTS with includeSubDomains covers
+# whatever sits under it, so never the company's bare domain if other sites live below it.
+{$LABTRACK_DOMAIN} {
+	# a year; no `preload` until the domain is decided for good
+	header Strict-Transport-Security "max-age=31536000; includeSubDomains"
+	header Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=()"
+	# web pages set their own CSP with a nonce (web/src/proxy.ts); the API serves JSON and
+	# documents (those with a sandbox CSP of their own) - nothing here may frame or script.
+	# `?`: only where the API set none (a document keeps its own)
+	@api path /api/*
+	header @api ?Content-Security-Policy "default-src 'none'; frame-ancestors 'none'"
+	header @api Cross-Origin-Resource-Policy same-origin
+	import labtrack
+}
+
+# The container's healthcheck only: on the loopback, never published, no TLS (it reaches the
+# API through the same proxy the public site uses).
+http://127.0.0.1:8080 {
+	bind 127.0.0.1
+	handle /api/v1/healthz {
+		reverse_proxy api:8000
+	}
+	handle {
+		respond 404
+	}
+}

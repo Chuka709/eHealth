@@ -33,7 +33,11 @@ export interface paths {
         };
         /**
          * Readyz
-         * @description Readiness: database and queue reachable. Error details are never returned.
+         * @description Readiness: database, queue and the key service. Error details are never returned.
+         *
+         *     The keys are checked by sealing and opening a canary (SERVER_INSTALL_PLAN S2): an OpenBao
+         *     that is sealed, unreachable, refusing this role or missing the KEK makes the API unready -
+         *     the container healthcheck, and so Caddy's start and the monitoring, see it.
          */
         get: operations["readyz_api_v1_readyz_get"];
         put?: never;
@@ -4102,6 +4106,8 @@ export interface components {
             database: boolean;
             /** Queue */
             queue: boolean;
+            /** Keys */
+            keys: boolean;
         };
         /** RefreshRequest */
         RefreshRequest: {

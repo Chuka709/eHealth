@@ -82,6 +82,10 @@ policies="$(sed -n 5p "$work/session.out")"
 pg_dumpall --globals-only --no-role-passwords --no-password | enc "$partial/globals.sql.age"
 
 # --- document store over S3 (the objects are already sealed by the app) ---
+# production: the backup identity's secret as a Docker secret (read + list only)
+if [ -z "${S3_SECRET_KEY:-}" ] && [ -r /run/secrets/s3_secret_key ]; then
+  S3_SECRET_KEY="$(cat /run/secrets/s3_secret_key)"
+fi
 export RCLONE_CONFIG_STORE_TYPE=s3 RCLONE_CONFIG_STORE_PROVIDER=Other \
   RCLONE_CONFIG_STORE_ENDPOINT="${S3_ENDPOINT_URL:?}" \
   RCLONE_CONFIG_STORE_ACCESS_KEY_ID="${S3_ACCESS_KEY:?}" \

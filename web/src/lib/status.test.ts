@@ -8,11 +8,18 @@ describe("statusKey", () => {
   });
 
   test("ok only when every dependency is up", () => {
-    expect(statusKey({ status: "ok", database: true, queue: true })).toBe("ok");
+    expect(statusKey({ status: "ok", database: true, queue: true, keys: true })).toBe("ok");
   });
 
   test("degraded when any dependency is down", () => {
-    expect(statusKey({ status: "degraded", database: false, queue: true })).toBe("degraded");
-    expect(statusKey({ status: "degraded", database: true, queue: false })).toBe("degraded");
+    expect(statusKey({ status: "degraded", database: false, queue: true, keys: true })).toBe(
+      "degraded",
+    );
+    expect(statusKey({ status: "degraded", database: true, queue: false, keys: true })).toBe(
+      "degraded",
+    );
+    expect(statusKey({ status: "degraded", database: true, queue: true, keys: false })).toBe(
+      "degraded",
+    );
   });
 });

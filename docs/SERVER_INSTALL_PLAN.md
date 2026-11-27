@@ -8,10 +8,10 @@
 | # | Дутуу | Яагаад заавал | Хэн |
 |---|---|---|---|
 | C1 ✓ | **OpenBao KeyProvider + UserKeyStore** (`openbao.py`, `keys.py`, `user_keys.py`, `openbao_setup.py`) — 2026.11.27 | `OPENBAO_ADDR` тохируулсан үед аль ч орчинд OpenBao; production-д заавал (https) | Claude ✓ (тест + security review) |
-| C2 | **Production compose overlay** `infra/docker-compose.prod.yml` | Одоогийнх нь `target: dev`, эх код mount хийдэг, dev KEK. Prod: `runtime` image, read-only rootfs, mount-гүй, `restart: unless-stopped`, нууцыг Docker secret файлаар, лог rotation | Claude |
-| C3 | **Production Caddyfile** | Одоо `auto_https off`, :8080. Prod: домэйн, Let's Encrypt, HSTS, CSP, 80→443, `ADMIN_ALLOWLIST` (default-гүй) | Claude |
-| C4 | **Postgres prod тохиргоо** | `log_statement=none`, параметргүй лог (04 checklist), `shared_buffers`, WAL архив (production PITR) | Claude |
-| C5 | **ClamAV freshclam тусдаа** | Одоо clamav egress сүлжээтэй; prod-д freshclam-ийг тусдаа контейнер болгох (04 §3) | Claude |
+| C2 ✓ | **Production compose overlay** `infra/docker-compose.prod.yml` — 2026.11.27 | runtime image, read-only, capability хасалт, санах ой/pid хязгаар, процесс бүр өөрийн env + Docker secret (`/run/secrets`), процесс бүр өөрийн S3 эрх, гарах зам хэрэгтэй нь л тус тусын сүлжээгээр; `keys`/`scan` дотоод сүлжээ; `bao-gateway` | Claude ✓ |
+| C3 ✓ | **Production Caddyfile** `infra/caddy/Caddyfile.prod` (+ `labtrack.caddy` хуваалцсан хэсэг) | домэйн, Let's Encrypt, HSTS, 80→443, API-д CSP/CORP, timeout, healthcheck зөвхөн loopback | Claude ✓ |
+| C4 ✓ (WAL — дараа) | **Postgres prod тохиргоо** | statement, параметр, DETAIL лог байхгүй (`terse`), `shared_buffers`; WAL архив (PITR) — production (≤ 500) үед | Claude ✓ |
+| C5 ✓ | **ClamAV freshclam тусдаа** | clamd гарах замгүй, зөвхөн worker-тэй; freshclam тусдаа; сигнатур бэлэн болохоос өмнө worker эхлэхгүй | Claude ✓ |
 | C6 | **Нөөц, мониторингийн systemd timer, скрипт** | `just backup` өдөр бүр 02:00, off-site хуулбар, `/healthz`, диск/RAID/сертификатын дохио | Claude (скрипт) + компани (дохио хүлээн авагч) |
 | C7 | `just deploy` / `just prod-*` команд, `.env.production.example` | Давтагдах, баримттай суулгалт | Claude |
 
@@ -51,7 +51,7 @@
      өөрчлөх эрхгүй (тест: `tests/openbao`);
    - role бүрийн `role_id`/`secret_id` — тусдаа файл (0600); дахин ажиллуулахад хуучин secret_id цуцлагдана.
    - Хэрэглэгчийн түлхүүр `u-<id>` аккаунттай хамт үүснэ; DB-ийн мөрөнд зөвхөн тэмдэг (`openbao:v1`).
-4. Апп-ын тохиргоо (S2): `OPENBAO_ADDR`, `OPENBAO_ROLE_ID`, `OPENBAO_SECRET_ID_FILE` (Docker secret),
+4. Апп-ын тохиргоо (S2): `OPENBAO_ADDR`, `OPENBAO_ROLE_ID`, secret `openbao_secret_id` (Docker secret, `/run/secrets`),
    `OPENBAO_CA_CERT` — api, worker, maint-worker тус бүр өөрийн role-оор.
 5. Аудит лог (`--audit-file`) — ≥ 35 хоног, өөр газар.
 6. Дахин асахад unseal `[?7]`: гараар (3 хүн) эсвэл auto-unseal (HSM/өөр KMS — Монголд байхгүй бол гараар).
@@ -69,7 +69,8 @@
    серверт хэзээ ч үгүй.
 4. Гадны үйлчилгээ: `EXPO_ACCESS_TOKEN` (push — B2/B3), `SENTRY_DSN` (заавал биш), `ANTHROPIC_API_KEY`
    (`AI_EXTRACTION_ENABLED` — анх `false` `[?9]`).
-5. `docker compose -f infra/docker-compose.yml -f infra/docker-compose.prod.yml up -d`:
+5. `docker compose -f infra/docker-compose.yml -f infra/docker-compose.prod.yml --env-file /etc/labtrack/labtrack.env up -d`
+   (хувьсагч, нууц файлын жагсаалт — `.env.production.example`; нууц файл: фолдер root 0700, файл 0444):
    postgres → valkey → seaweedfs → `migrate` (alembic head) → api, worker-ууд, beat, web, caddy.
 6. `just seed` (lab_tests + medications лавлах) — **demo хэрэглэгчгүй**.
 7. `just create-admin` — эхний `super_admin`, MFA тохируулах (ADMIN_IDENTITY_PROCEDURE).
