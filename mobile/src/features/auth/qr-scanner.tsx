@@ -2,14 +2,14 @@ import { radius, space } from "@labtrack/shared";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import * as Linking from "expo-linking";
 import { useRef, useState } from "react";
-import { ActivityIndicator, StyleSheet, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 import { useTranslations } from "use-intl";
 
 import { Button } from "@/components/button";
 import { FormMessage } from "@/components/form-message";
+import { Spinner } from "@/components/spinner";
 import { Paragraph } from "@/components/text";
 import { usePalette } from "@/theme/use-palette";
-
 import { parseActivationLink } from "./activation-link";
 
 // The camera reports the same code many times a second; do not re-announce a wrong one.
@@ -25,7 +25,11 @@ export function ActivationQrScanner({ onToken }: { onToken: (token: string) => v
   const lastInvalid = useRef(0);
 
   if (!permission) {
-    return <ActivityIndicator color={p.primary} accessibilityLabel={t("common.loading")} />;
+    return (
+      <View accessible accessibilityLabel={t("common.loading")}>
+        <Spinner />
+      </View>
+    );
   }
 
   if (!permission.granted) {

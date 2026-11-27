@@ -89,6 +89,21 @@ function route(extra: Record<string, Handler> = {}) {
     "POST /api/v1/auth/refresh": () =>
       json(200, { access_token: "a1", token_type: "bearer", expires_in: 900, refresh_token: "r1" }),
     "GET /api/v1/me/consents": () => json(200, given),
+    // the own profile exists: no transplant wizard (Phase 2.4)
+    "GET /api/v1/patients": () =>
+      json(200, [
+        {
+          id: "00000000-0000-4000-8000-000000000001",
+          relation: "self",
+          access_level: "owner",
+          full_name: "Бат",
+          birth_date: null,
+          sex: "unknown",
+          is_minor: false,
+          consent_required: false,
+          created_at: "2026-01-01T00:00:00Z",
+        },
+      ]),
     "GET /api/v1/me": () => json(200, me),
     "PATCH /api/v1/me": async (request) => {
       me = { ...me, ...((await request.json()) as object) };
@@ -148,7 +163,7 @@ beforeEach(() => {
 
 const openSettings = async () => {
   await renderRouter("./src/app", { initialUrl: "/" });
-  await fireEvent.press(await screen.findByRole("button", { name: "Тохиргоо" }));
+  await fireEvent.press(await screen.findByRole("button", { name: /^Тохиргоо, tab/ }));
   await screen.findByTestId("settings-profile");
 };
 
@@ -264,7 +279,7 @@ describe("biometric switch", () => {
     mockStore.set("lt.unlock_gate", "1");
     await renderRouter("./src/app", { initialUrl: "/" });
     // Cold start is locked; the automatic prompt (succeeding here) unlocks it.
-    await fireEvent.press(await screen.findByRole("button", { name: "Тохиргоо" }));
+    await fireEvent.press(await screen.findByRole("button", { name: /^Тохиргоо, tab/ }));
     await screen.findByTestId("settings-biometric");
 
     mockGate.ok = false;
@@ -284,7 +299,7 @@ test("an invalidated unlock key cannot switch the lock off: the app locks instea
   mockStore.set("lt.biometric", "on");
   mockStore.set("lt.unlock_gate", "1");
   await renderRouter("./src/app", { initialUrl: "/" });
-  await fireEvent.press(await screen.findByRole("button", { name: "Тохиргоо" }));
+  await fireEvent.press(await screen.findByRole("button", { name: /^Тохиргоо, tab/ }));
   await screen.findByTestId("settings-biometric");
 
   mockGate.invalidated = true; // someone added a finger since the last unlock

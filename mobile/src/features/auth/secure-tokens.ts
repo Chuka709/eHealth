@@ -26,6 +26,13 @@ export const secureKeys = {
    * finger cannot open the app. The value carries no secret; the access control is the point.
    */
   unlockGate: "lt.unlock_gate",
+  /**
+   * The encrypted local store's id and AES-256 key (`lib/local-store.ts`). Deleting it on
+   * sign-out makes whatever is left of the store unreadable (crypto-shredding).
+   */
+  localStore: "lt.local_store",
+  /** Id of the signed-in account (the access token's subject): the local store belongs to it. */
+  account: "lt.account",
 } as const;
 
 export type SecureKey = (typeof secureKeys)[keyof typeof secureKeys];

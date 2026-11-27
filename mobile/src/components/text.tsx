@@ -1,6 +1,7 @@
 import { fontSize } from "@labtrack/shared";
 import type { ReactNode } from "react";
-import { StyleSheet, Text } from "react-native";
+import { StyleSheet } from "react-native";
+import { Text } from "@/components/app-text";
 
 import { usePalette } from "@/theme/use-palette";
 
@@ -13,12 +14,27 @@ export function Title({ children }: { children: ReactNode }) {
   );
 }
 
-export function Paragraph({ children, muted = false }: { children: ReactNode; muted?: boolean }) {
+export function Paragraph({
+  children,
+  muted = false,
+  centered = false,
+}: {
+  children: ReactNode;
+  muted?: boolean;
+  centered?: boolean;
+}) {
   const p = usePalette();
-  return <Text style={[styles.body, { color: muted ? p.textMuted : p.text }]}>{children}</Text>;
+  return (
+    <Text
+      style={[styles.body, centered && styles.centered, { color: muted ? p.textMuted : p.text }]}
+    >
+      {children}
+    </Text>
+  );
 }
 
 const styles = StyleSheet.create({
-  title: { fontSize: fontSize.title, fontWeight: "700" },
+  title: { fontSize: fontSize.title, fontWeight: "700", letterSpacing: -0.2 },
   body: { fontSize: fontSize.body, lineHeight: fontSize.body * 1.4 },
+  centered: { textAlign: "center" },
 });

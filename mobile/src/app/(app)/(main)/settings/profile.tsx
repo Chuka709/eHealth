@@ -1,9 +1,10 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { fontSize, space } from "@labtrack/shared";
 import { Controller, useForm } from "react-hook-form";
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 import { useTranslations } from "use-intl";
 import { z } from "zod";
+import { Text } from "@/components/app-text";
 import { Button } from "@/components/button";
 import { FormMessage } from "@/components/form-message";
 import { Screen } from "@/components/screen";

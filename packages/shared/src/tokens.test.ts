@@ -32,6 +32,14 @@ for (const scheme of ["light", "dark"] as Scheme[]) {
     for (const bg of [p.background, p.surface]) assert.ok(contrast(p.danger, bg) >= AA_TEXT);
   });
 
+  test(`${scheme}: done, emergency and primary-on-soft meet AA; done is not a flag colour`, () => {
+    assert.ok(contrast(p.done.fg, p.done.bg) >= AA_TEXT);
+    assert.ok(contrast(p.done.fg, p.surface) >= AA_TEXT);
+    assert.ok(contrast(p.emergency.fg, p.emergency.bg) >= AA_TEXT);
+    assert.ok(contrast(p.primary, p.primarySoft) >= AA_TEXT);
+    assert.ok(!Object.values(p.flag).some((f) => f.bg === p.done.bg || f.fg === p.done.fg));
+  });
+
   test(`${scheme}: input outlines meet the 3:1 non-text minimum`, () => {
     for (const bg of [p.background, p.surface]) {
       assert.ok(contrast(p.inputBorder, bg) >= AA_NON_TEXT);

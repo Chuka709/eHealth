@@ -1,0 +1,30 @@
+{
+ "note": "Made up: qualitative values",
+ "tags": [
+  "kidney",
+  "mn",
+  "local"
+ ],
+ "profile_name": "Зохиомол Туршилт",
+ "reports": [
+  {
+   "collected": "2025-06-11",
+   "results": [
+    {
+     "name": "Уураг",
+     "value": "Сөрөг",
+     "unit": null,
+     "qualitative": "negative",
+     "ref_text": "Сөрөг",
+     "test_code": null
+    },
+    {
+     "name": "Өнгө",
+     "value": "шар",
+     "unit": null,
+     "test_code": null
+    }
+   ]
+  }
+ ]
+}

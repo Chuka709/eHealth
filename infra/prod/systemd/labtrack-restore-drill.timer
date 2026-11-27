@@ -1,0 +1,11 @@
+# Monthly reminder, not the drill itself: the drill needs the age private key, which never
+# lives on the server (OPS_RUNBOOK §4). The service sends the monitor's message.
+[Unit]
+Description=LabTrack monthly restore-drill reminder
+
+[Timer]
+OnCalendar=*-*-01 10:00:00 Asia/Ulaanbaatar
+Persistent=true
+
+[Install]
+WantedBy=timers.target

@@ -5,6 +5,7 @@ from datetime import datetime
 from typing import Annotated, Literal
 from uuid import UUID
 
+import structlog
 from fastapi import APIRouter, Depends, Query, Request, Response, status
 from fastapi.responses import JSONResponse
 from pydantic import AfterValidator, BaseModel, ConfigDict, StringConstraints
@@ -19,6 +20,7 @@ from labtrack.config import get_settings
 from labtrack.core.text import valid_display_name
 from labtrack.sms import SmsSender, get_sms_sender
 
+log = structlog.get_logger(__name__)
 router = APIRouter(prefix="/admin", tags=["admin"], dependencies=[Depends(require_admin_network)])
 
 Username = Annotated[str, StringConstraints(pattern=r"^[a-z0-9._]{3,32}$", to_lower=True)]
@@ -326,6 +328,8 @@ async def cancel_deletion(user_id: UUID, body: CancelDeletionRequest, ctx: Super
     """Within 30 days of the user's request. The account comes back locked and needs a reset
     (identity check + new password): cancelling never hands it to whoever asked."""
     await users.cancel_deletion(ctx.db, user_id, body.reason)
+    # beside the request's log line: a restore from an older backup reads both (OPS_RUNBOOK §5.6)
+    log.info("account_deletion_cancelled", user_id=str(user_id))
     return Response(status_code=204)
 
 

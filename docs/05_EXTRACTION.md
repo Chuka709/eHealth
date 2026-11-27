@@ -97,8 +97,8 @@ record_lab_report хэрэгслийг ЗААВАЛ нэг удаа дууд.
 HLA/DSA эсрэгбиеийн (MFI) тайлан, биопсийн гистологи, гарах тойм — баримт хэлбэрээр хадгалж `clinical_events`-д хавсаргана, утгыг задлахгүй (бүтэц нь хэт олон янз, буруу уншвал эрсдэл өндөр).
 
 ## Eval
-- `eval/cases/<id>/{input.*, expected.json}` — нэрээ нууцалсан, эмнэлэг/формат бүрээс, муу зураг, орос хэлтэй.
-- `just eval` → тест, утга, нэгж, **ref, critical**, огноогийн precision/recall → `eval/report.md`.
+- `eval/cases/<id>/{input.words.json, expected.json}` — зохиомол кейс (репод; `eval/make_synthetic.py` үүсгэнэ: байрлалтай үгс, PDF текст давхаргыг л алгасна). Бодит баримт — `eval/local/<id>/{input.pdf, expected.json}`, **git-ignored** (PHI), worker-тэй адил child process-оор уншина.
+- `just eval` → мөр бүрээр утга, нэгж, **ref, critical**, тест, огноо (олдоогүй мөр бүх хэмжүүрт буруу) + precision, хуудас тутмын p95 → `eval/report.md` (git-ignored; зөвхөн кейсийн id, тоо). `--details` — буруу мөрийг дэлгэцэнд л; `--check` — DoD-оос доош бол алдаа; `--ai` — танихгүй хэлбэрийг AI-аар (нэргүйжүүлж, илгээсэн тексттэй тулгана; төлбөртэй; key/загвар env-ээс).
 - Prompt/загвар/pipeline өөрчлөхөд eval доошилбол merge хийхгүй.
 - Зорилт: тоон утга ≥ 98%, лавлах хязгаар ≥ 95%, тест таних ≥ 95%.
 

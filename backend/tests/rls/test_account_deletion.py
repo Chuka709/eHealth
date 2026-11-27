@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
 
 from labtrack.core.envelope import EnvelopeError, field_aad, parse
 from labtrack.db.sql import bound_text
-from labtrack.keys import get_key_provider
+from labtrack.keys import KeyProvider, get_key_provider
 from labtrack.user_keys import DbUserKeyStore, decrypt_user_field
 from labtrack.worker.maintenance import run_daily
 
@@ -210,10 +210,10 @@ async def test_purge_shreds_every_copy_of_the_users_encrypted_fields(
     async with as_user(admin_engine, admin) as conn:
         await conn.execute(bound_text("select admin_reveal_phone(:u)"), {"u": user})
         store = DbUserKeyStore(AsyncSession(bind=conn), provider)
-        assert await decrypt_user_field(store, provider, user, backup_copy, aad) == "99112233"
+        assert await decrypt_user_field(store, user, backup_copy, aad) == "99112233"
         # sealed under one user's key, it never decrypts as somebody else's field
         with pytest.raises(EnvelopeError):
-            await decrypt_user_field(store, provider, uuid4(), backup_copy, aad)
+            await decrypt_user_field(store, uuid4(), backup_copy, aad)
     await _request(app_engine, user)
     await _age(owner_engine, user, 31)
     result = await run_daily(os.environ["TEST_MAINT_DATABASE_URL"])
@@ -227,14 +227,14 @@ async def test_purge_shreds_every_copy_of_the_users_encrypted_fields(
         )
     # with the key gone, a copy of the ciphertext is noise (no KEK fallback)
     with pytest.raises(EnvelopeError):
-        await decrypt_user_field(_NoKeys(), provider, user, backup_copy, aad)
+        await decrypt_user_field(_NoKeys(), user, backup_copy, aad)
 
 
 class _NoKeys:
-    async def get(self, user_id: UUID) -> bytes | None:
+    async def provider(self, user_id: UUID) -> KeyProvider | None:
         return None
 
-    async def create(self, user_id: UUID) -> bytes:
+    async def create(self, user_id: UUID) -> KeyProvider:
         raise AssertionError
 
 

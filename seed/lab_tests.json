@@ -294,7 +294,8 @@
    ],
    "synonyms": [
     "LYM#",
-    "лимфоцит абс"
+    "лимфоцит абс",
+    "LYMPH#"
    ],
    "delta_check_pct": null
   },
@@ -422,8 +423,8 @@
   {
    "code": "EGFR",
    "loinc": null,
-   "name_mn": "eGFR (тооцоолсон)",
-   "name_en": "eGFR (CKD-EPI 2021)",
+   "name_mn": "eGFR (лабын хариу)",
+   "name_en": "eGFR (lab-reported)",
    "name_ru": "СКФ",
    "category": "renal",
    "kind": "numeric",
@@ -465,7 +466,7 @@
    ],
    "synonyms": [
     "UPCR",
-    "PCR"
+    "уураг/креатинин харьцаа"
    ],
    "delta_check_pct": null
   },
@@ -491,7 +492,7 @@
    "synonyms": [
     "UACR",
     "ACR",
-    "микроальбумин"
+    "альбумин/креатинин харьцаа"
    ],
    "delta_check_pct": null
   },
@@ -655,7 +656,8 @@
     "АлАТ",
     "ALT",
     "ALAT",
-    "GPT"
+    "GPT",
+    "Алат"
    ],
    "delta_check_pct": 200
   },
@@ -677,7 +679,8 @@
     "АсАТ",
     "AST",
     "ASAT",
-    "GOT"
+    "GOT",
+    "Асат"
    ],
    "delta_check_pct": 200
   },
@@ -718,7 +721,8 @@
     "ШФ",
     "ЩФ",
     "ALP",
-    "шүлтлэг фосфатаз"
+    "шүлтлэг фосфатаз",
+    "шүлтлэг фосфотаза"
    ],
    "delta_check_pct": null
   },

@@ -19,6 +19,12 @@ interface Palette {
   inputBorder: string;
   primary: string;
   onPrimary: string;
+  /** Tinted ground for selected/primary-adjacent areas (a tab's pill, a progress track). */
+  primarySoft: string;
+  /** A dose recorded (taken): teal, deliberately not the lab "normal" green (docs/09). */
+  done: { fg: string; bg: string };
+  /** The emergency card button only. */
+  emergency: { fg: string; bg: string };
   /** Destructive actions (sign out, delete). Not a clinical flag colour. */
   danger: string;
   flag: Record<Flag, { fg: string; bg: string }>;
@@ -31,14 +37,18 @@ interface Palette {
 
 export const colors: Record<Scheme, Palette> = {
   light: {
-    background: "#FFFFFF",
-    surface: "#F4F6F8",
-    text: "#111827",
-    textMuted: "#4B5563",
-    border: "#D1D5DB",
-    inputBorder: "#6B7280",
+    // 2.12: a tinted ground with white surfaces (cards and rows lift off the page)
+    background: "#F1F4F8",
+    surface: "#FFFFFF",
+    text: "#13233A",
+    textMuted: "#4A5A6E",
+    border: "#C9D3DE",
+    inputBorder: "#6B7A8C",
     primary: "#0B5FA5",
     onPrimary: "#FFFFFF",
+    primarySoft: "#E3EEF8",
+    done: { fg: "#0F6B63", bg: "#E1F3F0" },
+    emergency: { fg: "#FFFFFF", bg: "#B42318" },
     danger: "#9F1239",
     flag: {
       normal: { fg: "#166534", bg: "#DCFCE7" },
@@ -63,6 +73,9 @@ export const colors: Record<Scheme, Palette> = {
     inputBorder: "#8B949E",
     primary: "#60A5FA",
     onPrimary: "#0B0F14",
+    primarySoft: "#14263D",
+    done: { fg: "#5EEAD4", bg: "#0B2E2B" },
+    emergency: { fg: "#FFFFFF", bg: "#B42318" },
     danger: "#FDA4AF",
     flag: {
       normal: { fg: "#86EFAC", bg: "#14301F" },
@@ -102,4 +115,17 @@ export const fontSize = { caption: 13, body: 16, bodyLarge: 18, title: 22, displ
 /** Minimum touch target: 44pt (iOS) / 48dp (Android). */
 export const minTouchTarget = { ios: 44, android: 48 } as const;
 
-export const radius = { sm: 6, md: 10, lg: 16 } as const;
+export const radius = { sm: 6, md: 12, lg: 18, pill: 999 } as const;
+
+/**
+ * The emergency-card wallpaper (docs/08): one fixed look whatever the app theme, light text on
+ * a dark ground so the phone's clock stays readable above it (both colours well above AA 4.5:1).
+ */
+export const emergencyWallpaper = {
+  background: "#111827",
+  text: "#FFFFFF",
+  accent: "#FCA5A5",
+} as const;
+
+/** A QR code is dark on light whatever the app theme: every camera reads it. */
+export const qrColors = { light: "#FFFFFF", dark: "#000000" } as const;

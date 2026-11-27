@@ -1,0 +1,36 @@
+diff --git a/android/src/main/java/expo/modules/notifications/service/NotificationForwarderActivity.kt b/android/src/main/java/expo/modules/notifications/service/NotificationForwarderActivity.kt
+index ac98f751a93f0a626e01b061476d3e793d99158c..0af63c998db62f0714eab2b5d0f0a02b98bfe7db 100644
+--- a/android/src/main/java/expo/modules/notifications/service/NotificationForwarderActivity.kt
++++ b/android/src/main/java/expo/modules/notifications/service/NotificationForwarderActivity.kt
+@@ -20,6 +20,8 @@ class NotificationForwarderActivity : Activity() {
+         NotificationsService.createNotificationResponseBroadcastIntent(applicationContext, intent)
+       val notificationResponse = NotificationsService.getNotificationResponseFromBroadcastIntent(intent)
+       ExpoHandlingDelegate.openAppToForeground(this, notificationResponse)
++      // LabTrack patch: the foreground queue (see NotificationsService.doWork)
++      broadcastIntent.addFlags(Intent.FLAG_RECEIVER_FOREGROUND)
+       sendBroadcast(broadcastIntent)
+     } catch (e: IllegalArgumentException) {
+       Log.e("expo-notifications", "Failed to handle notification response: could not recover notification data from intent extras. This may happen on some Android versions. Opening app to foreground.", e)
+diff --git a/android/src/main/java/expo/modules/notifications/service/NotificationsService.kt b/android/src/main/java/expo/modules/notifications/service/NotificationsService.kt
+index cdf1e6adbab26f1650e5d3e856bfe3ce7a4bbe01..485cd019f6eee3b40576c45026f5391af3cad59d 100644
+--- a/android/src/main/java/expo/modules/notifications/service/NotificationsService.kt
++++ b/android/src/main/java/expo/modules/notifications/service/NotificationsService.kt
+@@ -387,6 +387,9 @@ open class NotificationsService : BroadcastReceiver() {
+     fun doWork(context: Context, intent: Intent) {
+       findDesignatedBroadcastReceiver(context, intent)?.let {
+         intent.component = ComponentName(it.packageName, it.name)
++        // LabTrack patch: the foreground queue - on MIUI the shared background queue held each
++        // call (schedule, cancel, present) for seconds behind other apps' broadcasts
++        intent.addFlags(Intent.FLAG_RECEIVER_FOREGROUND)
+         context.sendBroadcast(intent)
+         return
+       }
+@@ -428,6 +431,8 @@ open class NotificationsService : BroadcastReceiver() {
+         }
+         intent.putExtra(EVENT_TYPE_KEY, TRIGGER_TYPE)
+         intent.putExtra(IDENTIFIER_KEY, identifier)
++        // LabTrack patch: the alarm's broadcast in the foreground queue (see doWork)
++        intent.addFlags(Intent.FLAG_RECEIVER_FOREGROUND)
+       }
+ 
+       // We're defaulting to the behaviour prior API 31 (mutable) even though Android recommends immutability

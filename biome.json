@@ -13,6 +13,7 @@
       "!**/.next",
       "!**/dist",
       "!packages/shared/src/api/schema.d.ts",
+      "!eval/cases",
       "!packages/shared/openapi.json",
       "!seed",
       "!_archive",
@@ -50,5 +51,27 @@
     "parser": {
       "tailwindDirectives": true
     }
-  }
+  },
+  "overrides": [
+    {
+      "includes": ["mobile/src/**", "!mobile/src/components/app-text.tsx"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "paths": {
+                  "react-native": {
+                    "importNames": ["Text"],
+                    "message": "Use Text from @/components/app-text (the app font, 2.12)."
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
 }

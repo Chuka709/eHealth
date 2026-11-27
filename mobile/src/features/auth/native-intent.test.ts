@@ -88,3 +88,11 @@ test.each(["0000", "", "call me", "+976 11 32 1234 5678 9"])(
     expect(parseSupportPhone(raw)).toBeNull();
   },
 );
+
+test("a file shared from another app opens the upload screen, only when signed in", () => {
+  const shared = "labtrack://dataUrl=labtrackShareKey#file";
+  setStatus("signedIn");
+  expect(redirectSystemPath({ path: shared, initial: true })).toBe("/upload");
+  setStatus("signedOut");
+  expect(redirectSystemPath({ path: shared, initial: true })).toBe("/");
+});

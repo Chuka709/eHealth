@@ -33,7 +33,7 @@ export default function ConsentsScreen() {
     // The server shows a newer text than this build contains: consenting here would record a
     // version the user never read.
     return (
-      <Screen>
+      <Screen safeTop>
         <Title>{t("title")}</Title>
         <FormMessage kind="warning" text={t("appOutdated")} />
         <Button variant="secondary" label={tCommon("signOut")} onPress={() => void signOut()} />
@@ -69,7 +69,7 @@ function ConsentForm({ states }: { states: readonly ConsentState[] }) {
 
   if (declined) {
     return (
-      <Screen>
+      <Screen safeTop>
         <Title>{t("title")}</Title>
         <Paragraph>{t("declined")}</Paragraph>
         <Button label={t("backToConsents")} onPress={() => setDeclined(false)} />
@@ -79,7 +79,7 @@ function ConsentForm({ states }: { states: readonly ConsentState[] }) {
   }
 
   return (
-    <Screen>
+    <Screen safeTop>
       <Title>{t("title")}</Title>
       {updated && <FormMessage kind="warning" text={t("updated")} />}
       <Paragraph>{t("intro")}</Paragraph>

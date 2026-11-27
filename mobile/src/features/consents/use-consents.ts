@@ -4,6 +4,7 @@ import bundledVersions from "@labtrack/shared/consent-versions.json";
 import { useMutation, useQuery } from "@tanstack/react-query";
 
 import { api } from "@/lib/api";
+import { dropPersistedHealthData, stopCachePersistence } from "@/lib/persist";
 import { queryClient } from "@/lib/query-client";
 import { apiError } from "@/lib/use-error-text";
 
@@ -26,6 +27,11 @@ export function useConsents() {
       if (!data) throw apiError(error);
       return data;
     },
+    // Kept with the saved records (encrypted, no health data in it): a cold start passes the
+    // consent guard on the last known state and shows the saved records at once, while this
+    // query and the session refresh run (Phase 6.10). A withdrawal drops it with the records;
+    // a newer required version from the server still brings the consent screen back.
+    meta: { persist: true, account: true },
   });
 }
 
@@ -69,7 +75,18 @@ export function useGiveConsents() {
       const { error, response } = await api.POST("/api/v1/me/consents", { body: { items } });
       if (!response.ok) throw apiError(error);
     },
+    onSuccess: (_, items) => {
+      // a required consent withdrawn: no health data may stay cached (memory or disk)
+      if (items.some((i) => (REQUIRED_KINDS as readonly string[]).includes(i.kind) && !i.granted)) {
+        // the saver stops too; (app)/_layout starts it again once the consents are given
+        stopCachePersistence();
+        void dropPersistedHealthData();
+      }
+    },
     // Success, or a version that changed meanwhile: either way show the server's state.
-    onSettled: () => queryClient.invalidateQueries({ queryKey: consentsKey }),
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: ["caregivers"] }); // Q42 ends them all
+      return queryClient.invalidateQueries({ queryKey: consentsKey });
+    },
   });
 }

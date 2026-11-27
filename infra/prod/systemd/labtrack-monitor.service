@@ -1,0 +1,11 @@
+# Health checks and alerts (infra/prod/monitor.sh).
+[Unit]
+Description=LabTrack health checks
+After=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/opt/labtrack/infra/prod/monitor.sh
+TimeoutStartSec=2min
+# a failing check is reported by the script itself; the unit's exit code only marks it
+SuccessExitStatus=1

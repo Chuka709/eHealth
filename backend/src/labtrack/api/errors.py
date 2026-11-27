@@ -13,6 +13,8 @@ from pydantic import BaseModel
 from sqlalchemy.exc import DBAPIError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
+from labtrack.openbao import KeyServiceError
+
 log = structlog.get_logger(__name__)
 
 # Errors raised by the framework itself (unparsable JSON body, unknown route, wrong method):
@@ -50,6 +52,12 @@ def install_error_handlers(app: FastAPI) -> None:
             content=ErrorBody(code=exc.code, message_key=f"error.{exc.code}").model_dump(),
             headers=headers,
         )
+
+    @app.exception_handler(KeyServiceError)
+    async def _keys(request: Request, exc: KeyServiceError) -> JSONResponse:
+        # the key service (OpenBao) away or refusing: try again later, nothing more said
+        log.error("key_service_error", error=str(exc))
+        return await _app_error(request, AppError(503, "service_unavailable"))
 
     @app.exception_handler(DBAPIError)
     async def _database(_: Request, exc: DBAPIError) -> JSONResponse:

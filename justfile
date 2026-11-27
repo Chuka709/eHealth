@@ -32,6 +32,13 @@ logs service="":
     {{compose}} logs -f --tail=100 {{service}}
 
 # --- Backend (runs inside the Linux container: same as production) ---
+# Roles added after the data directory was created (labtrack_push, 2.11b): idempotent, run
+# before `just migrate`. Recreates postgres when .env gained a password (`just init`).
+db-roles:
+    {{compose}} up -d --wait postgres
+    {{compose}} exec -T postgres sh /docker-entrypoint-initdb.d/02-push-role.sh
+    {{compose}} exec -T postgres sh /docker-entrypoint-initdb.d/03-backup-role.sh
+
 migrate:
     {{compose}} run --rm migrate
 
@@ -46,12 +53,28 @@ create-admin username role="super_admin":
 rewrap-user-keys:
     {{compose}} run --rm migrate python -m labtrack.cli rewrap-user-keys
 
+# After a restore (OPS_RUNBOOK §5.6): deletions requested since the backup, from the API's logs
+# (a file of `docker compose logs api` / the log store's export). Dry run; add --apply to write.
+redelete since logfile *args:
+    Get-Content -Encoding utf8 '{{logfile}}' | {{compose}} run --rm -T migrate python -m labtrack.cli redelete --since {{since}} {{args}}
+
 unlock-admin username:
     {{compose}} run --rm migrate python -m labtrack.cli unlock-admin {{username}}
 
 # Admin web end to end against the running stack (`just up` first). Creates a throwaway admin.
 e2e-web *args:
     {{pnpm}} --filter web exec playwright test {{args}}
+
+# Before a store build (8.4; docs/STORE_RELEASE.md §5): legal pages without drafts, store app
+# config + manifest, pip-audit + pnpm audit, eval --check, hazard log. A skipped step = not a release.
+release-check *args:
+    python scripts/release_check.py {{args}}
+
+# Reading quality against hand-checked answers (docs/05 "Eval"): synthetic eval/cases (in git)
+# and real eval/local (git-ignored, PHI). `just eval --details`, `--check` (DoD), `--ai` (costs
+# money; ANTHROPIC_API_KEY and EXTRACTION_MODEL from the environment).
+eval *args:
+    cd backend; $env:UV_PYTHON_DOWNLOADS = "never"; uv run python -m labtrack.extraction.evaluate ../eval/cases ../eval/local --seed ../seed/lab_tests.json --report ../eval/report.md {{args}}
 
 test-api *args:
     {{compose}} run --rm test pytest -q --no-header {{args}}
@@ -61,16 +84,44 @@ test-api *args:
 fuzz-api:
     $env:UV_CACHE_DIR = "F:/.uv-cache"; $env:UV_TOOL_DIR = "F:/.uv-tools"; cd backend; uv run python scripts/fuzz_api.py
 
+# Load test of the running dev stack with locust (8.3; docs/LOAD_TEST.md); throwaway users
+load-test:
+    $env:UV_CACHE_DIR = "F:/.uv-cache"; $env:UV_TOOL_DIR = "F:/.uv-tools"; cd backend; uv run python scripts/load_test.py
+
+# Persistent demo accounts and records on the dev stack (backend/scripts/seed_demo.py);
+# credentials in .env.demo (git-ignored). `just seed-demo --reset` retires and seeds them anew.
+seed-demo *args:
+    $env:UV_CACHE_DIR = "F:/.uv-cache"; $env:UV_TOOL_DIR = "F:/.uv-tools"; cd backend; uv run python scripts/seed_demo.py {{args}}
+
+# The app store review account (8.4; docs/STORE_RELEASE.md §4): made-up records, password in
+# .env.review (git-ignored). No argument = the dev stack; `just seed-review https://beta...` signs
+# an admin in by hand on that server.
+seed-review *args:
+    $env:UV_CACHE_DIR = "F:/.uv-cache"; $env:UV_TOOL_DIR = "F:/.uv-tools"; cd backend; uv run python scripts/seed_review.py {{args}}
+
+# The 2.10d device checks on the seeded demo accounts (no activation): `just e2e-mobile-fast`
+# runs reminders, wizard, travel and offline; name stages to run only those.
+e2e-mobile-fast *stages:
+    $env:UV_CACHE_DIR = "F:/.uv-cache"; $env:UV_TOOL_DIR = "F:/.uv-tools"; cd backend; uv run python scripts/e2e_mobile.py --fast {{quote(stages)}}
+
 # Maestro flows (mobile/.maestro, or the given files) against the dev build on the running
 # Android emulator; a throwaway user is provisioned and disabled afterwards. Maestro needs Java:
 # JAVA_HOME (Android Studio's jbr). See backend/scripts/e2e_mobile.py
 e2e-mobile *flows:
     $env:UV_CACHE_DIR = "F:/.uv-cache"; $env:UV_TOOL_DIR = "F:/.uv-tools"; cd backend; uv run python scripts/e2e_mobile.py {{quote(flows)}}
 
+# Encrypted backup of the database and documents into ./backups (8.2; docs/OPS_RUNBOOK.md)
+backup:
+    {{compose}} --profile ops run --rm --build backup backup.sh
+
+# Restore the newest (or the given) backup into a scratch database and check it
+restore-drill identity stamp="":
+    {{compose}} --profile ops run --rm --build -v "{{absolute_path(identity)}}:/run/secrets/backup-identity:ro" restore-drill restore-drill.sh '{{stamp}}'
+
 # Recreate the empty test database (as in infra/postgres/init/01-roles.sh). Downgrades do not
 # remove objects an older revision of a migration created, so tests could run on a stale schema.
 reset-test-db:
-    {{compose}} exec -T postgres psql -U postgres -d postgres -v ON_ERROR_STOP=1 -c "drop database if exists labtrack_test with (force)" -c "create database labtrack_test owner labtrack_owner" -c "revoke all on database labtrack_test from public" -c "grant connect on database labtrack_test to labtrack_app, labtrack_admin, labtrack_admin_login, labtrack_maint"
+    {{compose}} exec -T postgres psql -U postgres -d postgres -v ON_ERROR_STOP=1 -c "drop database if exists labtrack_test with (force)" -c "create database labtrack_test owner labtrack_owner" -c "revoke all on database labtrack_test from public" -c "grant connect on database labtrack_test to labtrack_app, labtrack_admin, labtrack_admin_login, labtrack_maint, labtrack_push"
 
 test-rls:
     {{compose}} run --rm test pytest -q --no-header tests/rls

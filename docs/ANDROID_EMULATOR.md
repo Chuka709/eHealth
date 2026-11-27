@@ -107,7 +107,18 @@ cd "F:\My Projects\eHealth\mobile"; npx expo run:android
   "paging file is too small" гэж унана. Build хийхдээ emulator-ийг унтрааж:
   `.\gradlew.bat app:assembleDebug -PreactNativeArchitectures=x86_64 --no-parallel --max-workers=2 -Pkotlin.compiler.execution.strategy=in-process`
   (`mobile/android`-аас), дараа нь `adb install -r app\build\outputs\apk\debug\app-debug.apk`.
+- **Локал production (release) build (8.5):** dev-ийн `mobile/android`-ыг бүү дар — хуулбарт:
+  `mobile/`-ийн `app.config.ts assets eas.json expo-env.d.ts metro.config.js package.json src tsconfig.json
+  scripts node_modules`-ийг `dist/mobile-release/` руу (git-ignored; root `node_modules` нь эцэг хавтаснаас
+  олдоно) → `APP_VARIANT=production EXPO_PUBLIC_API_URL=https://… EXPO_PUBLIC_SUPPORT_PHONE=…
+  EXPO_PUBLIC_PRIVACY_URL=https://… npx expo prebuild --platform android --no-install` (~1 мин) →
+  `mobile/android/local.properties`-ийг хуулна (CMake 4.1.2 — үгүй бол урт замаар унана) → ижил env-тэй
+  `gradlew app:assembleRelease -PreactNativeArchitectures=x86_64 …` (~20 мин, debug түлхүүрээр гарын үсэг).
+  Шалгах: `aapt2 dump permissions` / `dump xmltree --file AndroidManifest.xml` (`build-tools/37.0.0`).
+  Release нь `mn.munkhly.labtrack` — dev-тэй зэрэг суулгаж болно; FLAG_SECURE тул дэлгэцийн зураг хар.
+- `adb emu kill` заримдаа гацдаг — `taskkill //F //IM qemu-system-x86_64.exe` + `adb kill-server`.
 - Emulator snapshot-оос сэргэхэд adb `offline` хэвээр үлдвэл: `emulator -avd Pixel_API36 -no-snapshot` (cold boot, ~3 мин).
+- **GPU уналт (2026.11.11):** цонхтой горимд NVIDIA (Vulkan/OpenGL) дээр «Failed to import memory to ColorBufferGl» гээд crashdialog гарвал (adb төхөөрөмж харахгүй) — цонхгүй: `emulator -avd Pixel_API36 -no-snapshot -no-window -gpu swiftshader_indirect -feature -Vulkan`. Удаан тул «System UI isn't responding» гарвал «Wait». Цонхтой горимыг Windows дахин асаасны дараа шалгана.
 
 ## 6. C: дискийг чөлөөлөх (сонголттой, бүгд ажилласны дараа)
 - Flutter-ийг шинэ SDK руу заах: `flutter config --android-sdk E:\Android\Sdk`

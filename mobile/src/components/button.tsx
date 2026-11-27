@@ -1,6 +1,7 @@
 import { fontSize, minTouchTarget, radius, space } from "@labtrack/shared";
-import { ActivityIndicator, Platform, Pressable, StyleSheet, Text } from "react-native";
-
+import { Platform, Pressable, StyleSheet } from "react-native";
+import { Text } from "@/components/app-text";
+import { Spinner } from "@/components/spinner";
 import { usePalette } from "@/theme/use-palette";
 
 interface ButtonProps {
@@ -8,9 +9,12 @@ interface ButtonProps {
   onPress: () => void;
   /**
    * primary: filled; secondary: outlined; danger: outlined in the danger colour (sign out,
-   * delete); link: text only (same touch target).
+   * delete); link: text only (same touch target); quiet: text only but an action (role
+   * button) - a secondary choice beside a primary one (2.12: "Алгассан" beside "Уусан").
    */
-  variant?: "primary" | "secondary" | "danger" | "link";
+  variant?: "primary" | "secondary" | "danger" | "link" | "quiet";
+  /** Content width instead of the full row (a button beside text). */
+  compact?: boolean;
   busy?: boolean;
   disabled?: boolean;
   /** Spoken label when it differs from the visible text (e.g. adds context). */
@@ -19,6 +23,8 @@ interface ButtonProps {
   expanded?: boolean;
   /** For one-of choices: announced as selected and marked with ✓ (not colour alone). */
   selected?: boolean;
+  /** For several-of choices (week days): a checkbox, marked with ✓ when checked. */
+  checked?: boolean;
 }
 
 export function Button({
@@ -30,26 +36,32 @@ export function Button({
   accessibilityLabel,
   expanded,
   selected,
+  checked,
+  compact = false,
 }: ButtonProps) {
   const p = usePalette();
   const inactive = disabled || busy;
   const filled = variant === "primary";
   const tone = variant === "danger" ? p.danger : p.primary;
   const role =
-    selected !== undefined
-      ? "radio"
-      : variant === "link" && expanded === undefined
-        ? "link"
-        : "button";
+    checked !== undefined
+      ? "checkbox"
+      : selected !== undefined
+        ? "radio"
+        : variant === "link" && expanded === undefined
+          ? "link"
+          : "button";
+  const marked = selected ?? checked;
   return (
     <Pressable
       onPress={onPress}
       disabled={inactive}
       accessibilityRole={role}
       accessibilityLabel={accessibilityLabel ?? label}
-      accessibilityState={{ disabled: inactive, busy, expanded, selected, checked: selected }}
+      accessibilityState={{ disabled: inactive, busy, expanded, selected, checked: marked }}
       style={({ pressed }) => [
         styles.button,
+        compact && styles.compact,
         filled && { backgroundColor: p.primary },
         (variant === "secondary" || variant === "danger") && {
           borderColor: tone,
@@ -59,9 +71,9 @@ export function Button({
         { opacity: disabled ? 0.5 : pressed ? 0.85 : 1 },
       ]}
     >
-      {busy && <ActivityIndicator color={filled ? p.onPrimary : tone} />}
+      {busy && <Spinner color={filled ? p.onPrimary : tone} />}
       <Text style={[styles.label, { color: filled ? p.onPrimary : tone }]}>
-        {selected ? `✓ ${label}` : label}
+        {marked ? `✓ ${label}` : label}
       </Text>
     </Pressable>
   );
@@ -78,5 +90,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: space.lg,
     paddingVertical: space.sm,
   },
+  compact: { alignSelf: "flex-start", paddingHorizontal: space.xl },
   label: { fontSize: fontSize.body, fontWeight: "600", textAlign: "center", flexShrink: 1 },
 });

@@ -1,0 +1,64 @@
+# The routes and headers both entry points share (dev `Caddyfile`, production `Caddyfile.prod`).
+(labtrack) {
+	header {
+		-Server
+		X-Content-Type-Options nosniff
+		Referrer-Policy no-referrer
+		X-Frame-Options DENY
+	}
+	log {
+		format filter {
+			# No tokens, cookies or referrers in access logs (docs/04 §6.7):
+			# query strings are cut, request and response headers are dropped entirely.
+			fields {
+				request>uri regexp "\?.*$" "?[redacted]"
+				request>headers delete
+				resp_headers delete
+			}
+		}
+	}
+	# Readiness exposes dependency state - for container healthchecks only, never public.
+	# (`handle` blocks are exclusive and run before a bare `respond`, so it must be a handle too.)
+	@internal path /api/v1/readyz
+	handle @internal {
+		respond 404
+	}
+	# docs/04 §1: the admin API and the admin web pages only from allowlisted networks (the
+	# API checks again).
+	# ADMIN_ALLOWLIST: space-separated CIDRs; dev default = loopback/private ranges.
+	# Production sets it explicitly (the compose overlay has no default), and behind a load
+	# balancer matches on the real client address (trusted_proxies), not the balancer's.
+	@admin_outside {
+		path /api/v1/admin /api/v1/admin/* /admin /admin/*
+		not remote_ip {$ADMIN_ALLOWLIST:private_ranges}
+	}
+	handle @admin_outside {
+		respond 404
+	}
+	handle /api/* {
+		# Phase 3: a document upload is the one large body (20 MB file + multipart envelope);
+		# only a POST to .../documents gets it. Everything else is JSON and small (the CSV
+		# import is <= 1 MB): a bigger body never reaches the API's parser.
+		@upload {
+			method POST
+			path_regexp ^/api/v1/patients/[0-9a-f-]{36}/documents$
+		}
+		@not_upload not {
+			method POST
+			path_regexp ^/api/v1/patients/[0-9a-f-]{36}/documents$
+		}
+		request_body @upload {
+			max_size 21MB
+		}
+		request_body @not_upload {
+			max_size 2MB
+		}
+		reverse_proxy api:8000
+	}
+	handle {
+		reverse_proxy web:3000 {
+			# the admin's real address for the BFF (docs/04 §6.1); replaces any client value
+			header_up X-LabTrack-Client-IP {client_ip}
+		}
+	}
+}

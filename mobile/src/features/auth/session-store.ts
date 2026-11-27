@@ -35,6 +35,19 @@ export function setAccessToken(token: string, expiresInSeconds: number): void {
   access = { token, expiresAt: Date.now() + expiresInSeconds * 1000 };
 }
 
+/** The account id (`sub`) of our own access token - read, not verified (the server does). */
+export function tokenSubject(token: string | null): string | null {
+  if (!token) return null;
+  try {
+    const payload = (token.split(".")[1] ?? "").replace(/-/g, "+").replace(/_/g, "/");
+    const json = atob(payload.padEnd(Math.ceil(payload.length / 4) * 4, "="));
+    const sub: unknown = JSON.parse(json).sub;
+    return typeof sub === "string" && /^[0-9a-f-]{36}$/.test(sub) ? sub : null;
+  } catch {
+    return null;
+  }
+}
+
 export function clearAccessToken(): void {
   access = null;
 }

@@ -1,0 +1,61 @@
+{
+ "note": "Made up: central-lab layout",
+ "tags": [
+  "kidney",
+  "mn",
+  "local"
+ ],
+ "profile_name": "Зохиомол Туршилт",
+ "reports": [
+  {
+   "collected": "2025-05-03",
+   "results": [
+    {
+     "name": "Креатинин",
+     "value": "88",
+     "unit": "мкмоль/л",
+     "numeric": "88",
+     "ref_low": "62",
+     "ref_high": "115",
+     "test_code": "CREA"
+    },
+    {
+     "name": "Мочевин",
+     "value": "6,1",
+     "unit": "ммоль/л",
+     "numeric": "6.1",
+     "ref_low": "2.5",
+     "ref_high": "7.5",
+     "test_code": "UREA"
+    },
+    {
+     "name": "Кали",
+     "value": "5,4",
+     "unit": "ммоль/л",
+     "numeric": "5.4",
+     "ref_low": "3.5",
+     "ref_high": "5.1",
+     "test_code": "K"
+    },
+    {
+     "name": "Натри",
+     "value": "139",
+     "unit": "ммоль/л",
+     "numeric": "139",
+     "ref_low": "135",
+     "ref_high": "145",
+     "test_code": "NA"
+    },
+    {
+     "name": "Глюкоз",
+     "value": "5.2",
+     "unit": "ммоль/л",
+     "numeric": "5.2",
+     "ref_low": "3.9",
+     "ref_high": "6.1",
+     "test_code": "GLU"
+    }
+   ]
+  }
+ ]
+}

@@ -1,0 +1,37 @@
+# Sign in as an existing account (the demo accounts of `just seed-demo`): consents are given
+# already, so Home follows. Parameters (env): USERNAME, PASSWORD.
+appId: ${MAESTRO_APP_ID}
+---
+- extendedWaitUntil:
+    visible: "Нэвтрэх"
+    timeout: 120000 # a cold Metro bundles for ~1 min
+- tapOn: "Нэвтрэх"
+- tapOn: "Хэрэглэгчийн нэр"
+- inputText: ${USERNAME}
+# a slow (software-rendered) emulator may type a character twice: check and type it again
+- runFlow:
+    when:
+      notVisible: ${USERNAME}
+    commands:
+      - eraseText: 40
+      - inputText: ${USERNAME}
+- pressKey: Enter
+- inputText:
+    text: ${PASSWORD}
+    label: "password"
+- pressKey: Enter # the password field's "go" action signs in
+# Biometric offer only on phones with strong biometrics enrolled.
+- runFlow:
+    when:
+      visible: "Аппыг хурдан, аюулгүй нээх"
+    commands:
+      - tapOn: "Одоо биш"
+# Android 13+: notifications are asked once there is something to remind of.
+- runFlow:
+    when:
+      visible: ".*send you notifications.*"
+    commands:
+      - tapOn: "Allow"
+- extendedWaitUntil:
+    visible: "Өнөөдрийн тунгууд"
+    timeout: 30000

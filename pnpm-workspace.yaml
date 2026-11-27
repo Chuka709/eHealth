@@ -19,21 +19,28 @@ minimumReleaseAgeExclude:
   - expo-camera@58.0.14
   - expo-dev-client@58.0.17
   - expo-dev-launcher@58.0.17
-  - '@expo/config-plugins@58.0.12'
+  - '@expo/config-plugins@58.0.12 || 58.0.14'
   - '@expo/config@58.0.11'
-  - '@expo/env@2.5.4'
+  - '@expo/env@2.5.4 || 2.6.0'
   - '@expo/inline-modules@0.2.9'
   - '@expo/local-build-cache-provider@58.0.11'
   - '@expo/log-box@58.0.15'
   - '@expo/prebuild-config@58.0.19'
   - expo-asset@58.0.20
-  - expo-constants@58.0.15
+  - expo-constants@58.0.15 || 58.0.16
   - expo-modules-autolinking@58.0.17
   - '@expo/metro-runtime@58.0.17'
-  - expo-linking@58.0.16
-  - expo-splash-screen@58.0.13
+  - expo-linking@58.0.16 || 58.0.17
+  - expo-splash-screen@58.0.13 || 58.0.15
   - react-native-safe-area-context@5.11.1
   - jest-expo@58.0.14
+  - expo-notifications@58.1.8 || 58.1.10
+  - expo-document-picker@58.0.5
+  - '@expo/require-utils@58.0.6'
+  - expo-crypto@58.0.9
+  - expo-glass-effect@58.0.6
+  - expo-image@58.0.19
+  - expo-sharing@58.0.24
 # React Native / Metro / Jest resolve most reliably from a hoisted node_modules.
 nodeLinker: hoisted
 # Install scripts are opt-in (supply-chain hardening). Native binaries we rely on ship prebuilt.
@@ -42,3 +49,18 @@ allowBuilds:
   unrs-resolver: false
   '@parcel/watcher': false
   '@swc/core': false
+patchedDependencies:
+  expo-notifications: patches/expo-notifications.patch
+  expo-share-intent@9.0.0: patches/expo-share-intent@9.0.0.patch
+# Security fixes in transitive packages (8.4 dependency scan): node-forge in @expo/cli.
+overrides:
+  node-forge: 1.4.3
+# `pnpm audit` (just release-check, CI): advisories accepted with a reason; review by 2027-02-01.
+auditConfig:
+  ignoreGhsas:
+    # picomatch ReDoS: no fixed version; only in Metro/Jest (build and test tools on our own
+    # globs), never in the app bundle or a server.
+    - GHSA-fc5q-39xc-vjpf
+    # minimatch ReDoS: fixed only in 11.x (major); only in @expo/fingerprint at build time,
+    # on our own globs.
+    - GHSA-g3hv-75wg-m249

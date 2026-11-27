@@ -1,0 +1,377 @@
+# Production overlay (docs/SERVER_INSTALL_PLAN.md S2), on top of docker-compose.yml:
+#
+#   docker compose -f infra/docker-compose.yml -f infra/docker-compose.prod.yml \
+#     --env-file /etc/labtrack/labtrack.env up -d
+#
+# What changes from dev:
+# - the runtime images (no dev packages, no source mounts), read-only root, no capabilities
+#   beyond what a process needs, restart, bounded logs, memory/pid limits; LABTRACK_RELEASE
+#   names the build (a git sha)
+# - every backend process gets exactly its own environment (`!override`) and its own secrets as
+#   files in /run/secrets (labtrack.config secrets_dir): JWT key, pepper, its S3 and OpenBao
+#   secrets - never the dev KEK
+# - networks: a route out only for who needs one, each on its own network (no lateral path
+#   between them); keys and the scanner on small internal networks of their own
+#     keys      api, worker, maint-worker, bao-gateway (OpenBao's name is an alias here)
+#     scan      worker, clamav
+#     out-api   api (Sentry, SMS)          out-push  push-worker (Expo)
+#     out-clam  freshclam (signatures)     out-bao   bao-gateway -> OpenBao
+#     out-ai    ai-proxy (api.anthropic.com only)
+# - documents: one S3 identity per process (infra/seaweedfs/entrypoint.prod.sh); the bucket is
+#   made once by s3-init
+# - virus scan always on: clamd with no route out, signatures by a separate freshclam; nothing
+#   starts reading uploads before clamd has its signatures
+# - Caddy: TLS for LABTRACK_DOMAIN on 80/443 (Caddyfile.prod), certificates kept in a volume
+# - Postgres: no statement text, values or error details in its log (docs/04 checklist)
+#
+# Secrets: files in ${LABTRACK_SECRETS_DIR} (folders root 0700, files 0444) - see
+# .env.production.example for the list. Database passwords stay variables in the env file
+# (Postgres's own init reads them).
+
+x-prod: &prod
+  restart: unless-stopped
+  security_opt: ["no-new-privileges:true"]
+  pids_limit: 256
+  logging:
+    driver: local
+    options: { max-size: "20m", max-file: "10" }
+
+x-locked: &locked
+  read_only: true
+  cap_drop: [ALL]
+
+x-app: &app
+  <<: [*prod, *locked]
+  build:
+    context: ../backend
+    target: runtime
+  image: labtrack-backend:${LABTRACK_RELEASE:?the build to run (a git sha)}
+  tmpfs: ["/tmp:size=64m"]
+  volumes: !reset []
+
+# the standard capabilities a database-style entrypoint needs to drop to its own user
+x-daemon-caps: &daemon-caps
+  cap_drop: [ALL]
+  cap_add: [CHOWN, SETUID, SETGID, DAC_OVERRIDE, FOWNER]
+
+x-env: &env
+  ENVIRONMENT: production
+  REDIS_URL: redis://:${VALKEY_PASSWORD:?}@valkey:6379/0
+  SENTRY_DSN: ${SENTRY_DSN:-}
+  CLAMD_HOST: clamav
+  DATABASE_URL: postgresql+asyncpg://labtrack_app:${LABTRACK_APP_PASSWORD:?}@postgres:5432/labtrack
+
+# processes that never open the database: a URL that goes nowhere (the settings require one)
+x-no-db: &no-db
+  DATABASE_URL: postgresql+asyncpg://none:none@unused.invalid:5432/none
+
+x-s3: &s3
+  S3_ENDPOINT_URL: http://seaweedfs:8333
+  S3_BUCKET: ${S3_BUCKET:-labtrack-documents}
+
+x-bao: &bao
+  # the hostname on OpenBao's certificate; inside the stack it is bao-gateway's alias
+  OPENBAO_ADDR: https://${OPENBAO_HOSTNAME:?}:8200
+  OPENBAO_CA_CERT: /run/secrets/openbao_ca
+
+services:
+  postgres:
+    <<: [*prod, *daemon-caps]
+    pids_limit: 512  # a process per connection
+    mem_limit: ${PG_MEM_LIMIT:-4g}
+    shm_size: 256m
+    command:
+      - postgres
+      # nothing a user typed in the log: no statement text, no parameters, and no DETAIL /
+      # CONTEXT lines ("Key (col)=(...)", "Failing row contains (...)") - national ids,
+      # peppers and token hashes pass through function arguments
+      - -c
+      - log_statement=none
+      - -c
+      - log_min_error_statement=panic
+      - -c
+      - log_error_verbosity=terse
+      - -c
+      - log_parameter_max_length=0
+      - -c
+      - log_parameter_max_length_on_error=0
+      - -c
+      - log_min_duration_statement=-1
+      - -c
+      - shared_buffers=${PG_SHARED_BUFFERS:-1GB}
+      - -c
+      - effective_cache_size=${PG_EFFECTIVE_CACHE_SIZE:-3GB}
+      - -c
+      - password_encryption=scram-sha-256
+
+  valkey:
+    <<: [*prod, *daemon-caps]
+    mem_limit: 512m
+
+  seaweedfs:
+    <<: [*prod, *daemon-caps]
+    mem_limit: 1g
+    environment: !override
+      S3_BUCKET: ${S3_BUCKET:-labtrack-documents}
+      S3_API_ACCESS_KEY: ${S3_API_ACCESS_KEY:?}
+      S3_WORKER_ACCESS_KEY: ${S3_WORKER_ACCESS_KEY:?}
+      S3_MAINT_ACCESS_KEY: ${S3_MAINT_ACCESS_KEY:?}
+      S3_BACKUP_ACCESS_KEY: ${S3_BACKUP_ACCESS_KEY:?}
+    tmpfs: ["/tmp:size=1m,mode=0700"]
+    volumes: !override
+      - s3data:/data
+      - ./seaweedfs/entrypoint.prod.sh:/entrypoint.sh:ro
+    secrets: [s3_api, s3_worker, s3_maint, s3_backup]
+
+  # The documents bucket, once (idempotent): through the master, so no S3 identity can make one.
+  s3-init:
+    image: chrislusf/seaweedfs:4.50
+    entrypoint: ["/bin/sh", "-c"]
+    command: ["echo \"s3.bucket.create -name $$S3_BUCKET\" | weed shell -master=seaweedfs:9333"]
+    environment:
+      S3_BUCKET: ${S3_BUCKET:-labtrack-documents}
+    networks: [backend]
+    restart: "no"
+    depends_on:
+      seaweedfs: { condition: service_healthy }
+
+  # clamd only, on its own network with the worker: it parses uploads, so it reaches nothing
+  # else. It reloads the signatures freshclam writes to the shared volume (SelfCheck).
+  clamav:
+    <<: [*prod, *daemon-caps]
+    profiles: !reset []
+    mem_limit: 3g
+    environment:
+      CLAMAV_NO_FRESHCLAMD: "true"
+    networks: !override [scan]
+    depends_on:
+      freshclam: { condition: service_healthy }
+
+  # signature updates: the only part of the scanner with a route out. The image calls itself
+  # healthy at once without clamd; healthy here means the signatures are on the volume.
+  freshclam:
+    <<: [*prod, *daemon-caps]
+    image: clamav/clamav:1.4.3
+    mem_limit: 1536m
+    environment:
+      CLAMAV_NO_CLAMD: "true"
+    volumes:
+      - clamdb:/var/lib/clamav
+    networks: [out-clam]
+    healthcheck:
+      test: ["CMD-SHELL", "test -f /var/lib/clamav/main.cvd -o -f /var/lib/clamav/main.cld && ls /var/lib/clamav/daily.c[lv]d"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10m
+
+  # OpenBao's address for the three processes that use keys (docs/SERVER_INSTALL_PLAN.md §3);
+  # OPENBAO_UPSTREAM is its ip:port on the private network
+  bao-gateway:
+    <<: [*prod, *locked]
+    build: ./bao-gateway
+    mem_limit: 64m
+    environment:
+      OPENBAO_UPSTREAM: ${OPENBAO_UPSTREAM:?OpenBao ip:port}
+    networks:
+      keys:
+        aliases: ["${OPENBAO_HOSTNAME:?}"]
+      out-bao: {}
+
+  migrate:
+    <<: *app
+    restart: "no"
+    mem_limit: 512m
+    environment: !override
+      <<: [*no-db, *env]
+      MIGRATION_DATABASE_URL: postgresql+asyncpg://labtrack_owner:${LABTRACK_OWNER_PASSWORD:?}@postgres:5432/labtrack
+
+  api:
+    <<: *app
+    mem_limit: 1g
+    ports: !reset []
+    # readiness seals a canary through OpenBao (api/health.py, kept 30 s): checked every 30 s
+    healthcheck:
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+      start_interval: 5s
+    environment: !override
+      <<: [*env, *s3, *bao]
+      FORWARDED_ALLOW_IPS: 172.30.0.10,172.30.0.11
+      ADMIN_DATABASE_URL: postgresql+asyncpg://labtrack_admin:${LABTRACK_ADMIN_PASSWORD:?}@postgres:5432/labtrack
+      ADMIN_LOGIN_DATABASE_URL: postgresql+asyncpg://labtrack_admin_login:${LABTRACK_ADMIN_LOGIN_PASSWORD:?}@postgres:5432/labtrack
+      # JSON list of CIDRs (Caddy's ADMIN_ALLOWLIST says the same, space-separated); the
+      # settings refuse private Docker ranges in production
+      ADMIN_ALLOWED_NETWORKS: ${ADMIN_ALLOWED_NETWORKS:?}
+      ACTIVATION_LINK_BASE: ${ACTIVATION_LINK_BASE:-labtrack://activate}
+      S3_ACCESS_KEY: ${S3_API_ACCESS_KEY:?}
+      OPENBAO_ROLE_ID: ${OPENBAO_API_ROLE_ID:?}
+      AI_EXTRACTION_ENABLED: ${AI_EXTRACTION_ENABLED:-false}
+    secrets:
+      - jwt_private_key
+      - identity_pepper
+      - { source: s3_api, target: s3_secret_key }
+      - { source: openbao_api, target: openbao_secret_id }
+      - openbao_ca
+    networks: !override [backend, edge, keys, out-api]
+    depends_on:
+      s3-init: { condition: service_completed_successfully }
+      bao-gateway: { condition: service_started }
+
+  worker:
+    <<: *app
+    mem_limit: 2g
+    environment: !override
+      <<: [*env, *s3, *bao]
+      S3_ACCESS_KEY: ${S3_WORKER_ACCESS_KEY:?}
+      OPENBAO_ROLE_ID: ${OPENBAO_WORKER_ROLE_ID:?}
+      AI_EXTRACTION_ENABLED: ${AI_EXTRACTION_ENABLED:-false}
+      AI_DAILY_DOCUMENTS: ${AI_DAILY_DOCUMENTS:-20}
+    secrets:
+      - { source: s3_worker, target: s3_secret_key }
+      - { source: openbao_worker, target: openbao_secret_id }
+      - openbao_ca
+    networks: !override [backend, keys, scan]
+    depends_on:
+      s3-init: { condition: service_completed_successfully }
+      bao-gateway: { condition: service_started }
+      clamav: { condition: service_healthy }
+
+  maint-worker:
+    <<: *app
+    mem_limit: 512m
+    environment: !override
+      <<: [*env, *s3, *bao]
+      MAINT_DATABASE_URL: postgresql+asyncpg://labtrack_maint:${LABTRACK_MAINT_PASSWORD:?}@postgres:5432/labtrack
+      S3_ACCESS_KEY: ${S3_MAINT_ACCESS_KEY:?}
+      OPENBAO_ROLE_ID: ${OPENBAO_MAINT_ROLE_ID:?}
+    secrets:
+      - { source: s3_maint, target: s3_secret_key }
+      - { source: openbao_maint, target: openbao_secret_id }
+      - openbao_ca
+    networks: !override [backend, keys]
+    depends_on:
+      s3-init: { condition: service_completed_successfully }
+      bao-gateway: { condition: service_started }
+
+  push-worker:
+    <<: *app
+    mem_limit: 256m
+    environment: !override
+      ENVIRONMENT: production
+      CLAMD_HOST: clamav  # the settings' production check only; never used here
+      DATABASE_URL: postgresql+asyncpg://labtrack_push:${LABTRACK_PUSH_PASSWORD:?}@postgres:5432/labtrack
+      PUSH_DATABASE_URL: postgresql+asyncpg://labtrack_push:${LABTRACK_PUSH_PASSWORD:?}@postgres:5432/labtrack
+      REDIS_URL: redis://:${VALKEY_PASSWORD:?}@valkey:6379/0
+      SENTRY_DSN: ${SENTRY_DSN:-}
+      PUSH_ENABLED: ${PUSH_ENABLED:-false}
+    secrets:
+      - { source: expo_access_token, target: expo_access_token }
+    networks: !override [backend, out-push]
+
+  ai-worker:
+    <<: *app
+    mem_limit: 512m
+    environment: !override
+      <<: *no-db
+      ENVIRONMENT: production
+      REDIS_URL: redis://ai:${VALKEY_AI_PASSWORD:?}@valkey:6379/0
+      AI_WORKER_ISOLATION: "true"
+      SENTRY_DSN: ${SENTRY_DSN:-}
+      CLAMD_HOST: clamav  # the settings' production check only; never used here
+      EXTRACTION_MODEL: ${EXTRACTION_MODEL:-}
+      HTTPS_PROXY: http://ai-proxy:8888
+      NO_PROXY: valkey
+    secrets:
+      - { source: anthropic_api_key, target: anthropic_api_key }
+
+  ai-proxy:
+    <<: [*prod, *locked]
+    mem_limit: 64m
+    networks: !override [ai-egress, out-ai]
+
+  beat:
+    <<: *app
+    mem_limit: 256m
+    environment: !override
+      <<: [*no-db, *env]
+    # the schedule file on tmpfs (read-only root)
+    command: ["celery", "-A", "labtrack.worker.celery_app", "beat", "--loglevel=INFO",
+              "--schedule=/tmp/celerybeat-schedule"]
+
+  web:
+    <<: [*prod, *locked]
+    image: labtrack-web:${LABTRACK_RELEASE:?}
+    mem_limit: 512m
+    # the image's `app` user is 100:101 (node:22-alpine adduser -S)
+    tmpfs: ["/tmp:size=16m", "/app/web/.next/cache:size=64m,uid=100,gid=101,mode=0700"]
+    environment: !override
+      NODE_ENV: production
+      API_INTERNAL_URL: http://api:8000
+      APP_DOWNLOAD_URL: ${APP_DOWNLOAD_URL:?}
+      ORG_SUPPORT_PHONE: ${ORG_SUPPORT_PHONE:?}
+
+  # the one process on the internet: no capability but binding 80/443, read-only root
+  caddy:
+    <<: [*prod, *locked]
+    cap_add: [NET_BIND_SERVICE]
+    mem_limit: 256m
+    tmpfs: ["/tmp:size=16m"]
+    command: ["caddy", "run", "--config", "/etc/caddy/Caddyfile.prod", "--adapter", "caddyfile"]
+    environment: !override
+      LABTRACK_DOMAIN: ${LABTRACK_DOMAIN:?}
+      ACME_EMAIL: ${ACME_EMAIL:?}
+      # space-separated CIDRs that may open /admin (no default in production)
+      ADMIN_ALLOWLIST: ${ADMIN_ALLOWLIST:?}
+    ports: !override
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes: !override
+      - ./caddy:/etc/caddy:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+  backup:
+    environment: !override
+      <<: *s3
+      S3_ACCESS_KEY: ${S3_BACKUP_ACCESS_KEY:?}
+      BACKUP_AGE_RECIPIENT: ${BACKUP_AGE_RECIPIENT:?}
+      BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-35}
+    secrets:
+      - backup_db_password
+      - { source: s3_backup, target: s3_secret_key }
+    volumes: !override
+      # outside the repository, on the backup disk (SERVER_INSTALL_PLAN §6)
+      - ${BACKUP_DIR:?the backup folder}:/backups
+
+networks:
+  keys:
+    internal: true
+  scan:
+    internal: true
+  out-api: {}
+  out-push: {}
+  out-clam: {}
+  out-bao: {}
+  out-ai: {}
+
+secrets:
+  jwt_private_key: { file: "${LABTRACK_SECRETS_DIR:?}/jwt_private_key.pem" }
+  identity_pepper: { file: "${LABTRACK_SECRETS_DIR:?}/identity_pepper" }
+  s3_api: { file: "${LABTRACK_SECRETS_DIR:?}/s3/api" }
+  s3_worker: { file: "${LABTRACK_SECRETS_DIR:?}/s3/worker" }
+  s3_maint: { file: "${LABTRACK_SECRETS_DIR:?}/s3/maint" }
+  s3_backup: { file: "${LABTRACK_SECRETS_DIR:?}/s3/backup" }
+  openbao_api: { file: "${LABTRACK_SECRETS_DIR:?}/openbao/api.secret_id" }
+  openbao_worker: { file: "${LABTRACK_SECRETS_DIR:?}/openbao/worker.secret_id" }
+  openbao_maint: { file: "${LABTRACK_SECRETS_DIR:?}/openbao/maint.secret_id" }
+  openbao_ca: { file: "${LABTRACK_SECRETS_DIR:?}/openbao/ca.pem" }
+  expo_access_token: { file: "${LABTRACK_SECRETS_DIR:?}/expo_access_token" }
+  anthropic_api_key: { file: "${LABTRACK_SECRETS_DIR:?}/anthropic_api_key" }
+
+volumes:
+  caddy_data:
+  caddy_config:

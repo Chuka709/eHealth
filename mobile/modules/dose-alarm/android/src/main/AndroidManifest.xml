@@ -1,0 +1,42 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+  <!-- A dose reminder that rings like an alarm clock: on the alarm stream, so the phone's
+       silent mode does not mute it (user decision Q79, 2026.11.25). -->
+  <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+  <!-- systemExempted: Android's type for an app holding SCHEDULE_EXACT_ALARM that rings an alarm
+       (the alarm is only set while that permission is held); mediaPlayback would be "automatic
+       playback", which Play's FGS policy refuses (STORE_RELEASE §3, security review M3) -->
+  <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SYSTEM_EXEMPTED" />
+  <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+  <uses-permission android:name="android.permission.VIBRATE" />
+  <!-- turns the screen on for a few seconds when it rings, so the reminder is seen on the lock
+       screen (real phone 2026.11.27: it rang with the screen dark) -->
+  <uses-permission android:name="android.permission.WAKE_LOCK" />
+  <!-- the alarm screen over the lock screen while a dose reminder rings (user's choice
+       2026.11.27); Android 14+ grants it to alarm apps only - without it the notification
+       alone, as before (STORE_RELEASE: Play declaration) -->
+  <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
+
+  <application>
+    <receiver
+      android:name="expo.modules.dosealarm.DoseAlarmReceiver"
+      android:exported="false">
+      <intent-filter>
+        <action android:name="android.intent.action.BOOT_COMPLETED" />
+        <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+      </intent-filter>
+    </receiver>
+    <activity
+      android:name="expo.modules.dosealarm.DoseAlarmActivity"
+      android:exported="false"
+      android:excludeFromRecents="true"
+      android:launchMode="singleInstance"
+      android:taskAffinity=""
+      android:showWhenLocked="true"
+      android:turnScreenOn="true"
+      android:theme="@android:style/Theme.DeviceDefault.NoActionBar" />
+    <service
+      android:name="expo.modules.dosealarm.DoseAlarmService"
+      android:exported="false"
+      android:foregroundServiceType="systemExempted" />
+  </application>
+</manifest>

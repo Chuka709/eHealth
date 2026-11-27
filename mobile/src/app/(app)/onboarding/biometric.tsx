@@ -17,7 +17,7 @@ export default function BiometricOfferScreen() {
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
   return (
-    <Screen>
+    <Screen safeTop>
       <Title>{t("title")}</Title>
       <Paragraph>{t("body", { minutes: LOCK_AFTER_MINUTES })}</Paragraph>
       {failed && <FormMessage kind="error" text={t("failed")} />}

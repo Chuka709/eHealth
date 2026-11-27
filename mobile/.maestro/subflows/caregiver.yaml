@@ -1,0 +1,148 @@
+# Phase 2.8f: a caregiver, end to end on one phone. The signed-in owner gives the sharing
+# consent and invites by username (checked first - Q45), signs out; the invited person
+# activates, accepts (after the explanation), switches to the owner's profile (the 👤 banner
+# says whose it is - H20) and saves their alert delay (30 minutes offered).
+# Parameters (env, from MAESTRO_*): CAREGIVER_USERNAME, CAREGIVER_PASSWORD.
+appId: ${MAESTRO_APP_ID}
+---
+# the previous flow ends on a stacked screen (no tab bar): back to the tabs first
+- repeat:
+    while:
+      notVisible: "Тохиргоо"
+    times: 4
+    commands:
+      - back
+# --- the owner: consent ---------------------------------------------------------------------
+- tapOn: "Тохиргоо"
+- scrollUntilVisible:
+    element:
+      id: "settings-consents"
+- tapOn:
+    id: "settings-consents"
+- scrollUntilVisible:
+    element:
+      id: "consent-settings-caregiver"
+- tapOn:
+    id: "consent-settings-caregiver"
+- extendedWaitUntil:
+    visible: "Олгосон.*"
+    timeout: 10000
+    optional: true
+- back
+
+# --- the owner: invite by username ------------------------------------------------------------
+# the records tab (named «Бүртгэл» since the UX audit)
+- tapOn: "Нүүр"
+- tapOn: "Бүртгэл"
+- scrollUntilVisible:
+    element:
+      id: "profile-caregivers"
+- tapOn:
+    id: "profile-caregivers"
+- scrollUntilVisible:
+    element:
+      id: "caregiver-username"
+- tapOn:
+    id: "caregiver-username"
+- inputText: ${CAREGIVER_USERNAME}
+# the typed username is in the field (the button is enabled only for a valid one)
+- extendedWaitUntil:
+    visible: ${CAREGIVER_USERNAME}
+    timeout: 10000
+# the button, not the section title of the same text (the title comes first)
+- tapOn:
+    text: "Урих"
+    index: 1
+- assertVisible: "Хэрэглэгчийн нэрээ шалгана уу"
+- tapOn: "Илгээх"
+- extendedWaitUntil:
+    visible: "Илгээгдлээ.*"
+    timeout: 15000
+# the username reached someone: the invitation shows as pending
+- scrollUntilVisible:
+    element: "Хүлээгдэж буй урилга"
+    direction: UP
+- assertVisible: ${CAREGIVER_USERNAME}
+# back to the tabs (the first back may only close the keyboard)
+- repeat:
+    while:
+      notVisible: "Тохиргоо"
+    times: 4
+    commands:
+      - back
+
+# --- the owner signs out ----------------------------------------------------------------------
+- tapOn: "Тохиргоо"
+- scrollUntilVisible:
+    element: "Гарах"
+- tapOn: "Гарах"
+- assertVisible: "Энэ утаснаас гарах уу?"
+- tapOn: "Гарах"
+
+# --- the invited person -------------------------------------------------------------------------
+# activated beforehand by `just e2e-mobile` (an invitation reaches only an active account):
+# signs in with their own password
+- extendedWaitUntil:
+    visible: "Нэвтрэх"
+    timeout: 20000
+- tapOn: "Нэвтрэх"
+- tapOn: "Хэрэглэгчийн нэр"
+- inputText: ${CAREGIVER_USERNAME}
+- pressKey: Enter
+- inputText:
+    text: ${CAREGIVER_PASSWORD}
+    label: "password"
+- pressKey: Enter
+- runFlow: onboarding.yaml
+- tapOn: "Тохиргоо"
+- tapOn:
+    id: "settings-invitations"
+- extendedWaitUntil:
+    visible: ".* таныг асран хамгаалагчаар урьж байна"
+    timeout: 15000
+- tapOn: "Зөвшөөрөх"
+# what accepting means, said first
+- assertVisible: ".*хуваалцах, устгах эрхгүй.*"
+- tapOn: "Зөвшөөрөх"
+- extendedWaitUntil:
+    visible: "Одоогоор урилга алга."
+    timeout: 15000
+- repeat:
+    while:
+      notVisible: "Тохиргоо"
+    times: 4
+    commands:
+      - back
+
+# --- the caregiver on the owner's profile ---------------------------------------------------------
+# the records tab (named «Бүртгэл» since the UX audit)
+- tapOn: "Нүүр"
+- tapOn: "Бүртгэл"
+- extendedWaitUntil:
+    visible:
+      id: "profile-switcher"
+    timeout: 15000
+- tapOn:
+    id: "profile-switcher"
+- tapOn: ".*· асран хамгаалагч"
+- extendedWaitUntil:
+    visible: "👤 Профайл:.*"
+    timeout: 10000
+- scrollUntilVisible:
+    element:
+      id: "profile-caregiver-alerts"
+- tapOn:
+    id: "profile-caregiver-alerts"
+- extendedWaitUntil:
+    visible: ".*Одоо харж буй профайл:.*" # after the 👤 glyph
+    timeout: 15000
+# 30 minutes offered first (the chosen one is marked ✓)
+- assertVisible: "✓ 30 минут"
+- assertVisible: "Хянагдаж буй эм: 1" # the medicine added earlier, reminders on
+- assertVisible: "Мэдэгдэл ирээгүй нь эм уусан гэсэн үг биш.*"
+- scrollUntilVisible:
+    element: "Хадгалах"
+- tapOn: "Хадгалах"
+- extendedWaitUntil:
+    visible: "Хадгалагдлаа."
+    timeout: 15000

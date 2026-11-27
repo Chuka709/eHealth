@@ -1,4 +1,4 @@
-import { fireEvent, renderRouter, screen } from "expo-router/testing-library";
+import { fireEvent, renderRouter, screen, waitFor } from "expo-router/testing-library";
 import { Alert } from "react-native";
 
 import { clearAccessToken, setStatus } from "@/features/auth/session-store";
@@ -70,6 +70,20 @@ function route(extra: Record<string, Handler> = {}) {
     "/api/v1/auth/refresh": tokens,
     "/api/v1/healthz": () => json(200, { status: "ok" }),
     "/api/v1/me": () => json(200, { locale: "mn" }),
+    "/api/v1/patients": () =>
+      json(200, [
+        {
+          id: "00000000-0000-4000-8000-000000000001",
+          relation: "self",
+          access_level: "owner",
+          full_name: "Бат",
+          birth_date: null,
+          sex: "unknown",
+          is_minor: false,
+          consent_required: false,
+          created_at: "2026-01-01T00:00:00Z",
+        },
+      ]),
     "/api/v1/me/notifications": () => json(200, []),
     "/api/v1/me/consents": async (request) => {
       if (request.method === "GET") return json(200, consentState);
@@ -159,6 +173,56 @@ test("a changed text version asks again and says why", async () => {
   expect(await screen.findByText(/Нөхцөл шинэчлэгдсэн/)).toBeOnTheScreen();
 });
 
+test("a saved consent state the server no longer accepts brings the consent screen back (H35)", async () => {
+  // a cold start: the encrypted cache restored the last state (all given, older text)
+  const old = "draft-2026-09";
+  queryClient.setQueryData(
+    ["me", "consents"],
+    states({ terms: old, privacy: old, sensitive_data: old }, old),
+    { updatedAt: 0 },
+  );
+  consentState = states({ terms: old, privacy: old, sensitive_data: old }, "draft-2026-10");
+  await app();
+  expect(await screen.findByText(/Нөхцөл шинэчлэгдсэн/)).toBeOnTheScreen();
+});
+
+test("a saved consent state withdrawn elsewhere: the consents screen, the saved records dropped (H35)", async () => {
+  const now = "draft-2026-10";
+  queryClient.setQueryData(
+    ["me", "consents"],
+    states({ terms: now, privacy: now, sensitive_data: now }),
+    { updatedAt: 0 },
+  );
+  // a saved health record, as the encrypted cache restores it
+  queryClient
+    .getQueryCache()
+    .build(queryClient, { queryKey: ["patients"], meta: { persist: true } });
+  queryClient.setQueryData(["patients"], [], { updatedAt: 0 });
+  consentState = states({ privacy: now, sensitive_data: now }); // terms withdrawn on the web
+  await app();
+  expect(await screen.findByText(/доорх нөхцөлүүдийг уншаад зөвшөөрнө үү/)).toBeOnTheScreen();
+  await waitFor(() => expect(queryClient.getQueryData(["patients"])).toBeUndefined());
+});
+
+test("only a saved consent state and no server: closed as before, never Home (H35)", async () => {
+  const now = "draft-2026-10";
+  queryClient.setQueryData(
+    ["me", "consents"],
+    states({ terms: now, privacy: now, sensitive_data: now }),
+    { updatedAt: 0 },
+  );
+  route({
+    "/api/v1/me/consents": () => {
+      throw new TypeError("Network request failed");
+    },
+  });
+  await app();
+  expect(
+    await screen.findByRole("button", { name: /Дахин оролдох/ }, { timeout: 15000 }),
+  ).toBeOnTheScreen();
+  expect(screen.queryByTestId("home-screen")).toBeNull();
+});
+
 test("declining explains why the app cannot be used and offers sign-out", async () => {
   await app();
   await fireEvent.press(await screen.findByRole("button", { name: "Зөвшөөрөхгүй" }));
@@ -210,7 +274,7 @@ describe("biometric offer", () => {
     const SecureStore = jest.requireMock<{ setItemAsync: jest.Mock }>("expo-secure-store");
     await app();
     await fireEvent.press(await screen.findByRole("button", { name: "Биометрээр түгжих" }));
-    expect(await screen.findByText("Системийн төлөв")).toBeOnTheScreen();
+    expect(await screen.findByTestId("home-screen")).toBeOnTheScreen();
     expect(mockStore.get("lt.biometric")).toBe("on");
     expect(mockStore.get("lt.unlock_gate")).toBe("1");
     expect(SecureStore.setItemAsync).toHaveBeenCalledWith(
@@ -232,14 +296,14 @@ describe("biometric offer", () => {
   test("not now is remembered", async () => {
     await app();
     await fireEvent.press(await screen.findByRole("button", { name: "Одоо биш" }));
-    expect(await screen.findByText("Системийн төлөв")).toBeOnTheScreen();
+    expect(await screen.findByTestId("home-screen")).toBeOnTheScreen();
     expect(mockStore.get("lt.biometric")).toBe("off");
   });
 
   test("phones without enrolled biometrics are not asked", async () => {
     mockBio.enrolled = false;
     await app();
-    expect(await screen.findByText("Системийн төлөв")).toBeOnTheScreen();
+    expect(await screen.findByTestId("home-screen")).toBeOnTheScreen();
   });
 
   test("signing out forgets the choice (it belongs to the user, not the phone)", async () => {
@@ -247,13 +311,27 @@ describe("biometric offer", () => {
     route({
       "/api/v1/auth/logout": () => new Response(null, { status: 204 }),
       "/api/v1/me": () => json(200, { locale: "mn" }),
+      "/api/v1/patients": () =>
+        json(200, [
+          {
+            id: "00000000-0000-4000-8000-000000000001",
+            relation: "self",
+            access_level: "owner",
+            full_name: "Бат",
+            birth_date: null,
+            sex: "unknown",
+            is_minor: false,
+            consent_required: false,
+            created_at: "2026-01-01T00:00:00Z",
+          },
+        ]),
     });
     // Sign-out lives in Settings and asks first: confirm the dialog.
     const alert = jest.spyOn(Alert, "alert").mockImplementation((_t, _m, buttons) => {
       buttons?.find((b) => b.style === "destructive")?.onPress?.();
     });
     await app();
-    await fireEvent.press(await screen.findByRole("button", { name: "Тохиргоо" }));
+    await fireEvent.press(await screen.findByRole("button", { name: /^Тохиргоо, tab/ }));
     await fireEvent.press(await screen.findByRole("button", { name: "Гарах" }));
     expect(await screen.findByText("LabTrack MN-д тавтай морил")).toBeOnTheScreen();
     expect(mockStore.has("lt.biometric")).toBe(false);

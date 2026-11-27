@@ -1,0 +1,39 @@
+{
+ "note": "Made up",
+ "tags": [
+  "kidney",
+  "liver",
+  "mn",
+  "local"
+ ],
+ "profile_name": "Зохиомол Туршилт",
+ "reports": [
+  {
+   "collected": "2025-06-11",
+   "results": [
+    {
+     "name": "Такролимус",
+     "value": "7.8",
+     "unit": "нг/мл",
+     "numeric": "7.8",
+     "test_code": "TAC"
+    },
+    {
+     "name": "BK вирус",
+     "value": "<500",
+     "unit": "copies/mL",
+     "numeric": "500",
+     "comparator": "<",
+     "test_code": "BKV_DNA"
+    },
+    {
+     "name": "HBV ДНХ",
+     "value": "1.2E+06",
+     "unit": "IU/mL",
+     "numeric": "1.2E+06",
+     "test_code": "HBV_DNA"
+    }
+   ]
+  }
+ ]
+}

@@ -1,0 +1,84 @@
+# Phase 2.7: the emergency card. Runs after medication.yaml (a tacrolimus from the catalogue
+# exists). Opens the card (through Settings, see below), checks what an emergency team reads first,
+# switches it to English, and makes the wallet PDF and the wallpaper. Both leave only through
+# the share sheet. The lock-screen card needs biometrics, so it is not run on the emulator.
+appId: ${MAESTRO_APP_ID}
+---
+# The 🆘 button sits under the dev client's floating Tools button (top right, development
+# builds only), so a tap there opens the dev menu. The card is opened through Settings here;
+# the one-tap path from Home is covered by the Jest tests.
+- tapOn: "Тохиргоо"
+- tapOn:
+    id: "settings-emergency"
+- extendedWaitUntil:
+    visible: "Түгжээтэй үед яаралтай картыг нээх"
+    timeout: 15000
+- scrollUntilVisible:
+    element: "Яаралтай картыг харах"
+    timeout: 20000
+- tapOn: "Яаралтай картыг харах"
+- extendedWaitUntil:
+    visible: "Тогтмол уудаг эм"
+    timeout: 15000
+# an immunosuppressant from the catalogue: shown with its recorded dose and the note
+- assertVisible: "Дархлаа дарангуйлах эм тогтмол уудаг."
+- assertVisible: "Такролимус.*"
+- assertVisible: ".*одоогийн жортой зөрж болно."
+# nothing recorded is never "none"
+- assertVisible: "Харшлын мэдээлэл оруулаагүй — харшилгүй гэсэн үг биш."
+- assertVisible: "Шинэчилсэн: .*"
+
+# for a team abroad
+- tapOn: "English"
+- assertVisible: "Regular medicines"
+- assertVisible: "No allergy information entered — this does not mean no allergies."
+- tapOn: "Монгол"
+- assertVisible: "Тогтмол уудаг эм"
+
+# the wallet card: made on the phone, offered to the share sheet
+- scrollUntilVisible:
+    element: "Түрийвчний карт \\(PDF\\)"
+    timeout: 20000
+- tapOn: "Түрийвчний карт \\(PDF\\)"
+- extendedWaitUntil:
+    notVisible: "Түрийвчний карт \\(PDF\\)" # the system share sheet covers the app
+    timeout: 15000
+- back
+- extendedWaitUntil:
+    visible: "Түрийвчний карт \\(PDF\\)"
+    timeout: 15000
+
+# the wallpaper: the warning first, the name off by default
+- tapOn:
+    id: "emergency-wallpaper"
+- extendedWaitUntil:
+    visible: ".*утсыг барьсан хэн ч.*"
+    timeout: 15000
+- assertVisible: "Нэрийг оруулах"
+- assertNotVisible: "Нэр: .*"
+- scrollUntilVisible:
+    element: "Зургийг хуваалцах, хадгалах"
+    timeout: 20000
+- assertVisible: "Хуваалцахаасаа өмнө.*"
+- tapOn: "Зургийг хуваалцах, хадгалах"
+- extendedWaitUntil:
+    notVisible: "Зургийг хуваалцах, хадгалах"
+    timeout: 15000
+- back
+- extendedWaitUntil:
+    visible: "Зургийг хуваалцах, хадгалах"
+    timeout: 15000
+- back
+
+# the phone's own emergency information: steps for this phone first
+- scrollUntilVisible:
+    element:
+      id: "emergency-medical-id"
+    timeout: 20000
+- tapOn:
+    id: "emergency-medical-id"
+- extendedWaitUntil:
+    visible: "Android — Яаралтай мэдээлэл"
+    timeout: 15000
+- assertVisible: "Хуулах текст"
+- back

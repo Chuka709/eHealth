@@ -1,0 +1,36 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "web-dev",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "web", "exec", "next", "dev", "--port", "3100"],
+      "port": 3100,
+      "env": {
+        "API_INTERNAL_URL": "http://127.0.0.1:8000"
+      }
+    },
+    {
+      "name": "metro-emulator",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "mobile", "exec", "expo", "start", "--port", "8081"],
+      "port": 8081,
+      "env": {
+        "EXPO_PUBLIC_API_URL": "http://localhost:8080",
+        "EXPO_PUBLIC_ALLOW_SCREENSHOTS": "1",
+        "CI": "1"
+      }
+    },
+    {
+      "name": "metro-phone-8082",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "mobile", "exec", "expo", "start", "--port", "8082"],
+      "port": 8082,
+      "autoPort": false,
+      "env": {
+        "EXPO_PUBLIC_API_URL": "http://localhost:8080",
+        "EXPO_PUBLIC_ALLOW_SCREENSHOTS": "1"
+      }
+    }
+  ]
+}

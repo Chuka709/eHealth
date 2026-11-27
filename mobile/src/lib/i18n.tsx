@@ -22,6 +22,11 @@ const subscribe = (listener: () => void) => {
 };
 const getLocale = () => current;
 
+/** The app's language (the user's choice), outside any provider that overrides it. */
+export function useLocale(): Locale {
+  return useSyncExternalStore(subscribe, getLocale, getLocale);
+}
+
 /** Mongolian is the default UI language (CLAUDE.md); English is secondary. */
 export function I18nProvider({ locale, children }: { locale?: Locale; children: ReactNode }) {
   const chosen = useSyncExternalStore(subscribe, getLocale, getLocale);

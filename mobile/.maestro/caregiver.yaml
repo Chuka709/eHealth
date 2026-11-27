@@ -1,0 +1,12 @@
+# Phase 2.8f (run after activation.yaml, on the same app state - `just e2e-mobile`): the signed-in
+# owner invites a caregiver, signs out (their local reminders leave the phone - rule 8, checked
+# by the script afterwards); the caregiver accepts, switches to the owner's profile, sets alerts.
+appId: ${MAESTRO_APP_ID}
+---
+- launchApp
+- runFlow: subflows/dev-client.yaml
+- runFlow:
+    file: subflows/caregiver.yaml
+    env:
+      CAREGIVER_USERNAME: ${MAESTRO_CAREGIVER_USERNAME}
+      CAREGIVER_PASSWORD: ${MAESTRO_CAREGIVER_PASSWORD}

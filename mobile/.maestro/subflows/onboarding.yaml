@@ -1,0 +1,36 @@
+# After the first sign-in: the three required consents (AI stays off), the biometric offer and
+# the transplant wizard skipped (the own profile is created), until Home.
+appId: ${MAESTRO_APP_ID}
+---
+# Consents: the three required ones, AI stays off.
+- extendedWaitUntil:
+    visible: 'Үйлчилгээний нөхцөл \(Заавал\)' # text is a regex: escape the brackets
+    timeout: 15000
+- tapOn: 'Үйлчилгээний нөхцөл \(Заавал\)'
+- tapOn: 'Нууцлалын бодлого \(Заавал\)'
+- tapOn: 'Эрүүл мэндийн мэдээлэл боловсруулах \(Заавал\)'
+- scrollUntilVisible:
+    element: "Үргэлжлүүлэх"
+- tapOn: "Үргэлжлүүлэх"
+
+# Biometric offer only on phones with strong biometrics enrolled.
+- runFlow:
+    when:
+      visible: "Аппыг хурдан, аюулгүй нээх"
+    commands:
+      - tapOn: "Одоо биш"
+
+# First sign-in (Phase 2.4): the transplant wizard can be skipped; the own profile is created.
+- extendedWaitUntil:
+    visible: "Одоохондоо алгасах"
+    timeout: 15000
+    optional: true
+- runFlow:
+    when:
+      visible: "Одоохондоо алгасах"
+    commands:
+      - tapOn: "Одоохондоо алгасах"
+
+- extendedWaitUntil:
+    visible: "Өнөөдрийн тунгууд" # Home (Phase 2.9); the system status is further down
+    timeout: 15000

@@ -1,0 +1,10 @@
+[Unit]
+Description=LabTrack daily backup at 02:00 Ulaanbaatar
+
+[Timer]
+OnCalendar=*-*-* 02:00:00 Asia/Ulaanbaatar
+RandomizedDelaySec=10m
+Persistent=true
+
+[Install]
+WantedBy=timers.target

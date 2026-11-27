@@ -2,6 +2,7 @@
 .env
 .env.*
 !.env.example
+!.env.production.example
 *.pem
 *.p8
 *.p12
@@ -11,8 +12,14 @@
 google-services.json
 GoogleService-Info.plist
 
+# Encrypted backups (8.2) - never in git, even encrypted
+/backups/
+backend/.load-reports/
+
 # PHI — raw (non-anonymized) eval inputs stay local
 eval/cases/**/raw/
+eval/local/
+eval/report.md
 
 # Old planning versions (kept locally only)
 _archive/
@@ -72,3 +79,6 @@ web/test-results/
 # schemathesis reports (just fuzz-api)
 backend/.fuzz-reports/
 .schemathesis/
+
+# PHI — sample lab reports kept on this machine only
+test samples/

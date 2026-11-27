@@ -4,6 +4,11 @@ ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 \
     UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy UV_PYTHON_DOWNLOADS=never \
     VIRTUAL_ENV=/app/.venv PATH="/app/.venv/bin:$PATH"
 COPY --from=ghcr.io/astral-sh/uv:0.13.6 /uv /usr/local/bin/uv
+# libmagic: file type from content, never from the name (Phase 3.2, python-magic)
+# Pango + HarfBuzz and Noto Sans (Mongolian Cyrillic Ө, Ү): WeasyPrint's "Эмчид үзүүлэх" PDF (7.5)
+RUN apt-get update && apt-get install -y --no-install-recommends libmagic1 \
+        libpango-1.0-0 libpangoft2-1.0-0 fonts-noto-core \
+    && rm -rf /var/lib/apt/lists/*
 RUN useradd --create-home --uid 10001 app
 WORKDIR /app
 

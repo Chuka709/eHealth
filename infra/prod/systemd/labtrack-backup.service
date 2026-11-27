@@ -1,0 +1,14 @@
+# Daily encrypted backup + off-site copy (infra/prod/backup-daily.sh; OPS_RUNBOOK §3).
+# Installed by docs/SERVER_INSTALL_MANUAL.md §7; the repository is at /opt/labtrack.
+[Unit]
+Description=LabTrack daily backup
+Requires=docker.service
+After=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/opt/labtrack/infra/prod/backup-daily.sh
+# a failure shows in `systemctl --failed`; the monitor alerts when no backup is fresh
+TimeoutStartSec=3h
+Nice=10
+IOSchedulingClass=idle
